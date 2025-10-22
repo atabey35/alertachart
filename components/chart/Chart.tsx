@@ -124,16 +124,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
         type: 'volume',
       },
       priceScaleId: '',
-      scaleMargins: {
-        top: 0.85, // Volume takes bottom 15% of chart
-        bottom: 0,
-      },
     });
     
     // Configure volume price scale
     chart.priceScale('').applyOptions({
       scaleMargins: {
-        top: 0.85,
+        top: 0.85, // Volume takes bottom 15% of chart
         bottom: 0,
       },
     });
