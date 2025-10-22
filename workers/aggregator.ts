@@ -72,12 +72,16 @@ class Aggregator {
     const exchange = this.exchanges.get(data.exchange);
     if (!exchange) {
       console.error(`Exchange ${data.exchange} not found`);
+      this.emit('error', { message: `Exchange ${data.exchange} not found` });
       return;
     }
+
+    console.log(`[Aggregator] Connecting to ${data.exchange}:${data.pair}...`);
 
     // Connect if not connected
     if (exchange.apis.length === 0) {
       await exchange.connect();
+      console.log(`[Aggregator] Connected to ${data.exchange}`);
     }
 
     // Subscribe to pair
