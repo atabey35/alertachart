@@ -495,8 +495,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
     }
 
     // Convert to arrays and sort
-    const candleData = Array.from(candleMap.values()).sort((a, b) => a.time - b.time);
-    const volumeData = Array.from(volumeMap.values()).sort((a, b) => a.time - b.time);
+    const candleData = Array.from(candleMap.values()).sort((a, b) => {
+      const timeA = typeof a.time === 'string' ? parseInt(a.time) : a.time;
+      const timeB = typeof b.time === 'string' ? parseInt(b.time) : b.time;
+      return timeA - timeB;
+    });
+    const volumeData = Array.from(volumeMap.values()).sort((a, b) => {
+      const timeA = typeof a.time === 'string' ? parseInt(a.time) : a.time;
+      const timeB = typeof b.time === 'string' ? parseInt(b.time) : b.time;
+      return timeA - timeB;
+    });
 
     console.log('[Chart] Unique candles:', candleData.length);
     console.log('[Chart] First candle:', candleData[0]);
