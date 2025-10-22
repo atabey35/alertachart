@@ -496,13 +496,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
 
     // Convert to arrays and sort
     const candleData = Array.from(candleMap.values()).sort((a, b) => {
-      const timeA = typeof a.time === 'string' ? parseInt(a.time) : a.time;
-      const timeB = typeof b.time === 'string' ? parseInt(b.time) : b.time;
+      const timeA = (typeof a.time === 'string' ? parseInt(a.time) : a.time) as number;
+      const timeB = (typeof b.time === 'string' ? parseInt(b.time) : b.time) as number;
       return timeA - timeB;
     });
     const volumeData = Array.from(volumeMap.values()).sort((a, b) => {
-      const timeA = typeof a.time === 'string' ? parseInt(a.time) : a.time;
-      const timeB = typeof b.time === 'string' ? parseInt(b.time) : b.time;
+      const timeA = (typeof a.time === 'string' ? parseInt(a.time) : a.time) as number;
+      const timeB = (typeof b.time === 'string' ? parseInt(b.time) : b.time) as number;
       return timeA - timeB;
     });
 
