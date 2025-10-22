@@ -282,7 +282,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
 
       console.log('[Chart] Fetching historical data:', { from, to, timeframe, marketList });
 
-      const response = await historicalService.fetch(from, to, timeframe, marketList);
+      // Use Railway backend for initial load (Vercel API is geo-blocked)
+      const response = await historicalService.fetch(from, to, timeframe, marketList, true);
 
       console.log('[Chart] Received data:', {
         dataLength: response.data?.length || 0,
