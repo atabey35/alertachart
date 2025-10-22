@@ -186,7 +186,7 @@ Inspired by [aggr.trade](https://aggr.trade) by Tucsky
 ## 🔗 Links
 
 - **Frontend Repository**: https://github.com/atabey35/alertachart
-- **Backend Repository**: (Coming soon)
+- **Backend Repository**: https://github.com/atabey35/alertachart-backend
 - **Live Demo**: (Deploy to Vercel first)
 
 ---
