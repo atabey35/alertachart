@@ -472,30 +472,18 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
 
   /**
    * Handle tick update from worker
-   * Throttled on mobile for better performance
+   * Throttled using requestAnimationFrame for smooth performance
    */
   const handleTick = (bar: Bar) => {
     cacheRef.current.addBar(bar);
     
-    // Throttle updates on mobile (max 2 updates per second)
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    const throttleMs = isMobile ? 500 : 100; // 500ms on mobile, 100ms on desktop
-    
-    const now = Date.now();
-    
-    if (now - lastUpdateRef.current < throttleMs) {
-      // Schedule update if not already pending
-      if (!updatePendingRef.current) {
-        updatePendingRef.current = true;
-        setTimeout(() => {
-          updateChart();
-          lastUpdateRef.current = Date.now();
-          updatePendingRef.current = false;
-        }, throttleMs - (now - lastUpdateRef.current));
-      }
-    } else {
-      updateChart();
-      lastUpdateRef.current = now;
+    // Use requestAnimationFrame for smooth updates (60fps max)
+    if (!updatePendingRef.current) {
+      updatePendingRef.current = true;
+      requestAnimationFrame(() => {
+        updateChart();
+        updatePendingRef.current = false;
+      });
     }
   };
 
