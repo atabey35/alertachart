@@ -89,13 +89,10 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-gray-800 bg-black px-6 py-3 text-xs text-gray-500">
-        <div className="flex items-center justify-between">
-          <div>Powered by aggr.trade architecture</div>
-          <div className="flex gap-4">
-            <span>Connected: {exchange}</span>
-            <span>Pair: {pair.toUpperCase()}</span>
-            <span>Timeframe: {getTimeframeForHuman(timeframe)}</span>
-          </div>
+        <div className="flex items-center justify-center gap-6">
+          <span>Connected: {exchange}</span>
+          <span>Pair: {pair.toUpperCase()}</span>
+          <span>Timeframe: {getTimeframeForHuman(timeframe)}</span>
         </div>
       </footer>
     </main>
