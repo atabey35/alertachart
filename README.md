@@ -181,3 +181,14 @@ MIT
 ## 🙏 Credits
 
 Inspired by [aggr.trade](https://aggr.trade) by Tucsky
+
+
+## 🔗 Links
+
+- **Frontend Repository**: https://github.com/atabey35/alertachart
+- **Backend Repository**: (Coming soon)
+- **Live Demo**: (Deploy to Vercel first)
+
+---
+
+**Built with ❤️ by Atabey**
