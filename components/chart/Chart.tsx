@@ -42,6 +42,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
   const [error, setError] = useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
+  const [countdown, setCountdown] = useState<string>('--:--');
   const [showSettings, setShowSettings] = useState(false);
   const [chartSettings, setChartSettings] = useState<ChartSettingsType>(() => {
     // Load from localStorage
@@ -384,6 +385,24 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
   };
 
   /**
+   * Update countdown timer
+   */
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const nextCandle = Math.ceil(now / (timeframe * 1000)) * (timeframe * 1000);
+      const remaining = nextCandle - now;
+      
+      const minutes = Math.floor(remaining / 60000);
+      const seconds = Math.floor((remaining % 60000) / 1000);
+      
+      setCountdown(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [timeframe]);
+
+  /**
    * Setup Web Worker for real-time data
    */
   const setupWorker = () => {
@@ -596,6 +615,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
       )}
       
       <div ref={containerRef} className="w-full h-full" />
+      
+      {/* Countdown Timer (below price axis) */}
+      <div className="absolute bottom-6 right-14 bg-gray-800/90 px-3 py-1.5 rounded text-xs font-mono z-10 border border-gray-700">
+        <div className="text-gray-400 text-[10px] mb-0.5">Next Candle</div>
+        <div className="text-white font-bold">{countdown}</div>
+      </div>
       
       {/* Settings Modal */}
       <ChartSettings
