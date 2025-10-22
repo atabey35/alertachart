@@ -459,8 +459,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
     console.log('[Chart] Updating chart with', bars.length, 'bars');
     
     // Convert to candle data and volume data, remove duplicates
-    const candleMap = new Map<number, CandlestickData>();
-    const volumeMap = new Map<number, HistogramData>();
+    const candleMap = new Map<Time, CandlestickData>();
+    const volumeMap = new Map<Time, HistogramData>();
     
     for (const bar of bars) {
       const time = Math.floor(bar.time / 1000) as Time;
