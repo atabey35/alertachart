@@ -25,7 +25,7 @@ export default function Home() {
           <div className="flex items-center gap-6">
             <h1 className="text-2xl font-bold text-blue-500">ALERTA CHART</h1>
             <div className="text-sm text-gray-400">
-              Real-time Cryptocurrency Charting Platform
+              Powered by Kripto Kırmızı
             </div>
           </div>
 
