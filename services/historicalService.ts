@@ -93,6 +93,7 @@ class HistoricalService extends EventEmitter {
             from,
             to,
             timeframe,
+            initialPrices: {},
             data: json.data.map((candle: any) => ({
               time: candle.time,
               open: candle.open,
