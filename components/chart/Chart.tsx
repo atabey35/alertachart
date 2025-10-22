@@ -38,8 +38,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
   const isInitialLoadRef = useRef(true);
   const isLoadingOlderRef = useRef(false); // Prevent duplicate requests
   const oldestTimestampRef = useRef<number>(0); // Track oldest loaded data
-  const lastUpdateRef = useRef<number>(0); // Throttle updates on mobile
-  const updatePendingRef = useRef(false); // Pending update flag
+  const updateQueuedRef = useRef(false); // Is update queued via RAF?
+  const rafIdRef = useRef<number | null>(null); // requestAnimationFrame ID
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -225,6 +225,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
       timeScale.unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
       if (observerRef.current) {
         observerRef.current.disconnect();
+      }
+      // Cancel pending RAF
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
       }
       chart.remove();
     };
@@ -472,17 +476,19 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
 
   /**
    * Handle tick update from worker
-   * Throttled using requestAnimationFrame for smooth performance
+   * Queue update via requestAnimationFrame (aggr.trade pattern)
    */
   const handleTick = (bar: Bar) => {
+    // Add bar to cache
     cacheRef.current.addBar(bar);
     
-    // Use requestAnimationFrame for smooth updates (60fps max)
-    if (!updatePendingRef.current) {
-      updatePendingRef.current = true;
-      requestAnimationFrame(() => {
+    // Queue single update per frame (aggr.trade style)
+    if (!updateQueuedRef.current) {
+      updateQueuedRef.current = true;
+      rafIdRef.current = requestAnimationFrame(() => {
         updateChart();
-        updatePendingRef.current = false;
+        updateQueuedRef.current = false;
+        rafIdRef.current = null;
       });
     }
   };
