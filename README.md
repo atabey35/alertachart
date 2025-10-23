@@ -1,6 +1,6 @@
 # Alerta Chart
 
-Professional real-time cryptocurrency charting platform - Clone of aggr.trade architecture using modern Next.js.
+Professional real-time cryptocurrency charting platform - Clone of aggr.trade architecture using modern Next.js
 
 ## 🚀 Features
 
