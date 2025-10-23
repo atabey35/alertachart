@@ -1599,7 +1599,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             setSelectedDrawingId(null);
           }
         }}
-        className={`absolute top-2 left-2 z-10 p-2 rounded-lg transition-all shadow-lg ${
+        className={`absolute top-8 left-2 z-10 p-2 rounded-lg transition-all shadow-lg ${
           showDrawingTools 
             ? 'bg-blue-600 text-white' 
             : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
@@ -1638,7 +1638,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       {/* Settings Button */}
       <button
         onClick={() => setShowSettings(true)}
-        className="absolute top-4 right-4 z-10 p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors shadow-lg"
+        className="absolute top-4 right-24 z-10 p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors shadow-lg"
         title="Chart Settings"
       >
         <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1669,7 +1669,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </div>
       )}
       {wsConnected && (
-        <div className="absolute top-4 right-16 bg-green-900 px-3 py-2 rounded text-sm z-10 flex items-center gap-2">
+        <div className="absolute top-4 right-40 bg-green-900 px-3 py-2 rounded text-sm z-10 flex items-center gap-2">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
           Live
         </div>
@@ -1853,7 +1853,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
               </div>
       
       {/* Countdown Timer (below price axis) */}
-      <div className="absolute bottom-6 right-14 bg-gray-800/90 px-3 py-1.5 rounded text-xs font-mono z-10 border border-gray-700">
+      <div className="absolute bottom-6 right-32 bg-gray-800/90 px-3 py-1.5 rounded text-xs font-mono z-10 border border-gray-700">
         <div className="text-gray-400 text-[10px] mb-0.5">Next Candle</div>
         <div className="text-white font-bold">{countdown}</div>
       </div>
