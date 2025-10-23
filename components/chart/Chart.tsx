@@ -87,6 +87,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const drawingSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const horizontalLinesRef = useRef<Map<string, any>>(new Map()); // Store price lines for horizontal drawings
   const precisionSetRef = useRef<boolean>(false); // Track if precision has been set for current pair
+  
+  // OHLCV legend state (TradingView-style hover info)
+  const [legendData, setLegendData] = useState<{
+    open: number;
+    high: number;
+    low: number;
+    close: number;
+    volume: number;
+    change: number;
+    changePercent: number;
+  } | null>(null);
 
   /**
    * Hide mobile hint after 5 seconds
@@ -238,6 +249,32 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         subtree: true,
       });
     }
+
+    // Subscribe to crosshair move for OHLCV legend (TradingView-style)
+    chart.subscribeCrosshairMove((param) => {
+      if (!param.time || !param.seriesData || !seriesRef.current || !volumeSeriesRef.current) {
+        setLegendData(null);
+        return;
+      }
+
+      const candleData = param.seriesData.get(seriesRef.current) as CandlestickData | undefined;
+      const volumeData = param.seriesData.get(volumeSeriesRef.current) as HistogramData | undefined;
+
+      if (candleData && volumeData) {
+        const change = candleData.close - candleData.open;
+        const changePercent = (change / candleData.open) * 100;
+
+        setLegendData({
+          open: candleData.open,
+          high: candleData.high,
+          low: candleData.low,
+          close: candleData.close,
+          volume: volumeData.value,
+          change,
+          changePercent,
+        });
+      }
+    });
 
     // Handle resize
     const handleResize = () => {
@@ -1483,6 +1520,46 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       className="relative w-full h-full"
       onClick={() => setContextMenuVisible(false)}
     >
+      {/* OHLCV Legend (TradingView-style) */}
+      {legendData && (
+        <div className="absolute top-2 left-16 z-10 bg-gray-900/90 border border-gray-700 rounded-lg px-3 py-2 text-xs font-mono shadow-lg pointer-events-none">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1">
+              <span className="text-gray-400">O</span>
+              <span className="text-white">{legendData.open.toFixed(legendData.open < 1 ? 6 : 2)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-gray-400">H</span>
+              <span className="text-white">{legendData.high.toFixed(legendData.high < 1 ? 6 : 2)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-gray-400">L</span>
+              <span className="text-white">{legendData.low.toFixed(legendData.low < 1 ? 6 : 2)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-gray-400">C</span>
+              <span className={legendData.change >= 0 ? 'text-green-400' : 'text-red-400'}>
+                {legendData.close.toFixed(legendData.close < 1 ? 6 : 2)}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-gray-400">Vol</span>
+              <span className="text-white">
+                {legendData.volume >= 1000000 
+                  ? `${(legendData.volume / 1000000).toFixed(2)}M`
+                  : legendData.volume >= 1000
+                  ? `${(legendData.volume / 1000).toFixed(2)}K`
+                  : legendData.volume.toFixed(2)
+                }
+              </span>
+            </div>
+            <div className={`flex items-center gap-1 font-bold ${legendData.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              <span>{legendData.change >= 0 ? '+' : ''}{legendData.changePercent.toFixed(2)}%</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Drawing Tools Toggle Button */}
       <button
         onClick={() => {
