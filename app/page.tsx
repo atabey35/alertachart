@@ -10,11 +10,32 @@ import AlertsPanel from '@/components/AlertsPanel';
 import { TIMEFRAMES } from '@/utils/constants';
 import { getTimeframeForHuman } from '@/utils/helpers';
 
+interface ChartState {
+  id: number;
+  exchange: string;
+  pair: string;
+  timeframe: number;
+  currentPrice?: number;
+}
+
 export default function Home() {
-  const [exchange, setExchange] = useState('BINANCE');
-  const [pair, setPair] = useState('btcusdt');
-  const [timeframe, setTimeframe] = useState(900); // 15m
-  const [currentPrice, setCurrentPrice] = useState<number>();
+  // Multi-chart layout state
+  const [layout, setLayout] = useState<1 | 4 | 9>(1); // 1x1, 2x2, 3x3
+  const [activeChartId, setActiveChartId] = useState<number>(0);
+  
+  // Chart states for each grid cell
+  const [charts, setCharts] = useState<ChartState[]>([
+    { id: 0, exchange: 'BINANCE', pair: 'btcusdt', timeframe: 900 },
+    { id: 1, exchange: 'BINANCE', pair: 'ethusdt', timeframe: 900 },
+    { id: 2, exchange: 'BINANCE', pair: 'solusdt', timeframe: 900 },
+    { id: 3, exchange: 'BINANCE', pair: 'bnbusdt', timeframe: 900 },
+    { id: 4, exchange: 'BINANCE', pair: 'xrpusdt', timeframe: 900 },
+    { id: 5, exchange: 'BINANCE', pair: 'adausdt', timeframe: 900 },
+    { id: 6, exchange: 'BINANCE', pair: 'dogeusdt', timeframe: 900 },
+    { id: 7, exchange: 'BINANCE', pair: 'maticusdt', timeframe: 900 },
+    { id: 8, exchange: 'BINANCE', pair: 'dotusdt', timeframe: 900 },
+  ]);
+  
   const [pairs, setPairs] = useState<string[]>(['btcusdt', 'ethusdt', 'solusdt']); // Default pairs
   const [loadingPairs, setLoadingPairs] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -83,8 +104,31 @@ export default function Home() {
     return pairs.filter(p => p.includes(query));
   }, [pairs, searchQuery]);
   
-  // Memoize markets array to prevent unnecessary re-renders
-  const markets = useMemo(() => [`${exchange}:${pair}`], [exchange, pair]);
+  // Get active chart
+  const activeChart = charts[activeChartId];
+  
+  // Update active chart
+  const updateActiveChart = (updates: Partial<ChartState>) => {
+    setCharts(prev => prev.map(chart => 
+      chart.id === activeChartId 
+        ? { ...chart, ...updates }
+        : chart
+    ));
+  };
+  
+  // Memoize markets array for active chart
+  const markets = useMemo(() => 
+    [`${activeChart.exchange}:${activeChart.pair}`], 
+    [activeChart.exchange, activeChart.pair]
+  );
+  
+  // Get grid class based on layout
+  const getGridClass = () => {
+    if (layout === 1) return 'grid-cols-1 grid-rows-1';
+    if (layout === 4) return 'grid-cols-2 grid-rows-2';
+    if (layout === 9) return 'grid-cols-3 grid-rows-3';
+    return 'grid-cols-1 grid-rows-1';
+  };
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -100,12 +144,60 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Exchange and Pair selectors */}
+            {/* Layout and Chart selectors */}
             <div className="flex items-center gap-2">
+              {/* Layout selector */}
+              <div className="flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1">
+                <button
+                  onClick={() => setLayout(1)}
+                  className={`p-1.5 rounded transition-colors ${
+                    layout === 1 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                  title="Single Chart"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setLayout(4)}
+                  className={`p-1.5 rounded transition-colors ${
+                    layout === 4 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                  title="2x2 Grid"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="8" height="8" rx="1"/>
+                    <rect x="13" y="3" width="8" height="8" rx="1"/>
+                    <rect x="3" y="13" width="8" height="8" rx="1"/>
+                    <rect x="13" y="13" width="8" height="8" rx="1"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setLayout(9)}
+                  className={`p-1.5 rounded transition-colors ${
+                    layout === 9 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                  title="3x3 Grid"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="2" y="2" width="5" height="5" rx="0.5"/>
+                    <rect x="9" y="2" width="5" height="5" rx="0.5"/>
+                    <rect x="16" y="2" width="5" height="5" rx="0.5"/>
+                    <rect x="2" y="9" width="5" height="5" rx="0.5"/>
+                    <rect x="9" y="9" width="5" height="5" rx="0.5"/>
+                    <rect x="16" y="9" width="5" height="5" rx="0.5"/>
+                    <rect x="2" y="16" width="5" height="5" rx="0.5"/>
+                    <rect x="9" y="16" width="5" height="5" rx="0.5"/>
+                    <rect x="16" y="16" width="5" height="5" rx="0.5"/>
+                  </svg>
+                </button>
+              </div>
+
               {/* Exchange selector */}
               <select
-                value={exchange}
-                onChange={(e) => setExchange(e.target.value)}
+                value={activeChart.exchange}
+                onChange={(e) => updateActiveChart({ exchange: e.target.value })}
                 className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500"
               >
                 {exchanges.map((ex) => (
@@ -136,9 +228,9 @@ export default function Home() {
 
               {/* Pair selector dropdown */}
               <select
-                value={pair}
+                value={activeChart.pair}
                 onChange={(e) => {
-                  setPair(e.target.value);
+                  updateActiveChart({ pair: e.target.value });
                   setSearchQuery(''); // Clear search after selection
                 }}
                 className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500 max-h-96"
@@ -172,9 +264,9 @@ export default function Home() {
             {TIMEFRAMES.map((tf) => (
               <button
                 key={tf}
-                onClick={() => setTimeframe(tf)}
+                onClick={() => updateActiveChart({ timeframe: tf })}
                 className={`px-3 py-1.5 md:py-2 text-xs md:text-sm rounded whitespace-nowrap flex-shrink-0 ${
-                  timeframe === tf
+                  activeChart.timeframe === tf
                     ? 'bg-blue-600 text-white'
                     : 'bg-gray-900 text-gray-400 hover:bg-gray-800'
                 }`}
@@ -186,33 +278,57 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Chart */}
-      <div className="flex-1" style={{ minHeight: '600px' }}>
-        <Chart
-          exchange={exchange}
-          pair={pair}
-          timeframe={timeframe}
-          markets={markets}
-          onPriceUpdate={setCurrentPrice}
-        />
+      {/* Multi-Chart Grid */}
+      <div className={`flex-1 grid ${getGridClass()} gap-1 bg-gray-950 p-1`} style={{ minHeight: '600px' }}>
+        {charts.slice(0, layout).map((chart) => (
+          <div
+            key={chart.id}
+            onClick={() => setActiveChartId(chart.id)}
+            className={`relative border transition-all ${
+              chart.id === activeChartId 
+                ? 'border-blue-500 border-2' 
+                : 'border-gray-800 hover:border-gray-700'
+            }`}
+          >
+            {/* Chart label */}
+            <div className="absolute top-1 left-1 z-20 bg-gray-900/80 px-2 py-1 rounded text-xs font-mono pointer-events-none">
+              <span className={chart.id === activeChartId ? 'text-blue-400' : 'text-gray-400'}>
+                {chart.pair.replace('usdt', '').toUpperCase()}/USDT
+              </span>
+            </div>
+            
+            <Chart
+              exchange={chart.exchange}
+              pair={chart.pair}
+              timeframe={chart.timeframe}
+              markets={[`${chart.exchange}:${chart.pair}`]}
+              onPriceUpdate={(price) => {
+                setCharts(prev => prev.map(c => 
+                  c.id === chart.id ? { ...c, currentPrice: price } : c
+                ));
+              }}
+            />
+          </div>
+        ))}
       </div>
 
-      {/* Alerts Panel */}
+      {/* Alerts Panel - only for active chart */}
       <AlertsPanel
-        exchange={exchange}
-        pair={pair}
-        currentPrice={currentPrice}
+        exchange={activeChart.exchange}
+        pair={activeChart.pair}
+        currentPrice={activeChart.currentPrice}
       />
 
       {/* Footer */}
       <footer className="border-t border-gray-800 bg-black px-4 py-3 text-xs text-gray-500">
         <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6">
-          <span className="whitespace-nowrap">Connected: {exchange}</span>
-          <span className="whitespace-nowrap">Pair: {pair.toUpperCase()}</span>
-          <span className="whitespace-nowrap">Timeframe: {getTimeframeForHuman(timeframe)}</span>
-          {currentPrice && (
+          <span className="whitespace-nowrap">Layout: {layout === 1 ? 'Single' : layout === 4 ? '2x2' : '3x3'}</span>
+          <span className="whitespace-nowrap">Active: {activeChart.pair.toUpperCase()}</span>
+          <span className="whitespace-nowrap">Exchange: {activeChart.exchange}</span>
+          <span className="whitespace-nowrap">Timeframe: {getTimeframeForHuman(activeChart.timeframe)}</span>
+          {activeChart.currentPrice && (
             <span className="font-mono text-white whitespace-nowrap">
-              ${currentPrice.toFixed(currentPrice < 1 ? 4 : 2)}
+              ${activeChart.currentPrice.toFixed(activeChart.currentPrice < 1 ? 4 : 2)}
             </span>
           )}
         </div>
