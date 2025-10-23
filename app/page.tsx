@@ -133,15 +133,31 @@ export default function Home() {
     return 'grid-cols-1 grid-rows-1';
   };
   
+  // Get optimal height based on layout
+  const getGridHeight = () => {
+    if (layout === 1) return 'calc(100vh - 240px)'; // Single chart - full height minus header/footer
+    if (layout === 4) return 'calc(100vh - 240px)'; // 2x2 grid - same total height, split into rows
+    if (layout === 9) return 'calc(100vh - 240px)'; // 3x3 grid - same total height, split into rows
+    return 'calc(100vh - 240px)';
+  };
+  
   // Memoized price update handler to prevent infinite loops
   const handlePriceUpdate = useCallback((chartId: number, price: number) => {
     chartPricesRef.current.set(chartId, price);
     
     // Only update state for active chart to display in footer
+    // Use functional update and check if price actually changed to prevent unnecessary re-renders
     if (chartId === activeChartId) {
-      setCharts(prev => prev.map(c => 
-        c.id === chartId ? { ...c, currentPrice: price } : c
-      ));
+      setCharts(prev => {
+        const currentChart = prev.find(c => c.id === chartId);
+        // Only update if price changed
+        if (currentChart && currentChart.currentPrice !== price) {
+          return prev.map(c => 
+            c.id === chartId ? { ...c, currentPrice: price } : c
+          );
+        }
+        return prev;
+      });
     }
   }, [activeChartId]);
 
@@ -294,12 +310,17 @@ export default function Home() {
       </header>
 
       {/* Multi-Chart Grid */}
-      <div className={`flex-1 grid ${getGridClass()} gap-1 bg-gray-950 p-1`} style={{ minHeight: '600px' }}>
+      <div 
+        className={`grid ${getGridClass()} gap-1 bg-gray-950 p-1`} 
+        style={{ 
+          height: getGridHeight()
+        }}
+      >
         {charts.slice(0, layout).map((chart) => (
           <div
             key={chart.id}
             onClick={() => setActiveChartId(chart.id)}
-            className={`relative border transition-all ${
+            className={`relative border transition-all overflow-hidden ${
               chart.id === activeChartId 
                 ? 'border-blue-500 border-2' 
                 : 'border-gray-800 hover:border-gray-700'
@@ -313,6 +334,7 @@ export default function Home() {
             </div>
             
             <Chart
+              key={`${chart.id}-${layout}`}
               exchange={chart.exchange}
               pair={chart.pair}
               timeframe={chart.timeframe}

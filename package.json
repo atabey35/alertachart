@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "worker:build": "tsc workers/aggregator.worker.ts --outDir public/workers --lib es2020,webworker --target es2020",
+    "worker:build": "tsc workers/aggregator.ts --outDir public/workers --lib es2020,webworker --target es2020",
     "dev:all": "concurrently \"npm run dev\" \"npm run worker:build -- --watch\""
   },
   "dependencies": {

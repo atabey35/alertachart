@@ -279,12 +279,35 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Handle resize
     const handleResize = () => {
       if (containerRef.current && chartRef.current) {
-        chartRef.current.resize(
-          containerRef.current.clientWidth,
-          containerRef.current.clientHeight
-        );
+        const width = containerRef.current.clientWidth;
+        const height = containerRef.current.clientHeight;
+        
+        if (width > 0 && height > 0) {
+          chartRef.current.resize(width, height);
+          console.log('[Chart] Resized to:', { width, height });
+        }
       }
     };
+
+    // Use ResizeObserver for automatic resize detection
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        handleResize();
+      }
+    });
+
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+    
+    // Force initial resize after mount
+    setTimeout(() => {
+      handleResize();
+    }, 100);
+    
+    setTimeout(() => {
+      handleResize();
+    }, 500);
 
     // Handle context menu with native event listener for better Safari support
     const handleContextMenuNative = (e: MouseEvent) => {
@@ -354,6 +377,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       if (observerRef.current) {
         observerRef.current.disconnect();
       }
+      // Disconnect ResizeObserver
+      resizeObserver.disconnect();
       // Cancel pending RAF
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
@@ -397,12 +422,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     if (currentPrice > 0) {
       alertService.checkPrice(exchange, pair, currentPrice);
       
-      // Notify parent
-      if (onPriceUpdate) {
-        onPriceUpdate(currentPrice);
-      }
+      // Notify parent (using ref to avoid dependency issues)
+      onPriceUpdate?.(currentPrice);
     }
-  }, [currentPrice, exchange, pair, onPriceUpdate]);
+  }, [currentPrice, exchange, pair]);
 
   /**
    * Render alert lines on chart
@@ -726,7 +749,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    * Update countdown timer
    */
   useEffect(() => {
-    const interval = setInterval(() => {
+    const updateCountdown = () => {
       const now = Date.now();
       const nextCandle = Math.ceil(now / (timeframe * 1000)) * (timeframe * 1000);
       const remaining = nextCandle - now;
@@ -735,34 +758,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const seconds = Math.floor((remaining % 60000) / 1000);
       
       setCountdown(`${minutes}:${seconds.toString().padStart(2, '0')}`);
-    }, 1000);
+    };
+    
+    // Update immediately
+    updateCountdown();
+    
+    // Then update every second
+    const interval = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(interval);
   }, [timeframe]);
-
-  /**
-   * Subscribe to alerts
-   */
-  useEffect(() => {
-    const unsubscribe = alertService.subscribe((allAlerts) => {
-      setAlerts(allAlerts.filter(a => a.exchange === exchange && a.pair === pair));
-    });
-
-    // Request notification permission on mount
-    alertService.requestNotificationPermission();
-
-    return unsubscribe;
-  }, [exchange, pair]);
-
-  /**
-   * Check price against alerts
-   */
-  useEffect(() => {
-    if (currentPrice > 0) {
-      alertService.checkPrice(exchange, pair, currentPrice);
-      onPriceUpdate?.(currentPrice);
-    }
-  }, [currentPrice, exchange, pair, onPriceUpdate]);
 
   /**
    * Setup Web Worker for real-time data
@@ -982,12 +987,25 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       volumeSeriesRef.current.update(lastVolume);
     }
 
-    // Update current price from latest candle
-    setCurrentPrice(lastCandle.close);
+    // Update current price from latest candle (only if changed to prevent re-render loops)
+    if (lastCandle.close !== currentPrice) {
+      setCurrentPrice(lastCandle.close);
+    }
 
     // Only fit content on initial load, then allow user to scroll freely
     if (chartRef.current && candleData.length > 0 && isInitialLoadRef.current) {
+      // Fit content multiple times to ensure proper display
       chartRef.current.timeScale().fitContent();
+      setTimeout(() => {
+        if (chartRef.current) {
+          chartRef.current.timeScale().fitContent();
+        }
+      }, 100);
+      setTimeout(() => {
+        if (chartRef.current) {
+          chartRef.current.timeScale().fitContent();
+        }
+      }, 300);
       isInitialLoadRef.current = false;
       console.log('[Chart] Initial fit content applied');
     }
