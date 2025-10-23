@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Chart from '@/components/chart/Chart';
 import AlertsPanel from '@/components/AlertsPanel';
 import { TIMEFRAMES } from '@/utils/constants';
@@ -35,6 +35,9 @@ export default function Home() {
     { id: 7, exchange: 'BINANCE', pair: 'maticusdt', timeframe: 900 },
     { id: 8, exchange: 'BINANCE', pair: 'dotusdt', timeframe: 900 },
   ]);
+  
+  // Use ref to avoid re-render loops when updating prices
+  const chartPricesRef = useRef<Map<number, number>>(new Map());
   
   const [pairs, setPairs] = useState<string[]>(['btcusdt', 'ethusdt', 'solusdt']); // Default pairs
   const [loadingPairs, setLoadingPairs] = useState(true);
@@ -129,6 +132,18 @@ export default function Home() {
     if (layout === 9) return 'grid-cols-3 grid-rows-3';
     return 'grid-cols-1 grid-rows-1';
   };
+  
+  // Memoized price update handler to prevent infinite loops
+  const handlePriceUpdate = useCallback((chartId: number, price: number) => {
+    chartPricesRef.current.set(chartId, price);
+    
+    // Only update state for active chart to display in footer
+    if (chartId === activeChartId) {
+      setCharts(prev => prev.map(c => 
+        c.id === chartId ? { ...c, currentPrice: price } : c
+      ));
+    }
+  }, [activeChartId]);
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -302,11 +317,7 @@ export default function Home() {
               pair={chart.pair}
               timeframe={chart.timeframe}
               markets={[`${chart.exchange}:${chart.pair}`]}
-              onPriceUpdate={(price) => {
-                setCharts(prev => prev.map(c => 
-                  c.id === chart.id ? { ...c, currentPrice: price } : c
-                ));
-              }}
+              onPriceUpdate={(price) => handlePriceUpdate(chart.id, price)}
             />
           </div>
         ))}
