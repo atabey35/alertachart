@@ -38,8 +38,22 @@ export default class ChartCache {
     const existingIndex = chunk.bars.findIndex((b) => b.time === bar.time);
     
     if (existingIndex >= 0) {
-      // Update existing bar
-      chunk.bars[existingIndex] = bar;
+      // CRITICAL: Merge bars instead of replacing!
+      // This preserves Railway historical data (high, low, volume) 
+      // while updating with worker ticks (close price)
+      const existingBar = chunk.bars[existingIndex];
+      
+      chunk.bars[existingIndex] = {
+        ...existingBar,  // Keep all existing data (high, low, volume, etc.)
+        ...bar,          // Update with new data (close, etc.)
+        // Ensure high/low are updated correctly
+        high: Math.max(existingBar.high || bar.high || 0, bar.high || existingBar.high || 0, bar.close || existingBar.close || 0),
+        low: Math.min(
+          existingBar.low && existingBar.low > 0 ? existingBar.low : (bar.low || bar.close || existingBar.close || Infinity),
+          bar.low && bar.low > 0 ? bar.low : (existingBar.low || bar.close || existingBar.close || Infinity),
+          bar.close || existingBar.close || Infinity
+        ),
+      };
     } else {
       // Add new bar
       chunk.bars.push(bar);

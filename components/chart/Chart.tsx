@@ -15,19 +15,24 @@ import {
   Time,
 } from 'lightweight-charts';
 import { Bar } from '@/types/chart';
+import { PriceAlert } from '@/types/alert';
+import { Drawing, DrawingPoint } from '@/types/drawing';
 import ChartCache from './ChartCache';
 import historicalService from '@/services/historicalService';
+import alertService from '@/services/alertService';
 import { floorTimestampToTimeframe } from '@/utils/helpers';
 import ChartSettings, { ChartSettingsType, DEFAULT_SETTINGS } from './ChartSettings';
+import DrawingToolbar, { DrawingTool } from './DrawingToolbar';
 
 interface ChartProps {
   exchange: string;
   pair: string;
   timeframe: number; // in seconds
   markets?: string[];
+  onPriceUpdate?: (price: number) => void;
 }
 
-export default function Chart({ exchange, pair, timeframe, markets = [] }: ChartProps) {
+export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
@@ -40,12 +45,21 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
   const oldestTimestampRef = useRef<number>(0); // Track oldest loaded data
   const updateQueuedRef = useRef(false); // Is update queued via RAF?
   const rafIdRef = useRef<number | null>(null); // requestAnimationFrame ID
+  const lastBarCountRef = useRef<number>(0); // Track bar count to detect full vs partial updates
+  const currentExchangeRef = useRef(exchange);
+  const currentPairRef = useRef(pair);
+  const currentTimeframeRef = useRef(timeframe);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
   const [wsConnected, setWsConnected] = useState(false);
   const [countdown, setCountdown] = useState<string>('--:--');
   const [showSettings, setShowSettings] = useState(false);
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [clickedPrice, setClickedPrice] = useState<number | null>(null);
+  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [chartSettings, setChartSettings] = useState<ChartSettingsType>(() => {
     // Load from localStorage
     if (typeof window !== 'undefined') {
@@ -60,6 +74,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
     }
     return DEFAULT_SETTINGS;
   });
+
+  // Drawing tool states
+  const [activeTool, setActiveTool] = useState<DrawingTool>('none');
+  const [drawings, setDrawings] = useState<Drawing[]>([]);
+  const [tempDrawing, setTempDrawing] = useState<DrawingPoint | null>(null);
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const drawingSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
 
   /**
    * Initialize chart
@@ -205,7 +226,51 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
       }
     };
 
+    // Handle context menu with native event listener for better Safari support
+    const handleContextMenuNative = (e: MouseEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (!seriesRef.current || !containerRef.current) {
+        console.warn('[Chart] Cannot open context menu: chart not ready');
+        return false;
+      }
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = e.clientX;
+      const y = e.clientY;
+      const relativeY = y - rect.top;
+      
+      // Get price at mouse position
+      try {
+        const price = seriesRef.current.coordinateToPrice(relativeY);
+        
+        console.log('[Chart] Context menu opened (native) at:', { 
+          clientX: x, 
+          clientY: y, 
+          relativeY, 
+          price,
+          currentPrice 
+        });
+        
+        if (price !== null && price !== undefined) {
+          setClickedPrice(price as number);
+        } else {
+          console.warn('[Chart] Could not get price from coordinate');
+        }
+      } catch (err) {
+        console.error('[Chart] Failed to get price from coordinate:', err);
+      }
+      
+      setContextMenuPosition({ x, y });
+      setContextMenuVisible(true);
+      return false;
+    };
+
     window.addEventListener('resize', handleResize);
+    if (containerRef.current) {
+      containerRef.current.addEventListener('contextmenu', handleContextMenuNative as any);
+    }
 
     // Setup lazy loading on scroll
     const timeScale = chart.timeScale();
@@ -222,6 +287,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      if (containerRef.current) {
+        containerRef.current.removeEventListener('contextmenu', handleContextMenuNative as any);
+      }
       timeScale.unsubscribeVisibleLogicalRangeChange(handleVisibleRangeChange);
       if (observerRef.current) {
         observerRef.current.disconnect();
@@ -235,23 +303,104 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
   }, [chartSettings]);
 
   /**
-   * Load historical data
+   * Update refs when exchange/pair/timeframe changes
+   */
+  useEffect(() => {
+    currentExchangeRef.current = exchange;
+    currentPairRef.current = pair;
+    currentTimeframeRef.current = timeframe;
+  }, [exchange, pair, timeframe]);
+
+  /**
+   * Subscribe to alert service
+   */
+  useEffect(() => {
+    // Request notification permission
+    alertService.requestNotificationPermission();
+    
+    // Subscribe to alerts
+    const unsubscribe = alertService.subscribe((allAlerts) => {
+      // Filter alerts for current pair
+      const pairAlerts = allAlerts.filter(
+        alert => alert.exchange === exchange && alert.pair === pair
+      );
+      setAlerts(pairAlerts);
+    });
+    
+    return unsubscribe;
+  }, [exchange, pair]);
+
+  /**
+   * Check alerts against current price
+   */
+  useEffect(() => {
+    if (currentPrice > 0) {
+      alertService.checkPrice(exchange, pair, currentPrice);
+      
+      // Notify parent
+      if (onPriceUpdate) {
+        onPriceUpdate(currentPrice);
+      }
+    }
+  }, [currentPrice, exchange, pair, onPriceUpdate]);
+
+  /**
+   * Render alert lines on chart
+   */
+  useEffect(() => {
+    if (!chartRef.current) return;
+    
+    // Remove old alert lines (we'll recreate all)
+    // Note: lightweight-charts doesn't have a direct way to "tag" series,
+    // so we'll store them in a ref
+    const alertLinesRef: ISeriesApi<'Line'>[] = [];
+    
+    // Create line for each alert
+    alerts.forEach(alert => {
+      const lineSeries = chartRef.current!.addLineSeries({
+        color: alert.isTriggered ? '#22c55e' : (alert.direction === 'above' ? '#3b82f6' : '#ef4444'),
+        lineWidth: 2,
+        lineStyle: alert.isTriggered ? 0 : 2, // Solid if triggered, dashed if not
+        priceLineVisible: false,
+        lastValueVisible: false,
+      });
+      
+      // Set line data (horizontal line at alert price)
+      const lineData = [
+        { time: (Date.now() / 1000 - 86400 * 30) as Time, value: alert.price },
+        { time: (Date.now() / 1000 + 86400 * 30) as Time, value: alert.price },
+      ];
+      lineSeries.setData(lineData);
+      
+      alertLinesRef.push(lineSeries);
+    });
+    
+    // Cleanup: remove lines when component unmounts or alerts change
+    return () => {
+      alertLinesRef.forEach(line => {
+        try {
+          chartRef.current?.removeSeries(line);
+        } catch (e) {
+          // Series might already be removed
+        }
+      });
+    };
+  }, [alerts]);
+
+  /**
+   * Load historical data and setup worker
    */
   useEffect(() => {
     loadHistoricalData();
-  }, [exchange, pair, timeframe, markets]);
-
-  /**
-   * Setup real-time worker
-   */
-  useEffect(() => {
-    setupWorker();
+    
+    // Cleanup: terminate worker when component unmounts or dependencies change
     return () => {
       if (workerRef.current) {
         workerRef.current.terminate();
+        workerRef.current = null;
       }
     };
-  }, [exchange, pair, timeframe]);
+  }, [exchange, pair, timeframe]); // Removed 'markets' - it's derived from exchange:pair anyway
 
   /**
    * Load historical data from API
@@ -259,39 +408,70 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
   const loadHistoricalData = async () => {
     setIsLoading(true);
     setError(null);
+    setWsConnected(false);
 
     try {
+      // Terminate old worker FIRST to prevent old data from coming in
+      if (workerRef.current) {
+        workerRef.current.terminate();
+        workerRef.current = null;
+        console.log('[Chart] Terminated old worker');
+      }
+      
       // Clear cache when timeframe/pair changes
       cacheRef.current.clear();
       isInitialLoadRef.current = true; // Reset flag on new data load
+      oldestTimestampRef.current = 0; // Reset oldest timestamp
+      isLoadingOlderRef.current = false; // Reset loading flag
+      lastBarCountRef.current = 0; // Reset bar count
+      setLoadingOlder(false);
+      
+      // Clear chart data immediately to prevent old data from showing
+      if (seriesRef.current && volumeSeriesRef.current) {
+        seriesRef.current.setData([]);
+        volumeSeriesRef.current.setData([]);
+        console.log('[Chart] Cleared old chart data');
+      }
 
+      // Capture current values to detect changes during async operation
+      const currentExchange = exchange;
+      const currentPair = pair;
+      const currentTimeframe = timeframe;
+      
       const now = Date.now();
       
       // Calculate optimal time range based on timeframe to get ~500-800 candles
       let hoursBack = 24;
-      if (timeframe === 60) { // 1m
+      if (currentTimeframe === 60) { // 1m
         hoursBack = 12; // 720 candles
-      } else if (timeframe === 300) { // 5m
+      } else if (currentTimeframe === 300) { // 5m
         hoursBack = 24; // 288 candles
-      } else if (timeframe === 900) { // 15m
+      } else if (currentTimeframe === 900) { // 15m
         hoursBack = 48; // 192 candles
-      } else if (timeframe === 3600) { // 1h
+      } else if (currentTimeframe === 3600) { // 1h
         hoursBack = 168; // 7 days = 168 candles
-      } else if (timeframe === 14400) { // 4h
+      } else if (currentTimeframe === 14400) { // 4h
         hoursBack = 720; // 30 days = 180 candles
-      } else if (timeframe === 86400) { // 1d
+      } else if (currentTimeframe === 86400) { // 1d
         hoursBack = 8760; // 365 days
       }
       
       const from = now - hoursBack * 60 * 60 * 1000;
       const to = now;
 
-      const marketList = markets.length > 0 ? markets : [`${exchange}:${pair}`];
+      const marketList = markets.length > 0 ? markets : [`${currentExchange}:${currentPair}`];
 
-      console.log('[Chart] Fetching historical data:', { from, to, timeframe, marketList });
+      console.log('[Chart] Fetching historical data:', { from, to, currentTimeframe, marketList });
 
       // Use Railway backend for initial load (Vercel API is geo-blocked)
-      const response = await historicalService.fetch(from, to, timeframe, marketList, true);
+      const response = await historicalService.fetch(from, to, currentTimeframe, marketList, true);
+
+      // Check if exchange/pair changed during fetch
+      if (currentExchange !== exchange || currentPair !== pair || currentTimeframe !== timeframe) {
+        console.log('[Chart] Exchange/pair changed during data load, ignoring response');
+        setIsLoading(false);
+        return;
+      }
 
       console.log('[Chart] Received data:', {
         dataLength: response.data?.length || 0,
@@ -314,13 +494,83 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
           oldestTimestamp: new Date(oldestTimestampRef.current).toISOString()
         });
 
-        // Update chart
+        // Update chart with historical data
         updateChart();
+        
+        // CRITICAL: Check if we need to create a bar for current timeframe
+        // Railway API may or may not include the current incomplete bar
+        const now = Date.now();
+        const currentBarTime = Math.floor(now / (currentTimeframe * 1000)) * (currentTimeframe * 1000);
+        const lastHistoricalBar = response.data[response.data.length - 1];
+        
+        console.log('[Chart] 🔍 Live bar check:', {
+          now: new Date(now).toISOString(),
+          currentBarWindow: new Date(currentBarTime).toISOString(),
+          lastHistoricalBar: new Date(lastHistoricalBar.time).toISOString(),
+          lastBarIsCurrentWindow: lastHistoricalBar.time === currentBarTime
+        });
+        
+        // Check if Railway bar is EMPTY (no trades yet)
+        const isRailwayBarEmpty = lastHistoricalBar.high === lastHistoricalBar.open && 
+                                  lastHistoricalBar.low === lastHistoricalBar.open && 
+                                  lastHistoricalBar.vbuy === 0;
+        
+        console.log('[Chart] 📊 LAST BAR DETAILS:', {
+          time: lastHistoricalBar.time,
+          timeISO: new Date(lastHistoricalBar.time).toISOString(),
+          open: lastHistoricalBar.open,
+          high: lastHistoricalBar.high,
+          low: lastHistoricalBar.low,
+          close: lastHistoricalBar.close,
+          vbuy: lastHistoricalBar.vbuy,
+          vsell: lastHistoricalBar.vsell,
+          isEmpty: isRailwayBarEmpty
+        });
+        
+        // Create a new bar if:
+        // 1. Railway's last bar is BEFORE current window, OR
+        // 2. Railway bar IS current window BUT is EMPTY (no trades yet)
+        const shouldCreateNewBar = lastHistoricalBar.time < currentBarTime || 
+                                   (lastHistoricalBar.time === currentBarTime && isRailwayBarEmpty);
+        
+        if (shouldCreateNewBar) {
+          // Create a fresh bar because:
+          // - Railway's last bar is from previous window, OR
+          // - Railway's current bar is EMPTY (no trades yet)
+          const reason = lastHistoricalBar.time < currentBarTime ? 
+            'Railway bar is from previous window' : 
+            'Railway bar is EMPTY (no trades yet)';
+          console.log(`[Chart] ✅ Creating new bar - ${reason}`);
+          
+          const liveBar = {
+            time: currentBarTime,
+            open: lastHistoricalBar.close,
+            high: lastHistoricalBar.close,
+            low: lastHistoricalBar.close,
+            close: lastHistoricalBar.close,
+            vbuy: 0,
+            vsell: 0,
+            cbuy: 0,
+            csell: 0,
+            lbuy: 0,
+            lsell: 0,
+          };
+          
+          cacheRef.current.addBar(liveBar);
+          updateChart();
+        } else {
+          // Railway's last bar IS the current window AND has data
+          // Perfect! Keep it as-is, worker will continue updating it
+          console.log('[Chart] ✅ Railway bar has DATA - keeping it for live updates');
+        }
       } else {
         console.warn('[Chart] No data received');
       }
 
       setIsLoading(false);
+      
+      // Start worker after data is loaded
+      setupWorker();
     } catch (err) {
       console.error('[Chart] Load error:', err);
       setError('Failed to load historical data');
@@ -341,28 +591,45 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
     setLoadingOlder(true);
 
     try {
-      const marketList = markets.length > 0 ? markets : [`${exchange}:${pair}`];
+      // ALWAYS use ref values to get the latest exchange/pair/timeframe
+      const currentExchange = currentExchangeRef.current;
+      const currentPair = currentPairRef.current;
+      const currentTimeframe = currentTimeframeRef.current;
+      const marketList = markets.length > 0 ? markets : [`${currentExchange}:${currentPair}`];
       
       // Calculate time range for older data
       // Load same amount as initial load
       let hoursBack = 24;
-      if (timeframe === 60) hoursBack = 12;
-      else if (timeframe === 300) hoursBack = 24;
-      else if (timeframe === 900) hoursBack = 48;
-      else if (timeframe === 3600) hoursBack = 168;
-      else if (timeframe === 14400) hoursBack = 720;
-      else if (timeframe === 86400) hoursBack = 8760;
+      if (currentTimeframe === 60) hoursBack = 12;
+      else if (currentTimeframe === 300) hoursBack = 24;
+      else if (currentTimeframe === 900) hoursBack = 48;
+      else if (currentTimeframe === 3600) hoursBack = 168;
+      else if (currentTimeframe === 14400) hoursBack = 720;
+      else if (currentTimeframe === 86400) hoursBack = 8760;
 
       const from = oldestTimestampRef.current - hoursBack * 60 * 60 * 1000;
       const to = oldestTimestampRef.current - 1;
 
       console.log('[Chart] Loading older candles:', { 
+        exchange: currentExchange,
+        pair: currentPair,
+        timeframe: currentTimeframe,
         from: new Date(from).toISOString(), 
         to: new Date(to).toISOString() 
       });
 
       // Use Railway backend for pagination
-      const response = await historicalService.fetchOlder(from, to, timeframe, marketList);
+      const response = await historicalService.fetchOlder(from, to, currentTimeframe, marketList);
+
+      // Check if exchange/pair changed during fetch by comparing with latest ref values
+      if (currentExchange !== currentExchangeRef.current || 
+          currentPair !== currentPairRef.current || 
+          currentTimeframe !== currentTimeframeRef.current) {
+        console.log('[Chart] Exchange/pair changed during lazy load, ignoring old data');
+        setLoadingOlder(false);
+        isLoadingOlderRef.current = false;
+        return;
+      }
 
       if (response.data && response.data.length > 0) {
         // Add to cache
@@ -407,6 +674,30 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
 
     return () => clearInterval(interval);
   }, [timeframe]);
+
+  /**
+   * Subscribe to alerts
+   */
+  useEffect(() => {
+    const unsubscribe = alertService.subscribe((allAlerts) => {
+      setAlerts(allAlerts.filter(a => a.exchange === exchange && a.pair === pair));
+    });
+
+    // Request notification permission on mount
+    alertService.requestNotificationPermission();
+
+    return unsubscribe;
+  }, [exchange, pair]);
+
+  /**
+   * Check price against alerts
+   */
+  useEffect(() => {
+    if (currentPrice > 0) {
+      alertService.checkPrice(exchange, pair, currentPrice);
+      onPriceUpdate?.(currentPrice);
+    }
+  }, [currentPrice, exchange, pair, onPriceUpdate]);
 
   /**
    * Setup Web Worker for real-time data
@@ -479,6 +770,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
    * Queue update via requestAnimationFrame (aggr.trade pattern)
    */
   const handleTick = (bar: Bar) => {
+    if (!cacheRef.current) {
+      console.error('[Chart] Cache not ready');
+      return;
+    }
+    
     // Add bar to cache
     cacheRef.current.addBar(bar);
     
@@ -495,6 +791,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
 
   /**
    * Update chart with data from cache
+   * Uses lightweight-charts update() for live ticks (smooth animation)
+   * and setData() for full reloads (historical data)
    */
   const updateChart = () => {
     if (!seriesRef.current || !volumeSeriesRef.current) {
@@ -504,7 +802,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
 
     const bars = cacheRef.current.getAllBars();
     
-    console.log('[Chart] Updating chart with', bars.length, 'bars');
+    if (bars.length === 0) {
+      console.warn('[Chart] No bars to update');
+      return;
+    }
     
     // Convert to candle data and volume data, remove duplicates
     const candleMap = new Map<Time, CandlestickData>();
@@ -554,15 +855,28 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
       return timeA - timeB;
     });
 
-    console.log('[Chart] Unique candles:', candleData.length);
-    console.log('[Chart] First candle:', candleData[0]);
-    console.log('[Chart] Last candle:', candleData[candleData.length - 1]);
-    console.log('[Chart] Volume bars:', volumeData.length);
-    console.log('[Chart] Sample volume:', volumeData[0]);
+    // Get last candle
+    const lastCandle = candleData[candleData.length - 1];
+    const lastVolume = volumeData[volumeData.length - 1];
 
-    // Update both series
-    seriesRef.current.setData(candleData);
-    volumeSeriesRef.current.setData(volumeData);
+    // Determine if this is just a last bar update or a full reload
+    // If bar count changed significantly, do full setData
+    // Otherwise, just update the last bar for smooth animation
+    const barCountChanged = lastBarCountRef.current !== candleData.length;
+    lastBarCountRef.current = candleData.length;
+
+    if (barCountChanged || isInitialLoadRef.current) {
+      // Full reload: use setData()
+      seriesRef.current.setData(candleData);
+      volumeSeriesRef.current.setData(volumeData);
+    } else {
+      // Just last bar update: use update() for smooth animation
+      seriesRef.current.update(lastCandle);
+      volumeSeriesRef.current.update(lastVolume);
+    }
+
+    // Update current price from latest candle
+    setCurrentPrice(lastCandle.close);
 
     // Only fit content on initial load, then allow user to scroll freely
     if (chartRef.current && candleData.length > 0 && isInitialLoadRef.current) {
@@ -570,6 +884,79 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
       isInitialLoadRef.current = false;
       console.log('[Chart] Initial fit content applied');
     }
+  };
+
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    if (!chartRef.current || !containerRef.current || !seriesRef.current) {
+      console.warn('[Chart] Cannot open context menu: chart not ready');
+      return;
+    }
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = e.clientX;
+    const y = e.clientY;
+    
+    // Get price at mouse position using the chart coordinate system
+    try {
+      // Convert client Y to relative Y within the container
+      const relativeY = y - rect.top;
+      
+      // Use the series to convert coordinate to price
+      const price = seriesRef.current.coordinateToPrice(relativeY);
+      
+      console.log('[Chart] Context menu opened at:', { 
+        clientX: x, 
+        clientY: y, 
+        relativeY, 
+        price,
+        currentPrice 
+      });
+      
+      if (price !== null && price !== undefined) {
+        setClickedPrice(price as number);
+      } else {
+        console.warn('[Chart] Could not get price from coordinate');
+      }
+    } catch (err) {
+      console.error('[Chart] Failed to get price from coordinate:', err);
+    }
+    
+    setContextMenuPosition({ x, y });
+    setContextMenuVisible(true);
+  };
+
+  const handleResetView = () => {
+    // Update chart with current cache data (removes any stale data)
+    updateChart();
+    
+    // Then fit all visible data
+    if (chartRef.current) {
+      chartRef.current.timeScale().fitContent();
+      console.log('[Chart] View reset - refreshed from cache and fit content');
+    }
+    setContextMenuVisible(false);
+  };
+
+  const handleSetAlert = () => {
+    console.log('[Chart] Setting alert:', { 
+      clickedPrice, 
+      currentPrice, 
+      exchange, 
+      pair 
+    });
+    
+    if (clickedPrice) {
+      // Use clickedPrice itself as currentPrice if currentPrice not set yet
+      const refPrice = currentPrice || clickedPrice;
+      alertService.addAlert(exchange, pair, clickedPrice, refPrice);
+      console.log(`[Chart] Alert set at $${clickedPrice.toFixed(2)}`);
+    } else {
+      console.warn('[Chart] Cannot set alert: no price clicked');
+    }
+    setContextMenuVisible(false);
   };
 
   const handleSaveSettings = (newSettings: ChartSettingsType) => {
@@ -582,8 +969,250 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
     window.location.reload();
   };
 
+  /**
+   * Drawing Tools Handlers
+   */
+  const handleToolChange = (tool: DrawingTool) => {
+    setActiveTool(tool);
+    setTempDrawing(null);
+  };
+
+  const handleClearAllDrawings = () => {
+    // Remove all drawing series from chart
+    drawingSeriesRef.current.forEach((series) => {
+      chartRef.current?.removeSeries(series);
+    });
+    drawingSeriesRef.current.clear();
+    setDrawings([]);
+    setSelectedDrawingId(null);
+  };
+
+  const handleDeleteDrawing = (id: string) => {
+    const series = drawingSeriesRef.current.get(id);
+    if (series && chartRef.current) {
+      chartRef.current.removeSeries(series);
+      drawingSeriesRef.current.delete(id);
+    }
+    setDrawings((prev) => prev.filter((d) => d.id !== id));
+    setSelectedDrawingId(null);
+  };
+
+  const handleEditDrawing = (drawing: Drawing) => {
+    // Remove the old drawing
+    handleDeleteDrawing(drawing.id);
+    
+    // Set the tool type and enter edit mode
+    if (drawing.type === 'horizontal') {
+      setActiveTool('horizontal');
+    } else if (drawing.type === 'trend') {
+      setActiveTool('trend');
+    } else if (drawing.type === 'rectangle') {
+      setActiveTool('rectangle');
+    } else if (drawing.type === 'circle') {
+      setActiveTool('circle');
+    }
+    
+    setSelectedDrawingId(null);
+  };
+
+  const handleChartClick = (price: number, time: Time) => {
+    if (activeTool === 'none') return;
+
+    console.log('[Chart] Drawing click:', { price, time: new Date(time as number * 1000).toISOString(), activeTool });
+
+    if (activeTool === 'horizontal') {
+      // Horizontal line - single click
+      const drawing: Drawing = {
+        id: `h-${Date.now()}`,
+        type: 'horizontal',
+        points: [{ time, price }],
+        color: '#2196F3',
+        lineWidth: 2,
+      };
+      setDrawings((prev) => [...prev, drawing]);
+      setActiveTool('none'); // Reset after drawing
+      console.log('[Chart] Horizontal line created at price:', price);
+    } else if (activeTool === 'trend') {
+      // Trend line - needs two clicks
+      if (!tempDrawing) {
+        // First click
+        setTempDrawing({ time, price });
+        console.log('[Chart] Trend line - first point:', { time, price });
+      } else {
+        // Second click
+        const drawing: Drawing = {
+          id: `t-${Date.now()}`,
+          type: 'trend',
+          points: [tempDrawing, { time, price }],
+          color: '#FF9800',
+          lineWidth: 2,
+        };
+        setDrawings((prev) => [...prev, drawing]);
+        setTempDrawing(null);
+        setActiveTool('none');
+        console.log('[Chart] Trend line created from', tempDrawing, 'to', { time, price });
+      }
+    } else if (activeTool === 'rectangle') {
+      // Rectangle - needs two clicks
+      if (!tempDrawing) {
+        setTempDrawing({ time, price });
+        console.log('[Chart] Rectangle - first corner:', { time, price });
+      } else {
+        const drawing: Drawing = {
+          id: `r-${Date.now()}`,
+          type: 'rectangle',
+          points: [tempDrawing, { time, price }],
+          color: '#4CAF50',
+          lineWidth: 2,
+        };
+        setDrawings((prev) => [...prev, drawing]);
+        setTempDrawing(null);
+        setActiveTool('none');
+        console.log('[Chart] Rectangle created');
+      }
+    } else if (activeTool === 'circle') {
+      // Circle - needs two clicks (center + edge)
+      if (!tempDrawing) {
+        setTempDrawing({ time, price });
+        console.log('[Chart] Circle - center:', { time, price });
+      } else {
+        const drawing: Drawing = {
+          id: `c-${Date.now()}`,
+          type: 'circle',
+          points: [tempDrawing, { time, price }],
+          color: '#9C27B0',
+          lineWidth: 2,
+        };
+        setDrawings((prev) => [...prev, drawing]);
+        setTempDrawing(null);
+        setActiveTool('none');
+        console.log('[Chart] Circle created');
+      }
+    }
+  };
+
+  // Render drawings on chart
+  useEffect(() => {
+    if (!chartRef.current || !seriesRef.current) return;
+
+    // Clear existing drawing series
+    drawingSeriesRef.current.forEach((series) => {
+      chartRef.current?.removeSeries(series);
+    });
+    drawingSeriesRef.current.clear();
+
+    // Render each drawing
+    drawings.forEach((drawing) => {
+      const isSelected = drawing.id === selectedDrawingId;
+      const lineWidth = isSelected ? 3 : (drawing.lineWidth || 2);
+      
+      if (drawing.type === 'horizontal' && drawing.points.length > 0) {
+        // Horizontal line - use PriceLine
+        const priceLine = seriesRef.current!.createPriceLine({
+          price: drawing.points[0].price,
+          color: isSelected ? '#FFD700' : (drawing.color || '#2196F3'),
+          lineWidth: lineWidth as any,
+          lineStyle: 0, // Solid
+          axisLabelVisible: true,
+          title: isSelected ? '✓' : 'H',
+        });
+      } else if (drawing.type === 'trend' && drawing.points.length === 2) {
+        // Trend line - use Line series
+        const lineSeries = chartRef.current!.addLineSeries({
+          color: isSelected ? '#FFD700' : (drawing.color || '#FF9800'),
+          lineWidth: lineWidth as any,
+          lastValueVisible: false,
+          priceLineVisible: false,
+        });
+        
+        lineSeries.setData([
+          { time: drawing.points[0].time, value: drawing.points[0].price },
+          { time: drawing.points[1].time, value: drawing.points[1].price },
+        ]);
+        
+        drawingSeriesRef.current.set(drawing.id, lineSeries);
+      }
+    });
+  }, [drawings, selectedDrawingId]);
+
   return (
-    <div className="relative w-full h-full">
+    <div 
+      className="relative w-full h-full"
+      onClick={() => setContextMenuVisible(false)}
+    >
+      {/* Drawing Toolbar */}
+      <DrawingToolbar
+        activeTool={activeTool}
+        onToolChange={handleToolChange}
+        onClearAll={handleClearAllDrawings}
+      />
+
+      {/* Drawings List Panel */}
+      {drawings.length > 0 && (
+        <div className="absolute top-2 left-[280px] z-10 bg-gray-900/95 border border-gray-700 rounded-lg p-2 shadow-lg max-h-[400px] overflow-y-auto">
+          <div className="text-xs text-gray-400 mb-2 font-bold">Drawings ({drawings.length})</div>
+          <div className="space-y-1">
+            {drawings.map((drawing) => {
+              const isSelected = drawing.id === selectedDrawingId;
+              const typeName = {
+                'horizontal': 'Horizontal Line',
+                'trend': 'Trend Line',
+                'rectangle': 'Rectangle',
+                'circle': 'Circle',
+              }[drawing.type];
+              
+              return (
+                <div
+                  key={drawing.id}
+                  className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-all ${
+                    isSelected
+                      ? 'bg-yellow-900/50 border border-yellow-700'
+                      : 'bg-gray-800/50 hover:bg-gray-700/50 border border-transparent'
+                  }`}
+                  onClick={() => setSelectedDrawingId(isSelected ? null : drawing.id)}
+                >
+                  <div
+                    className="w-4 h-0.5 rounded"
+                    style={{ backgroundColor: drawing.color }}
+                  />
+                  <div className="flex-1 text-xs text-gray-300">
+                    {typeName}
+                  </div>
+                  {isSelected && (
+                    <div className="flex gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleEditDrawing(drawing);
+                        }}
+                        className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
+                        title="Redraw"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteDrawing(drawing.id);
+                        }}
+                        className="p-1 text-red-400 hover:text-red-300 transition-colors"
+                        title="Delete"
+                      >
+                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       {/* Settings Button */}
       <button
         onClick={() => setShowSettings(true)}
@@ -631,13 +1260,105 @@ export default function Chart({ exchange, pair, timeframe, markets = [] }: Chart
         </div>
       )}
       
-      <div ref={containerRef} className="w-full h-full" />
+      <div 
+        ref={containerRef} 
+        className="w-full h-full relative"
+      >
+        {/* Transparent overlay for free drawing */}
+        {activeTool !== 'none' && (
+          <>
+            <div
+              className="absolute inset-0 z-50"
+              style={{ cursor: 'crosshair' }}
+              onClick={(e) => {
+                // Handle drawing tool clicks with precise coordinates
+                if (containerRef.current && chartRef.current && seriesRef.current) {
+                  const rect = containerRef.current.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  
+                  // Convert pixel coordinates to logical coordinates
+                  const logicalX = x - 0; // Adjust for any padding/margin if needed
+                  const logicalY = y - 0;
+                  
+                  // Convert to time and price using chart's coordinate system
+                  const timeScale = chartRef.current.timeScale();
+                  const timeCoordinate = timeScale.coordinateToTime(logicalX as any);
+                  
+                  // For price, we need to account for the visible range
+                  const priceCoordinate = seriesRef.current.coordinateToPrice(logicalY);
+                  
+                  if (timeCoordinate && priceCoordinate !== null) {
+                    handleChartClick(priceCoordinate, timeCoordinate as Time);
+                  }
+                }
+              }}
+            />
+            {/* Show hint for multi-point tools */}
+            {tempDrawing && (activeTool === 'trend' || activeTool === 'rectangle' || activeTool === 'circle') && (
+              <div className="absolute top-16 left-2 bg-blue-900/90 px-3 py-2 rounded text-xs z-[60] border border-blue-700">
+                <div className="text-blue-300 font-bold mb-1">
+                  {activeTool === 'trend' && '📍 Click second point for trend line'}
+                  {activeTool === 'rectangle' && '📍 Click opposite corner'}
+                  {activeTool === 'circle' && '📍 Click edge point'}
+                </div>
+                <div className="text-gray-300 text-[10px]">
+                  First point: ${tempDrawing.price.toFixed(2)}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+      </div>
       
       {/* Countdown Timer (below price axis) */}
       <div className="absolute bottom-6 right-14 bg-gray-800/90 px-3 py-1.5 rounded text-xs font-mono z-10 border border-gray-700">
         <div className="text-gray-400 text-[10px] mb-0.5">Next Candle</div>
         <div className="text-white font-bold">{countdown}</div>
       </div>
+      
+      {/* Context Menu */}
+      {contextMenuVisible && (
+        <div
+          className="absolute bg-gray-900 border border-gray-700 rounded shadow-lg z-50"
+          style={{
+            left: `${contextMenuPosition.x}px`,
+            top: `${contextMenuPosition.y}px`,
+          }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('[Chart] Set Alert button clicked');
+              handleSetAlert();
+            }}
+            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2 border-b border-gray-700"
+            disabled={!clickedPrice}
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+            <div className="flex-1">
+              Set Price Alert
+              {clickedPrice && (
+                <div className="text-xs text-blue-400 font-mono">
+                  ${clickedPrice.toFixed(clickedPrice < 1 ? 4 : 2)}
+                </div>
+              )}
+            </div>
+          </button>
+          <button
+            onClick={handleResetView}
+            className="w-full text-left px-4 py-2 text-sm text-gray-200 hover:bg-gray-800 transition-colors flex items-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+            </svg>
+            Reset Chart View
+          </button>
+        </div>
+      )}
       
       {/* Settings Modal */}
       <ChartSettings

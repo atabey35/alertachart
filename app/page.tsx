@@ -4,18 +4,23 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Chart from '@/components/chart/Chart';
+import AlertsPanel from '@/components/AlertsPanel';
 import { TIMEFRAMES } from '@/utils/constants';
 import { getTimeframeForHuman } from '@/utils/helpers';
 
 export default function Home() {
   const [exchange, setExchange] = useState('BINANCE');
   const [pair, setPair] = useState('btcusdt');
-  const [timeframe, setTimeframe] = useState(300); // 5m
+  const [timeframe, setTimeframe] = useState(900); // 15m
+  const [currentPrice, setCurrentPrice] = useState<number>();
 
   const exchanges = ['BINANCE', 'BYBIT', 'OKX'];
   const pairs = ['btcusdt', 'ethusdt', 'solusdt'];
+  
+  // Memoize markets array to prevent unnecessary re-renders
+  const markets = useMemo(() => [`${exchange}:${pair}`], [exchange, pair]);
 
   return (
     <main className="flex min-h-screen flex-col">
@@ -59,7 +64,7 @@ export default function Home() {
 
             {/* Timeframe selector */}
             <div className="flex gap-1">
-              {TIMEFRAMES.map((tf) => (
+              {TIMEFRAMES.filter(tf => tf !== 300).map((tf) => (
                 <button
                   key={tf}
                   onClick={() => setTimeframe(tf)}
@@ -83,9 +88,17 @@ export default function Home() {
           exchange={exchange}
           pair={pair}
           timeframe={timeframe}
-          markets={[`${exchange}:${pair}`]}
+          markets={markets}
+          onPriceUpdate={setCurrentPrice}
         />
       </div>
+
+      {/* Alerts Panel */}
+      <AlertsPanel
+        exchange={exchange}
+        pair={pair}
+        currentPrice={currentPrice}
+      />
 
       {/* Footer */}
       <footer className="border-t border-gray-800 bg-black px-6 py-3 text-xs text-gray-500">
@@ -93,6 +106,11 @@ export default function Home() {
           <span>Connected: {exchange}</span>
           <span>Pair: {pair.toUpperCase()}</span>
           <span>Timeframe: {getTimeframeForHuman(timeframe)}</span>
+          {currentPrice && (
+            <span className="font-mono text-white">
+              ${currentPrice.toFixed(currentPrice < 1 ? 4 : 2)}
+            </span>
+          )}
         </div>
       </footer>
     </main>
