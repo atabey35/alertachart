@@ -138,17 +138,18 @@ export default function Home() {
                   setPair(e.target.value);
                   setSearchQuery(''); // Clear search after selection
                 }}
-                className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500"
+                className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500 max-h-96"
                 disabled={loadingPairs}
+                size={1}
               >
                 {loadingPairs ? (
-                  <option>Loading...</option>
+                  <option>Loading pairs...</option>
                 ) : filteredPairs.length === 0 ? (
                   <option>No results</option>
                 ) : (
-                  filteredPairs.slice(0, 100).map((p) => ( // Show first 100 matches
+                  filteredPairs.map((p) => ( // Show all pairs (search to filter)
                     <option key={p} value={p}>
-                      {p.toUpperCase()}
+                      {p.replace('usdt', '').toUpperCase()}/USDT
                     </option>
                   ))
                 )}
