@@ -83,8 +83,20 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [draggingPoint, setDraggingPoint] = useState<{ drawingId: string; pointIndex: number } | null>(null);
   const [handlePositions, setHandlePositions] = useState<Array<{ x: number; y: number; drawingId: string; pointIndex: number }>>([]);
   const [showDrawingTools, setShowDrawingTools] = useState(false);
+  const [showMobileHint, setShowMobileHint] = useState(true);
   const drawingSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const horizontalLinesRef = useRef<Map<string, any>>(new Map()); // Store price lines for horizontal drawings
+
+  /**
+   * Hide mobile hint after 5 seconds
+   */
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setShowMobileHint(false);
+    }, 5000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   /**
    * Initialize chart
@@ -948,6 +960,89 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     setContextMenuVisible(false);
   };
 
+  // Long-press handler for mobile devices
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressPositionRef = useRef<{ x: number; y: number } | null>(null);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length !== 1) return; // Only handle single touch
+    
+    const touch = e.touches[0];
+    longPressPositionRef.current = { x: touch.clientX, y: touch.clientY };
+    
+    // Start long-press timer (500ms)
+    longPressTimerRef.current = setTimeout(() => {
+      if (longPressPositionRef.current) {
+        // Trigger context menu at long-press position
+        handleTouchContextMenu(longPressPositionRef.current.x, longPressPositionRef.current.y);
+      }
+    }, 500);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    // Cancel long-press if finger moves too much
+    if (longPressPositionRef.current && e.touches.length === 1) {
+      const touch = e.touches[0];
+      const dx = touch.clientX - longPressPositionRef.current.x;
+      const dy = touch.clientY - longPressPositionRef.current.y;
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      
+      // Cancel if moved more than 10 pixels
+      if (distance > 10) {
+        if (longPressTimerRef.current) {
+          clearTimeout(longPressTimerRef.current);
+          longPressTimerRef.current = null;
+        }
+        longPressPositionRef.current = null;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    // Clear long-press timer
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    longPressPositionRef.current = null;
+  };
+
+  const handleTouchContextMenu = (clientX: number, clientY: number) => {
+    if (!chartRef.current || !containerRef.current || !seriesRef.current) {
+      console.warn('[Chart] Cannot open context menu: chart not ready');
+      return;
+    }
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    
+    // Get price at touch position
+    try {
+      const relativeY = clientY - rect.top;
+      const price = seriesRef.current.coordinateToPrice(relativeY);
+      
+      console.log('[Chart] Touch context menu opened at:', { 
+        clientX, 
+        clientY, 
+        relativeY, 
+        price 
+      });
+      
+      if (price !== null && price !== undefined) {
+        setClickedPrice(price as number);
+      }
+    } catch (err) {
+      console.error('[Chart] Failed to get price from touch coordinate:', err);
+    }
+    
+    setContextMenuPosition({ x: clientX, y: clientY });
+    setContextMenuVisible(true);
+    
+    // Provide haptic feedback on mobile (if available)
+    if (navigator.vibrate) {
+      navigator.vibrate(50);
+    }
+  };
+
   const handleSetAlert = () => {
     console.log('[Chart] Setting alert:', { 
       clickedPrice, 
@@ -1398,6 +1493,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </svg>
       </button>
 
+      {/* Mobile hint for long-press */}
+      {showMobileHint && (
+        <div className="md:hidden absolute bottom-20 left-1/2 -translate-x-1/2 bg-gray-800/90 px-4 py-2 rounded-lg text-xs text-gray-300 z-10 pointer-events-none animate-pulse">
+          👆 Long press on chart to set price alert
+        </div>
+      )}
+
       {isLoading && (
         <div className="absolute top-4 right-16 bg-gray-800 px-3 py-2 rounded text-sm z-10">
           Loading historical data...
@@ -1436,6 +1538,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
               <div 
                 ref={containerRef} 
                 className="w-full h-full relative"
+                onTouchStart={handleTouchStart}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
               >
                 {/* Transparent overlay for drawing only (when active tool is selected) */}
                 {activeTool !== 'none' && (
