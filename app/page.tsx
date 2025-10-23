@@ -45,7 +45,7 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showWatchlist, setShowWatchlist] = useState(true);
 
-  const exchanges = ['BINANCE', 'BYBIT', 'OKX'];
+  const exchanges = ['BINANCE'];
   
   // Fetch all USDT trading pairs from Binance
   useEffect(() => {
@@ -245,86 +245,82 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Exchange selector */}
-              <select
-                value={activeChart.exchange}
-                onChange={(e) => updateActiveChart({ exchange: e.target.value })}
-                className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500"
-              >
-                {exchanges.map((ex) => (
-                  <option key={ex} value={ex}>
-                    {ex}
-                  </option>
-                ))}
-              </select>
-
-              {/* Pair Search Input */}
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search coin..."
-                  className="bg-gray-900 border border-gray-700 rounded pl-8 pr-2 py-1.5 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500 w-28 md:w-36"
-                />
-                <svg 
-                  className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-              </div>
-
-              {/* Pair selector dropdown */}
-              <select
-                value={activeChart.pair}
-                onChange={(e) => {
-                  updateActiveChart({ pair: e.target.value });
-                  setSearchQuery(''); // Clear search after selection
-                }}
-                className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500 max-h-96"
-                disabled={loadingPairs}
-                size={1}
-              >
-                {loadingPairs ? (
-                  <option>Loading pairs...</option>
-                ) : filteredPairs.length === 0 ? (
-                  <option>No results</option>
-                ) : (
-                  filteredPairs.map((p) => ( // Show all pairs (search to filter)
-                    <option key={p} value={p}>
-                      {p.replace('usdt', '').toUpperCase()}/USDT
-                    </option>
-                  ))
-                )}
-              </select>
-              
-              {/* Pair count indicator */}
-              {!loadingPairs && (
-                <div className="hidden md:block text-xs text-gray-500">
-                  {searchQuery ? `${filteredPairs.length} found` : `${pairs.length} pairs`}
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Second row: Timeframe selector */}
-          <div className="flex gap-1 mt-3 overflow-x-auto scrollbar-hide">
-            {TIMEFRAMES.map((tf) => (
-              <button
-                key={tf}
-                onClick={() => updateActiveChart({ timeframe: tf })}
-                className={`px-3 py-1.5 md:py-2 text-xs md:text-sm rounded whitespace-nowrap flex-shrink-0 ${
-                  activeChart.timeframe === tf
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-gray-900 text-gray-400 hover:bg-gray-800'
-                }`}
+          {/* Second row: Timeframe selector + Pair Selector */}
+          <div className="flex items-center gap-2 mt-3 overflow-x-auto scrollbar-hide">
+            {/* Timeframe buttons */}
+            <div className="flex gap-1">
+              {TIMEFRAMES.map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => updateActiveChart({ timeframe: tf })}
+                  className={`px-3 py-1.5 md:py-2 text-xs md:text-sm rounded whitespace-nowrap flex-shrink-0 ${
+                    activeChart.timeframe === tf
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-900 text-gray-400 hover:bg-gray-800'
+                  }`}
+                >
+                  {getTimeframeForHuman(tf)}
+                </button>
+              ))}
+            </div>
+
+            {/* Pair Search Input */}
+            <div className="relative ml-2">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && filteredPairs.length > 0) {
+                    updateActiveChart({ pair: filteredPairs[0] });
+                    setSearchQuery('');
+                  }
+                }}
+                placeholder="Search coin..."
+                className="bg-gray-900 border border-gray-700 rounded pl-8 pr-2 py-1.5 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500 w-32 md:w-40"
+              />
+              <svg 
+                className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" 
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
               >
-                {getTimeframeForHuman(tf)}
-              </button>
-            ))}
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+            </div>
+
+            {/* Pair selector dropdown */}
+            <select
+              value={activeChart.pair}
+              onChange={(e) => {
+                updateActiveChart({ pair: e.target.value });
+                setSearchQuery(''); // Clear search after selection
+              }}
+              className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500"
+              disabled={loadingPairs}
+            >
+              {loadingPairs ? (
+                <option>Loading pairs...</option>
+              ) : filteredPairs.length === 0 ? (
+                <option>No results</option>
+              ) : (
+                filteredPairs.map((p) => (
+                  <option key={p} value={p}>
+                    {p.replace('usdt', '').toUpperCase()}/USDT
+                  </option>
+                ))
+              )}
+            </select>
+            
+            {/* Pair count indicator */}
+            {!loadingPairs && (
+              <div className="hidden md:block text-xs text-gray-500 whitespace-nowrap">
+                {searchQuery ? `${filteredPairs.length} found` : `${pairs.length} pairs`}
+              </div>
+            )}
           </div>
         </div>
       </header>
@@ -357,7 +353,7 @@ export default function Home() {
                 </div>
                 
                 <Chart
-                  key={`${chart.id}-${layout}`}
+                  key={`${chart.id}-${chart.pair}-${chart.timeframe}-${layout}`}
                   exchange={chart.exchange}
                   pair={chart.pair}
                   timeframe={chart.timeframe}
@@ -390,7 +386,6 @@ export default function Home() {
         <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6">
           <span className="whitespace-nowrap">Layout: {layout === 1 ? 'Single' : layout === 4 ? '2x2' : '3x3'}</span>
           <span className="whitespace-nowrap">Active: {activeChart.pair.toUpperCase()}</span>
-          <span className="whitespace-nowrap">Exchange: {activeChart.exchange}</span>
           <span className="whitespace-nowrap">Timeframe: {getTimeframeForHuman(activeChart.timeframe)}</span>
           {activeChart.currentPrice && (
             <span className="font-mono text-white whitespace-nowrap">

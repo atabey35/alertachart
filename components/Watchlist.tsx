@@ -68,7 +68,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol }: WatchlistPro
     };
 
     fetchPrices();
-    const interval = setInterval(fetchPrices, 10000); // Update every 10s
+    const interval = setInterval(fetchPrices, 3000); // Update every 3s
 
     return () => clearInterval(interval);
   }, [watchlist]);

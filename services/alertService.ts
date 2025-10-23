@@ -130,11 +130,56 @@ class AlertService {
 
   private playAlertSound() {
     try {
-      const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGWi77eeeSwgMUKXh8LdjHAU7k9r0yXkkBS53yO/ekEALFF6z6eepVRQKRp/h8r5sIQYpgM3y2og3Bxloue3ol04IDFCl4fC3YhwGO5HZ88t3JAUvd8jw35BAChResunu6FQUCkif4PG+aiAFKn/N89uIOwgZab3s5p1NDgpPpN/wtWMcBzqP2PPLdSQGMHfJ8N+RQAoUXrHp5+hUFApJneDyvmsgBSpyzvLaiTkHGWi56+aeUBANT6Ld7rZiGQg7jtfzy3UkBjB3yPDfkUAKFF+w6Obm5eXk5OXk5OPl5ebm5ufn5+jo6Ojo6enp6enq6urq6+vr6+zs7Ozs7e3t7e7u7u7u7+/v7+8AAA==');
-      audio.volume = 0.5;
-      audio.play().catch(e => console.log('[AlertService] Could not play sound:', e));
+      // Create Web Audio API context for better sound
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Create a more attention-grabbing alert sound (trading platform style)
+      const playTone = (frequency: number, duration: number, delay: number = 0) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.value = frequency;
+        oscillator.type = 'sine';
+        
+        // Envelope for smoother sound
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime + delay);
+        gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + delay + 0.01);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + delay + duration);
+        
+        oscillator.start(audioContext.currentTime + delay);
+        oscillator.stop(audioContext.currentTime + delay + duration);
+      };
+      
+      // Longer alert sequence - 3 cycles (like urgent trading alerts)
+      // First cycle
+      playTone(800, 0.2, 0);        // First beep
+      playTone(1000, 0.2, 0.25);    // Second beep (higher)
+      playTone(1200, 0.3, 0.5);     // Third beep (highest, longer)
+      
+      // Second cycle (repeat after short pause)
+      playTone(800, 0.2, 0.9);      // First beep
+      playTone(1000, 0.2, 1.15);    // Second beep (higher)
+      playTone(1200, 0.3, 1.4);     // Third beep (highest, longer)
+      
+      // Third cycle (final, slightly longer)
+      playTone(800, 0.2, 1.8);      // First beep
+      playTone(1000, 0.2, 2.05);    // Second beep (higher)
+      playTone(1200, 0.4, 2.3);     // Third beep (highest, longest)
+      
+      console.log('[AlertService] Alert sound played (extended)');
     } catch (e) {
       console.error('[AlertService] Audio error:', e);
+      // Fallback to simple beep
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGWi77eeeSwgMUKXh8LdjHAU7k9r0yXkkBS53yO/ekEALFF6z6eepVRQKRp/h8r5sIQYpgM3y2og3Bxloue3ol04IDFCl4fC3YhwGO5HZ88t3JAUvd8jw35BAChResunu6FQUCkif4PG+aiAFKn/N89uIOwgZab3s5p1NDgpPpN/wtWMcBzqP2PPLdSQGMHfJ8N+RQAoUXrHp5+hUFApJneDyvmsgBSpyzvLaiTkHGWi56+aeUBANT6Ld7rZiGQg7jtfzy3UkBjB3yPDfkUAKFF+w6Obm5eXk5OXk5OPl5ebm5ufn5+jo6Ojo6enp6enq6urq6+vr6+zs7Ozs7e3t7e7u7u7u7+/v7+8AAA==');
+        audio.volume = 0.5;
+        audio.play().catch(err => console.log('[AlertService] Fallback sound failed:', err));
+      } catch (fallbackError) {
+        console.error('[AlertService] Fallback audio error:', fallbackError);
+      }
     }
   }
 
