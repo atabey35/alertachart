@@ -26,29 +26,45 @@ export default function Home() {
     const fetchBinancePairs = async () => {
       try {
         const response = await fetch('https://api.binance.com/api/v3/exchangeInfo');
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const data = await response.json();
         
         // Filter for USDT pairs that are actively trading
         const usdtPairs = data.symbols
-          .filter((symbol: any) => 
+          ?.filter((symbol: any) => 
             symbol.symbol.endsWith('USDT') && 
             symbol.status === 'TRADING' &&
-            symbol.permissions.includes('SPOT')
+            symbol.permissions?.includes('SPOT')
           )
           .map((symbol: any) => symbol.symbol.toLowerCase())
           .sort(); // Alphabetically sorted
         
-        console.log(`[Pairs] Loaded ${usdtPairs.length} USDT trading pairs from Binance`);
+        // Check if we got valid data
+        if (!usdtPairs || usdtPairs.length === 0) {
+          throw new Error('No USDT pairs found');
+        }
+        
+        console.log(`[Pairs] ✅ Loaded ${usdtPairs.length} USDT trading pairs from Binance`);
         setPairs(usdtPairs);
-        setLoadingPairs(false);
       } catch (error) {
-        console.error('[Pairs] Failed to fetch Binance pairs:', error);
-        // Fallback to default pairs
-        setPairs([
+        console.error('[Pairs] ❌ Failed to fetch Binance pairs:', error);
+        // Fallback to popular default pairs
+        const fallbackPairs = [
           'btcusdt', 'ethusdt', 'bnbusdt', 'solusdt', 'xrpusdt',
           'adausdt', 'dogeusdt', 'maticusdt', 'dotusdt', 'shibusdt',
           'ltcusdt', 'avaxusdt', 'linkusdt', 'uniusdt', 'atomusdt',
-        ]);
+          'etcusdt', 'xlmusdt', 'nearusdt', 'algousdt', 'vetusdt',
+          'icpusdt', 'filusdt', 'hbarusdt', 'aptusdt', 'arbusdt',
+          'opusdt', 'ldousdt', 'suiusdt', 'pepeusdt', 'rndrusdt',
+        ];
+        console.log(`[Pairs] 🔄 Using ${fallbackPairs.length} fallback pairs`);
+        setPairs(fallbackPairs);
+      } finally {
+        // Always set loading to false
         setLoadingPairs(false);
       }
     };
