@@ -86,6 +86,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [showMobileHint, setShowMobileHint] = useState(true);
   const drawingSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const horizontalLinesRef = useRef<Map<string, any>>(new Map()); // Store price lines for horizontal drawings
+  const precisionSetRef = useRef<boolean>(false); // Track if precision has been set for current pair
 
   /**
    * Hide mobile hint after 5 seconds
@@ -137,6 +138,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       rightPriceScale: {
         borderColor: '#2B2B43',
         autoScale: true,
+        mode: 0, // Normal price scale
       },
       watermark: {
         visible: true,
@@ -148,7 +150,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       },
     });
 
-    // Create candlestick series
+    // Create candlestick series with dynamic precision
     const series = chart.addCandlestickSeries({
       upColor: chartSettings.upColor,
       downColor: chartSettings.downColor,
@@ -156,6 +158,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       wickUpColor: chartSettings.wickUpColor,
       wickDownColor: chartSettings.wickDownColor,
       priceScaleId: 'right',
+      priceFormat: {
+        type: 'price',
+        precision: 8, // High precision for low-priced coins
+        minMove: 0.00000001,
+      },
     });
 
     // Create volume series (histogram)
@@ -440,6 +447,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       oldestTimestampRef.current = 0; // Reset oldest timestamp
       isLoadingOlderRef.current = false; // Reset loading flag
       lastBarCountRef.current = 0; // Reset bar count
+      precisionSetRef.current = false; // Reset precision flag for new pair
       setLoadingOlder(false);
       
       // Clear chart data immediately to prevent old data from showing
@@ -825,6 +833,48 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     if (bars.length === 0) {
       console.warn('[Chart] No bars to update');
       return;
+    }
+    
+    // Auto-adjust precision based on price (only once per pair)
+    if (bars.length > 0 && !precisionSetRef.current) {
+      const avgPrice = (bars[0].open + bars[0].close) / 2;
+      let precision = 2;
+      let minMove = 0.01;
+      
+      if (avgPrice < 0.001) {
+        // Very low price coins (e.g., SHIB)
+        precision = 8;
+        minMove = 0.00000001;
+      } else if (avgPrice < 0.01) {
+        // Low price coins
+        precision = 6;
+        minMove = 0.000001;
+      } else if (avgPrice < 0.1) {
+        // Medium-low price (e.g., DOGE)
+        precision = 5;
+        minMove = 0.00001;
+      } else if (avgPrice < 1) {
+        // Less than $1
+        precision = 4;
+        minMove = 0.0001;
+      } else if (avgPrice < 10) {
+        // $1-$10
+        precision = 3;
+        minMove = 0.001;
+      }
+      
+      console.log(`[Chart] 🎯 Auto-precision for ${pair}:`, { avgPrice, precision, minMove });
+      
+      // Apply precision to series
+      seriesRef.current.applyOptions({
+        priceFormat: {
+          type: 'price',
+          precision,
+          minMove,
+        },
+      });
+      
+      precisionSetRef.current = true;
     }
     
     // Convert to candle data and volume data, remove duplicates
