@@ -35,15 +35,31 @@ export default function Home() {
         
         console.log('[Pairs] 📊 API response:', {
           totalSymbols: data.symbols?.length,
-          firstSymbol: data.symbols?.[0]
+          firstSymbol: data.symbols?.[0],
+          sampleUSDT: data.symbols?.find((s: any) => s.symbol?.includes('USDT'))
         });
         
         // Filter for USDT pairs that are actively trading
+        let debuggedFirst = false;
         const usdtPairs = data.symbols
           ?.filter((symbol: any) => {
             const isUsdt = symbol.symbol?.endsWith('USDT');
             const isTrading = symbol.status === 'TRADING';
             const hasSpot = !symbol.permissions || symbol.permissions.includes('SPOT');
+            
+            // Debug first USDT symbol
+            if (isUsdt && !debuggedFirst) {
+              console.log('[Pairs] 🔍 First USDT match:', {
+                symbol: symbol.symbol,
+                status: symbol.status,
+                permissions: symbol.permissions,
+                isUsdt,
+                isTrading,
+                hasSpot,
+                willInclude: isUsdt && isTrading && hasSpot
+              });
+              debuggedFirst = true;
+            }
             
             return isUsdt && isTrading && hasSpot;
           })
