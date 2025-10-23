@@ -17,7 +17,24 @@ export default function Home() {
   const [currentPrice, setCurrentPrice] = useState<number>();
 
   const exchanges = ['BINANCE', 'BYBIT', 'OKX'];
-  const pairs = ['btcusdt', 'ethusdt', 'solusdt'];
+  
+  // Popular trading pairs on Binance
+  const pairs = [
+    'btcusdt', 'ethusdt', 'bnbusdt', 'solusdt', 'xrpusdt',
+    'adausdt', 'dogeusdt', 'maticusdt', 'dotusdt', 'shibusdt',
+    'ltcusdt', 'avaxusdt', 'linkusdt', 'uniusdt', 'atomusdt',
+    'etcusdt', 'xlmusdt', 'nearusdt', 'algousdt', 'vetusdt',
+    'icpusdt', 'filusdt', 'hbarusdt', 'aptusdt', 'arbusdt',
+    'opusdt', 'ldousdt', 'suiusdt', 'pepeusdt', 'rndrusdt',
+    'injusdt', 'stxusdt', 'tiausdt', 'seiusdt', 'imxusdt',
+    'ftmusdt', 'grtusdt', 'aaveusdt', 'mkrusdt', 'snxusdt',
+    'runeusdt', 'axsusdt', 'sandusdt', 'manausdt', 'galausdt',
+    'thetausdt', 'chzusdt', 'enjusdt', 'flowusdt', 'oneusdt',
+    'wldusdt', 'femusdt', 'taousdt', 'jupusdt', 'pythusdt',
+    'ondousdt', 'wifusdt', 'dymusdt', 'blurusdt', 'cfxusdt',
+    'ftmusdt', 'xaiusdt', 'superusdt', 'aiusdt', 'nfpusdt',
+    'aceusdt', 'jtousdt', 'memeusdt', 'ordiusdt', '1000satsusdt'
+  ];
   
   // Memoize markets array to prevent unnecessary re-renders
   const markets = useMemo(() => [`${exchange}:${pair}`], [exchange, pair]);
