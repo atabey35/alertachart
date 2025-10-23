@@ -8,6 +8,8 @@ export const CHUNK_DURATION = 1000 * 60 * 60 * 24; // 24 hours in ms
 
 // Supported timeframes (in seconds)
 export const TIMEFRAMES = [
+  10,        // 10s
+  30,        // 30s
   60,        // 1m
   300,       // 5m
   900,       // 15m

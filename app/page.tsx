@@ -68,7 +68,7 @@ export default function Home() {
 
           {/* Second row: Timeframe selector */}
           <div className="flex gap-1 mt-3 overflow-x-auto scrollbar-hide">
-            {TIMEFRAMES.filter(tf => tf !== 300).map((tf) => (
+            {TIMEFRAMES.map((tf) => (
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}

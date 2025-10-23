@@ -28,7 +28,7 @@ export function getTimeframeForHuman(timeframe: number): string {
  * Check if timeframe is odd (not standard)
  */
 export function isOddTimeframe(timeframe: number): boolean {
-  const standardTimeframes = [60, 300, 900, 3600, 14400, 86400];
+  const standardTimeframes = [10, 30, 60, 300, 900, 3600, 14400, 86400];
   return !standardTimeframes.includes(timeframe);
 }
 

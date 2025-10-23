@@ -446,7 +446,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       
       // Calculate optimal time range based on timeframe to get ~500-800 candles
       let hoursBack = 24;
-      if (currentTimeframe === 60) { // 1m
+      if (currentTimeframe === 10) { // 10s
+        hoursBack = 2; // 720 candles
+      } else if (currentTimeframe === 30) { // 30s
+        hoursBack = 4; // 480 candles
+      } else if (currentTimeframe === 60) { // 1m
         hoursBack = 12; // 720 candles
       } else if (currentTimeframe === 300) { // 5m
         hoursBack = 24; // 288 candles
