@@ -16,7 +16,7 @@ import {
 } from 'lightweight-charts';
 import { Bar } from '@/types/chart';
 import { PriceAlert } from '@/types/alert';
-import { Drawing, DrawingPoint } from '@/types/drawing';
+import { Drawing, DrawingPoint, DrawingType } from '@/types/drawing';
 import ChartCache from './ChartCache';
 import historicalService from '@/services/historicalService';
 import alertService from '@/services/alertService';
@@ -80,7 +80,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [tempDrawing, setTempDrawing] = useState<DrawingPoint | null>(null);
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [draggingPoint, setDraggingPoint] = useState<{ drawingId: string; pointIndex: number } | null>(null);
+  const [handlePositions, setHandlePositions] = useState<Array<{ x: number; y: number; drawingId: string; pointIndex: number }>>([]);
+  const [showDrawingTools, setShowDrawingTools] = useState(false);
   const drawingSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
+  const horizontalLinesRef = useRef<Map<string, any>>(new Map()); // Store price lines for horizontal drawings
 
   /**
    * Initialize chart
@@ -983,16 +987,32 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       chartRef.current?.removeSeries(series);
     });
     drawingSeriesRef.current.clear();
+    
+    // Remove all horizontal price lines
+    horizontalLinesRef.current.forEach((priceLine) => {
+      seriesRef.current?.removePriceLine(priceLine);
+    });
+    horizontalLinesRef.current.clear();
+    
     setDrawings([]);
     setSelectedDrawingId(null);
   };
 
   const handleDeleteDrawing = (id: string) => {
+    // Remove trend line series
     const series = drawingSeriesRef.current.get(id);
     if (series && chartRef.current) {
       chartRef.current.removeSeries(series);
       drawingSeriesRef.current.delete(id);
     }
+    
+    // Remove horizontal price line
+    const priceLine = horizontalLinesRef.current.get(id);
+    if (priceLine && seriesRef.current) {
+      seriesRef.current.removePriceLine(priceLine);
+      horizontalLinesRef.current.delete(id);
+    }
+    
     setDrawings((prev) => prev.filter((d) => d.id !== id));
     setSelectedDrawingId(null);
   };
@@ -1013,6 +1033,124 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
     
     setSelectedDrawingId(null);
+  };
+
+  const handlePointDragStart = (drawingId: string, pointIndex: number) => {
+    setDraggingPoint({ drawingId, pointIndex });
+  };
+
+  const handlePointDrag = (price: number, time: Time) => {
+    if (!draggingPoint) return;
+
+    setDrawings((prev) =>
+      prev.map((drawing) => {
+        if (drawing.id === draggingPoint.drawingId) {
+          const newPoints = [...drawing.points];
+          newPoints[draggingPoint.pointIndex] = { time, price };
+          return { ...drawing, points: newPoints };
+        }
+        return drawing;
+      })
+    );
+  };
+
+  const handlePointDragEnd = () => {
+    setDraggingPoint(null);
+  };
+
+  // Handle keyboard shortcuts for selected drawing
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedDrawingId && (e.key === 'Delete' || e.key === 'Backspace')) {
+        e.preventDefault();
+        handleDeleteDrawing(selectedDrawingId);
+      }
+      if (selectedDrawingId && e.key === 'Escape') {
+        setSelectedDrawingId(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedDrawingId]);
+
+  // Calculate distance from point to line segment
+  const distanceToLineSegment = (px: number, py: number, x1: number, y1: number, x2: number, y2: number) => {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const lengthSquared = dx * dx + dy * dy;
+    
+    if (lengthSquared === 0) {
+      // Line segment is actually a point
+      return Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1));
+    }
+    
+    // Calculate projection of point onto line
+    let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared;
+    t = Math.max(0, Math.min(1, t)); // Clamp to segment
+    
+    const projX = x1 + t * dx;
+    const projY = y1 + t * dy;
+    
+    return Math.sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
+  };
+
+  const handleChartClickForSelection = (clientX: number, clientY: number) => {
+    if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    
+    const CLICK_THRESHOLD = 10; // pixels
+    let closestDrawing: { id: string; distance: number } | null = null;
+    
+    // Check each drawing
+    drawings.forEach((drawing) => {
+      if (drawing.type === 'trend' && drawing.points.length === 2) {
+        try {
+          const timeScale = chartRef.current!.timeScale();
+          const x1 = timeScale.timeToCoordinate(drawing.points[0].time as any);
+          const y1 = seriesRef.current!.priceToCoordinate(drawing.points[0].price);
+          const x2 = timeScale.timeToCoordinate(drawing.points[1].time as any);
+          const y2 = seriesRef.current!.priceToCoordinate(drawing.points[1].price);
+          
+          if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+            const distance = distanceToLineSegment(x, y, x1, y1, x2, y2);
+            
+            if (distance <= CLICK_THRESHOLD) {
+              if (!closestDrawing || distance < closestDrawing.distance) {
+                closestDrawing = { id: drawing.id, distance };
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore coordinate errors
+        }
+      } else if (drawing.type === 'horizontal' && drawing.points.length > 0) {
+        try {
+          const y1 = seriesRef.current!.priceToCoordinate(drawing.points[0].price);
+          
+          if (y1 !== null) {
+            const distance = Math.abs(y - y1);
+            
+            if (distance <= CLICK_THRESHOLD) {
+              if (!closestDrawing || distance < closestDrawing.distance) {
+                closestDrawing = { id: drawing.id, distance };
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore coordinate errors
+        }
+      }
+    });
+    
+    if (closestDrawing) {
+      setSelectedDrawingId((closestDrawing as { id: string; distance: number }).id);
+    } else {
+      setSelectedDrawingId(null);
+    }
   };
 
   const handleChartClick = (price: number, time: Time) => {
@@ -1091,15 +1229,51 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
   };
 
+  // Update handle positions when chart changes
+  const updateHandlePositions = () => {
+    if (!chartRef.current || !seriesRef.current || !selectedDrawingId) {
+      setHandlePositions([]);
+      return;
+    }
+
+    const positions: Array<{ x: number; y: number; drawingId: string; pointIndex: number }> = [];
+    
+    drawings
+      .filter((d) => d.id === selectedDrawingId)
+      .forEach((drawing) => {
+        drawing.points.forEach((point, index) => {
+          try {
+            const timeScale = chartRef.current!.timeScale();
+            const x = timeScale.timeToCoordinate(point.time as any);
+            const y = seriesRef.current!.priceToCoordinate(point.price);
+            
+            if (x !== null && y !== null) {
+              positions.push({ x, y, drawingId: drawing.id, pointIndex: index });
+            }
+          } catch (e) {
+            // Ignore coordinate conversion errors
+          }
+        });
+      });
+    
+    setHandlePositions(positions);
+  };
+
   // Render drawings on chart
   useEffect(() => {
     if (!chartRef.current || !seriesRef.current) return;
 
-    // Clear existing drawing series
+    // Clear existing drawing series (trend lines)
     drawingSeriesRef.current.forEach((series) => {
       chartRef.current?.removeSeries(series);
     });
     drawingSeriesRef.current.clear();
+
+    // Clear existing horizontal price lines
+    horizontalLinesRef.current.forEach((priceLine) => {
+      seriesRef.current?.removePriceLine(priceLine);
+    });
+    horizontalLinesRef.current.clear();
 
     // Render each drawing
     drawings.forEach((drawing) => {
@@ -1116,6 +1290,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           axisLabelVisible: true,
           title: isSelected ? '✓' : 'H',
         });
+        
+        // Store reference for later cleanup
+        horizontalLinesRef.current.set(drawing.id, priceLine);
       } else if (drawing.type === 'trend' && drawing.points.length === 2) {
         // Trend line - use Line series
         const lineSeries = chartRef.current!.addLineSeries({
@@ -1133,6 +1310,23 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         drawingSeriesRef.current.set(drawing.id, lineSeries);
       }
     });
+
+    // Update handle positions
+    updateHandlePositions();
+
+    // Subscribe to chart changes to update handles
+    if (chartRef.current) {
+      const timeScale = chartRef.current.timeScale();
+      const handleVisibleChange = () => {
+        updateHandlePositions();
+      };
+      
+      timeScale.subscribeVisibleTimeRangeChange(handleVisibleChange);
+      
+      return () => {
+        timeScale.unsubscribeVisibleTimeRangeChange(handleVisibleChange);
+      };
+    }
   }, [drawings, selectedDrawingId]);
 
   return (
@@ -1140,75 +1334,50 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       className="relative w-full h-full"
       onClick={() => setContextMenuVisible(false)}
     >
-      {/* Drawing Toolbar */}
-      <DrawingToolbar
-        activeTool={activeTool}
-        onToolChange={handleToolChange}
-        onClearAll={handleClearAllDrawings}
-      />
+      {/* Drawing Tools Toggle Button */}
+      <button
+        onClick={() => {
+          const newState = !showDrawingTools;
+          setShowDrawingTools(newState);
+          if (!newState) {
+            // When closing, reset to selection mode and clear selection
+            setActiveTool('none');
+            setTempDrawing(null);
+            setSelectedDrawingId(null);
+          }
+        }}
+        className={`absolute top-2 left-2 z-10 p-2 rounded-lg transition-all shadow-lg ${
+          showDrawingTools 
+            ? 'bg-blue-600 text-white' 
+            : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+        }`}
+        title={showDrawingTools ? "Hide Drawing Tools" : "Show Drawing Tools"}
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+        </svg>
+      </button>
 
-      {/* Drawings List Panel */}
-      {drawings.length > 0 && (
-        <div className="absolute top-2 left-[280px] z-10 bg-gray-900/95 border border-gray-700 rounded-lg p-2 shadow-lg max-h-[400px] overflow-y-auto">
-          <div className="text-xs text-gray-400 mb-2 font-bold">Drawings ({drawings.length})</div>
-          <div className="space-y-1">
-            {drawings.map((drawing) => {
-              const isSelected = drawing.id === selectedDrawingId;
-              const typeName = {
-                'horizontal': 'Horizontal Line',
-                'trend': 'Trend Line',
-                'rectangle': 'Rectangle',
-                'circle': 'Circle',
-              }[drawing.type];
-              
-              return (
-                <div
-                  key={drawing.id}
-                  className={`flex items-center gap-2 p-2 rounded cursor-pointer transition-all ${
-                    isSelected
-                      ? 'bg-yellow-900/50 border border-yellow-700'
-                      : 'bg-gray-800/50 hover:bg-gray-700/50 border border-transparent'
-                  }`}
-                  onClick={() => setSelectedDrawingId(isSelected ? null : drawing.id)}
-                >
-                  <div
-                    className="w-4 h-0.5 rounded"
-                    style={{ backgroundColor: drawing.color }}
-                  />
-                  <div className="flex-1 text-xs text-gray-300">
-                    {typeName}
-                  </div>
-                  {isSelected && (
-                    <div className="flex gap-1">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEditDrawing(drawing);
-                        }}
-                        className="p-1 text-blue-400 hover:text-blue-300 transition-colors"
-                        title="Redraw"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteDrawing(drawing.id);
-                        }}
-                        className="p-1 text-red-400 hover:text-red-300 transition-colors"
-                        title="Delete"
-                      >
-                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+      {/* Drawing Toolbar */}
+      {showDrawingTools && (
+        <DrawingToolbar
+          activeTool={activeTool}
+          onToolChange={handleToolChange}
+          onClearAll={handleClearAllDrawings}
+        />
+      )}
+
+      {/* Selected Drawing Info */}
+      {selectedDrawingId && (
+        <div className="absolute top-2 left-14 z-10 bg-yellow-900/90 border border-yellow-700 rounded-lg px-3 py-2 shadow-lg">
+          <div className="flex items-center gap-2">
+            <div className="text-yellow-300 text-xs font-bold">
+              {drawings.find(d => d.id === selectedDrawingId)?.type === 'trend' && '/ Trend Line'}
+              {drawings.find(d => d.id === selectedDrawingId)?.type === 'horizontal' && '— Horizontal'}
+            </div>
+            <div className="text-yellow-200/70 text-[10px]">
+              Drag points • Del to delete • Esc to deselect
+            </div>
           </div>
         </div>
       )}
@@ -1226,12 +1395,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       </button>
 
       {isLoading && (
-        <div className="absolute top-4 left-4 bg-gray-800 px-3 py-2 rounded text-sm z-10">
+        <div className="absolute top-4 right-16 bg-gray-800 px-3 py-2 rounded text-sm z-10">
           Loading historical data...
         </div>
       )}
       {!isLoading && !wsConnected && (
-        <div className="absolute top-4 left-4 bg-yellow-900 px-3 py-2 rounded text-sm z-10 flex items-center gap-2">
+        <div className="absolute top-4 right-16 bg-yellow-900 px-3 py-2 rounded text-sm z-10 flex items-center gap-2">
           <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -1240,7 +1409,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </div>
       )}
       {wsConnected && (
-        <div className="absolute top-4 left-4 bg-green-900 px-3 py-2 rounded text-sm z-10 flex items-center gap-2">
+        <div className="absolute top-4 right-16 bg-green-900 px-3 py-2 rounded text-sm z-10 flex items-center gap-2">
           <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
           Live
         </div>
@@ -1260,56 +1429,165 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </div>
       )}
       
-      <div 
-        ref={containerRef} 
-        className="w-full h-full relative"
-      >
-        {/* Transparent overlay for free drawing */}
-        {activeTool !== 'none' && (
-          <>
-            <div
-              className="absolute inset-0 z-50"
-              style={{ cursor: 'crosshair' }}
-              onClick={(e) => {
-                // Handle drawing tool clicks with precise coordinates
-                if (containerRef.current && chartRef.current && seriesRef.current) {
-                  const rect = containerRef.current.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  
-                  // Convert pixel coordinates to logical coordinates
-                  const logicalX = x - 0; // Adjust for any padding/margin if needed
-                  const logicalY = y - 0;
-                  
-                  // Convert to time and price using chart's coordinate system
-                  const timeScale = chartRef.current.timeScale();
-                  const timeCoordinate = timeScale.coordinateToTime(logicalX as any);
-                  
-                  // For price, we need to account for the visible range
-                  const priceCoordinate = seriesRef.current.coordinateToPrice(logicalY);
-                  
-                  if (timeCoordinate && priceCoordinate !== null) {
-                    handleChartClick(priceCoordinate, timeCoordinate as Time);
-                  }
-                }
-              }}
-            />
-            {/* Show hint for multi-point tools */}
-            {tempDrawing && (activeTool === 'trend' || activeTool === 'rectangle' || activeTool === 'circle') && (
-              <div className="absolute top-16 left-2 bg-blue-900/90 px-3 py-2 rounded text-xs z-[60] border border-blue-700">
-                <div className="text-blue-300 font-bold mb-1">
-                  {activeTool === 'trend' && '📍 Click second point for trend line'}
-                  {activeTool === 'rectangle' && '📍 Click opposite corner'}
-                  {activeTool === 'circle' && '📍 Click edge point'}
-                </div>
-                <div className="text-gray-300 text-[10px]">
-                  First point: ${tempDrawing.price.toFixed(2)}
-                </div>
+              <div 
+                ref={containerRef} 
+                className="w-full h-full relative"
+              >
+                {/* Transparent overlay for drawing only (when active tool is selected) */}
+                {activeTool !== 'none' && (
+                  <div
+                    className="absolute inset-0"
+                    style={{ 
+                      cursor: 'crosshair', 
+                      pointerEvents: 'auto',
+                      zIndex: 8 
+                    }}
+                    onClick={(e) => {
+                      // Handle drawing tool clicks with precise coordinates
+                      if (containerRef.current && chartRef.current && seriesRef.current) {
+                        const rect = containerRef.current.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        
+                        // Convert pixel coordinates to logical coordinates
+                        const logicalX = x - 0; // Adjust for any padding/margin if needed
+                        const logicalY = y - 0;
+                        
+                        // Convert to time and price using chart's coordinate system
+                        const timeScale = chartRef.current.timeScale();
+                        const timeCoordinate = timeScale.coordinateToTime(logicalX as any);
+                        
+                        // For price, we need to account for the visible range
+                        const priceCoordinate = seriesRef.current.coordinateToPrice(logicalY);
+                        
+                        if (timeCoordinate && priceCoordinate !== null) {
+                          handleChartClick(priceCoordinate, timeCoordinate as Time);
+                        }
+                      }
+                    }}
+                  />
+                )}
+                
+                {/* Selection overlay (for clicking on existing drawings) - only when toolbar is open */}
+                {activeTool === 'none' && showDrawingTools && drawings.length > 0 && (
+                  <div
+                    className="absolute inset-0"
+                    style={{ 
+                      pointerEvents: 'auto',
+                      zIndex: 8 
+                    }}
+                    onClick={(e) => {
+                      // Check if click is near a drawing
+                      if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
+                      
+                      const rect = containerRef.current.getBoundingClientRect();
+                      const x = e.clientX - rect.left;
+                      const y = e.clientY - rect.top;
+                      
+                      const CLICK_THRESHOLD = 10;
+                      let foundDrawing = false;
+                      
+                      // Quick check if near any drawing
+                      drawings.forEach((drawing) => {
+                        if (drawing.type === 'trend' && drawing.points.length === 2) {
+                          try {
+                            const timeScale = chartRef.current!.timeScale();
+                            const x1 = timeScale.timeToCoordinate(drawing.points[0].time as any);
+                            const y1 = seriesRef.current!.priceToCoordinate(drawing.points[0].price);
+                            const x2 = timeScale.timeToCoordinate(drawing.points[1].time as any);
+                            const y2 = seriesRef.current!.priceToCoordinate(drawing.points[1].price);
+                            
+                            if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
+                              const distance = distanceToLineSegment(x, y, x1, y1, x2, y2);
+                              if (distance <= CLICK_THRESHOLD) {
+                                foundDrawing = true;
+                              }
+                            }
+                          } catch (e) {
+                            // Ignore
+                          }
+                        } else if (drawing.type === 'horizontal' && drawing.points.length > 0) {
+                          try {
+                            const y1 = seriesRef.current!.priceToCoordinate(drawing.points[0].price);
+                            if (y1 !== null && Math.abs(y - y1) <= CLICK_THRESHOLD) {
+                              foundDrawing = true;
+                            }
+                          } catch (e) {
+                            // Ignore
+                          }
+                        }
+                      });
+                      
+                      if (foundDrawing) {
+                        // Only handle selection if near a drawing
+                        e.stopPropagation();
+                        handleChartClickForSelection(e.clientX, e.clientY);
+                      }
+                      // Otherwise, let the event propagate to the chart for panning/zooming
+                    }}
+                  />
+                )}
+                
+                {/* Show hint for multi-point tools */}
+                {activeTool !== 'none' && tempDrawing && (activeTool === 'trend' || activeTool === 'rectangle' || activeTool === 'circle') && (
+                  <div className="absolute top-16 left-14 bg-blue-900/90 px-3 py-2 rounded text-xs border border-blue-700" style={{ zIndex: 9 }}>
+                    <div className="text-blue-300 font-bold mb-1">
+                      {activeTool === 'trend' && '📍 Click second point for trend line'}
+                      {activeTool === 'rectangle' && '📍 Click opposite corner'}
+                      {activeTool === 'circle' && '📍 Click edge point'}
+                    </div>
+                    <div className="text-gray-300 text-[10px]">
+                      First point: ${tempDrawing.price.toFixed(2)}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dragging overlay for moving points */}
+                {draggingPoint && (
+                  <div
+                    className="absolute inset-0"
+                    style={{ cursor: 'move', zIndex: 9 }}
+                    onMouseMove={(e) => {
+                      if (containerRef.current && chartRef.current && seriesRef.current) {
+                        const rect = containerRef.current.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        
+                        const timeScale = chartRef.current.timeScale();
+                        const timeCoordinate = timeScale.coordinateToTime(x as any);
+                        const priceCoordinate = seriesRef.current.coordinateToPrice(y);
+                        
+                        if (timeCoordinate && priceCoordinate !== null) {
+                          handlePointDrag(priceCoordinate, timeCoordinate as Time);
+                        }
+                      }
+                    }}
+                    onMouseUp={handlePointDragEnd}
+                    onMouseLeave={handlePointDragEnd}
+                  />
+                )}
+
+                {/* Drawing point handles for selected drawing */}
+                {handlePositions.map((handle) => (
+                  <div
+                    key={`${handle.drawingId}-${handle.pointIndex}`}
+                    className="absolute cursor-move"
+                    style={{
+                      left: `${handle.x - 6}px`,
+                      top: `${handle.y - 6}px`,
+                      width: '12px',
+                      height: '12px',
+                      zIndex: 9
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      handlePointDragStart(handle.drawingId, handle.pointIndex);
+                    }}
+                  >
+                    <div className="w-full h-full rounded-full bg-yellow-400 border-2 border-yellow-600 shadow-lg hover:scale-125 transition-transform" />
+                  </div>
+                ))}
               </div>
-            )}
-          </>
-        )}
-      </div>
       
       {/* Countdown Timer (below price axis) */}
       <div className="absolute bottom-6 right-14 bg-gray-800/90 px-3 py-1.5 rounded text-xs font-mono z-10 border border-gray-700">
