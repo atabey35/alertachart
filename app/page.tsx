@@ -33,43 +33,18 @@ export default function Home() {
         
         const data = await response.json();
         
-        console.log('[Pairs] 📊 API response:', {
-          totalSymbols: data.symbols?.length,
-          firstSymbol: data.symbols?.[0],
-          sampleUSDT: data.symbols?.find((s: any) => s.symbol?.includes('USDT'))
-        });
-        
         // Filter for USDT pairs that are actively trading
-        let debuggedFirst = false;
         const usdtPairs = data.symbols
           ?.filter((symbol: any) => {
             const isUsdt = symbol.symbol?.endsWith('USDT');
             const isTrading = symbol.status === 'TRADING';
-            const hasSpot = !symbol.permissions || symbol.permissions.includes('SPOT');
-            
-            // Debug first USDT symbol
-            if (isUsdt && !debuggedFirst) {
-              console.log('[Pairs] 🔍 First USDT match:', {
-                symbol: symbol.symbol,
-                status: symbol.status,
-                permissions: symbol.permissions,
-                isUsdt,
-                isTrading,
-                hasSpot,
-                willInclude: isUsdt && isTrading && hasSpot
-              });
-              debuggedFirst = true;
-            }
+            // If permissions array is empty or missing, include it. If it exists, check for SPOT
+            const hasSpot = !symbol.permissions?.length || symbol.permissions.includes('SPOT');
             
             return isUsdt && isTrading && hasSpot;
           })
           .map((symbol: any) => symbol.symbol.toLowerCase())
           .sort(); // Alphabetically sorted
-        
-        console.log('[Pairs] 🔍 After filtering:', {
-          usdtPairsCount: usdtPairs?.length,
-          sample: usdtPairs?.slice(0, 5)
-        });
         
         // Check if we got valid data
         if (!usdtPairs || usdtPairs.length === 0) {
