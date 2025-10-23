@@ -276,24 +276,28 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
     });
 
-    // Handle resize
+    // Handle resize with debouncing to prevent infinite loops
+    let resizeTimeout: NodeJS.Timeout | null = null;
     const handleResize = () => {
-      if (containerRef.current && chartRef.current) {
-        const width = containerRef.current.clientWidth;
-        const height = containerRef.current.clientHeight;
-        
-        if (width > 0 && height > 0) {
-          chartRef.current.resize(width, height);
-          console.log('[Chart] Resized to:', { width, height });
-        }
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
       }
+      
+      resizeTimeout = setTimeout(() => {
+        if (containerRef.current && chartRef.current) {
+          const width = containerRef.current.clientWidth;
+          const height = containerRef.current.clientHeight;
+          
+          if (width > 0 && height > 0) {
+            chartRef.current.resize(width, height);
+          }
+        }
+      }, 100);
     };
 
     // Use ResizeObserver for automatic resize detection
     const resizeObserver = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        handleResize();
-      }
+      handleResize();
     });
 
     if (containerRef.current) {
@@ -302,12 +306,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     
     // Force initial resize after mount
     setTimeout(() => {
-      handleResize();
+      if (containerRef.current && chartRef.current) {
+        chartRef.current.resize(
+          containerRef.current.clientWidth,
+          containerRef.current.clientHeight
+        );
+      }
     }, 100);
-    
-    setTimeout(() => {
-      handleResize();
-    }, 500);
 
     // Handle context menu with native event listener for better Safari support
     const handleContextMenuNative = (e: MouseEvent) => {
@@ -379,6 +384,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
       // Disconnect ResizeObserver
       resizeObserver.disconnect();
+      // Clear resize timeout
+      if (resizeTimeout) {
+        clearTimeout(resizeTimeout);
+      }
       // Cancel pending RAF
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);

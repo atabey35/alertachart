@@ -39,3 +39,4 @@ export interface CircleDrawing extends Drawing {
   points: [DrawingPoint, DrawingPoint]; // Center and edge point
 }
 
+

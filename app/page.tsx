@@ -7,6 +7,7 @@
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Chart from '@/components/chart/Chart';
 import AlertsPanel from '@/components/AlertsPanel';
+import Watchlist from '@/components/Watchlist';
 import { TIMEFRAMES } from '@/utils/constants';
 import { getTimeframeForHuman } from '@/utils/helpers';
 
@@ -42,6 +43,7 @@ export default function Home() {
   const [pairs, setPairs] = useState<string[]>(['btcusdt', 'ethusdt', 'solusdt']); // Default pairs
   const [loadingPairs, setLoadingPairs] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [showWatchlist, setShowWatchlist] = useState(true);
 
   const exchanges = ['BINANCE', 'BYBIT', 'OKX'];
   
@@ -161,6 +163,11 @@ export default function Home() {
     }
   }, [activeChartId]);
 
+  // Handle watchlist symbol click
+  const handleWatchlistSymbolClick = (symbol: string) => {
+    updateActiveChart({ pair: symbol });
+  };
+
   return (
     <main className="flex min-h-screen flex-col">
       {/* Header */}
@@ -177,6 +184,19 @@ export default function Home() {
 
             {/* Layout and Chart selectors */}
             <div className="flex items-center gap-2">
+              {/* Watchlist toggle */}
+              <button
+                onClick={() => setShowWatchlist(!showWatchlist)}
+                className={`p-1.5 rounded transition-colors ${
+                  showWatchlist ? 'bg-blue-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'
+                }`}
+                title="Toggle Watchlist"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+              </button>
+
               {/* Layout selector */}
               <div className="flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1">
                 <button
@@ -309,40 +329,53 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Multi-Chart Grid */}
-      <div 
-        className={`grid ${getGridClass()} gap-1 bg-gray-950 p-1`} 
-        style={{ 
-          height: getGridHeight()
-        }}
-      >
-        {charts.slice(0, layout).map((chart) => (
-          <div
-            key={chart.id}
-            onClick={() => setActiveChartId(chart.id)}
-            className={`relative border transition-all overflow-hidden ${
-              chart.id === activeChartId 
-                ? 'border-blue-500 border-2' 
-                : 'border-gray-800 hover:border-gray-700'
-            }`}
+      {/* Main Content - Charts + Watchlist */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Multi-Chart Grid */}
+        <div className="flex-1 overflow-hidden">
+          <div 
+            className={`grid ${getGridClass()} gap-1 bg-gray-950 p-1`} 
+            style={{ 
+              height: getGridHeight()
+            }}
           >
-            {/* Chart label */}
-            <div className="absolute top-1 left-1 z-20 bg-gray-900/80 px-2 py-1 rounded text-xs font-mono pointer-events-none">
-              <span className={chart.id === activeChartId ? 'text-blue-400' : 'text-gray-400'}>
-                {chart.pair.replace('usdt', '').toUpperCase()}/USDT
-              </span>
-            </div>
-            
-            <Chart
-              key={`${chart.id}-${layout}`}
-              exchange={chart.exchange}
-              pair={chart.pair}
-              timeframe={chart.timeframe}
-              markets={[`${chart.exchange}:${chart.pair}`]}
-              onPriceUpdate={(price) => handlePriceUpdate(chart.id, price)}
-            />
+            {charts.slice(0, layout).map((chart) => (
+              <div
+                key={chart.id}
+                onClick={() => setActiveChartId(chart.id)}
+                className={`relative border transition-all overflow-hidden ${
+                  chart.id === activeChartId 
+                    ? 'border-blue-500 border-2' 
+                    : 'border-gray-800 hover:border-gray-700'
+                }`}
+              >
+                {/* Chart label */}
+                <div className="absolute top-1 left-1 z-20 bg-gray-900/80 px-2 py-1 rounded text-xs font-mono pointer-events-none">
+                  <span className={chart.id === activeChartId ? 'text-blue-400' : 'text-gray-400'}>
+                    {chart.pair.replace('usdt', '').toUpperCase()}/USDT
+                  </span>
+                </div>
+                
+                <Chart
+                  key={`${chart.id}-${layout}`}
+                  exchange={chart.exchange}
+                  pair={chart.pair}
+                  timeframe={chart.timeframe}
+                  markets={[`${chart.exchange}:${chart.pair}`]}
+                  onPriceUpdate={(price) => handlePriceUpdate(chart.id, price)}
+                />
+              </div>
+            ))}
           </div>
-        ))}
+        </div>
+
+        {/* Watchlist Panel */}
+        {showWatchlist && (
+          <Watchlist 
+            onSymbolClick={handleWatchlistSymbolClick}
+            currentSymbol={activeChart.pair}
+          />
+        )}
       </div>
 
       {/* Alerts Panel - only for active chart */}
