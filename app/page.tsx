@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Chart from '@/components/chart/Chart';
 import AlertsPanel from '@/components/AlertsPanel';
 import { TIMEFRAMES } from '@/utils/constants';
@@ -15,26 +15,54 @@ export default function Home() {
   const [pair, setPair] = useState('btcusdt');
   const [timeframe, setTimeframe] = useState(900); // 15m
   const [currentPrice, setCurrentPrice] = useState<number>();
+  const [pairs, setPairs] = useState<string[]>(['btcusdt', 'ethusdt', 'solusdt']); // Default pairs
+  const [loadingPairs, setLoadingPairs] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const exchanges = ['BINANCE', 'BYBIT', 'OKX'];
   
-  // Popular trading pairs on Binance
-  const pairs = [
-    'btcusdt', 'ethusdt', 'bnbusdt', 'solusdt', 'xrpusdt',
-    'adausdt', 'dogeusdt', 'maticusdt', 'dotusdt', 'shibusdt',
-    'ltcusdt', 'avaxusdt', 'linkusdt', 'uniusdt', 'atomusdt',
-    'etcusdt', 'xlmusdt', 'nearusdt', 'algousdt', 'vetusdt',
-    'icpusdt', 'filusdt', 'hbarusdt', 'aptusdt', 'arbusdt',
-    'opusdt', 'ldousdt', 'suiusdt', 'pepeusdt', 'rndrusdt',
-    'injusdt', 'stxusdt', 'tiausdt', 'seiusdt', 'imxusdt',
-    'ftmusdt', 'grtusdt', 'aaveusdt', 'mkrusdt', 'snxusdt',
-    'runeusdt', 'axsusdt', 'sandusdt', 'manausdt', 'galausdt',
-    'thetausdt', 'chzusdt', 'enjusdt', 'flowusdt', 'oneusdt',
-    'wldusdt', 'femusdt', 'taousdt', 'jupusdt', 'pythusdt',
-    'ondousdt', 'wifusdt', 'dymusdt', 'blurusdt', 'cfxusdt',
-    'ftmusdt', 'xaiusdt', 'superusdt', 'aiusdt', 'nfpusdt',
-    'aceusdt', 'jtousdt', 'memeusdt', 'ordiusdt', '1000satsusdt'
-  ];
+  // Fetch all USDT trading pairs from Binance
+  useEffect(() => {
+    const fetchBinancePairs = async () => {
+      try {
+        const response = await fetch('https://api.binance.com/api/v3/exchangeInfo');
+        const data = await response.json();
+        
+        // Filter for USDT pairs that are actively trading
+        const usdtPairs = data.symbols
+          .filter((symbol: any) => 
+            symbol.symbol.endsWith('USDT') && 
+            symbol.status === 'TRADING' &&
+            symbol.permissions.includes('SPOT')
+          )
+          .map((symbol: any) => symbol.symbol.toLowerCase())
+          .sort(); // Alphabetically sorted
+        
+        console.log(`[Pairs] Loaded ${usdtPairs.length} USDT trading pairs from Binance`);
+        setPairs(usdtPairs);
+        setLoadingPairs(false);
+      } catch (error) {
+        console.error('[Pairs] Failed to fetch Binance pairs:', error);
+        // Fallback to default pairs
+        setPairs([
+          'btcusdt', 'ethusdt', 'bnbusdt', 'solusdt', 'xrpusdt',
+          'adausdt', 'dogeusdt', 'maticusdt', 'dotusdt', 'shibusdt',
+          'ltcusdt', 'avaxusdt', 'linkusdt', 'uniusdt', 'atomusdt',
+        ]);
+        setLoadingPairs(false);
+      }
+    };
+
+    fetchBinancePairs();
+  }, []);
+  
+  // Filter pairs based on search query
+  const filteredPairs = useMemo(() => {
+    if (!searchQuery.trim()) return pairs;
+    
+    const query = searchQuery.toLowerCase();
+    return pairs.filter(p => p.includes(query));
+  }, [pairs, searchQuery]);
   
   // Memoize markets array to prevent unnecessary re-renders
   const markets = useMemo(() => [`${exchange}:${pair}`], [exchange, pair]);
@@ -68,18 +96,54 @@ export default function Home() {
                 ))}
               </select>
 
-              {/* Pair selector */}
+              {/* Pair Search Input */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search coin..."
+                  className="bg-gray-900 border border-gray-700 rounded pl-8 pr-2 py-1.5 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500 w-28 md:w-36"
+                />
+                <svg 
+                  className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+              </div>
+
+              {/* Pair selector dropdown */}
               <select
                 value={pair}
-                onChange={(e) => setPair(e.target.value)}
+                onChange={(e) => {
+                  setPair(e.target.value);
+                  setSearchQuery(''); // Clear search after selection
+                }}
                 className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500"
+                disabled={loadingPairs}
               >
-                {pairs.map((p) => (
-                  <option key={p} value={p}>
-                    {p.toUpperCase()}
-                  </option>
-                ))}
+                {loadingPairs ? (
+                  <option>Loading...</option>
+                ) : filteredPairs.length === 0 ? (
+                  <option>No results</option>
+                ) : (
+                  filteredPairs.slice(0, 100).map((p) => ( // Show first 100 matches
+                    <option key={p} value={p}>
+                      {p.toUpperCase()}
+                    </option>
+                  ))
+                )}
               </select>
+              
+              {/* Pair count indicator */}
+              {!loadingPairs && (
+                <div className="hidden md:block text-xs text-gray-500">
+                  {searchQuery ? `${filteredPairs.length} found` : `${pairs.length} pairs`}
+                </div>
+              )}
             </div>
           </div>
 
