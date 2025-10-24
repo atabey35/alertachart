@@ -92,6 +92,11 @@ class HistoricalService extends EventEmitter {
 
         // Railway backend returns data directly
         if (useRailway && json.count !== undefined) {
+          // Check if Railway data is empty - trigger fallback
+          if (!json.data || json.data.length === 0) {
+            throw new Error('Railway returned empty data');
+          }
+          
           // Convert Railway format to our format
           return {
             from,
