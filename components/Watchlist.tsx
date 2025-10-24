@@ -120,10 +120,9 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           return;
         }
 
-        // Choose API endpoint based on market type
-        const baseUrl = marketType === 'futures' 
-          ? 'https://fapi.binance.com/fapi/v1/ticker/24hr'
-          : 'https://api.binance.com/api/v3/ticker/24hr';
+        // Always use Spot API for watchlist to avoid Futures rate limits (418 errors)
+        // Spot and Futures prices are nearly identical due to arbitrage
+        const baseUrl = 'https://api.binance.com/api/v3/ticker/24hr';
         
         // Fetch 24h ticker data from Binance with timeout
         const controller = new AbortController();
