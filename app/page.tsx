@@ -117,6 +117,7 @@ export default function Home() {
   const [loadingPairs, setLoadingPairs] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showWatchlist, setShowWatchlist] = useState(true);
+  const [showAlerts, setShowAlerts] = useState(false);
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
 
   // Load saved watchlist visibility on mount
@@ -131,6 +132,19 @@ export default function Home() {
   useEffect(() => {
     localStorage.setItem('showWatchlist', showWatchlist.toString());
   }, [showWatchlist]);
+
+  // Load saved alerts panel visibility on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('showAlerts');
+    if (saved !== null) {
+      setShowAlerts(saved === 'true');
+    }
+  }, []);
+
+  // Save alerts panel visibility whenever it changes
+  useEffect(() => {
+    localStorage.setItem('showAlerts', showAlerts.toString());
+  }, [showAlerts]);
 
   // Load saved market type on mount
   useEffect(() => {
@@ -397,6 +411,19 @@ export default function Home() {
 
             {/* Layout and Chart selectors */}
             <div className="flex items-center gap-2">
+              {/* Alerts toggle */}
+              <button
+                onClick={() => setShowAlerts(!showAlerts)}
+                className={`p-1.5 rounded transition-colors ${
+                  showAlerts ? 'bg-red-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'
+                }`}
+                title="Toggle Alerts"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+                </svg>
+              </button>
+
               {/* Watchlist toggle */}
               <button
                 onClick={() => setShowWatchlist(!showWatchlist)}
@@ -570,7 +597,7 @@ export default function Home() {
         </div>
       </header>
 
-      {/* Main Content - Charts + Watchlist */}
+      {/* Main Content - Charts + Alerts + Watchlist */}
       <div className="flex flex-1 overflow-hidden">
         {/* Multi-Chart Grid */}
         <div className="flex-1 overflow-hidden">
@@ -619,6 +646,17 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Alerts Panel */}
+        {showAlerts && (
+          <div className="border-l border-gray-800">
+            <AlertsPanel
+              exchange={activeChart.exchange}
+              pair={activeChart.pair}
+              currentPrice={activeChart.currentPrice}
+            />
+          </div>
+        )}
+
         {/* Watchlist Panel */}
         {showWatchlist && (
           <Watchlist 
@@ -628,13 +666,6 @@ export default function Home() {
           />
         )}
       </div>
-
-      {/* Alerts Panel - only for active chart */}
-      <AlertsPanel
-        exchange={activeChart.exchange}
-        pair={activeChart.pair}
-        currentPrice={activeChart.currentPrice}
-      />
 
       {/* Alert Modal - shows when alert triggers */}
       <AlertModal
