@@ -37,6 +37,14 @@ export interface ChartSettingsType {
   showTimeScale: boolean;
   timeScaleVisible: boolean;
   secondsVisible: boolean;
+  
+  // Indicators
+  showRSI: boolean;
+  rsiPeriod: number;
+  showMACD: boolean;
+  macdFast: number;
+  macdSlow: number;
+  macdSignal: number;
 }
 
 export const DEFAULT_SETTINGS: ChartSettingsType = {
@@ -56,6 +64,12 @@ export const DEFAULT_SETTINGS: ChartSettingsType = {
   showTimeScale: true,
   timeScaleVisible: true,
   secondsVisible: false,
+  showRSI: false,
+  rsiPeriod: 14,
+  showMACD: false,
+  macdFast: 12,
+  macdSlow: 26,
+  macdSignal: 9,
 };
 
 interface ChartSettingsProps {
@@ -242,6 +256,88 @@ export default function ChartSettings({ isOpen, onClose, settings, onSave }: Cha
                   className="w-full h-10 rounded border border-gray-600 bg-gray-800"
                 />
               </label>
+            </div>
+          </section>
+
+          {/* Technical Indicators */}
+          <section>
+            <h3 className="text-lg font-semibold text-white mb-3">Technical Indicators</h3>
+            <div className="space-y-4">
+              {/* RSI */}
+              <div className="space-y-3 p-4 bg-gray-800 rounded-lg">
+                <label className="flex items-center justify-between">
+                  <span className="text-gray-300 font-medium">RSI (Relative Strength Index)</span>
+                  <input
+                    type="checkbox"
+                    checked={localSettings.showRSI}
+                    onChange={(e) => setLocalSettings({ ...localSettings, showRSI: e.target.checked })}
+                    className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+                  />
+                </label>
+                {localSettings.showRSI && (
+                  <label className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Period</span>
+                    <input
+                      type="number"
+                      min="2"
+                      max="100"
+                      value={localSettings.rsiPeriod}
+                      onChange={(e) => setLocalSettings({ ...localSettings, rsiPeriod: parseInt(e.target.value) || 14 })}
+                      className="w-20 px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* MACD */}
+              <div className="space-y-3 p-4 bg-gray-800 rounded-lg">
+                <label className="flex items-center justify-between">
+                  <span className="text-gray-300 font-medium">MACD</span>
+                  <input
+                    type="checkbox"
+                    checked={localSettings.showMACD}
+                    onChange={(e) => setLocalSettings({ ...localSettings, showMACD: e.target.checked })}
+                    className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+                  />
+                </label>
+                {localSettings.showMACD && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <label className="space-y-1">
+                      <span className="text-xs text-gray-400">Fast</span>
+                      <input
+                        type="number"
+                        min="2"
+                        max="100"
+                        value={localSettings.macdFast}
+                        onChange={(e) => setLocalSettings({ ...localSettings, macdFast: parseInt(e.target.value) || 12 })}
+                        className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs text-gray-400">Slow</span>
+                      <input
+                        type="number"
+                        min="2"
+                        max="100"
+                        value={localSettings.macdSlow}
+                        onChange={(e) => setLocalSettings({ ...localSettings, macdSlow: parseInt(e.target.value) || 26 })}
+                        className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs text-gray-400">Signal</span>
+                      <input
+                        type="number"
+                        min="2"
+                        max="100"
+                        value={localSettings.macdSignal}
+                        onChange={(e) => setLocalSettings({ ...localSettings, macdSignal: parseInt(e.target.value) || 9 })}
+                        className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
         </div>
