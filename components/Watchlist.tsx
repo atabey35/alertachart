@@ -120,27 +120,30 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           return;
         }
 
-        // Always use Spot API for watchlist to avoid Futures rate limits (418 errors)
-        // Spot and Futures prices are nearly identical due to arbitrage
-        const baseUrl = 'https://api.binance.com/api/v3/ticker/24hr';
+        // Use Railway backend to avoid rate limits
+        // Backend caches ticker data for 5 seconds
+        const railwayApi = process.env.NEXT_PUBLIC_RAILWAY_API || 
+                          process.env.NEXT_PUBLIC_LOCAL_API || 
+                          'http://localhost:4000';
         
-        // Fetch 24h ticker data from Binance with timeout
+        const symbols = watchlist.join(',');
+        const url = `${railwayApi}/api/ticker/${marketType}?symbols=${symbols}`;
+        
+        // Fetch 24h ticker data from backend with timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout (backend needs time)
         
-        const response = await fetch(
-          `${baseUrl}?symbols=["${watchlist.map(s => s.toUpperCase()).join('","')}"]`,
-          { signal: controller.signal }
-        );
+        const response = await fetch(url, { signal: controller.signal });
         
         clearTimeout(timeoutId);
         
         if (!response.ok) {
-          // Silently ignore rate limiting errors (418) and other errors to avoid console spam
+          // Silently ignore errors to avoid console spam
           return;
         }
         
-        const data = await response.json();
+        const result = await response.json();
+        const data = result.data;
         const newPriceData = new Map<string, WatchlistItem>();
         const newPrevPrices = new Map<string, number>();
         
@@ -182,7 +185,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           });
         }, 500);
         
-        console.log(`[Watchlist ${marketType}] Updated ${data.length} symbols`);
+        console.log(`[Watchlist ${marketType}] Updated ${data.length} symbols (${result.cached ? 'cached' : 'fresh'})`);
       } catch (error: any) {
         // Silently ignore network errors, timeouts, and CORS issues
         // This prevents console spam when API is temporarily unavailable
