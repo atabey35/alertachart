@@ -8,6 +8,10 @@ import { Bar } from '@/types/chart';
 import { floorTimestampToTimeframe } from '@/utils/helpers';
 import { createBar, mergeTradeIntoBar } from '@/utils/bucket';
 
+// Increase timeout for this route (Vercel default is 10s)
+export const maxDuration = 60; // 60 seconds
+export const dynamic = 'force-dynamic';
+
 interface HistoricalParams {
   from: number;
   to: number;
@@ -75,13 +79,21 @@ async function fetchFromBinance(
     headers: {
       'Content-Type': 'application/json',
     },
+    signal: AbortSignal.timeout(30000), // 30 second timeout
   });
 
   if (!response.ok) {
-    throw new Error(`Binance API error: ${response.status}`);
+    const errorText = await response.text();
+    console.error(`[Binance ${isFutures ? 'Futures' : 'Spot'} API] Error ${response.status}:`, errorText);
+    throw new Error(`Binance API error: ${response.status} - ${errorText}`);
   }
 
   const klines = await response.json();
+  
+  if (!Array.isArray(klines) || klines.length === 0) {
+    console.warn(`[Binance ${isFutures ? 'Futures' : 'Spot'} API] No data returned for ${symbol}`);
+    return [];
+  }
 
   // Convert Binance klines to Bar format
   const bars: Bar[] = klines.map((k: any) => {
@@ -118,9 +130,13 @@ async function fetchFromBybit(
 
   console.log('[Bybit API] Fetching:', url);
 
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(30000), // 30 second timeout
+  });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[Bybit API] Error ${response.status}:`, errorText);
     throw new Error(`Bybit API error: ${response.status}`);
   }
 
@@ -165,9 +181,13 @@ async function fetchFromOKX(
 
   console.log('[OKX API] Fetching:', url);
 
-  const response = await fetch(url);
+  const response = await fetch(url, {
+    signal: AbortSignal.timeout(30000), // 30 second timeout
+  });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[OKX API] Error ${response.status}:`, errorText);
     throw new Error(`OKX API error: ${response.status}`);
   }
 
@@ -242,6 +262,8 @@ export async function GET(
     const resolvedParams = await params;
     const { from, to, timeframe, markets } = parseParams(resolvedParams.params);
 
+    console.log('[Historical API] Request:', { from: new Date(from).toISOString(), to: new Date(to).toISOString(), timeframe, markets });
+
     // Aggregate data from all requested markets
     const allBars: Map<number, Bar> = new Map();
     const initialPrices: { [market: string]: number } = {};
@@ -254,6 +276,7 @@ export async function GET(
       if (!exchange || !pair) continue;
 
       try {
+        console.log(`[Historical API] Fetching ${exchange}:${pair}`);
         const bars = await fetchHistoricalFromExchange(
           exchange,
           pair,
@@ -261,6 +284,8 @@ export async function GET(
           to,
           timeframe
         );
+
+        console.log(`[Historical API] Received ${bars.length} bars for ${exchange}:${pair}`);
 
         // Merge bars by timestamp
         for (const bar of bars) {
@@ -292,11 +317,22 @@ export async function GET(
         }
       } catch (error) {
         console.error(`[Historical API] Error fetching ${market}:`, error);
+        // Continue to next market instead of failing completely
       }
     }
 
     // Convert map to sorted array
     const data = Array.from(allBars.values()).sort((a, b) => a.time - b.time);
+
+    console.log(`[Historical API] Returning ${data.length} total bars`);
+
+    if (data.length === 0) {
+      console.error('[Historical API] No data available for any market');
+      return NextResponse.json(
+        { error: 'No data available for the requested markets' },
+        { status: 404 }
+      );
+    }
 
     return NextResponse.json({
       from,
