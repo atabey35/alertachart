@@ -2306,7 +2306,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             setSelectedDrawingId(null);
           }
         }}
-        className={`absolute top-32 left-2 z-10 p-2 rounded-lg transition-all shadow-lg ${
+        className={`absolute top-32 left-2 z-20 p-2 rounded-lg transition-all shadow-lg ${
           showDrawingTools 
             ? 'bg-blue-600 text-white' 
             : 'bg-gray-800 hover:bg-gray-700 text-gray-300'

@@ -25,7 +25,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
   ];
 
   return (
-    <div className="absolute top-14 left-2 z-10 flex flex-col gap-1 bg-gray-900/95 border border-gray-700 rounded-lg p-1 shadow-lg">
+    <div className="absolute top-44 left-2 z-10 flex flex-col gap-1 bg-gray-900/95 border border-gray-700 rounded-lg p-1 shadow-lg">
       {tools.map((tool) => (
         <button
           key={tool.id}
