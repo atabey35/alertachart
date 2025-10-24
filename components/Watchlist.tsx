@@ -197,7 +197,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     };
 
     fetchPrices();
-    const interval = setInterval(fetchPrices, 3000); // Update every 3s
+    const interval = setInterval(fetchPrices, 5000); // Update every 5s
 
     return () => clearInterval(interval);
   }, [watchlist, marketType, prevPrices, symbolCategories, favorites]);
