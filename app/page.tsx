@@ -231,7 +231,7 @@ export default function Home() {
   const activeChart = charts[activeChartId];
   
   // Update browser tab title with active coin price
-  // This works even when tab is in background
+  // Continuous updates work even in background tabs (TradingView style)
   useEffect(() => {
     const updateTitle = () => {
       if (activeChart) {
@@ -242,18 +242,9 @@ export default function Home() {
             ? ` ${activeChart.change24h >= 0 ? '+' : ''}${activeChart.change24h.toFixed(2)}%`
             : '';
           
-          // Update title - works even in background tabs
+          // Always update title (force browser to render in background)
           const newTitle = `${symbol} $${price}${changeText} - Alerta`;
-          
-          // Force update even if browser throttles updates
-          if (document.title !== newTitle) {
-            document.title = newTitle;
-            
-            // Debug: log updates (remove in production)
-            if (process.env.NODE_ENV === 'development') {
-              console.log(`[Tab Title] ${newTitle}`);
-            }
-          }
+          document.title = newTitle;
         } else {
           document.title = `${symbol} - Alerta`;
         }
@@ -262,13 +253,15 @@ export default function Home() {
       }
     };
 
-    // Update title initially
+    // Update title immediately
     updateTitle();
+
+    // Update title every second (TradingView style - forces background updates)
+    const titleInterval = setInterval(updateTitle, 1000);
 
     // Force update when tab becomes visible again
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        console.log('[Tab] Became visible - forcing title update');
         updateTitle();
       }
     };
@@ -276,6 +269,7 @@ export default function Home() {
     document.addEventListener('visibilitychange', handleVisibilityChange);
     
     return () => {
+      clearInterval(titleInterval);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [activeChart?.pair, activeChart?.currentPrice, activeChart?.change24h]);

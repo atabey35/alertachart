@@ -1326,7 +1326,14 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Add bar to cache
     cacheRef.current.addBar(bar);
     
-    // Queue single update per frame (aggr.trade style)
+    // Update current price immediately (works in background tabs)
+    // This ensures title updates even when tab is not visible
+    const priceDiff = Math.abs(bar.close - currentPrice);
+    if (priceDiff > 0.00000001) {
+      setCurrentPrice(bar.close);
+    }
+    
+    // Queue single update per frame for chart rendering (aggr.trade style)
     if (!updateQueuedRef.current) {
       updateQueuedRef.current = true;
       rafIdRef.current = requestAnimationFrame(() => {
