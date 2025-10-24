@@ -8,6 +8,9 @@ import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import Chart from '@/components/chart/Chart';
 import AlertsPanel from '@/components/AlertsPanel';
 import Watchlist from '@/components/Watchlist';
+import AlertModal from '@/components/AlertModal';
+import alertService from '@/services/alertService';
+import { PriceAlert } from '@/types/alert';
 import { TIMEFRAMES } from '@/utils/constants';
 import { getTimeframeForHuman } from '@/utils/helpers';
 
@@ -25,6 +28,9 @@ export default function Home() {
   // Multi-chart layout state
   const [layout, setLayout] = useState<1 | 2 | 4 | 9>(1); // 1x1, 1x2, 2x2, 3x3
   const [activeChartId, setActiveChartId] = useState<number>(0);
+
+  // Alert modal state
+  const [triggeredAlert, setTriggeredAlert] = useState<PriceAlert | null>(null);
 
   // Load saved layout on mount
   useEffect(() => {
@@ -51,6 +57,16 @@ export default function Home() {
         setActiveChartId(parsed);
       }
     }
+  }, []);
+
+  // Subscribe to alert triggers
+  useEffect(() => {
+    const unsubscribe = alertService.onAlertTriggered((alert) => {
+      console.log('[App] Alert triggered, showing modal:', alert);
+      setTriggeredAlert(alert);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   // Save active chart ID whenever it changes
@@ -618,6 +634,17 @@ export default function Home() {
         exchange={activeChart.exchange}
         pair={activeChart.pair}
         currentPrice={activeChart.currentPrice}
+      />
+
+      {/* Alert Modal - shows when alert triggers */}
+      <AlertModal
+        alert={triggeredAlert}
+        onDismiss={() => {
+          if (triggeredAlert) {
+            alertService.dismissAlert(triggeredAlert.id);
+            setTriggeredAlert(null);
+          }
+        }}
       />
 
       {/* Footer */}

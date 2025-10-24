@@ -9,6 +9,9 @@ class AlertService {
   private alerts: PriceAlert[] = [];
   private listeners: Array<(alerts: PriceAlert[]) => void> = [];
   private storageKey = 'alerta-chart-alerts';
+  private alertTriggerListeners: Array<(alert: PriceAlert) => void> = [];
+  private audioContext: AudioContext | null = null;
+  private soundIntervalId: NodeJS.Timeout | null = null;
 
   constructor() {
     this.loadFromStorage();
@@ -50,6 +53,14 @@ class AlertService {
     };
   }
 
+  onAlertTriggered(listener: (alert: PriceAlert) => void) {
+    this.alertTriggerListeners.push(listener);
+    
+    return () => {
+      this.alertTriggerListeners = this.alertTriggerListeners.filter(l => l !== listener);
+    };
+  }
+
   addAlert(exchange: string, pair: string, price: number, currentPrice: number): PriceAlert {
     const alert: PriceAlert = {
       id: `${Date.now()}-${Math.random()}`,
@@ -84,14 +95,31 @@ class AlertService {
       this.saveToStorage();
       this.notifyListeners();
       
-      // Play sound
-      this.playAlertSound();
+      // Play sound in loop until dismissed
+      this.playAlertSoundLoop();
       
       // Show notification
       this.showNotification(alert);
       
+      // Notify trigger listeners (for modal)
+      this.alertTriggerListeners.forEach(listener => listener(alert));
+      
       console.log('[AlertService] Alert triggered:', alert);
     }
+  }
+
+  stopAlertSound() {
+    if (this.soundIntervalId) {
+      clearInterval(this.soundIntervalId);
+      this.soundIntervalId = null;
+      console.log('[AlertService] Alert sound stopped');
+    }
+  }
+
+  dismissAlert(id: string) {
+    this.stopAlertSound();
+    this.removeAlert(id);
+    console.log('[AlertService] Alert dismissed:', id);
   }
 
   checkPrice(exchange: string, pair: string, currentPrice: number) {
@@ -128,10 +156,26 @@ class AlertService {
     this.notifyListeners();
   }
 
+  private playAlertSoundLoop() {
+    // Stop any existing sound
+    this.stopAlertSound();
+    
+    // Play immediately
+    this.playAlertSound();
+    
+    // Repeat every 3 seconds until dismissed
+    this.soundIntervalId = setInterval(() => {
+      this.playAlertSound();
+    }, 3000);
+  }
+
   private playAlertSound() {
     try {
       // Create Web Audio API context for better sound
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (!this.audioContext) {
+        this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const audioContext = this.audioContext;
       
       // Create a more attention-grabbing alert sound (trading platform style)
       const playTone = (frequency: number, duration: number, delay: number = 0) => {
