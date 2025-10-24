@@ -70,7 +70,7 @@ class HistoricalService extends EventEmitter {
 
     console.log(`[Historical Service] Fetching from ${useRailway ? 'Railway' : 'Next.js'}: ${url}`);
 
-    // Create new promise
+    // Create new promise with fallback support
     const promise = fetch(url)
       .then(async (response) => {
         const contentType = response.headers.get('content-type');
@@ -123,8 +123,28 @@ class HistoricalService extends EventEmitter {
 
         return json as HistoricalResponse;
       })
-      .catch((err) => {
+      .catch(async (err) => {
         console.error('[Historical Service] Error:', err.message);
+        
+        // FALLBACK: If Railway fails, try Next.js API
+        if (useRailway) {
+          console.warn('[Historical Service] Railway failed, trying Next.js API fallback...');
+          const fallbackUrl = this.getApiUrl(from, to, timeframe, markets, false);
+          
+          try {
+            const fallbackResponse = await fetch(fallbackUrl);
+            const fallbackJson = await fallbackResponse.json();
+            
+            if (fallbackJson && fallbackJson.data && fallbackJson.data.length > 0) {
+              console.log('[Historical Service] ✅ Fallback successful, got data from Next.js API');
+              this.cache.set(url, fallbackJson);
+              return fallbackJson as HistoricalResponse;
+            }
+          } catch (fallbackErr) {
+            console.error('[Historical Service] Fallback also failed:', (fallbackErr as Error).message);
+          }
+        }
+        
         throw err;
       })
       .finally(() => {
