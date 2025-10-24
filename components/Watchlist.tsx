@@ -35,6 +35,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
+  const [width, setWidth] = useState(280);
+  const [isResizing, setIsResizing] = useState(false);
 
   // Load favorites and categories from localStorage
   useEffect(() => {
@@ -52,7 +54,47 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     if (savedCategories) {
       setCategories(JSON.parse(savedCategories));
     }
+
+    const savedWidth = localStorage.getItem('watchlist-width');
+    if (savedWidth) {
+      setWidth(parseInt(savedWidth));
+    }
   }, []);
+
+  // Handle resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      
+      // Calculate new width (from right edge of screen)
+      const newWidth = window.innerWidth - e.clientX;
+      
+      // Min width: 200px, Max width: 600px
+      const clampedWidth = Math.max(200, Math.min(600, newWidth));
+      setWidth(clampedWidth);
+    };
+
+    const handleMouseUp = () => {
+      if (isResizing) {
+        setIsResizing(false);
+        localStorage.setItem('watchlist-width', width.toString());
+      }
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    };
+  }, [isResizing, width]);
 
   // Default watchlist symbols (separate for Spot and Futures)
   useEffect(() => {
@@ -251,7 +293,18 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   }
 
   return (
-    <div className="bg-gray-900 border-l border-gray-800 flex flex-col" style={{ width: '280px', minWidth: '280px' }}>
+    <div className="bg-gray-900 border-l border-gray-800 flex flex-col relative" style={{ width: `${width}px`, minWidth: `${width}px` }}>
+      {/* Resize Handle */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500 transition-colors z-50 group"
+        onMouseDown={(e) => {
+          e.preventDefault();
+          setIsResizing(true);
+        }}
+        title="Drag to resize"
+      >
+        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-12 bg-gray-600 rounded-r opacity-0 group-hover:opacity-100 transition-opacity" />
+      </div>
       {/* Header */}
       <div className="border-b border-gray-800 p-3 flex items-center justify-between">
         <div>
