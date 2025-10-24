@@ -89,6 +89,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [chartSettings, setChartSettings] = useState<ChartSettingsType>(DEFAULT_SETTINGS);
   const [showLegend, setShowLegend] = useState(true);
+  const [hoverPrice, setHoverPrice] = useState<number | null>(null);
+  const [hoverY, setHoverY] = useState<number | null>(null);
 
   // Keep refs to the latest callbacks to avoid dependency issues
   const onConnectionChangeRef = useRef(onConnectionChange);
@@ -439,8 +441,20 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       });
     }
 
-    // Subscribe to crosshair move for OHLCV legend (TradingView-style)
+    // Subscribe to crosshair move for OHLCV legend and alarm button (TradingView-style)
     chart.subscribeCrosshairMove((param) => {
+      // Track hover price for alarm button
+      if (param.point && seriesRef.current && containerRef.current) {
+        const price = seriesRef.current.coordinateToPrice(param.point.y);
+        if (price !== null) {
+          setHoverPrice(price);
+          setHoverY(param.point.y);
+        }
+      } else {
+        setHoverPrice(null);
+        setHoverY(null);
+      }
+      
       if (!param.time || !param.seriesData || !seriesRef.current || !volumeSeriesRef.current) {
         setLegendData(null);
         return;
@@ -2417,6 +2431,28 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       </button>
+
+      {/* Hover Alarm Button (TradingView style) */}
+      {hoverPrice !== null && hoverY !== null && (
+        <button
+          onClick={() => {
+            setClickedPrice(hoverPrice);
+            setContextMenuVisible(true);
+            setContextMenuPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+          }}
+          className="absolute z-20 p-1.5 bg-blue-600/90 hover:bg-blue-500 rounded-full shadow-lg transition-all"
+          style={{
+            right: '120px',
+            top: `${hoverY}px`,
+            transform: 'translateY(-50%)'
+          }}
+          title={`Add alert at $${hoverPrice.toFixed(hoverPrice < 1 ? 6 : 2)}`}
+        >
+          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+        </button>
+      )}
 
       {/* Mobile hint for long-press */}
       {showMobileHint && (
