@@ -16,37 +16,46 @@ interface WatchlistItem {
 interface WatchlistProps {
   onSymbolClick: (symbol: string) => void;
   currentSymbol?: string;
+  marketType?: 'spot' | 'futures';
 }
 
-export default function Watchlist({ onSymbolClick, currentSymbol }: WatchlistProps) {
+export default function Watchlist({ onSymbolClick, currentSymbol, marketType = 'spot' }: WatchlistProps) {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [priceData, setPriceData] = useState<Map<string, WatchlistItem>>(new Map());
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddSymbol, setShowAddSymbol] = useState(false);
 
-  // Default watchlist symbols
+  // Default watchlist symbols (separate for Spot and Futures)
   useEffect(() => {
-    const savedWatchlist = localStorage.getItem('watchlist');
+    const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
+    const savedWatchlist = localStorage.getItem(storageKey);
     if (savedWatchlist) {
       setWatchlist(JSON.parse(savedWatchlist));
     } else {
       // Default symbols
       setWatchlist(['btcusdt', 'ethusdt', 'solusdt', 'bnbusdt', 'xrpusdt', 'adausdt']);
     }
-  }, []);
+  }, [marketType]);
 
-  // Fetch price data for watchlist
+  // Fetch price data for watchlist (Spot or Futures)
   useEffect(() => {
     if (watchlist.length === 0) return;
 
     const fetchPrices = async () => {
       try {
-        // Fetch 24h ticker data from Binance
-        const symbols = watchlist.map(s => s.toUpperCase()).join(',');
-        const response = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbols=["${watchlist.map(s => s.toUpperCase()).join('","')}"]`);
+        // Choose API endpoint based on market type
+        const baseUrl = marketType === 'futures' 
+          ? 'https://fapi.binance.com/fapi/v1/ticker/24hr'
+          : 'https://api.binance.com/api/v3/ticker/24hr';
         
-        if (!response.ok) return;
+        // Fetch 24h ticker data from Binance
+        const response = await fetch(`${baseUrl}?symbols=["${watchlist.map(s => s.toUpperCase()).join('","')}"]`);
+        
+        if (!response.ok) {
+          console.error(`[Watchlist ${marketType}] API error:`, response.status);
+          return;
+        }
         
         const data = await response.json();
         const newPriceData = new Map<string, WatchlistItem>();
@@ -62,8 +71,9 @@ export default function Watchlist({ onSymbolClick, currentSymbol }: WatchlistPro
         });
         
         setPriceData(newPriceData);
+        console.log(`[Watchlist ${marketType}] Updated ${data.length} symbols`);
       } catch (error) {
-        console.error('[Watchlist] Failed to fetch prices:', error);
+        console.error(`[Watchlist ${marketType}] Failed to fetch prices:`, error);
       }
     };
 
@@ -71,14 +81,15 @@ export default function Watchlist({ onSymbolClick, currentSymbol }: WatchlistPro
     const interval = setInterval(fetchPrices, 3000); // Update every 3s
 
     return () => clearInterval(interval);
-  }, [watchlist]);
+  }, [watchlist, marketType]);
 
   const addSymbol = (symbol: string) => {
     const normalizedSymbol = symbol.toLowerCase();
     if (!watchlist.includes(normalizedSymbol)) {
       const newWatchlist = [...watchlist, normalizedSymbol];
       setWatchlist(newWatchlist);
-      localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
+      const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
+      localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
     }
     setShowAddSymbol(false);
     setSearchQuery('');
@@ -87,7 +98,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol }: WatchlistPro
   const removeSymbol = (symbol: string) => {
     const newWatchlist = watchlist.filter(s => s !== symbol);
     setWatchlist(newWatchlist);
-    localStorage.setItem('watchlist', JSON.stringify(newWatchlist));
+    const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
+    localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
   };
 
   const formatPrice = (price: number) => {
@@ -123,7 +135,12 @@ export default function Watchlist({ onSymbolClick, currentSymbol }: WatchlistPro
     <div className="bg-gray-900 border-l border-gray-800 flex flex-col" style={{ width: '280px', minWidth: '280px' }}>
       {/* Header */}
       <div className="border-b border-gray-800 p-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-gray-300">Watchlist</h3>
+        <div>
+          <h3 className="text-sm font-semibold text-gray-300">Watchlist</h3>
+          <p className="text-[10px] text-gray-500 mt-0.5">
+            {marketType === 'futures' ? 'Futures' : 'Spot'}
+          </p>
+        </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setShowAddSymbol(!showAddSymbol)}

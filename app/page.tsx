@@ -406,6 +406,7 @@ export default function Home() {
           <Watchlist 
             onSymbolClick={handleWatchlistSymbolClick}
             currentSymbol={activeChart.pair}
+            marketType={marketType}
           />
         )}
       </div>
