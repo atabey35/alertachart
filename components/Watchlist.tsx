@@ -125,14 +125,19 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           ? 'https://fapi.binance.com/fapi/v1/ticker/24hr'
           : 'https://api.binance.com/api/v3/ticker/24hr';
         
-        // Fetch 24h ticker data from Binance
-        const response = await fetch(`${baseUrl}?symbols=["${watchlist.map(s => s.toUpperCase()).join('","')}"]`);
+        // Fetch 24h ticker data from Binance with timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        
+        const response = await fetch(
+          `${baseUrl}?symbols=["${watchlist.map(s => s.toUpperCase()).join('","')}"]`,
+          { signal: controller.signal }
+        );
+        
+        clearTimeout(timeoutId);
         
         if (!response.ok) {
-          // Silently ignore rate limiting errors (418) to avoid console spam
-          if (response.status !== 418) {
-            console.error(`[Watchlist ${marketType}] API error:`, response.status);
-          }
+          // Silently ignore rate limiting errors (418) and other errors to avoid console spam
           return;
         }
         
@@ -179,8 +184,15 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         }, 500);
         
         console.log(`[Watchlist ${marketType}] Updated ${data.length} symbols`);
-      } catch (error) {
-        console.error(`[Watchlist ${marketType}] Failed to fetch prices:`, error);
+      } catch (error: any) {
+        // Silently ignore network errors, timeouts, and CORS issues
+        // This prevents console spam when API is temporarily unavailable
+        if (error?.name !== 'AbortError') {
+          // Only log non-timeout errors in dev mode
+          if (process.env.NODE_ENV === 'development') {
+            console.debug(`[Watchlist ${marketType}] Fetch failed (will retry):`, error?.message);
+          }
+        }
       }
     };
 
