@@ -82,6 +82,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [wsConnected, setWsConnected] = useState(false);
   const [countdown, setCountdown] = useState<string>('--:--');
   const [showSettings, setShowSettings] = useState(false);
+  const [contextMenuVisible, setContextMenuVisible] = useState(false);
+  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
+  const [clickedPrice, setClickedPrice] = useState<number | null>(null);
+  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
+  const [currentPrice, setCurrentPrice] = useState<number>(0);
+  const [chartSettings, setChartSettings] = useState<ChartSettingsType>(DEFAULT_SETTINGS);
+  const [showLegend, setShowLegend] = useState(true);
 
   // Keep refs to the latest callbacks to avoid dependency issues
   const onConnectionChangeRef = useRef(onConnectionChange);
@@ -134,13 +141,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
     }
   }, [currentPrice]);
-  const [contextMenuVisible, setContextMenuVisible] = useState(false);
-  const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
-  const [clickedPrice, setClickedPrice] = useState<number | null>(null);
-  const [alerts, setAlerts] = useState<PriceAlert[]>([]);
-  const [currentPrice, setCurrentPrice] = useState<number>(0);
-  const [chartSettings, setChartSettings] = useState<ChartSettingsType>(DEFAULT_SETTINGS);
-  const [showLegend, setShowLegend] = useState(true);
 
   // Load settings from localStorage after mount (client-side only)
   useEffect(() => {
