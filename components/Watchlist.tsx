@@ -33,6 +33,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [symbolCategories, setSymbolCategories] = useState<Map<string, string>>(new Map());
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
   const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   // Load favorites and categories from localStorage
   useEffect(() => {
@@ -41,9 +43,14 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       setFavorites(new Set(JSON.parse(savedFavorites)));
     }
 
-    const savedCategories = localStorage.getItem('watchlist-symbol-categories');
+    const savedSymbolCategories = localStorage.getItem('watchlist-symbol-categories');
+    if (savedSymbolCategories) {
+      setSymbolCategories(new Map(Object.entries(JSON.parse(savedSymbolCategories))));
+    }
+
+    const savedCategories = localStorage.getItem('watchlist-categories');
     if (savedCategories) {
-      setSymbolCategories(new Map(Object.entries(JSON.parse(savedCategories))));
+      setCategories(JSON.parse(savedCategories));
     }
   }, []);
 
@@ -181,6 +188,39 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     localStorage.setItem('watchlist-symbol-categories', JSON.stringify(Object.fromEntries(newCategories)));
   };
 
+  const addCategory = (name: string) => {
+    const upperName = name.toUpperCase().trim();
+    if (upperName && !categories.includes(upperName)) {
+      const newCategories = [...categories, upperName];
+      setCategories(newCategories);
+      localStorage.setItem('watchlist-categories', JSON.stringify(newCategories));
+    }
+    setShowAddCategory(false);
+    setNewCategoryName('');
+  };
+
+  const removeCategory = (category: string) => {
+    // Remove category from list
+    const newCategories = categories.filter(c => c !== category);
+    setCategories(newCategories);
+    localStorage.setItem('watchlist-categories', JSON.stringify(newCategories));
+    
+    // Remove category from all symbols
+    const newSymbolCategories = new Map(symbolCategories);
+    symbolCategories.forEach((cat, symbol) => {
+      if (cat === category) {
+        newSymbolCategories.delete(symbol);
+      }
+    });
+    setSymbolCategories(newSymbolCategories);
+    localStorage.setItem('watchlist-symbol-categories', JSON.stringify(Object.fromEntries(newSymbolCategories)));
+    
+    // Reset filter if removed category was selected
+    if (selectedFilter === category) {
+      setSelectedFilter('ALL');
+    }
+  };
+
   const formatPrice = (price: number) => {
     if (price < 0.01) return price.toFixed(6);
     if (price < 1) return price.toFixed(4);
@@ -297,16 +337,72 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           ⭐ FAVORITES
         </button>
         {categories.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setSelectedFilter(cat)}
-            className={`text-xs px-2 py-1 rounded transition-colors whitespace-nowrap ${
-              selectedFilter === cat ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
-            }`}
-          >
-            {cat}
-          </button>
+          <div key={cat} className="relative group">
+            <button
+              onClick={() => setSelectedFilter(cat)}
+              className={`text-xs px-2 py-1 pr-6 rounded transition-colors whitespace-nowrap ${
+                selectedFilter === cat ? 'bg-blue-600 text-white' : 'bg-gray-800 text-gray-400 hover:text-white'
+              }`}
+            >
+              {cat}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (confirm(`Remove category "${cat}"?`)) {
+                  removeCategory(cat);
+                }
+              }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-opacity"
+              title="Remove category"
+            >
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         ))}
+        
+        {showAddCategory ? (
+          <div className="flex items-center gap-1">
+            <input
+              type="text"
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && newCategoryName.trim()) {
+                  addCategory(newCategoryName);
+                }
+              }}
+              placeholder="Category name"
+              className="text-xs px-2 py-1 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500 w-28"
+              autoFocus
+            />
+            <button
+              onClick={() => newCategoryName.trim() && addCategory(newCategoryName)}
+              className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+            >
+              ✓
+            </button>
+            <button
+              onClick={() => {
+                setShowAddCategory(false);
+                setNewCategoryName('');
+              }}
+              className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowAddCategory(true)}
+            className="text-xs px-2 py-1 bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors whitespace-nowrap"
+            title="Add new category"
+          >
+            + Category
+          </button>
+        )}
       </div>
 
       {/* Watchlist Items */}
