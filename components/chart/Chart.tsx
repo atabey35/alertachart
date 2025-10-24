@@ -21,6 +21,7 @@ import ChartCache from './ChartCache';
 import historicalService from '@/services/historicalService';
 import alertService from '@/services/alertService';
 import { floorTimestampToTimeframe } from '@/utils/helpers';
+import { calculateRSI, calculateMACD } from '@/utils/indicators';
 import ChartSettings, { ChartSettingsType, DEFAULT_SETTINGS } from './ChartSettings';
 import DrawingToolbar, { DrawingTool } from './DrawingToolbar';
 
@@ -38,6 +39,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  const rsiSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const macdLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const macdSignalSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const macdHistogramSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const cacheRef = useRef(new ChartCache());
   const workerRef = useRef<Worker | null>(null);
   const observerRef = useRef<MutationObserver | null>(null);
@@ -186,17 +191,121 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       priceScaleId: '',
     });
     
-    // Configure volume price scale
+    // Calculate scale margins based on which indicators are shown
+    const bothIndicators = chartSettings.showRSI && chartSettings.showMACD;
+    const oneIndicator = chartSettings.showRSI || chartSettings.showMACD;
+    
+    // Main chart takes more space if no indicators
+    const mainChartBottom = bothIndicators ? 0.45 : (oneIndicator ? 0.25 : 0.15);
+    
+    // Configure volume price scale (part of main chart)
     chart.priceScale('').applyOptions({
       scaleMargins: {
-        top: 0.85, // Volume takes bottom 15% of chart
+        top: mainChartBottom - 0.05, // Volume just above main chart
         bottom: 0,
       },
     });
+    
+    // Configure main price scale
+    chart.priceScale('right').applyOptions({
+      scaleMargins: {
+        top: 0,
+        bottom: mainChartBottom,
+      },
+    });
+
+    // Create indicator series based on settings
+    let rsiSeries: ISeriesApi<'Line'> | null = null;
+    let macdLine: ISeriesApi<'Line'> | null = null;
+    let macdSignal: ISeriesApi<'Line'> | null = null;
+    let macdHistogram: ISeriesApi<'Histogram'> | null = null;
+
+    if (chartSettings.showRSI) {
+      // RSI Levels (30 and 70)
+      const rsiLevel30 = chart.addLineSeries({
+        color: '#ef535040',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed
+        priceScaleId: 'rsi',
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      
+      const rsiLevel70 = chart.addLineSeries({
+        color: '#26a69a40',
+        lineWidth: 1,
+        lineStyle: 2, // Dashed
+        priceScaleId: 'rsi',
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+      
+      rsiSeries = chart.addLineSeries({
+        color: '#2962FF',
+        lineWidth: 2,
+        priceScaleId: 'rsi',
+        title: `RSI (${chartSettings.rsiPeriod})`,
+      });
+
+      const rsiTop = bothIndicators ? mainChartBottom + 0.05 : mainChartBottom + 0.05;
+      const rsiBottom = bothIndicators ? 0.25 : 0.05;
+
+      chart.priceScale('rsi').applyOptions({
+        scaleMargins: {
+          top: rsiTop,
+          bottom: rsiBottom,
+        },
+        borderColor: '#2B2B43',
+      });
+    }
+
+    if (chartSettings.showMACD) {
+      macdLine = chart.addLineSeries({
+        color: '#2196F3',
+        lineWidth: 2,
+        priceScaleId: 'macd',
+        title: 'MACD',
+      });
+
+      macdSignal = chart.addLineSeries({
+        color: '#FF6D00',
+        lineWidth: 2,
+        priceScaleId: 'macd',
+        title: 'Signal',
+      });
+
+      macdHistogram = chart.addHistogramSeries({
+        color: '#26a69a',
+        priceScaleId: 'macd',
+      });
+      
+      // Zero line for MACD
+      const macdZero = chart.addLineSeries({
+        color: '#71717140',
+        lineWidth: 1,
+        priceScaleId: 'macd',
+        lastValueVisible: false,
+        priceLineVisible: false,
+      });
+
+      const macdTop = bothIndicators ? mainChartBottom + 0.25 : mainChartBottom + 0.05;
+
+      chart.priceScale('macd').applyOptions({
+        scaleMargins: {
+          top: macdTop,
+          bottom: 0.05,
+        },
+        borderColor: '#2B2B43',
+      });
+    }
 
     chartRef.current = chart;
     seriesRef.current = series;
     volumeSeriesRef.current = volumeSeries;
+    rsiSeriesRef.current = rsiSeries;
+    macdLineSeriesRef.current = macdLine;
+    macdSignalSeriesRef.current = macdSignal;
+    macdHistogramSeriesRef.current = macdHistogram;
 
     // Remove TradingView watermark aggressively
     const removeWatermark = () => {
@@ -1002,6 +1111,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       setCurrentPrice(lastCandle.close);
     }
 
+    // Update indicators
+    updateIndicators(bars);
+
     // Only fit content on initial load, then allow user to scroll freely
     if (chartRef.current && candleData.length > 0 && isInitialLoadRef.current) {
       // Fit content multiple times to ensure proper display
@@ -1018,6 +1130,59 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }, 300);
       isInitialLoadRef.current = false;
       console.log('[Chart] Initial fit content applied');
+    }
+  };
+
+  const updateIndicators = (bars: Bar[]) => {
+    if (bars.length < 30) return; // Need minimum data for indicators
+
+    // Update RSI
+    if (chartSettings.showRSI && rsiSeriesRef.current) {
+      const rsiValues = calculateRSI(bars, chartSettings.rsiPeriod);
+      const rsiData = bars
+        .map((bar, index) => ({
+          time: Math.floor(bar.time / 1000) as Time,
+          value: rsiValues[index],
+        }))
+        .filter(d => d.value !== null && !isNaN(d.value));
+
+      rsiSeriesRef.current.setData(rsiData as any);
+    }
+
+    // Update MACD
+    if (chartSettings.showMACD && macdLineSeriesRef.current && macdSignalSeriesRef.current && macdHistogramSeriesRef.current) {
+      const { macd, signal, histogram } = calculateMACD(
+        bars,
+        chartSettings.macdFast,
+        chartSettings.macdSlow,
+        chartSettings.macdSignal
+      );
+
+      const macdData = bars
+        .map((bar, index) => ({
+          time: Math.floor(bar.time / 1000) as Time,
+          value: macd[index],
+        }))
+        .filter(d => d.value !== null && !isNaN(d.value));
+
+      const signalData = bars
+        .map((bar, index) => ({
+          time: Math.floor(bar.time / 1000) as Time,
+          value: signal[index],
+        }))
+        .filter(d => d.value !== null && !isNaN(d.value));
+
+      const histogramData = bars
+        .map((bar, index) => ({
+          time: Math.floor(bar.time / 1000) as Time,
+          value: histogram[index],
+          color: (histogram[index] ?? 0) >= 0 ? '#26a69a' : '#ef5350',
+        }))
+        .filter(d => d.value !== null && !isNaN(d.value));
+
+      macdLineSeriesRef.current.setData(macdData as any);
+      macdSignalSeriesRef.current.setData(signalData as any);
+      macdHistogramSeriesRef.current.setData(histogramData as any);
     }
   };
 
@@ -1543,9 +1708,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
   }, [drawings, selectedDrawingId]);
 
+  // Calculate heights for main chart and indicator panels
+  const mainChartHeight = chartSettings.showRSI || chartSettings.showMACD 
+    ? (chartSettings.showRSI && chartSettings.showMACD ? '60%' : '75%')
+    : '100%';
+  
+  const rsiHeight = chartSettings.showRSI ? '20%' : '0%';
+  const macdHeight = chartSettings.showMACD ? '20%' : '0%';
+
   return (
     <div 
-      className="relative w-full h-full"
+      className="relative w-full h-full flex flex-col"
       onClick={() => setContextMenuVisible(false)}
     >
       {/* OHLCV Legend (TradingView-style) */}
