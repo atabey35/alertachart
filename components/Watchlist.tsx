@@ -11,6 +11,9 @@ interface WatchlistItem {
   price: number;
   change24h: number;
   volume24h: number;
+  priceFlash?: 'up' | 'down' | null;
+  category?: string;
+  isFavorite?: boolean;
 }
 
 interface WatchlistProps {
@@ -22,9 +25,26 @@ interface WatchlistProps {
 export default function Watchlist({ onSymbolClick, currentSymbol, marketType = 'spot' }: WatchlistProps) {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [priceData, setPriceData] = useState<Map<string, WatchlistItem>>(new Map());
+  const [prevPrices, setPrevPrices] = useState<Map<string, number>>(new Map());
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddSymbol, setShowAddSymbol] = useState(false);
+  const [categories, setCategories] = useState<string[]>(['MAJOR', 'DEFI', 'MEME']);
+  const [symbolCategories, setSymbolCategories] = useState<Map<string, string>>(new Map());
+  const [favorites, setFavorites] = useState<Set<string>>(new Set());
+
+  // Load favorites and categories from localStorage
+  useEffect(() => {
+    const savedFavorites = localStorage.getItem('watchlist-favorites');
+    if (savedFavorites) {
+      setFavorites(new Set(JSON.parse(savedFavorites)));
+    }
+
+    const savedCategories = localStorage.getItem('watchlist-symbol-categories');
+    if (savedCategories) {
+      setSymbolCategories(new Map(Object.entries(JSON.parse(savedCategories))));
+    }
+  }, []);
 
   // Default watchlist symbols (separate for Spot and Futures)
   useEffect(() => {
@@ -64,18 +84,46 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         
         const data = await response.json();
         const newPriceData = new Map<string, WatchlistItem>();
+        const newPrevPrices = new Map<string, number>();
         
         data.forEach((ticker: any) => {
           const symbol = ticker.symbol.toLowerCase();
+          const currentPrice = parseFloat(ticker.lastPrice);
+          const prevPrice = prevPrices.get(symbol);
+          
+          // Determine price flash direction
+          let priceFlash: 'up' | 'down' | null = null;
+          if (prevPrice !== undefined && prevPrice !== currentPrice) {
+            priceFlash = currentPrice > prevPrice ? 'up' : 'down';
+          }
+          
           newPriceData.set(symbol, {
             symbol: symbol,
-            price: parseFloat(ticker.lastPrice),
+            price: currentPrice,
             change24h: parseFloat(ticker.priceChangePercent),
             volume24h: parseFloat(ticker.volume),
+            priceFlash: priceFlash,
+            category: symbolCategories.get(symbol),
+            isFavorite: favorites.has(symbol),
           });
+          
+          newPrevPrices.set(symbol, currentPrice);
         });
         
         setPriceData(newPriceData);
+        setPrevPrices(newPrevPrices);
+        
+        // Clear flash after animation
+        setTimeout(() => {
+          setPriceData(prev => {
+            const updated = new Map(prev);
+            updated.forEach((item, symbol) => {
+              updated.set(symbol, { ...item, priceFlash: null });
+            });
+            return updated;
+          });
+        }, 500);
+        
         console.log(`[Watchlist ${marketType}] Updated ${data.length} symbols`);
       } catch (error) {
         console.error(`[Watchlist ${marketType}] Failed to fetch prices:`, error);
@@ -86,7 +134,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     const interval = setInterval(fetchPrices, 3000); // Update every 3s
 
     return () => clearInterval(interval);
-  }, [watchlist, marketType]);
+  }, [watchlist, marketType, prevPrices, symbolCategories, favorites]);
 
   const addSymbol = (symbol: string) => {
     const normalizedSymbol = symbol.toLowerCase();
@@ -105,6 +153,28 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     setWatchlist(newWatchlist);
     const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
     localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
+  };
+
+  const toggleFavorite = (symbol: string) => {
+    const newFavorites = new Set(favorites);
+    if (newFavorites.has(symbol)) {
+      newFavorites.delete(symbol);
+    } else {
+      newFavorites.add(symbol);
+    }
+    setFavorites(newFavorites);
+    localStorage.setItem('watchlist-favorites', JSON.stringify(Array.from(newFavorites)));
+  };
+
+  const setSymbolCategory = (symbol: string, category: string) => {
+    const newCategories = new Map(symbolCategories);
+    if (category === '') {
+      newCategories.delete(symbol);
+    } else {
+      newCategories.set(symbol, category);
+    }
+    setSymbolCategories(newCategories);
+    localStorage.setItem('watchlist-symbol-categories', JSON.stringify(Object.fromEntries(newCategories)));
   };
 
   const formatPrice = (price: number) => {
@@ -249,7 +319,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                 {data ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className="font-mono text-sm text-gray-200">
+                      <span className={`font-mono text-sm text-white px-2 py-0.5 rounded transition-colors duration-300 ${
+                        data.priceFlash === 'up' ? 'bg-green-500/30' : 
+                        data.priceFlash === 'down' ? 'bg-red-500/30' : ''
+                      }`}>
                         ${formatPrice(data.price)}
                       </span>
                       <span className={`text-xs font-semibold ${
