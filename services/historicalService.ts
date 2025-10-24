@@ -129,11 +129,9 @@ class HistoricalService extends EventEmitter {
         return json as HistoricalResponse;
       })
       .catch(async (err) => {
-        console.error('[Historical Service] Error:', err.message);
-        
         // FALLBACK: If Railway fails, try Next.js API
         if (useRailway) {
-          console.warn('[Historical Service] Railway failed, trying Next.js API fallback...');
+          console.warn(`[Historical Service] Railway issue: ${err.message}, trying fallback...`);
           const fallbackUrl = this.getApiUrl(from, to, timeframe, markets, false);
           
           try {
@@ -141,15 +139,16 @@ class HistoricalService extends EventEmitter {
             const fallbackJson = await fallbackResponse.json();
             
             if (fallbackJson && fallbackJson.data && fallbackJson.data.length > 0) {
-              console.log('[Historical Service] ✅ Fallback successful, got data from Next.js API');
+              console.log(`[Historical Service] ✅ Fallback successful (${fallbackJson.data.length} candles from Next.js API)`);
               this.cache.set(url, fallbackJson);
               return fallbackJson as HistoricalResponse;
             }
           } catch (fallbackErr) {
-            console.error('[Historical Service] Fallback also failed:', (fallbackErr as Error).message);
+            console.error('[Historical Service] ❌ Fallback also failed:', (fallbackErr as Error).message);
           }
         }
         
+        console.error('[Historical Service] ❌ All attempts failed:', err.message);
         throw err;
       })
       .finally(() => {
