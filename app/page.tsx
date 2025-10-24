@@ -370,7 +370,10 @@ export default function Home() {
           {/* First row: Title and Selectors */}
           <div className="flex items-center justify-between gap-2 md:gap-4">
             <div className="flex items-center gap-2 md:gap-6">
-              <h1 className="text-lg md:text-2xl font-bold text-blue-500 whitespace-nowrap">ALERTA CHART</h1>
+              <div className="flex items-center gap-2">
+                <img src="/icon.png" alt="Alerta Chart Logo" className="w-8 h-8 md:w-10 md:h-10 rounded-lg" />
+                <h1 className="text-lg md:text-2xl font-bold text-blue-500 whitespace-nowrap">ALERTA CHART</h1>
+              </div>
               <div className="hidden md:block text-sm text-gray-400">
                 Powered by Kripto Kırmızı
               </div>
