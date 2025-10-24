@@ -22,7 +22,7 @@ interface ChartState {
 
 export default function Home() {
   // Multi-chart layout state
-  const [layout, setLayout] = useState<1 | 4 | 9>(1); // 1x1, 2x2, 3x3
+  const [layout, setLayout] = useState<1 | 2 | 4 | 9>(1); // 1x1, 1x2, 2x2, 3x3
   const [activeChartId, setActiveChartId] = useState<number>(0);
 
   // Load saved layout on mount
@@ -30,8 +30,8 @@ export default function Home() {
     const savedLayout = localStorage.getItem('chartLayout');
     if (savedLayout) {
       const parsed = parseInt(savedLayout);
-      if (parsed === 1 || parsed === 4 || parsed === 9) {
-        setLayout(parsed as 1 | 4 | 9);
+      if (parsed === 1 || parsed === 2 || parsed === 4 || parsed === 9) {
+        setLayout(parsed as 1 | 2 | 4 | 9);
       }
     }
   }, []);
@@ -247,6 +247,7 @@ export default function Home() {
   // Get grid class based on layout
   const getGridClass = () => {
     if (layout === 1) return 'grid-cols-1 grid-rows-1';
+    if (layout === 2) return 'grid-cols-2 grid-rows-1';
     if (layout === 4) return 'grid-cols-2 grid-rows-2';
     if (layout === 9) return 'grid-cols-3 grid-rows-3';
     return 'grid-cols-1 grid-rows-1';
@@ -255,6 +256,7 @@ export default function Home() {
   // Get optimal height based on layout
   const getGridHeight = () => {
     if (layout === 1) return 'calc(100vh - 240px)'; // Single chart - full height minus header/footer
+    if (layout === 2) return 'calc(100vh - 240px)'; // 2 charts side by side - full height
     if (layout === 4) return 'calc(100vh - 240px)'; // 2x2 grid - same total height, split into rows
     if (layout === 9) return 'calc(100vh - 240px)'; // 3x3 grid - same total height, split into rows
     return 'calc(100vh - 240px)';
@@ -339,6 +341,18 @@ export default function Home() {
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setLayout(2)}
+                  className={`p-1.5 rounded transition-colors ${
+                    layout === 2 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  }`}
+                  title="2 Charts"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="8" height="18" rx="2"/>
+                    <rect x="13" y="3" width="8" height="18" rx="2"/>
                   </svg>
                 </button>
                 <button
@@ -544,7 +558,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="border-t border-gray-800 bg-black px-4 py-3 text-xs text-gray-500">
         <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6">
-          <span className="whitespace-nowrap">Layout: {layout === 1 ? 'Single' : layout === 4 ? '2x2' : '3x3'}</span>
+          <span className="whitespace-nowrap">Layout: {layout === 1 ? 'Single' : layout === 2 ? '1x2' : layout === 4 ? '2x2' : '3x3'}</span>
           <span className="whitespace-nowrap">Active: {activeChart.pair.toUpperCase()}</span>
           <span className="whitespace-nowrap">Timeframe: {getTimeframeForHuman(activeChart.timeframe)}</span>
           {activeChart.currentPrice && (
