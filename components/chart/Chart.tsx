@@ -91,6 +91,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [showLegend, setShowLegend] = useState(true);
   const [hoverPrice, setHoverPrice] = useState<number | null>(null);
   const [hoverY, setHoverY] = useState<number | null>(null);
+  const [alarmButtonHovered, setAlarmButtonHovered] = useState(false);
 
   // Keep refs to the latest callbacks to avoid dependency issues
   const onConnectionChangeRef = useRef(onConnectionChange);
@@ -441,16 +442,19 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       });
     }
 
-    // Subscribe to crosshair move for OHLCV legend and alarm button (TradingView-style)
+    // Subscribe to crosshair move for OHLCV legend (TradingView-style)
+    let lastUpdate = 0;
     chart.subscribeCrosshairMove((param) => {
-      // Track hover price for alarm button
-      if (param.point && seriesRef.current && containerRef.current) {
+      // Track hover price for alarm button with throttling
+      const now = Date.now();
+      if (param.point && seriesRef.current && containerRef.current && now - lastUpdate > 100) {
         const price = seriesRef.current.coordinateToPrice(param.point.y);
-        if (price !== null) {
+        if (price !== null && !alarmButtonHovered) {
           setHoverPrice(price);
           setHoverY(param.point.y);
+          lastUpdate = now;
         }
-      } else {
+      } else if (!param.point && !alarmButtonHovered) {
         setHoverPrice(null);
         setHoverY(null);
       }
@@ -2435,16 +2439,24 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       {/* Hover Alarm Button (TradingView style) */}
       {hoverPrice !== null && hoverY !== null && (
         <button
-          onClick={() => {
+          onMouseEnter={() => setAlarmButtonHovered(true)}
+          onMouseLeave={() => setAlarmButtonHovered(false)}
+          onClick={(e) => {
+            e.stopPropagation();
             setClickedPrice(hoverPrice);
             setContextMenuVisible(true);
             setContextMenuPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+            setHoverPrice(null);
+            setHoverY(null);
+            setAlarmButtonHovered(false);
           }}
-          className="absolute z-20 p-1.5 bg-blue-600/90 hover:bg-blue-500 rounded-full shadow-lg transition-all"
+          className="absolute p-1.5 bg-blue-600/90 hover:bg-blue-500 rounded-full shadow-lg transition-all cursor-pointer"
           style={{
             right: '120px',
             top: `${hoverY}px`,
-            transform: 'translateY(-50%)'
+            transform: 'translateY(-50%)',
+            zIndex: 9999,
+            pointerEvents: 'auto'
           }}
           title={`Add alert at $${hoverPrice.toFixed(hoverPrice < 1 ? 6 : 2)}`}
         >
