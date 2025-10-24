@@ -2465,9 +2465,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             e.preventDefault();
             e.stopPropagation();
             if (alarmButton) {
-              setClickedPrice(alarmButton.price);
-              setContextMenuVisible(true);
-              setContextMenuPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+              // Directly add alert without showing context menu
+              const refPrice = currentPrice || alarmButton.price;
+              alertService.addAlert(exchange, pair, alarmButton.price, refPrice);
+              console.log(`[Chart] Alert set at $${alarmButton.price.toFixed(alarmButton.price < 1 ? 6 : 2)}`);
+              
+              // Hide button
               isHoveringButtonRef.current = false;
               setAlarmButton(null);
             }
