@@ -130,17 +130,37 @@ export default function Home() {
 
   const exchanges = ['BINANCE'];
   
+  // Cache for fetched pairs to avoid rate limiting
+  const lastFetchRef = useRef<{ time: number; marketType: string }>({ time: 0, marketType: '' });
+  
   // Fetch all USDT trading pairs from Binance (Spot or Futures)
   useEffect(() => {
     const fetchBinancePairs = async () => {
+      // Throttle: Don't fetch if we fetched less than 10 seconds ago for the same market type
+      const now = Date.now();
+      if (
+        lastFetchRef.current.marketType === marketType &&
+        now - lastFetchRef.current.time < 10000
+      ) {
+        console.log('Skipping fetch - too soon since last request');
+        return;
+      }
+      
       try {
         const apiUrl = marketType === 'spot' 
           ? 'https://api.binance.com/api/v3/exchangeInfo'
           : 'https://fapi.binance.com/fapi/v1/exchangeInfo';
         
+        lastFetchRef.current = { time: now, marketType };
+        
         const response = await fetch(apiUrl);
         
         if (!response.ok) {
+          // Silently ignore rate limiting errors (418)
+          if (response.status === 418) {
+            console.warn('Binance API rate limit reached, using cached pairs');
+            return;
+          }
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         

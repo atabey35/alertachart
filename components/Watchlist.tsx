@@ -79,7 +79,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         const response = await fetch(`${baseUrl}?symbols=["${watchlist.map(s => s.toUpperCase()).join('","')}"]`);
         
         if (!response.ok) {
-          console.error(`[Watchlist ${marketType}] API error:`, response.status);
+          // Silently ignore rate limiting errors (418) to avoid console spam
+          if (response.status !== 418) {
+            console.error(`[Watchlist ${marketType}] API error:`, response.status);
+          }
           return;
         }
         
@@ -132,7 +135,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     };
 
     fetchPrices();
-    const interval = setInterval(fetchPrices, 3000); // Update every 3s
+    const interval = setInterval(fetchPrices, 5000); // Update every 5s (avoid rate limiting)
 
     return () => clearInterval(interval);
   }, [watchlist, marketType, prevPrices, symbolCategories, favorites]);
@@ -276,7 +279,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       )}
 
       {/* Category Filters */}
-      <div className="border-b border-gray-800 px-2 py-2 flex gap-1 overflow-x-auto">
+      <div className="border-b border-gray-800 px-2 py-2 flex gap-1 overflow-x-auto bg-gray-900 scrollbar-thin">
         <button
           onClick={() => setSelectedFilter('ALL')}
           className={`text-xs px-2 py-1 rounded transition-colors whitespace-nowrap ${
@@ -307,7 +310,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       </div>
 
       {/* Watchlist Items */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto scrollbar-thin">
         {watchlist.length === 0 ? (
           <div className="p-4 text-center text-gray-500 text-sm">
             No symbols in watchlist
