@@ -44,6 +44,11 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
     const fetchPrices = async () => {
       try {
+        // Skip if watchlist is empty
+        if (!watchlist || watchlist.length === 0) {
+          return;
+        }
+
         // Choose API endpoint based on market type
         const baseUrl = marketType === 'futures' 
           ? 'https://fapi.binance.com/fapi/v1/ticker/24hr'

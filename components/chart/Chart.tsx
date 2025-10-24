@@ -248,7 +248,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         color: 'rgba(33, 150, 243, 0.5)',
         lineWidth: 1,
         priceScaleId: 'right',
-        title: 'BB Upper',
+        title: '',
         lastValueVisible: false,
         priceLineVisible: false,
       });
@@ -256,7 +256,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         color: 'rgba(33, 150, 243, 0.8)',
         lineWidth: 1,
         priceScaleId: 'right',
-        title: 'BB Middle',
+        title: '',
         lastValueVisible: false,
         priceLineVisible: false,
       });
@@ -264,7 +264,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         color: 'rgba(33, 150, 243, 0.5)',
         lineWidth: 1,
         priceScaleId: 'right',
-        title: 'BB Lower',
+        title: '',
         lastValueVisible: false,
         priceLineVisible: false,
       });
@@ -279,7 +279,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         color: '#2196F3',
         lineWidth: 2,
         priceScaleId: 'right',
-        title: 'MA 50',
+        title: '',
         lastValueVisible: false,
         priceLineVisible: false,
       });
@@ -290,7 +290,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         color: '#FF9800',
         lineWidth: 2,
         priceScaleId: 'right',
-        title: 'MA 100',
+        title: '',
         lastValueVisible: false,
         priceLineVisible: false,
       });
@@ -301,7 +301,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         color: '#F44336',
         lineWidth: 2,
         priceScaleId: 'right',
-        title: 'MA 200',
+        title: '',
         lastValueVisible: false,
         priceLineVisible: false,
       });
@@ -314,7 +314,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         color: '#4CAF50',
         lineWidth: 2,
         priceScaleId: 'right',
-        title: 'SMA 50',
+        title: '',
         lastValueVisible: false,
         priceLineVisible: false,
       });
@@ -325,7 +325,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         color: '#FFEB3B',
         lineWidth: 2,
         priceScaleId: 'right',
-        title: 'SMA 100',
+        title: '',
         lastValueVisible: false,
         priceLineVisible: false,
       });
@@ -336,7 +336,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         color: '#9C27B0',
         lineWidth: 2,
         priceScaleId: 'right',
-        title: 'SMA 200',
+        title: '',
         lastValueVisible: false,
         priceLineVisible: false,
       });
