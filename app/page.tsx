@@ -650,7 +650,7 @@ export default function Home() {
         {showAlerts && (
           <div className="border-l border-gray-800">
             <AlertsPanel
-              exchange={activeChart.exchange}
+              exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
               pair={activeChart.pair}
               currentPrice={activeChart.currentPrice}
             />
