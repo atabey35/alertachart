@@ -33,10 +33,11 @@ interface ChartProps {
   markets?: string[];
   onPriceUpdate?: (price: number) => void;
   onConnectionChange?: (connected: boolean) => void;
+  onChange24h?: (change24h: number) => void;
   marketType?: 'spot' | 'futures';
 }
 
-export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, marketType = 'spot' }: ChartProps) {
+export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, onChange24h, marketType = 'spot' }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rsiContainerRef = useRef<HTMLDivElement>(null);
   const macdContainerRef = useRef<HTMLDivElement>(null);
@@ -85,16 +86,54 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   // Keep refs to the latest callbacks to avoid dependency issues
   const onConnectionChangeRef = useRef(onConnectionChange);
   const onPriceUpdateRef = useRef(onPriceUpdate);
+  const onChange24hRef = useRef(onChange24h);
   
   useEffect(() => {
     onConnectionChangeRef.current = onConnectionChange;
     onPriceUpdateRef.current = onPriceUpdate;
-  }, [onConnectionChange, onPriceUpdate]);
+    onChange24hRef.current = onChange24h;
+  }, [onConnectionChange, onPriceUpdate, onChange24h]);
 
   // Notify parent of connection status changes
   useEffect(() => {
     onConnectionChangeRef.current?.(wsConnected);
   }, [wsConnected]);
+
+  // Calculate and notify 24h price change
+  useEffect(() => {
+    if (currentPrice > 0 && seriesRef.current) {
+      try {
+        // Get all candles
+        const candlesData = (seriesRef.current as any).data();
+        if (candlesData && candlesData.length > 0) {
+          // Calculate 24h ago timestamp
+          const now = Date.now() / 1000;
+          const twentyFourHoursAgo = now - (24 * 60 * 60);
+          
+          // Find candle closest to 24h ago
+          let price24hAgo = null;
+          for (let i = candlesData.length - 1; i >= 0; i--) {
+            if (candlesData[i].time <= twentyFourHoursAgo) {
+              price24hAgo = candlesData[i].close;
+              break;
+            }
+          }
+          
+          // If we don't have 24h of data, use first available candle
+          if (!price24hAgo && candlesData.length > 0) {
+            price24hAgo = candlesData[0].close;
+          }
+          
+          if (price24hAgo && price24hAgo > 0) {
+            const change24h = ((currentPrice - price24hAgo) / price24hAgo) * 100;
+            onChange24hRef.current?.(change24h);
+          }
+        }
+      } catch (e) {
+        // Silently ignore errors
+      }
+    }
+  }, [currentPrice]);
   const [contextMenuVisible, setContextMenuVisible] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [clickedPrice, setClickedPrice] = useState<number | null>(null);

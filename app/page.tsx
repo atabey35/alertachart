@@ -18,6 +18,7 @@ interface ChartState {
   timeframe: number;
   currentPrice?: number;
   isConnected?: boolean;
+  change24h?: number;
 }
 
 export default function Home() {
@@ -235,14 +236,17 @@ export default function Home() {
       const symbol = activeChart.pair.replace('usdt', '').toUpperCase();
       if (activeChart.currentPrice) {
         const price = activeChart.currentPrice.toFixed(activeChart.currentPrice < 1 ? 6 : 2);
-        document.title = `Alerta - ${symbol} $${price}`;
+        const changeText = activeChart.change24h !== undefined 
+          ? ` ${activeChart.change24h >= 0 ? '+' : ''}${activeChart.change24h.toFixed(2)}%`
+          : '';
+        document.title = `Alerta - ${symbol} $${price}${changeText}`;
       } else {
         document.title = `Alerta - ${symbol}`;
       }
     } else {
       document.title = 'Alerta Chart';
     }
-  }, [activeChart?.pair, activeChart?.currentPrice]);
+  }, [activeChart?.pair, activeChart?.currentPrice, activeChart?.change24h]);
   
   // Update active chart
   const updateActiveChart = (updates: Partial<ChartState>) => {
@@ -310,6 +314,22 @@ export default function Home() {
       return prev;
     });
   }, []);
+
+  // 24h change update handler
+  const handleChange24hUpdate = useCallback((chartId: number, change24h: number) => {
+    if (chartId === activeChartId) {
+      setCharts(prev => {
+        const currentChart = prev.find(c => c.id === chartId);
+        // Only update if change24h is different
+        if (currentChart && currentChart.change24h !== change24h) {
+          return prev.map(c => 
+            c.id === chartId ? { ...c, change24h } : c
+          );
+        }
+        return prev;
+      });
+    }
+  }, [activeChartId]);
 
   // Handle watchlist symbol click
   const handleWatchlistSymbolClick = (symbol: string) => {
@@ -546,6 +566,7 @@ export default function Home() {
                   markets={[`${marketType === 'futures' ? 'BINANCE_FUTURES' : chart.exchange}:${chart.pair}`]}
                   onPriceUpdate={(price) => handlePriceUpdate(chart.id, price)}
                   onConnectionChange={(connected) => handleConnectionChange(chart.id, connected)}
+                  onChange24h={(change24h) => handleChange24hUpdate(chart.id, change24h)}
                   marketType={marketType}
                 />
               </div>
