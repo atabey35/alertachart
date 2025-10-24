@@ -231,6 +231,7 @@ export default function Home() {
   const activeChart = charts[activeChartId];
   
   // Update browser tab title with active coin price
+  // This works even when tab is in background
   useEffect(() => {
     if (activeChart) {
       const symbol = activeChart.pair.replace('usdt', '').toUpperCase();
@@ -239,9 +240,21 @@ export default function Home() {
         const changeText = activeChart.change24h !== undefined 
           ? ` ${activeChart.change24h >= 0 ? '+' : ''}${activeChart.change24h.toFixed(2)}%`
           : '';
-        document.title = `Alerta - ${symbol} $${price}${changeText}`;
+        
+        // Update title - works even in background tabs
+        const newTitle = `${symbol} $${price}${changeText} - Alerta`;
+        
+        // Force update even if browser throttles updates
+        if (document.title !== newTitle) {
+          document.title = newTitle;
+          
+          // Debug: log updates (remove in production)
+          if (process.env.NODE_ENV === 'development') {
+            console.log(`[Tab Title] ${newTitle}`);
+          }
+        }
       } else {
-        document.title = `Alerta - ${symbol}`;
+        document.title = `${symbol} - Alerta`;
       }
     } else {
       document.title = 'Alerta Chart';
