@@ -89,9 +89,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [chartSettings, setChartSettings] = useState<ChartSettingsType>(DEFAULT_SETTINGS);
   const [showLegend, setShowLegend] = useState(true);
-  const [hoverPrice, setHoverPrice] = useState<number | null>(null);
-  const [hoverY, setHoverY] = useState<number | null>(null);
-  const [alarmButtonHovered, setAlarmButtonHovered] = useState(false);
+  // Alarm button state - simpler approach
+  const [alarmButton, setAlarmButton] = useState<{ visible: boolean; price: number; y: number } | null>(null);
 
   // Keep refs to the latest callbacks to avoid dependency issues
   const onConnectionChangeRef = useRef(onConnectionChange);
@@ -443,20 +442,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
 
     // Subscribe to crosshair move for OHLCV legend (TradingView-style)
-    let lastUpdate = 0;
     chart.subscribeCrosshairMove((param) => {
-      // Track hover price for alarm button with throttling
-      const now = Date.now();
-      if (param.point && seriesRef.current && containerRef.current && now - lastUpdate > 100) {
+      // Update alarm button position when mouse moves on chart
+      if (param.point && seriesRef.current && containerRef.current) {
         const price = seriesRef.current.coordinateToPrice(param.point.y);
-        if (price !== null && !alarmButtonHovered) {
-          setHoverPrice(price);
-          setHoverY(param.point.y);
-          lastUpdate = now;
+        if (price !== null) {
+          setAlarmButton({ visible: true, price, y: param.point.y });
         }
-      } else if (!param.point && !alarmButtonHovered) {
-        setHoverPrice(null);
-        setHoverY(null);
+      } else if (!param.point) {
+        // Mouse left chart area - hide button
+        setAlarmButton(null);
       }
       
       if (!param.time || !param.seriesData || !seriesRef.current || !volumeSeriesRef.current) {
@@ -2436,34 +2431,43 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </svg>
       </button>
 
-      {/* Hover Alarm Button (TradingView style) - Always rendered, visibility toggled */}
-      <button
-        onMouseEnter={() => setAlarmButtonHovered(true)}
-        onMouseLeave={() => setAlarmButtonHovered(false)}
-        onClick={(e) => {
-          e.stopPropagation();
-          if (hoverPrice !== null) {
-            setClickedPrice(hoverPrice);
-            setContextMenuVisible(true);
-            setContextMenuPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+      {/* Hover Alarm Button (TradingView style) - Always rendered, controlled visibility */}
+      <div 
+        className="absolute transition-opacity duration-150"
+        onMouseEnter={() => {
+          // Keep button visible when hovering over it
+          if (alarmButton) {
+            setAlarmButton({ ...alarmButton, visible: true });
           }
         }}
-        className="absolute p-1.5 bg-blue-600/90 hover:bg-blue-500 rounded-full shadow-lg transition-all cursor-pointer"
         style={{
-          right: '120px',
-          top: hoverY !== null ? `${hoverY}px` : '50%',
+          right: '5px',
+          top: alarmButton ? `${alarmButton.y}px` : '50%',
           transform: 'translateY(-50%)',
-          zIndex: 9999,
-          pointerEvents: hoverPrice !== null ? 'auto' : 'none',
-          opacity: hoverPrice !== null ? 1 : 0,
-          visibility: hoverPrice !== null ? 'visible' : 'hidden'
+          zIndex: 10000,
+          opacity: alarmButton?.visible ? 1 : 0,
+          pointerEvents: alarmButton?.visible ? 'auto' : 'none',
         }}
-        title={hoverPrice !== null ? `Add alert at $${hoverPrice.toFixed(hoverPrice < 1 ? 6 : 2)}` : ''}
       >
-        <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-        </svg>
-      </button>
+        <button
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            if (alarmButton) {
+              setClickedPrice(alarmButton.price);
+              setContextMenuVisible(true);
+              setContextMenuPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+              setAlarmButton(null);
+            }
+          }}
+          className="p-1.5 bg-blue-600 hover:bg-blue-500 rounded-full shadow-lg transition-colors"
+          title={alarmButton ? `Add alert at $${alarmButton.price.toFixed(alarmButton.price < 1 ? 6 : 2)}` : 'Add alert'}
+        >
+          <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
+          </svg>
+        </button>
+      </div>
 
       {/* Mobile hint for long-press */}
       {showMobileHint && (
