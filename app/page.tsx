@@ -648,11 +648,11 @@ export default function Home() {
       />
 
       {/* Footer */}
-      <footer className="border-t border-gray-800 bg-black px-4 py-3 text-xs text-gray-500">
-        <div className="flex flex-wrap items-center justify-center gap-3 md:gap-6">
-          <span className="whitespace-nowrap">Layout: {layout === 1 ? 'Single' : layout === 2 ? '1x2' : layout === 4 ? '2x2' : '3x3'}</span>
-          <span className="whitespace-nowrap">Active: {activeChart.pair.toUpperCase()}</span>
-          <span className="whitespace-nowrap">Timeframe: {getTimeframeForHuman(activeChart.timeframe)}</span>
+      <footer className="border-t border-gray-800 bg-black px-2 py-0.5 text-[9px] text-gray-500">
+        <div className="flex flex-wrap items-center justify-center gap-1.5 md:gap-3">
+          <span className="whitespace-nowrap">{layout === 1 ? 'Single' : layout === 2 ? '1x2' : layout === 4 ? '2x2' : '3x3'}</span>
+          <span className="whitespace-nowrap">{activeChart.pair.toUpperCase()}</span>
+          <span className="whitespace-nowrap">{getTimeframeForHuman(activeChart.timeframe)}</span>
           {activeChart.currentPrice && (
             <span className="font-mono text-white whitespace-nowrap">
               ${activeChart.currentPrice.toFixed(activeChart.currentPrice < 1 ? 4 : 2)}
