@@ -4,7 +4,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 
 interface WatchlistItem {
   symbol: string;
@@ -37,6 +37,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [newCategoryName, setNewCategoryName] = useState('');
   const [width, setWidth] = useState(280);
   const [isResizing, setIsResizing] = useState(false);
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
 
   // Load favorites and categories from localStorage
   useEffect(() => {
@@ -372,7 +373,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       )}
 
       {/* Category Filters */}
-      <div className="border-b border-gray-800 px-2 py-2 flex gap-1 overflow-x-auto bg-gray-900 scrollbar-thin">
+      <div ref={categoryScrollRef} className="border-b border-gray-800 px-2 py-2 flex gap-1 overflow-x-auto bg-gray-900 scrollbar-thin">
         <button
           onClick={() => setSelectedFilter('ALL')}
           className={`text-xs px-2 py-1 rounded transition-colors whitespace-nowrap ${
@@ -417,7 +418,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         ))}
         
         {showAddCategory ? (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <input
               type="text"
               value={newCategoryName}
@@ -425,15 +426,19 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
               onKeyPress={(e) => {
                 if (e.key === 'Enter' && newCategoryName.trim()) {
                   addCategory(newCategoryName);
+                } else if (e.key === 'Escape') {
+                  setShowAddCategory(false);
+                  setNewCategoryName('');
                 }
               }}
-              placeholder="Category name"
-              className="text-xs px-2 py-1 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500 w-28"
+              placeholder="Name"
+              className="text-xs px-2 py-1 bg-gray-800 border border-gray-700 rounded focus:outline-none focus:border-blue-500 w-20"
               autoFocus
             />
             <button
               onClick={() => newCategoryName.trim() && addCategory(newCategoryName)}
-              className="text-xs px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+              className="text-xs px-1.5 py-1 bg-green-600 hover:bg-green-700 text-white rounded transition-colors"
+              title="Add (Enter)"
             >
               ✓
             </button>
@@ -442,14 +447,23 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                 setShowAddCategory(false);
                 setNewCategoryName('');
               }}
-              className="text-xs px-2 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+              className="text-xs px-1.5 py-1 bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+              title="Cancel (Esc)"
             >
               ✕
             </button>
           </div>
         ) : (
           <button
-            onClick={() => setShowAddCategory(true)}
+            onClick={() => {
+              setShowAddCategory(true);
+              // Scroll to end after state update
+              setTimeout(() => {
+                if (categoryScrollRef.current) {
+                  categoryScrollRef.current.scrollLeft = categoryScrollRef.current.scrollWidth;
+                }
+              }, 10);
+            }}
             className="text-xs px-2 py-1 bg-gray-800 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors whitespace-nowrap"
             title="Add new category"
           >
