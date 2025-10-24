@@ -229,6 +229,21 @@ export default function Home() {
   // Get active chart
   const activeChart = charts[activeChartId];
   
+  // Update browser tab title with active coin price
+  useEffect(() => {
+    if (activeChart) {
+      const symbol = activeChart.pair.replace('usdt', '').toUpperCase();
+      if (activeChart.currentPrice) {
+        const price = activeChart.currentPrice.toFixed(activeChart.currentPrice < 1 ? 6 : 2);
+        document.title = `Alerta - ${symbol} $${price}`;
+      } else {
+        document.title = `Alerta - ${symbol}`;
+      }
+    } else {
+      document.title = 'Alerta Chart';
+    }
+  }, [activeChart?.pair, activeChart?.currentPrice]);
+  
   // Update active chart
   const updateActiveChart = (updates: Partial<ChartState>) => {
     setCharts(prev => prev.map(chart => 
