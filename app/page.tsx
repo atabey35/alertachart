@@ -233,32 +233,51 @@ export default function Home() {
   // Update browser tab title with active coin price
   // This works even when tab is in background
   useEffect(() => {
-    if (activeChart) {
-      const symbol = activeChart.pair.replace('usdt', '').toUpperCase();
-      if (activeChart.currentPrice) {
-        const price = activeChart.currentPrice.toFixed(activeChart.currentPrice < 1 ? 6 : 2);
-        const changeText = activeChart.change24h !== undefined 
-          ? ` ${activeChart.change24h >= 0 ? '+' : ''}${activeChart.change24h.toFixed(2)}%`
-          : '';
-        
-        // Update title - works even in background tabs
-        const newTitle = `${symbol} $${price}${changeText} - Alerta`;
-        
-        // Force update even if browser throttles updates
-        if (document.title !== newTitle) {
-          document.title = newTitle;
+    const updateTitle = () => {
+      if (activeChart) {
+        const symbol = activeChart.pair.replace('usdt', '').toUpperCase();
+        if (activeChart.currentPrice) {
+          const price = activeChart.currentPrice.toFixed(activeChart.currentPrice < 1 ? 6 : 2);
+          const changeText = activeChart.change24h !== undefined 
+            ? ` ${activeChart.change24h >= 0 ? '+' : ''}${activeChart.change24h.toFixed(2)}%`
+            : '';
           
-          // Debug: log updates (remove in production)
-          if (process.env.NODE_ENV === 'development') {
-            console.log(`[Tab Title] ${newTitle}`);
+          // Update title - works even in background tabs
+          const newTitle = `${symbol} $${price}${changeText} - Alerta`;
+          
+          // Force update even if browser throttles updates
+          if (document.title !== newTitle) {
+            document.title = newTitle;
+            
+            // Debug: log updates (remove in production)
+            if (process.env.NODE_ENV === 'development') {
+              console.log(`[Tab Title] ${newTitle}`);
+            }
           }
+        } else {
+          document.title = `${symbol} - Alerta`;
         }
       } else {
-        document.title = `${symbol} - Alerta`;
+        document.title = 'Alerta Chart';
       }
-    } else {
-      document.title = 'Alerta Chart';
-    }
+    };
+
+    // Update title initially
+    updateTitle();
+
+    // Force update when tab becomes visible again
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        console.log('[Tab] Became visible - forcing title update');
+        updateTitle();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [activeChart?.pair, activeChart?.currentPrice, activeChart?.change24h]);
   
   // Update active chart
