@@ -249,18 +249,24 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         lineWidth: 1,
         priceScaleId: 'right',
         title: 'BB Upper',
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
       const bbMiddle = chart.addLineSeries({
         color: 'rgba(33, 150, 243, 0.8)',
         lineWidth: 1,
         priceScaleId: 'right',
         title: 'BB Middle',
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
       const bbLower = chart.addLineSeries({
         color: 'rgba(33, 150, 243, 0.5)',
         lineWidth: 1,
         priceScaleId: 'right',
         title: 'BB Lower',
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
       bbUpperRef.current = bbUpper;
       bbMiddleRef.current = bbMiddle;
@@ -274,6 +280,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         lineWidth: 2,
         priceScaleId: 'right',
         title: 'MA 50',
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
       ma50Ref.current = ma50;
     }
@@ -283,6 +291,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         lineWidth: 2,
         priceScaleId: 'right',
         title: 'MA 100',
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
       ma100Ref.current = ma100;
     }
@@ -292,6 +302,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         lineWidth: 2,
         priceScaleId: 'right',
         title: 'MA 200',
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
       ma200Ref.current = ma200;
     }
@@ -303,6 +315,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         lineWidth: 2,
         priceScaleId: 'right',
         title: 'SMA 50',
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
       sma50Ref.current = sma50;
     }
@@ -312,6 +326,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         lineWidth: 2,
         priceScaleId: 'right',
         title: 'SMA 100',
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
       sma100Ref.current = sma100;
     }
@@ -321,6 +337,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         lineWidth: 2,
         priceScaleId: 'right',
         title: 'SMA 200',
+        lastValueVisible: false,
+        priceLineVisible: false,
       });
       sma200Ref.current = sma200;
     }
