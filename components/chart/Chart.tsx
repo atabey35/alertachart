@@ -12,6 +12,7 @@ import {
   ISeriesApi,
   CandlestickData,
   HistogramData,
+  LineData,
   Time,
 } from 'lightweight-charts';
 import { Bar } from '@/types/chart';
@@ -403,6 +404,76 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           change,
           changePercent,
         });
+
+        // Update indicator values
+        // Bollinger Bands
+        if (bbUpperRef.current) {
+          const bbUpperData = param.seriesData.get(bbUpperRef.current) as LineData | undefined;
+          const bbUpperEl = document.getElementById('bb-upper-value');
+          if (bbUpperEl && bbUpperData && typeof bbUpperData.value === 'number') {
+            bbUpperEl.textContent = bbUpperData.value.toFixed(bbUpperData.value < 1 ? 6 : 2);
+          }
+        }
+        if (bbMiddleRef.current) {
+          const bbMiddleData = param.seriesData.get(bbMiddleRef.current) as LineData | undefined;
+          const bbMiddleEl = document.getElementById('bb-middle-value');
+          if (bbMiddleEl && bbMiddleData && typeof bbMiddleData.value === 'number') {
+            bbMiddleEl.textContent = bbMiddleData.value.toFixed(bbMiddleData.value < 1 ? 6 : 2);
+          }
+        }
+        if (bbLowerRef.current) {
+          const bbLowerData = param.seriesData.get(bbLowerRef.current) as LineData | undefined;
+          const bbLowerEl = document.getElementById('bb-lower-value');
+          if (bbLowerEl && bbLowerData && typeof bbLowerData.value === 'number') {
+            bbLowerEl.textContent = bbLowerData.value.toFixed(bbLowerData.value < 1 ? 6 : 2);
+          }
+        }
+
+        // EMA
+        if (ma50Ref.current) {
+          const ma50Data = param.seriesData.get(ma50Ref.current) as LineData | undefined;
+          const ma50El = document.getElementById('ema-50-value');
+          if (ma50El && ma50Data && typeof ma50Data.value === 'number') {
+            ma50El.textContent = ma50Data.value.toFixed(ma50Data.value < 1 ? 6 : 2);
+          }
+        }
+        if (ma100Ref.current) {
+          const ma100Data = param.seriesData.get(ma100Ref.current) as LineData | undefined;
+          const ma100El = document.getElementById('ema-100-value');
+          if (ma100El && ma100Data && typeof ma100Data.value === 'number') {
+            ma100El.textContent = ma100Data.value.toFixed(ma100Data.value < 1 ? 6 : 2);
+          }
+        }
+        if (ma200Ref.current) {
+          const ma200Data = param.seriesData.get(ma200Ref.current) as LineData | undefined;
+          const ma200El = document.getElementById('ema-200-value');
+          if (ma200El && ma200Data && typeof ma200Data.value === 'number') {
+            ma200El.textContent = ma200Data.value.toFixed(ma200Data.value < 1 ? 6 : 2);
+          }
+        }
+
+        // SMA
+        if (sma50Ref.current) {
+          const sma50Data = param.seriesData.get(sma50Ref.current) as LineData | undefined;
+          const sma50El = document.getElementById('sma-50-value');
+          if (sma50El && sma50Data && typeof sma50Data.value === 'number') {
+            sma50El.textContent = sma50Data.value.toFixed(sma50Data.value < 1 ? 6 : 2);
+          }
+        }
+        if (sma100Ref.current) {
+          const sma100Data = param.seriesData.get(sma100Ref.current) as LineData | undefined;
+          const sma100El = document.getElementById('sma-100-value');
+          if (sma100El && sma100Data && typeof sma100Data.value === 'number') {
+            sma100El.textContent = sma100Data.value.toFixed(sma100Data.value < 1 ? 6 : 2);
+          }
+        }
+        if (sma200Ref.current) {
+          const sma200Data = param.seriesData.get(sma200Ref.current) as LineData | undefined;
+          const sma200El = document.getElementById('sma-200-value');
+          if (sma200El && sma200Data && typeof sma200Data.value === 'number') {
+            sma200El.textContent = sma200Data.value.toFixed(sma200Data.value < 1 ? 6 : 2);
+          }
+        }
       }
     });
 
@@ -2127,43 +2198,98 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       className="relative w-full h-full flex flex-col"
       onClick={() => setContextMenuVisible(false)}
     >
-      {/* OHLCV Legend (TradingView-style) */}
+      {/* OHLCV + Indicators Legend (TradingView-style) */}
       {legendData && (
-        <div className="absolute top-2 left-32 z-10 bg-gray-900/90 border border-gray-700 rounded-lg px-3 py-2 text-xs font-mono shadow-lg pointer-events-none">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-1">
-              <span className="text-gray-400">O</span>
-              <span className="text-white">{legendData.open.toFixed(legendData.open < 1 ? 6 : 2)}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-gray-400">H</span>
-              <span className="text-white">{legendData.high.toFixed(legendData.high < 1 ? 6 : 2)}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-gray-400">L</span>
-              <span className="text-white">{legendData.low.toFixed(legendData.low < 1 ? 6 : 2)}</span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-gray-400">C</span>
-              <span className={legendData.change >= 0 ? 'text-green-400' : 'text-red-400'}>
-                {legendData.close.toFixed(legendData.close < 1 ? 6 : 2)}
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              <span className="text-gray-400">Vol</span>
-              <span className="text-white">
-                {legendData.volume >= 1000000 
-                  ? `${(legendData.volume / 1000000).toFixed(2)}M`
-                  : legendData.volume >= 1000
-                  ? `${(legendData.volume / 1000).toFixed(2)}K`
-                  : legendData.volume.toFixed(2)
-                }
-              </span>
-            </div>
-            <div className={`flex items-center gap-1 font-bold ${legendData.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-              <span>{legendData.change >= 0 ? '+' : ''}{legendData.changePercent.toFixed(2)}%</span>
-            </div>
+        <div className="absolute top-2 left-2 z-10 bg-transparent px-2 py-1 text-xs font-mono pointer-events-none flex flex-col gap-0.5">
+          {/* OHLCV Data */}
+          <div className="flex items-center gap-3 bg-gray-900/80 px-2 py-1 rounded">
+            <span className="text-gray-400">O</span>
+            <span className="text-white">{legendData.open.toFixed(legendData.open < 1 ? 6 : 2)}</span>
+            <span className="text-gray-400">H</span>
+            <span className="text-white">{legendData.high.toFixed(legendData.high < 1 ? 6 : 2)}</span>
+            <span className="text-gray-400">L</span>
+            <span className="text-white">{legendData.low.toFixed(legendData.low < 1 ? 6 : 2)}</span>
+            <span className="text-gray-400">C</span>
+            <span className={legendData.change >= 0 ? 'text-green-400' : 'text-red-400'}>
+              {legendData.close.toFixed(legendData.close < 1 ? 6 : 2)}
+            </span>
+            <span className="text-gray-400">Vol</span>
+            <span className="text-white">
+              {legendData.volume >= 1000000 
+                ? `${(legendData.volume / 1000000).toFixed(2)}M`
+                : legendData.volume >= 1000
+                ? `${(legendData.volume / 1000).toFixed(2)}K`
+                : legendData.volume.toFixed(2)
+              }
+            </span>
+            <span className={`font-bold ${legendData.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {legendData.change >= 0 ? '+' : ''}{legendData.changePercent.toFixed(2)}%
+            </span>
           </div>
+
+          {/* Bollinger Bands */}
+          {chartSettings.showBB && (
+            <div className="flex items-center gap-2 bg-gray-900/60 px-2 py-0.5 rounded text-[10px]">
+              <span className="text-blue-400">BB</span>
+              <span className="text-gray-400">{chartSettings.bbPeriod}</span>
+              <span className="text-pink-400">Upper</span>
+              <span className="text-white" id="bb-upper-value">-</span>
+              <span className="text-purple-400">Middle</span>
+              <span className="text-white" id="bb-middle-value">-</span>
+              <span className="text-teal-400">Lower</span>
+              <span className="text-white" id="bb-lower-value">-</span>
+            </div>
+          )}
+
+          {/* EMA */}
+          {(chartSettings.showMA50 || chartSettings.showMA100 || chartSettings.showMA200) && (
+            <div className="flex items-center gap-2 bg-gray-900/60 px-2 py-0.5 rounded text-[10px]">
+              <span className="text-orange-400">EMA</span>
+              {chartSettings.showMA50 && (
+                <>
+                  <span className="text-blue-400">50</span>
+                  <span className="text-white" id="ema-50-value">-</span>
+                </>
+              )}
+              {chartSettings.showMA100 && (
+                <>
+                  <span className="text-yellow-400">100</span>
+                  <span className="text-white" id="ema-100-value">-</span>
+                </>
+              )}
+              {chartSettings.showMA200 && (
+                <>
+                  <span className="text-red-400">200</span>
+                  <span className="text-white" id="ema-200-value">-</span>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* SMA */}
+          {(chartSettings.showSMA50 || chartSettings.showSMA100 || chartSettings.showSMA200) && (
+            <div className="flex items-center gap-2 bg-gray-900/60 px-2 py-0.5 rounded text-[10px]">
+              <span className="text-cyan-400">SMA</span>
+              {chartSettings.showSMA50 && (
+                <>
+                  <span className="text-blue-400">50</span>
+                  <span className="text-white" id="sma-50-value">-</span>
+                </>
+              )}
+              {chartSettings.showSMA100 && (
+                <>
+                  <span className="text-yellow-400">100</span>
+                  <span className="text-white" id="sma-100-value">-</span>
+                </>
+              )}
+              {chartSettings.showSMA200 && (
+                <>
+                  <span className="text-red-400">200</span>
+                  <span className="text-white" id="sma-200-value">-</span>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 
@@ -2179,7 +2305,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             setSelectedDrawingId(null);
           }
         }}
-        className={`absolute top-8 left-2 z-10 p-2 rounded-lg transition-all shadow-lg ${
+        className={`absolute top-24 left-2 z-10 p-2 rounded-lg transition-all shadow-lg ${
           showDrawingTools 
             ? 'bg-blue-600 text-white' 
             : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
