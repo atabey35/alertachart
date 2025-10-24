@@ -379,7 +379,7 @@ export default function Home() {
   };
 
   return (
-    <main className="flex min-h-screen flex-col">
+    <main className="flex h-screen flex-col overflow-hidden">
       {/* Header */}
       <header className="border-b border-gray-800 bg-black">
         <div className="px-4 py-3 md:px-6 md:py-4">
