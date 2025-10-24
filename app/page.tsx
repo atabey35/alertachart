@@ -44,14 +44,19 @@ export default function Home() {
   const [loadingPairs, setLoadingPairs] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showWatchlist, setShowWatchlist] = useState(true);
+  const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
 
   const exchanges = ['BINANCE'];
   
-  // Fetch all USDT trading pairs from Binance
+  // Fetch all USDT trading pairs from Binance (Spot or Futures)
   useEffect(() => {
     const fetchBinancePairs = async () => {
       try {
-        const response = await fetch('https://api.binance.com/api/v3/exchangeInfo');
+        const apiUrl = marketType === 'spot' 
+          ? 'https://api.binance.com/api/v3/exchangeInfo'
+          : 'https://fapi.binance.com/fapi/v1/exchangeInfo';
+        
+        const response = await fetch(apiUrl);
         
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
@@ -64,10 +69,20 @@ export default function Home() {
           ?.filter((symbol: any) => {
             const isUsdt = symbol.symbol?.endsWith('USDT');
             const isTrading = symbol.status === 'TRADING';
-            // If permissions array is empty or missing, include it. If it exists, check for SPOT
-            const hasSpot = !symbol.permissions?.length || symbol.permissions.includes('SPOT');
             
-            return isUsdt && isTrading && hasSpot;
+            // For spot, check permissions
+            if (marketType === 'spot') {
+              const hasSpot = !symbol.permissions?.length || symbol.permissions.includes('SPOT');
+              return isUsdt && isTrading && hasSpot;
+            }
+            
+            // For futures, check contractType
+            if (marketType === 'futures') {
+              const isPerpetual = symbol.contractType === 'PERPETUAL';
+              return isUsdt && isTrading && isPerpetual;
+            }
+            
+            return isUsdt && isTrading;
           })
           .map((symbol: any) => symbol.symbol.toLowerCase())
           .sort(); // Alphabetically sorted
@@ -77,10 +92,10 @@ export default function Home() {
           throw new Error('No USDT pairs found');
         }
         
-        console.log(`[Pairs] ✅ Loaded ${usdtPairs.length} USDT trading pairs from Binance`);
+        console.log(`[Pairs] ✅ Loaded ${usdtPairs.length} ${marketType.toUpperCase()} USDT trading pairs from Binance`);
         setPairs(usdtPairs);
       } catch (error) {
-        console.error('[Pairs] ❌ Failed to fetch Binance pairs:', error);
+        console.error(`[Pairs] ❌ Failed to fetch Binance ${marketType} pairs:`, error);
         // Fallback to popular default pairs
         const fallbackPairs = [
           'btcusdt', 'ethusdt', 'bnbusdt', 'solusdt', 'xrpusdt',
@@ -99,7 +114,7 @@ export default function Home() {
     };
 
     fetchBinancePairs();
-  }, []);
+  }, [marketType]);
   
   // Filter pairs based on search query
   const filteredPairs = useMemo(() => {
@@ -248,8 +263,28 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Second row: Timeframe selector + Pair Selector */}
+          {/* Second row: Market Type + Timeframe selector + Pair Selector */}
           <div className="flex items-center gap-2 mt-3 overflow-x-auto scrollbar-hide">
+            {/* Market Type Toggle (Spot/Futures) */}
+            <div className="flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1 mr-2">
+              <button
+                onClick={() => setMarketType('spot')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                  marketType === 'spot' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Spot
+              </button>
+              <button
+                onClick={() => setMarketType('futures')}
+                className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
+                  marketType === 'futures' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                }`}
+              >
+                Futures
+              </button>
+            </div>
+
             {/* Timeframe buttons */}
             <div className="flex gap-1">
               {TIMEFRAMES.map((tf) => (
@@ -353,12 +388,13 @@ export default function Home() {
                 </div>
                 
                 <Chart
-                  key={`${chart.id}-${chart.pair}-${chart.timeframe}-${layout}`}
-                  exchange={chart.exchange}
+                  key={`${chart.id}-${chart.pair}-${chart.timeframe}-${layout}-${marketType}`}
+                  exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : chart.exchange}
                   pair={chart.pair}
                   timeframe={chart.timeframe}
-                  markets={[`${chart.exchange}:${chart.pair}`]}
+                  markets={[`${marketType === 'futures' ? 'BINANCE_FUTURES' : chart.exchange}:${chart.pair}`]}
                   onPriceUpdate={(price) => handlePriceUpdate(chart.id, price)}
+                  marketType={marketType}
                 />
               </div>
             ))}

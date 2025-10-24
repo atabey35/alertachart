@@ -30,9 +30,10 @@ interface ChartProps {
   timeframe: number; // in seconds
   markets?: string[];
   onPriceUpdate?: (price: number) => void;
+  marketType?: 'spot' | 'futures';
 }
 
-export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate }: ChartProps) {
+export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, marketType = 'spot' }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);

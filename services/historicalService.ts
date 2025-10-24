@@ -55,8 +55,16 @@ class HistoricalService extends EventEmitter {
     to: number,
     timeframe: number,
     markets: string[],
-    useRailway = false
+    useRailway = false,
+    marketType: 'spot' | 'futures' = 'spot'
   ): Promise<HistoricalResponse> {
+    // Force Next.js API for BINANCE_FUTURES (Railway doesn't support it yet)
+    const hasBinanceFutures = markets.some(m => m.includes('BINANCE_FUTURES'));
+    if (hasBinanceFutures && useRailway) {
+      console.log('[Historical Service] BINANCE_FUTURES detected, using Next.js API instead of Railway');
+      useRailway = false;
+    }
+
     const url = this.getApiUrl(from, to, timeframe, markets, useRailway);
 
     // Return cached promise if exists
@@ -140,9 +148,10 @@ class HistoricalService extends EventEmitter {
     from: number,
     to: number,
     timeframe: number,
-    markets: string[]
+    markets: string[],
+    marketType: 'spot' | 'futures' = 'spot'
   ): Promise<HistoricalResponse> {
-    return this.fetch(from, to, timeframe, markets, true);
+    return this.fetch(from, to, timeframe, markets, true, marketType);
   }
 
   /**

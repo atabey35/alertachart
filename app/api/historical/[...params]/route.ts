@@ -50,21 +50,26 @@ function timeframeToInterval(timeframe: number): string {
 }
 
 /**
- * Fetch from Binance REST API
+ * Fetch from Binance REST API (Spot or Futures)
  */
 async function fetchFromBinance(
   pair: string,
   from: number,
   to: number,
-  timeframe: number
+  timeframe: number,
+  isFutures = false
 ): Promise<Bar[]> {
   const interval = timeframeToInterval(timeframe);
   const symbol = pair.toUpperCase();
 
   // Binance klines endpoint (max 1000 per request)
-  const url = `https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&startTime=${from}&endTime=${to}&limit=1000`;
+  // Use futures endpoint if specified
+  const baseUrl = isFutures 
+    ? 'https://fapi.binance.com/fapi/v1/klines'
+    : 'https://api.binance.com/api/v3/klines';
+  const url = `${baseUrl}?symbol=${symbol}&interval=${interval}&startTime=${from}&endTime=${to}&limit=1000`;
 
-  console.log('[Binance API] Fetching:', url);
+  console.log(`[Binance ${isFutures ? 'Futures' : 'Spot'} API] Fetching:`, url);
 
   const response = await fetch(url, {
     headers: {
@@ -205,7 +210,10 @@ async function fetchHistoricalFromExchange(
   try {
     switch (exchangeUpper) {
       case 'BINANCE':
-        return await fetchFromBinance(pair, from, to, timeframe);
+        return await fetchFromBinance(pair, from, to, timeframe, false);
+      
+      case 'BINANCE_FUTURES':
+        return await fetchFromBinance(pair, from, to, timeframe, true);
       
       case 'BYBIT':
         return await fetchFromBybit(pair, from, to, timeframe);
@@ -215,7 +223,7 @@ async function fetchHistoricalFromExchange(
       
       default:
         console.warn(`[Historical API] Unsupported exchange: ${exchange}, using Binance`);
-        return await fetchFromBinance(pair, from, to, timeframe);
+        return await fetchFromBinance(pair, from, to, timeframe, false);
     }
   } catch (error) {
     console.error(`[Historical API] Error fetching from ${exchange}:`, error);

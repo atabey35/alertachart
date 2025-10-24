@@ -5,6 +5,7 @@
 import { createBar, mergeTradeIntoBar, cloneBar } from '@/utils/bucket';
 import { floorTimestampToTimeframe } from '@/utils/helpers';
 import BinanceExchange from './exchanges/BinanceExchange';
+import BinanceFuturesExchange from './exchanges/BinanceFuturesExchange';
 import BybitExchange from './exchanges/BybitExchange';
 import OKXExchange from './exchanges/OKXExchange';
 class Aggregator {
@@ -17,12 +18,15 @@ class Aggregator {
     }
     initializeExchanges() {
         const binance = new BinanceExchange();
+        const binanceFutures = new BinanceFuturesExchange();
         const bybit = new BybitExchange();
         const okx = new OKXExchange();
         binance.on('trades', (trades) => this.handleTrades(trades));
+        binanceFutures.on('trades', (trades) => this.handleTrades(trades));
         bybit.on('trades', (trades) => this.handleTrades(trades));
         okx.on('trades', (trades) => this.handleTrades(trades));
         this.exchanges.set('BINANCE', binance);
+        this.exchanges.set('BINANCE_FUTURES', binanceFutures);
         this.exchanges.set('BYBIT', bybit);
         this.exchanges.set('OKX', okx);
     }
