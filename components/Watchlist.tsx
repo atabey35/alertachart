@@ -35,7 +35,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [selectedFilter, setSelectedFilter] = useState<string>('ALL');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
-  const [width, setWidth] = useState(350);
+  const [width, setWidth] = useState(300); // Compact like TradingView
   const [isResizing, setIsResizing] = useState(false);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
 
@@ -70,8 +70,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       // Calculate new width (from right edge of screen)
       const newWidth = window.innerWidth - e.clientX;
       
-      // Min width: 250px, Max width: 700px
-      const clampedWidth = Math.max(250, Math.min(700, newWidth));
+      // Min width: 220px, Max width: 500px (compact like TradingView)
+      const clampedWidth = Math.max(220, Math.min(500, newWidth));
       setWidth(clampedWidth);
     };
 
@@ -507,14 +507,14 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
               <div
                 key={symbol}
                 onClick={() => onSymbolClick(symbol)}
-                className={`group border-b border-gray-800 p-4 cursor-pointer transition-colors ${
+                className={`group border-b border-gray-800 px-2 py-1.5 cursor-pointer transition-colors ${
                   isActive 
                     ? 'bg-blue-900/30 border-l-2 border-l-blue-500' 
                     : 'hover:bg-gray-800/50'
                 }`}
               >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between mb-0.5">
+                  <div className="flex items-center gap-1.5">
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
@@ -523,16 +523,16 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                       className="p-0.5 hover:scale-110 transition-transform"
                       title={favorites.has(symbol) ? "Remove from favorites" : "Add to favorites"}
                     >
-                      <svg className={`w-3.5 h-3.5 ${favorites.has(symbol) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}`} fill={favorites.has(symbol) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-3 h-3 ${favorites.has(symbol) ? 'fill-yellow-400 text-yellow-400' : 'text-gray-600'}`} fill={favorites.has(symbol) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                       </svg>
                     </button>
-                    <span className="font-mono text-base font-semibold text-white">
+                    <span className="font-mono text-xs font-semibold text-white">
                       {symbol.replace('usdt', '').toUpperCase()}
                     </span>
-                    <span className="text-sm text-gray-500">/USDT</span>
+                    <span className="text-[10px] text-gray-500">/USDT</span>
                     {symbolCategories.has(symbol) && (
-                      <span className="text-[10px] px-1.5 py-0.5 bg-blue-600/30 text-blue-400 rounded">
+                      <span className="text-[9px] px-1 py-0.5 bg-blue-600/30 text-blue-400 rounded">
                         {symbolCategories.get(symbol)}
                       </span>
                     )}
@@ -545,7 +545,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                         setSymbolCategory(symbol, e.target.value);
                       }}
                       onClick={(e) => e.stopPropagation()}
-                      className="text-[10px] px-1 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-300"
+                      className="text-[9px] px-1 py-0.5 bg-gray-800 border border-gray-700 rounded text-gray-300"
                       title="Set category"
                     >
                       <option value="">No category</option>
@@ -558,7 +558,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                         e.stopPropagation();
                         removeSymbol(symbol);
                       }}
-                      className="p-1 text-gray-500 hover:text-red-400 transition-colors"
+                      className="p-0.5 text-gray-500 hover:text-red-400 transition-colors"
                       title="Remove"
                     >
                       <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -571,25 +571,25 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                 {data ? (
                   <>
                     <div className="flex items-center justify-between">
-                      <span className={`font-mono text-base font-medium text-white px-2 py-0.5 rounded transition-colors duration-300 ${
+                      <span className={`font-mono text-xs font-medium text-white px-1 py-0.5 rounded transition-colors duration-300 ${
                         data.priceFlash === 'up' ? 'bg-green-500/30' : 
                         data.priceFlash === 'down' ? 'bg-red-500/30' : ''
                       }`}>
                         ${formatPrice(data.price)}
                       </span>
-                      <span className={`text-sm font-semibold ${
+                      <span className={`text-xs font-semibold ${
                         data.change24h >= 0 ? 'text-green-400' : 'text-red-400'
                       }`}>
                         {data.change24h >= 0 ? '+' : ''}{data.change24h.toFixed(2)}%
                       </span>
                     </div>
-                    <div className="text-sm text-gray-500 mt-1">
+                    <div className="text-[10px] text-gray-500 mt-0.5">
                       Vol: {formatVolume(data.volume24h)}
                     </div>
                   </>
                 ) : (
-                  <div className="flex items-center gap-2 text-gray-500 text-xs">
-                    <svg className="animate-spin h-3 w-3" fill="none" viewBox="0 0 24 24">
+                  <div className="flex items-center gap-1.5 text-gray-500 text-[10px]">
+                    <svg className="animate-spin h-2.5 w-2.5" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
