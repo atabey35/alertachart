@@ -17,15 +17,48 @@ interface ChartState {
   pair: string;
   timeframe: number;
   currentPrice?: number;
+  isConnected?: boolean;
 }
 
 export default function Home() {
   // Multi-chart layout state
   const [layout, setLayout] = useState<1 | 4 | 9>(1); // 1x1, 2x2, 3x3
   const [activeChartId, setActiveChartId] = useState<number>(0);
+
+  // Load saved layout on mount
+  useEffect(() => {
+    const savedLayout = localStorage.getItem('chartLayout');
+    if (savedLayout) {
+      const parsed = parseInt(savedLayout);
+      if (parsed === 1 || parsed === 4 || parsed === 9) {
+        setLayout(parsed as 1 | 4 | 9);
+      }
+    }
+  }, []);
+
+  // Save layout to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('chartLayout', layout.toString());
+  }, [layout]);
+
+  // Load saved active chart ID on mount
+  useEffect(() => {
+    const savedActiveId = localStorage.getItem('activeChartId');
+    if (savedActiveId) {
+      const parsed = parseInt(savedActiveId);
+      if (!isNaN(parsed) && parsed >= 0 && parsed <= 8) {
+        setActiveChartId(parsed);
+      }
+    }
+  }, []);
+
+  // Save active chart ID whenever it changes
+  useEffect(() => {
+    localStorage.setItem('activeChartId', activeChartId.toString());
+  }, [activeChartId]);
   
-  // Chart states for each grid cell
-  const [charts, setCharts] = useState<ChartState[]>([
+  // Default chart states
+  const DEFAULT_CHARTS: ChartState[] = [
     { id: 0, exchange: 'BINANCE', pair: 'btcusdt', timeframe: 900 },
     { id: 1, exchange: 'BINANCE', pair: 'ethusdt', timeframe: 900 },
     { id: 2, exchange: 'BINANCE', pair: 'solusdt', timeframe: 900 },
@@ -35,7 +68,30 @@ export default function Home() {
     { id: 6, exchange: 'BINANCE', pair: 'dogeusdt', timeframe: 900 },
     { id: 7, exchange: 'BINANCE', pair: 'maticusdt', timeframe: 900 },
     { id: 8, exchange: 'BINANCE', pair: 'dotusdt', timeframe: 900 },
-  ]);
+  ];
+
+  // Chart states for each grid cell
+  const [charts, setCharts] = useState<ChartState[]>(DEFAULT_CHARTS);
+
+  // Load saved charts from localStorage on mount
+  useEffect(() => {
+    const savedCharts = localStorage.getItem('savedCharts');
+    if (savedCharts) {
+      try {
+        const parsed = JSON.parse(savedCharts);
+        if (Array.isArray(parsed) && parsed.length === 9) {
+          setCharts(parsed);
+        }
+      } catch (e) {
+        console.error('[Page] Failed to load saved charts:', e);
+      }
+    }
+  }, []);
+
+  // Save charts to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('savedCharts', JSON.stringify(charts));
+  }, [charts]);
   
   // Use ref to avoid re-render loops when updating prices
   const chartPricesRef = useRef<Map<number, number>>(new Map());
@@ -45,6 +101,32 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showWatchlist, setShowWatchlist] = useState(true);
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
+
+  // Load saved watchlist visibility on mount
+  useEffect(() => {
+    const saved = localStorage.getItem('showWatchlist');
+    if (saved !== null) {
+      setShowWatchlist(saved === 'true');
+    }
+  }, []);
+
+  // Save watchlist visibility whenever it changes
+  useEffect(() => {
+    localStorage.setItem('showWatchlist', showWatchlist.toString());
+  }, [showWatchlist]);
+
+  // Load saved market type on mount
+  useEffect(() => {
+    const savedMarketType = localStorage.getItem('marketType');
+    if (savedMarketType === 'spot' || savedMarketType === 'futures') {
+      setMarketType(savedMarketType);
+    }
+  }, []);
+
+  // Save market type whenever it changes
+  useEffect(() => {
+    localStorage.setItem('marketType', marketType);
+  }, [marketType]);
 
   const exchanges = ['BINANCE'];
   
@@ -177,6 +259,20 @@ export default function Home() {
       });
     }
   }, [activeChartId]);
+
+  // Connection status update handler
+  const handleConnectionChange = useCallback((chartId: number, connected: boolean) => {
+    setCharts(prev => {
+      const currentChart = prev.find(c => c.id === chartId);
+      // Only update if connection status actually changed
+      if (currentChart && currentChart.isConnected !== connected) {
+        return prev.map(c => 
+          c.id === chartId ? { ...c, isConnected: connected } : c
+        );
+      }
+      return prev;
+    });
+  }, []);
 
   // Handle watchlist symbol click
   const handleWatchlistSymbolClick = (symbol: string) => {
@@ -381,10 +477,16 @@ export default function Home() {
                 }`}
               >
                 {/* Chart label */}
-                <div className="absolute top-1 left-1 z-20 bg-gray-900/80 px-2 py-1 rounded text-xs font-mono pointer-events-none">
+                <div className="absolute top-1 left-1 z-20 bg-gray-900/80 px-2 py-1 rounded text-xs font-mono pointer-events-none flex items-center gap-1.5">
                   <span className={chart.id === activeChartId ? 'text-blue-400' : 'text-gray-400'}>
                     {chart.pair.replace('usdt', '').toUpperCase()}/USDT
                   </span>
+                  {chart.isConnected && (
+                    <span className="flex items-center gap-1 text-[10px] text-green-400">
+                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                      Live
+                    </span>
+                  )}
                 </div>
                 
                 <Chart
@@ -394,6 +496,7 @@ export default function Home() {
                   timeframe={chart.timeframe}
                   markets={[`${marketType === 'futures' ? 'BINANCE_FUTURES' : chart.exchange}:${chart.pair}`]}
                   onPriceUpdate={(price) => handlePriceUpdate(chart.id, price)}
+                  onConnectionChange={(connected) => handleConnectionChange(chart.id, connected)}
                   marketType={marketType}
                 />
               </div>

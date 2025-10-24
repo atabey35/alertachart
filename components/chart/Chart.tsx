@@ -21,7 +21,7 @@ import ChartCache from './ChartCache';
 import historicalService from '@/services/historicalService';
 import alertService from '@/services/alertService';
 import { floorTimestampToTimeframe } from '@/utils/helpers';
-import { calculateRSI, calculateMACD } from '@/utils/indicators';
+import { calculateRSI, calculateMACD, calculateSMA, calculateEMA, calculateBollingerBands } from '@/utils/indicators';
 import ChartSettings, { ChartSettingsType, DEFAULT_SETTINGS } from './ChartSettings';
 import DrawingToolbar, { DrawingTool } from './DrawingToolbar';
 
@@ -31,18 +31,37 @@ interface ChartProps {
   timeframe: number; // in seconds
   markets?: string[];
   onPriceUpdate?: (price: number) => void;
+  onConnectionChange?: (connected: boolean) => void;
   marketType?: 'spot' | 'futures';
 }
 
-export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, marketType = 'spot' }: ChartProps) {
+export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, marketType = 'spot' }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const rsiContainerRef = useRef<HTMLDivElement>(null);
+  const macdContainerRef = useRef<HTMLDivElement>(null);
+  
   const chartRef = useRef<IChartApi | null>(null);
+  const rsiChartRef = useRef<IChartApi | null>(null);
+  const macdChartRef = useRef<IChartApi | null>(null);
+  
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const rsiSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const macdLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const macdSignalSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const macdHistogramSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
+  
+  // Overlay indicators on main chart
+  const bbUpperRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const bbMiddleRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const bbLowerRef = useRef<ISeriesApi<'Line'> | null>(null);
+  const ma50Ref = useRef<ISeriesApi<'Line'> | null>(null);
+  const ma100Ref = useRef<ISeriesApi<'Line'> | null>(null);
+  const ma200Ref = useRef<ISeriesApi<'Line'> | null>(null);
+  const sma50Ref = useRef<ISeriesApi<'Line'> | null>(null);
+  const sma100Ref = useRef<ISeriesApi<'Line'> | null>(null);
+  const sma200Ref = useRef<ISeriesApi<'Line'> | null>(null);
+  
   const cacheRef = useRef(new ChartCache());
   const workerRef = useRef<Worker | null>(null);
   const observerRef = useRef<MutationObserver | null>(null);
@@ -61,25 +80,38 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [wsConnected, setWsConnected] = useState(false);
   const [countdown, setCountdown] = useState<string>('--:--');
   const [showSettings, setShowSettings] = useState(false);
+
+  // Keep refs to the latest callbacks to avoid dependency issues
+  const onConnectionChangeRef = useRef(onConnectionChange);
+  const onPriceUpdateRef = useRef(onPriceUpdate);
+  
+  useEffect(() => {
+    onConnectionChangeRef.current = onConnectionChange;
+    onPriceUpdateRef.current = onPriceUpdate;
+  }, [onConnectionChange, onPriceUpdate]);
+
+  // Notify parent of connection status changes
+  useEffect(() => {
+    onConnectionChangeRef.current?.(wsConnected);
+  }, [wsConnected]);
   const [contextMenuVisible, setContextMenuVisible] = useState(false);
   const [contextMenuPosition, setContextMenuPosition] = useState({ x: 0, y: 0 });
   const [clickedPrice, setClickedPrice] = useState<number | null>(null);
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
-  const [chartSettings, setChartSettings] = useState<ChartSettingsType>(() => {
-    // Load from localStorage
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('chartSettings');
-      if (saved) {
-        try {
-          return JSON.parse(saved);
-        } catch (e) {
-          return DEFAULT_SETTINGS;
-        }
+  const [chartSettings, setChartSettings] = useState<ChartSettingsType>(DEFAULT_SETTINGS);
+
+  // Load settings from localStorage after mount (client-side only)
+  useEffect(() => {
+    const saved = localStorage.getItem('chartSettings');
+    if (saved) {
+      try {
+        setChartSettings(JSON.parse(saved));
+      } catch (e) {
+        console.error('[Chart] Failed to load settings:', e);
       }
     }
-    return DEFAULT_SETTINGS;
-  });
+  }, []);
 
   // Drawing tool states
   const [activeTool, setActiveTool] = useState<DrawingTool>('none');
@@ -191,121 +223,109 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       priceScaleId: '',
     });
     
-    // Calculate scale margins based on which indicators are shown
-    const bothIndicators = chartSettings.showRSI && chartSettings.showMACD;
-    const oneIndicator = chartSettings.showRSI || chartSettings.showMACD;
+    // Configure main price scale (candlestick)
+    chart.priceScale('right').applyOptions({
+      scaleMargins: {
+        top: 0.05,
+        bottom: 0.15,
+      },
+    });
     
-    // Main chart takes more space if no indicators
-    const mainChartBottom = bothIndicators ? 0.45 : (oneIndicator ? 0.25 : 0.15);
-    
-    // Configure volume price scale (part of main chart)
+    // Configure volume price scale (overlay at bottom of main chart)
     chart.priceScale('').applyOptions({
       scaleMargins: {
-        top: mainChartBottom - 0.05, // Volume just above main chart
+        top: 0.85,
         bottom: 0,
       },
     });
-    
-    // Configure main price scale
-    chart.priceScale('right').applyOptions({
-      scaleMargins: {
-        top: 0,
-        bottom: mainChartBottom,
-      },
-    });
 
-    // Create indicator series based on settings
-    let rsiSeries: ISeriesApi<'Line'> | null = null;
-    let macdLine: ISeriesApi<'Line'> | null = null;
-    let macdSignal: ISeriesApi<'Line'> | null = null;
-    let macdHistogram: ISeriesApi<'Histogram'> | null = null;
-
-    if (chartSettings.showRSI) {
-      // RSI Levels (30 and 70)
-      const rsiLevel30 = chart.addLineSeries({
-        color: '#ef535040',
+    // Create overlay indicators on main chart
+    // Bollinger Bands
+    if (chartSettings.showBB) {
+      const bbUpper = chart.addLineSeries({
+        color: 'rgba(33, 150, 243, 0.5)',
         lineWidth: 1,
-        lineStyle: 2, // Dashed
-        priceScaleId: 'rsi',
-        lastValueVisible: false,
-        priceLineVisible: false,
+        priceScaleId: 'right',
+        title: 'BB Upper',
       });
-      
-      const rsiLevel70 = chart.addLineSeries({
-        color: '#26a69a40',
+      const bbMiddle = chart.addLineSeries({
+        color: 'rgba(33, 150, 243, 0.8)',
         lineWidth: 1,
-        lineStyle: 2, // Dashed
-        priceScaleId: 'rsi',
-        lastValueVisible: false,
-        priceLineVisible: false,
+        priceScaleId: 'right',
+        title: 'BB Middle',
       });
-      
-      rsiSeries = chart.addLineSeries({
-        color: '#2962FF',
-        lineWidth: 2,
-        priceScaleId: 'rsi',
-        title: `RSI (${chartSettings.rsiPeriod})`,
+      const bbLower = chart.addLineSeries({
+        color: 'rgba(33, 150, 243, 0.5)',
+        lineWidth: 1,
+        priceScaleId: 'right',
+        title: 'BB Lower',
       });
-
-      const rsiTop = bothIndicators ? mainChartBottom + 0.05 : mainChartBottom + 0.05;
-      const rsiBottom = bothIndicators ? 0.25 : 0.05;
-
-      chart.priceScale('rsi').applyOptions({
-        scaleMargins: {
-          top: rsiTop,
-          bottom: rsiBottom,
-        },
-        borderColor: '#2B2B43',
-      });
+      bbUpperRef.current = bbUpper;
+      bbMiddleRef.current = bbMiddle;
+      bbLowerRef.current = bbLower;
     }
 
-    if (chartSettings.showMACD) {
-      macdLine = chart.addLineSeries({
+    // Moving Averages (EMA)
+    if (chartSettings.showMA50) {
+      const ma50 = chart.addLineSeries({
         color: '#2196F3',
         lineWidth: 2,
-        priceScaleId: 'macd',
-        title: 'MACD',
+        priceScaleId: 'right',
+        title: 'MA 50',
       });
-
-      macdSignal = chart.addLineSeries({
-        color: '#FF6D00',
+      ma50Ref.current = ma50;
+    }
+    if (chartSettings.showMA100) {
+      const ma100 = chart.addLineSeries({
+        color: '#FF9800',
         lineWidth: 2,
-        priceScaleId: 'macd',
-        title: 'Signal',
+        priceScaleId: 'right',
+        title: 'MA 100',
       });
+      ma100Ref.current = ma100;
+    }
+    if (chartSettings.showMA200) {
+      const ma200 = chart.addLineSeries({
+        color: '#F44336',
+        lineWidth: 2,
+        priceScaleId: 'right',
+        title: 'MA 200',
+      });
+      ma200Ref.current = ma200;
+    }
 
-      macdHistogram = chart.addHistogramSeries({
-        color: '#26a69a',
-        priceScaleId: 'macd',
+    // Simple Moving Averages (SMA)
+    if (chartSettings.showSMA50) {
+      const sma50 = chart.addLineSeries({
+        color: '#4CAF50',
+        lineWidth: 2,
+        priceScaleId: 'right',
+        title: 'SMA 50',
       });
-      
-      // Zero line for MACD
-      const macdZero = chart.addLineSeries({
-        color: '#71717140',
-        lineWidth: 1,
-        priceScaleId: 'macd',
-        lastValueVisible: false,
-        priceLineVisible: false,
+      sma50Ref.current = sma50;
+    }
+    if (chartSettings.showSMA100) {
+      const sma100 = chart.addLineSeries({
+        color: '#FFEB3B',
+        lineWidth: 2,
+        priceScaleId: 'right',
+        title: 'SMA 100',
       });
-
-      const macdTop = bothIndicators ? mainChartBottom + 0.25 : mainChartBottom + 0.05;
-
-      chart.priceScale('macd').applyOptions({
-        scaleMargins: {
-          top: macdTop,
-          bottom: 0.05,
-        },
-        borderColor: '#2B2B43',
+      sma100Ref.current = sma100;
+    }
+    if (chartSettings.showSMA200) {
+      const sma200 = chart.addLineSeries({
+        color: '#9C27B0',
+        lineWidth: 2,
+        priceScaleId: 'right',
+        title: 'SMA 200',
       });
+      sma200Ref.current = sma200;
     }
 
     chartRef.current = chart;
     seriesRef.current = series;
     volumeSeriesRef.current = volumeSeries;
-    rsiSeriesRef.current = rsiSeries;
-    macdLineSeriesRef.current = macdLine;
-    macdSignalSeriesRef.current = macdSignal;
-    macdHistogramSeriesRef.current = macdHistogram;
 
     // Remove TradingView watermark aggressively
     const removeWatermark = () => {
@@ -394,13 +414,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
       
       resizeTimeout = setTimeout(() => {
-        if (containerRef.current && chartRef.current) {
-          const width = containerRef.current.clientWidth;
-          const height = containerRef.current.clientHeight;
-          
-          if (width > 0 && height > 0) {
-            chartRef.current.resize(width, height);
+        try {
+          if (containerRef.current && chartRef.current) {
+            const width = containerRef.current.clientWidth;
+            const height = containerRef.current.clientHeight;
+            
+            if (width > 0 && height > 0) {
+              chartRef.current.resize(width, height);
+            }
           }
+        } catch (error) {
+          // Chart might be disposed, ignore
         }
       }, 100);
     };
@@ -502,9 +526,215 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
       }
+      
+      // Clear all series refs BEFORE removing chart to prevent "Object is disposed" errors
+      seriesRef.current = null;
+      volumeSeriesRef.current = null;
+      bbUpperRef.current = null;
+      bbMiddleRef.current = null;
+      bbLowerRef.current = null;
+      ma50Ref.current = null;
+      ma100Ref.current = null;
+      ma200Ref.current = null;
+      sma50Ref.current = null;
+      sma100Ref.current = null;
+      sma200Ref.current = null;
+      
+      // Now safe to remove chart
       chart.remove();
     };
   }, [chartSettings]);
+
+  /**
+   * Create indicator charts in separate panels
+   */
+  useEffect(() => {
+    // RSI Chart
+    if (chartSettings.showRSI && rsiContainerRef.current) {
+      const rsiChart = createChart(rsiContainerRef.current, {
+        width: rsiContainerRef.current.clientWidth,
+        height: rsiContainerRef.current.clientHeight - 25, // Account for header
+        layout: {
+          background: { color: '#0a0a0a' },
+          textColor: '#d1d5db',
+        },
+        grid: {
+          vertLines: { color: '#1f2937' },
+          horzLines: { color: '#1f2937' },
+        },
+        timeScale: {
+          borderColor: '#2B2B43',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+        rightPriceScale: {
+          borderColor: '#2B2B43',
+        },
+      });
+
+      const rsiSeries = rsiChart.addLineSeries({
+        color: '#2962FF',
+        lineWidth: 2,
+        title: `RSI (${chartSettings.rsiPeriod})`,
+      });
+
+      // Add RSI reference lines
+      rsiSeries.createPriceLine({
+        price: 70,
+        color: '#ef535060',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: 'Overbought',
+      });
+      
+      rsiSeries.createPriceLine({
+        price: 50,
+        color: '#71717160',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: '',
+      });
+      
+      rsiSeries.createPriceLine({
+        price: 30,
+        color: '#26a69a60',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: 'Oversold',
+      });
+
+      // Sync time scale with main chart
+      if (chartRef.current) {
+        chartRef.current.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (range) {
+            rsiChart.timeScale().setVisibleLogicalRange(range);
+          }
+        });
+      }
+
+      rsiChartRef.current = rsiChart;
+      rsiSeriesRef.current = rsiSeries;
+
+      // Handle resize
+      const resizeObserver = new ResizeObserver((entries) => {
+        try {
+          const { width, height } = entries[0].contentRect;
+          rsiChart.applyOptions({ width, height: height - 25 });
+        } catch (error) {
+          // Chart might be disposed, ignore
+        }
+      });
+      resizeObserver.observe(rsiContainerRef.current);
+
+      return () => {
+        resizeObserver.disconnect();
+        // Clear refs before removing chart
+        rsiSeriesRef.current = null;
+        rsiChartRef.current = null;
+        rsiChart.remove();
+      };
+    } else {
+      rsiChartRef.current = null;
+      rsiSeriesRef.current = null;
+    }
+  }, [chartSettings.showRSI, chartSettings.rsiPeriod]);
+
+  /**
+   * Create MACD chart in separate panel
+   */
+  useEffect(() => {
+    if (chartSettings.showMACD && macdContainerRef.current) {
+      const macdChart = createChart(macdContainerRef.current, {
+        width: macdContainerRef.current.clientWidth,
+        height: macdContainerRef.current.clientHeight - 25, // Account for header
+        layout: {
+          background: { color: '#0a0a0a' },
+          textColor: '#d1d5db',
+        },
+        grid: {
+          vertLines: { color: '#1f2937' },
+          horzLines: { color: '#1f2937' },
+        },
+        timeScale: {
+          borderColor: '#2B2B43',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+        rightPriceScale: {
+          borderColor: '#2B2B43',
+        },
+      });
+
+      const macdLine = macdChart.addLineSeries({
+        color: '#2196F3',
+        lineWidth: 2,
+        title: 'MACD',
+      });
+
+      const macdSignal = macdChart.addLineSeries({
+        color: '#FF6D00',
+        lineWidth: 2,
+        title: 'Signal',
+      });
+
+      const macdHistogram = macdChart.addHistogramSeries({
+        color: '#26a69a',
+      });
+
+      // Add zero line
+      macdLine.createPriceLine({
+        price: 0,
+        color: '#71717160',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: false,
+        title: '',
+      });
+
+      // Sync time scale with main chart
+      if (chartRef.current) {
+        chartRef.current.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (range) {
+            macdChart.timeScale().setVisibleLogicalRange(range);
+          }
+        });
+      }
+
+      macdChartRef.current = macdChart;
+      macdLineSeriesRef.current = macdLine;
+      macdSignalSeriesRef.current = macdSignal;
+      macdHistogramSeriesRef.current = macdHistogram;
+
+      // Handle resize
+      const resizeObserver = new ResizeObserver((entries) => {
+        try {
+          const { width, height } = entries[0].contentRect;
+          macdChart.applyOptions({ width, height: height - 25 });
+        } catch (error) {
+          // Chart might be disposed, ignore
+        }
+      });
+      resizeObserver.observe(macdContainerRef.current);
+
+      return () => {
+        resizeObserver.disconnect();
+        // Clear refs before removing chart
+        macdLineSeriesRef.current = null;
+        macdSignalSeriesRef.current = null;
+        macdHistogramSeriesRef.current = null;
+        macdChartRef.current = null;
+        macdChart.remove();
+      };
+    } else {
+      macdChartRef.current = null;
+      macdLineSeriesRef.current = null;
+      macdSignalSeriesRef.current = null;
+      macdHistogramSeriesRef.current = null;
+    }
+  }, [chartSettings.showMACD, chartSettings.macdFast, chartSettings.macdSlow, chartSettings.macdSignal]);
 
   /**
    * Update refs when exchange/pair/timeframe changes
@@ -542,7 +772,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       alertService.checkPrice(exchange, pair, currentPrice);
       
       // Notify parent (using ref to avoid dependency issues)
-      onPriceUpdate?.(currentPrice);
+      onPriceUpdateRef.current?.(currentPrice);
     }
   }, [currentPrice, exchange, pair]);
 
@@ -984,8 +1214,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    * and setData() for full reloads (historical data)
    */
   const updateChart = () => {
-    if (!seriesRef.current || !volumeSeriesRef.current) {
-      console.warn('[Chart] Series not ready');
+    // Exit early if series are disposed or null
+    if (!seriesRef.current || !volumeSeriesRef.current || !chartRef.current) {
+      return;
+    }
+    
+    // Double check chart is not disposed
+    try {
+      // Attempt to access a property - if disposed, this will throw
+      chartRef.current.timeScale();
+    } catch (error) {
+      // Chart is disposed, skip update
       return;
     }
 
@@ -1107,7 +1346,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
 
     // Update current price from latest candle (only if changed to prevent re-render loops)
-    if (lastCandle.close !== currentPrice) {
+    // Use a small epsilon to avoid floating point precision issues
+    const priceDiff = Math.abs(lastCandle.close - currentPrice);
+    if (priceDiff > 0.00000001) {
       setCurrentPrice(lastCandle.close);
     }
 
@@ -1135,54 +1376,219 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
   const updateIndicators = (bars: Bar[]) => {
     if (bars.length < 30) return; // Need minimum data for indicators
+    
+    // Safety check: don't update if chart is disposed
+    if (!chartRef.current) return;
 
     // Update RSI
     if (chartSettings.showRSI && rsiSeriesRef.current) {
-      const rsiValues = calculateRSI(bars, chartSettings.rsiPeriod);
-      const rsiData = bars
-        .map((bar, index) => ({
-          time: Math.floor(bar.time / 1000) as Time,
-          value: rsiValues[index],
-        }))
-        .filter(d => d.value !== null && !isNaN(d.value));
+      try {
+        const rsiValues = calculateRSI(bars, chartSettings.rsiPeriod);
+        const rsiData = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: rsiValues[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value) && d.value >= 0 && d.value <= 100);
 
-      rsiSeriesRef.current.setData(rsiData as any);
+        if (rsiData.length > 0) {
+          rsiSeriesRef.current.setData(rsiData as any);
+        }
+      } catch (error) {
+        // Series might be disposed, ignore
+      }
     }
 
     // Update MACD
     if (chartSettings.showMACD && macdLineSeriesRef.current && macdSignalSeriesRef.current && macdHistogramSeriesRef.current) {
-      const { macd, signal, histogram } = calculateMACD(
-        bars,
-        chartSettings.macdFast,
-        chartSettings.macdSlow,
-        chartSettings.macdSignal
-      );
+      try {
+        const { macd, signal, histogram } = calculateMACD(
+          bars,
+          chartSettings.macdFast,
+          chartSettings.macdSlow,
+          chartSettings.macdSignal
+        );
 
-      const macdData = bars
-        .map((bar, index) => ({
-          time: Math.floor(bar.time / 1000) as Time,
-          value: macd[index],
-        }))
-        .filter(d => d.value !== null && !isNaN(d.value));
+        const macdData = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: macd[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
 
-      const signalData = bars
-        .map((bar, index) => ({
-          time: Math.floor(bar.time / 1000) as Time,
-          value: signal[index],
-        }))
-        .filter(d => d.value !== null && !isNaN(d.value));
+        const signalData = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: signal[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
 
-      const histogramData = bars
-        .map((bar, index) => ({
-          time: Math.floor(bar.time / 1000) as Time,
-          value: histogram[index],
-          color: (histogram[index] ?? 0) >= 0 ? '#26a69a' : '#ef5350',
-        }))
-        .filter(d => d.value !== null && !isNaN(d.value));
+        const histogramData = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: histogram[index],
+            color: (histogram[index] ?? 0) >= 0 ? '#26a69a' : '#ef5350',
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
 
-      macdLineSeriesRef.current.setData(macdData as any);
-      macdSignalSeriesRef.current.setData(signalData as any);
-      macdHistogramSeriesRef.current.setData(histogramData as any);
+        if (macdData.length > 0) {
+          macdLineSeriesRef.current.setData(macdData as any);
+          macdSignalSeriesRef.current.setData(signalData as any);
+          macdHistogramSeriesRef.current.setData(histogramData as any);
+        }
+      } catch (error) {
+        // Series might be disposed, ignore
+      }
+    }
+
+    // Update Bollinger Bands
+    if (chartSettings.showBB && bbUpperRef.current && bbMiddleRef.current && bbLowerRef.current) {
+      try {
+        const { upper, middle, lower } = calculateBollingerBands(bars, chartSettings.bbPeriod, chartSettings.bbStdDev);
+        
+        const upperData = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: upper[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
+
+        const middleData = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: middle[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
+
+        const lowerData = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: lower[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
+
+        if (upperData.length > 0) {
+          bbUpperRef.current.setData(upperData as any);
+          bbMiddleRef.current.setData(middleData as any);
+          bbLowerRef.current.setData(lowerData as any);
+        }
+      } catch (error) {
+        // Series might be disposed, ignore
+      }
+    }
+
+    // Update MA 50
+    if (chartSettings.showMA50 && ma50Ref.current) {
+      try {
+        const ma50Values = calculateEMA(bars, 50);
+        const ma50Data = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: ma50Values[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
+
+        if (ma50Data.length > 0) {
+          ma50Ref.current.setData(ma50Data as any);
+        }
+      } catch (error) {
+        // Series might be disposed, ignore
+      }
+    }
+
+    // Update MA 100
+    if (chartSettings.showMA100 && ma100Ref.current) {
+      try {
+        const ma100Values = calculateEMA(bars, 100);
+        const ma100Data = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: ma100Values[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
+
+        if (ma100Data.length > 0) {
+          ma100Ref.current.setData(ma100Data as any);
+        }
+      } catch (error) {
+        // Series might be disposed, ignore
+      }
+    }
+
+    // Update MA 200
+    if (chartSettings.showMA200 && ma200Ref.current) {
+      try {
+        const ma200Values = calculateEMA(bars, 200);
+        const ma200Data = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: ma200Values[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
+
+        if (ma200Data.length > 0) {
+          ma200Ref.current.setData(ma200Data as any);
+        }
+      } catch (error) {
+        // Series might be disposed, ignore
+      }
+    }
+
+    // Update SMA 50
+    if (chartSettings.showSMA50 && sma50Ref.current) {
+      try {
+        const sma50Values = calculateSMA(bars, 50);
+        const sma50Data = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: sma50Values[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
+
+        if (sma50Data.length > 0) {
+          sma50Ref.current.setData(sma50Data as any);
+        }
+      } catch (error) {
+        // Series might be disposed, ignore
+      }
+    }
+
+    // Update SMA 100
+    if (chartSettings.showSMA100 && sma100Ref.current) {
+      try {
+        const sma100Values = calculateSMA(bars, 100);
+        const sma100Data = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: sma100Values[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
+
+        if (sma100Data.length > 0) {
+          sma100Ref.current.setData(sma100Data as any);
+        }
+      } catch (error) {
+        // Series might be disposed, ignore
+      }
+    }
+
+    // Update SMA 200
+    if (chartSettings.showSMA200 && sma200Ref.current) {
+      try {
+        const sma200Values = calculateSMA(bars, 200);
+        const sma200Data = bars
+          .map((bar, index) => ({
+            time: Math.floor(bar.time / 1000) as Time,
+            value: sma200Values[index],
+          }))
+          .filter(d => d.value !== null && !isNaN(d.value));
+
+        if (sma200Data.length > 0) {
+          sma200Ref.current.setData(sma200Data as any);
+        }
+      } catch (error) {
+        // Series might be disposed, ignore
+      }
     }
   };
 
@@ -1723,7 +2129,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     >
       {/* OHLCV Legend (TradingView-style) */}
       {legendData && (
-        <div className="absolute top-2 left-16 z-10 bg-gray-900/90 border border-gray-700 rounded-lg px-3 py-2 text-xs font-mono shadow-lg pointer-events-none">
+        <div className="absolute top-2 left-32 z-10 bg-gray-900/90 border border-gray-700 rounded-lg px-3 py-2 text-xs font-mono shadow-lg pointer-events-none">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-1">
               <span className="text-gray-400">O</span>
@@ -1812,10 +2218,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       {/* Settings Button */}
       <button
         onClick={() => setShowSettings(true)}
-        className="absolute top-4 right-24 z-10 p-2 bg-gray-800 hover:bg-gray-700 rounded-lg transition-colors shadow-lg"
+        className="absolute top-2 right-2 z-10 p-1.5 bg-gray-800/50 hover:bg-gray-700 rounded transition-colors"
         title="Chart Settings"
       >
-        <svg className="w-5 h-5 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
@@ -1831,21 +2237,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       {isLoading && (
         <div className="absolute top-4 right-16 bg-gray-800 px-3 py-2 rounded text-sm z-10">
           Loading historical data...
-        </div>
-      )}
-      {!isLoading && !wsConnected && (
-        <div className="absolute top-4 right-16 bg-yellow-900 px-3 py-2 rounded text-sm z-10 flex items-center gap-2">
-          <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-          </svg>
-          Connecting to live feed...
-        </div>
-      )}
-      {wsConnected && (
-        <div className="absolute top-4 right-40 bg-green-900 px-3 py-2 rounded text-sm z-10 flex items-center gap-2">
-          <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-          Live
         </div>
       )}
       {loadingOlder && (
@@ -1865,7 +2256,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       
               <div 
                 ref={containerRef} 
-                className="w-full h-full relative"
+                className="w-full flex-grow relative"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
@@ -2024,13 +2415,62 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     <div className="w-full h-full rounded-full bg-yellow-400 border-2 border-yellow-600 shadow-lg hover:scale-125 transition-transform" />
                   </div>
                 ))}
+
+                {/* Countdown Timer (TradingView style - attached below current price) */}
+                <div 
+                  className="absolute right-0 bg-teal-600 px-2 py-0.5 text-[10px] font-mono text-white z-10"
+                  style={{
+                    top: 'calc(50% + 16px)', // Below the current price label
+                    transform: 'translateY(-50%)'
+                  }}
+                >
+                  {countdown}
+                </div>
               </div>
-      
-      {/* Countdown Timer (below price axis) */}
-      <div className="absolute bottom-6 right-32 bg-gray-800/90 px-3 py-1.5 rounded text-xs font-mono z-10 border border-gray-700">
-        <div className="text-gray-400 text-[10px] mb-0.5">Next Candle</div>
-        <div className="text-white font-bold">{countdown}</div>
-      </div>
+
+      {/* RSI Indicator Panel */}
+      {chartSettings.showRSI && (
+        <div className="w-full border-t border-gray-800 h-[150px]">
+          <div className="flex items-center justify-between px-2 py-1 bg-gray-900/50 border-b border-gray-800">
+            <span className="text-xs font-semibold text-blue-400">RSI ({chartSettings.rsiPeriod})</span>
+            <button
+              onClick={() => {
+                handleSaveSettings({ ...chartSettings, showRSI: false });
+              }}
+              className="text-gray-500 hover:text-gray-300 transition-colors"
+              title="Close RSI panel"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div ref={rsiContainerRef} className="w-full h-full" />
+        </div>
+      )}
+
+      {/* MACD Indicator Panel */}
+      {chartSettings.showMACD && (
+        <div className="w-full border-t border-gray-800 h-[150px]">
+          <div className="flex items-center justify-between px-2 py-1 bg-gray-900/50 border-b border-gray-800">
+            <span className="text-xs font-semibold text-blue-400">
+              MACD ({chartSettings.macdFast}, {chartSettings.macdSlow}, {chartSettings.macdSignal})
+            </span>
+            <button
+              onClick={() => {
+                handleSaveSettings({ ...chartSettings, showMACD: false });
+              }}
+              className="text-gray-500 hover:text-gray-300 transition-colors"
+              title="Close MACD panel"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+          <div ref={macdContainerRef} className="w-full h-full" />
+        </div>
+      )}
       
       {/* Context Menu */}
       {contextMenuVisible && (

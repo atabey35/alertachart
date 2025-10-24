@@ -174,3 +174,44 @@ export function calculateSMA(data: Bar[], period: number): number[] {
   return sma as number[];
 }
 
+/**
+ * Calculate Bollinger Bands
+ */
+export function calculateBollingerBands(
+  data: Bar[],
+  period: number = 20,
+  stdDev: number = 2
+): {
+  upper: (number | null)[];
+  middle: (number | null)[];
+  lower: (number | null)[];
+} {
+  const upper: (number | null)[] = new Array(data.length).fill(null);
+  const middle: (number | null)[] = new Array(data.length).fill(null);
+  const lower: (number | null)[] = new Array(data.length).fill(null);
+
+  if (data.length < period) {
+    return { upper, middle, lower };
+  }
+
+  // Calculate SMA (middle band)
+  const sma = calculateSMA(data, period);
+
+  // Calculate standard deviation and bands
+  for (let i = period - 1; i < data.length; i++) {
+    middle[i] = sma[i];
+
+    // Calculate standard deviation
+    let sumSquaredDiff = 0;
+    for (let j = 0; j < period; j++) {
+      const diff = data[i - j].close - (sma[i] as number);
+      sumSquaredDiff += diff * diff;
+    }
+    const standardDeviation = Math.sqrt(sumSquaredDiff / period);
+
+    upper[i] = (sma[i] as number) + stdDev * standardDeviation;
+    lower[i] = (sma[i] as number) - stdDev * standardDeviation;
+  }
+
+  return { upper, middle, lower };
+}

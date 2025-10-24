@@ -45,6 +45,21 @@ export interface ChartSettingsType {
   macdFast: number;
   macdSlow: number;
   macdSignal: number;
+  
+  // Bollinger Bands
+  showBB: boolean;
+  bbPeriod: number;
+  bbStdDev: number;
+  
+  // Moving Averages (EMA)
+  showMA50: boolean;
+  showMA100: boolean;
+  showMA200: boolean;
+  
+  // Simple Moving Averages (SMA)
+  showSMA50: boolean;
+  showSMA100: boolean;
+  showSMA200: boolean;
 }
 
 export const DEFAULT_SETTINGS: ChartSettingsType = {
@@ -70,6 +85,15 @@ export const DEFAULT_SETTINGS: ChartSettingsType = {
   macdFast: 12,
   macdSlow: 26,
   macdSignal: 9,
+  showBB: false,
+  bbPeriod: 20,
+  bbStdDev: 2,
+  showMA50: false,
+  showMA100: false,
+  showMA200: false,
+  showSMA50: false,
+  showSMA100: false,
+  showSMA200: false,
 };
 
 interface ChartSettingsProps {
@@ -337,6 +361,114 @@ export default function ChartSettings({ isOpen, onClose, settings, onSave }: Cha
                     </label>
                   </div>
                 )}
+              </div>
+
+              {/* Bollinger Bands */}
+              <div className="space-y-3 p-4 bg-gray-800 rounded-lg">
+                <label className="flex items-center justify-between">
+                  <span className="text-gray-300 font-medium">Bollinger Bands</span>
+                  <input
+                    type="checkbox"
+                    checked={localSettings.showBB}
+                    onChange={(e) => setLocalSettings({ ...localSettings, showBB: e.target.checked })}
+                    className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+                  />
+                </label>
+                {localSettings.showBB && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="space-y-1">
+                      <span className="text-xs text-gray-400">Period</span>
+                      <input
+                        type="number"
+                        min="2"
+                        max="100"
+                        value={localSettings.bbPeriod}
+                        onChange={(e) => setLocalSettings({ ...localSettings, bbPeriod: parseInt(e.target.value) || 20 })}
+                        className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs text-gray-400">Std Dev</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        step="0.1"
+                        value={localSettings.bbStdDev}
+                        onChange={(e) => setLocalSettings({ ...localSettings, bbStdDev: parseFloat(e.target.value) || 2 })}
+                        className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Moving Averages (EMA) */}
+              <div className="space-y-3 p-4 bg-gray-800 rounded-lg">
+                <div className="text-gray-300 font-medium mb-2">Moving Averages (EMA)</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showMA50}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showMA50: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-400">MA 50</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showMA100}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showMA100: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-400">MA 100</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showMA200}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showMA200: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-400">MA 200</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Simple Moving Averages (SMA) */}
+              <div className="space-y-3 p-4 bg-gray-800 rounded-lg">
+                <div className="text-gray-300 font-medium mb-2">Simple Moving Averages (SMA)</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showSMA50}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showSMA50: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-600"
+                    />
+                    <span className="text-sm text-gray-400">SMA 50</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showSMA100}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showSMA100: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-600"
+                    />
+                    <span className="text-sm text-gray-400">SMA 100</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showSMA200}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showSMA200: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-600"
+                    />
+                    <span className="text-sm text-gray-400">SMA 200</span>
+                  </label>
+                </div>
               </div>
             </div>
           </section>
