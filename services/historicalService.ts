@@ -58,12 +58,8 @@ class HistoricalService extends EventEmitter {
     useRailway = false,
     marketType: 'spot' | 'futures' = 'spot'
   ): Promise<HistoricalResponse> {
-    // Force Next.js API for BINANCE_FUTURES (Railway doesn't support it yet)
-    const hasBinanceFutures = markets.some(m => m.includes('BINANCE_FUTURES'));
-    if (hasBinanceFutures && useRailway) {
-      console.log('[Historical Service] BINANCE_FUTURES detected, using Next.js API instead of Railway');
-      useRailway = false;
-    }
+    // Keep using Railway for all requests (including BINANCE_FUTURES)
+    // Railway backend should handle both Spot and Futures
 
     const url = this.getApiUrl(from, to, timeframe, markets, useRailway);
 
