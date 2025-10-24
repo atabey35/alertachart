@@ -91,6 +91,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [showLegend, setShowLegend] = useState(true);
   // Alarm button state - simpler approach
   const [alarmButton, setAlarmButton] = useState<{ visible: boolean; price: number; y: number } | null>(null);
+  const isHoveringButtonRef = useRef(false);
 
   // Keep refs to the latest callbacks to avoid dependency issues
   const onConnectionChangeRef = useRef(onConnectionChange);
@@ -449,8 +450,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         if (price !== null) {
           setAlarmButton({ visible: true, price, y: param.point.y });
         }
-      } else if (!param.point) {
-        // Mouse left chart area - hide button
+      } else if (!param.point && !isHoveringButtonRef.current) {
+        // Mouse left chart area - hide button ONLY if not hovering button
         setAlarmButton(null);
       }
       
@@ -2431,22 +2432,32 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </svg>
       </button>
 
-      {/* Hover Alarm Button (TradingView style) - Always rendered, controlled visibility */}
+      {/* Hover Alarm Button (TradingView style) - Wider hover area to prevent disappearing */}
       <div 
         className="absolute transition-opacity duration-150"
         onMouseEnter={() => {
-          // Keep button visible when hovering over it
+          // Keep button visible and locked when hovering over it
+          isHoveringButtonRef.current = true;
           if (alarmButton) {
             setAlarmButton({ ...alarmButton, visible: true });
           }
         }}
+        onMouseLeave={() => {
+          // Unlock and hide button when mouse leaves
+          isHoveringButtonRef.current = false;
+          setAlarmButton(null);
+        }}
         style={{
-          right: '5px',
+          right: '-10px', // Extend into price scale area
           top: alarmButton ? `${alarmButton.y}px` : '50%',
           transform: 'translateY(-50%)',
           zIndex: 10000,
           opacity: alarmButton?.visible ? 1 : 0,
           pointerEvents: alarmButton?.visible ? 'auto' : 'none',
+          paddingRight: '80px', // Wide padding to catch mouse movement
+          paddingLeft: '10px',
+          paddingTop: '20px',
+          paddingBottom: '20px',
         }}
       >
         <button
@@ -2457,6 +2468,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
               setClickedPrice(alarmButton.price);
               setContextMenuVisible(true);
               setContextMenuPosition({ x: window.innerWidth / 2, y: window.innerHeight / 2 });
+              isHoveringButtonRef.current = false;
               setAlarmButton(null);
             }
           }}
