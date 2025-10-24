@@ -2200,7 +2200,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     >
       {/* OHLCV + Indicators Legend (TradingView-style) */}
       {legendData && (
-        <div className="absolute top-2 left-2 z-10 bg-transparent px-2 py-1 text-xs font-mono pointer-events-none flex flex-col gap-0.5">
+        <div className="absolute top-10 left-2 z-10 bg-transparent px-2 py-1 text-xs font-mono pointer-events-none flex flex-col gap-0.5">
           {/* OHLCV Data */}
           <div className="flex items-center gap-3 bg-gray-900/80 px-2 py-1 rounded">
             <span className="text-gray-400">O</span>
@@ -2305,7 +2305,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             setSelectedDrawingId(null);
           }
         }}
-        className={`absolute top-24 left-2 z-10 p-2 rounded-lg transition-all shadow-lg ${
+        className={`absolute top-32 left-2 z-10 p-2 rounded-lg transition-all shadow-lg ${
           showDrawingTools 
             ? 'bg-blue-600 text-white' 
             : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
