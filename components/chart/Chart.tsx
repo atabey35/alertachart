@@ -3018,7 +3018,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       
               <div 
                 ref={containerRef} 
-                className="w-full flex-grow relative pb-32 md:pb-0"
+                className="w-full flex-grow relative"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}

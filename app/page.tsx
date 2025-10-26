@@ -119,6 +119,7 @@ export default function Home() {
   const [showWatchlist, setShowWatchlist] = useState(true);
   const [showAlerts, setShowAlerts] = useState(false);
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
+  const [mobileTab, setMobileTab] = useState<'chart' | 'watchlist' | 'alerts' | 'settings'>('chart');
 
   // Load saved watchlist visibility on mount
   useEffect(() => {
@@ -644,74 +645,205 @@ export default function Home() {
       </header>
 
       {/* Main Content - Charts + Alerts + Watchlist */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Multi-Chart Grid */}
-        <div className="flex-1 overflow-hidden">
-          <div 
-            className={`grid ${getGridClass()} gap-1 bg-gray-950 p-1`} 
-            style={{ 
-              height: getGridHeight()
-            }}
-          >
-            {charts.slice(0, layout).map((chart) => (
-              <div
-                key={chart.id}
-                onClick={() => setActiveChartId(chart.id)}
-                className={`relative border transition-all overflow-hidden ${
-                  chart.id === activeChartId 
-                    ? 'border-blue-500 border-2' 
-                    : 'border-gray-800 hover:border-gray-700'
-                }`}
-              >
-                {/* Chart label */}
-                <div className="absolute top-1 left-1 z-20 bg-gray-900/80 px-2 py-1 rounded text-xs font-mono pointer-events-none flex items-center gap-1.5">
-                  <span className={chart.id === activeChartId ? 'text-blue-400' : 'text-gray-400'}>
-                    {chart.pair.replace('usdt', '').toUpperCase()}/USDT
-                  </span>
-                  {chart.isConnected && (
-                    <span className="flex items-center gap-1 text-[10px] text-green-400">
-                      <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
-                      Live
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* MOBILE: Chart Tab (full screen) */}
+        <div className={`${mobileTab === 'chart' ? 'flex' : 'hidden'} md:flex flex-1 overflow-hidden`}>
+          <div className="flex-1 overflow-hidden">
+            <div 
+              className={`grid ${getGridClass()} gap-1 bg-gray-950 p-1`} 
+              style={{ 
+                height: getGridHeight()
+              }}
+            >
+              {charts.slice(0, layout).map((chart) => (
+                <div
+                  key={chart.id}
+                  onClick={() => setActiveChartId(chart.id)}
+                  className={`relative border transition-all overflow-hidden ${
+                    chart.id === activeChartId 
+                      ? 'border-blue-500 border-2' 
+                      : 'border-gray-800 hover:border-gray-700'
+                  }`}
+                >
+                  {/* Chart label */}
+                  <div className="absolute top-1 left-1 z-20 bg-gray-900/80 px-2 py-1 rounded text-xs font-mono pointer-events-none flex items-center gap-1.5">
+                    <span className={chart.id === activeChartId ? 'text-blue-400' : 'text-gray-400'}>
+                      {chart.pair.replace('usdt', '').toUpperCase()}/USDT
                     </span>
-                  )}
+                    {chart.isConnected && (
+                      <span className="flex items-center gap-1 text-[10px] text-green-400">
+                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></span>
+                        Live
+                      </span>
+                    )}
+                  </div>
+                  
+                  <Chart
+                    key={`${chart.id}-${chart.pair}-${chart.timeframe}-${layout}-${marketType}`}
+                    exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : chart.exchange}
+                    pair={chart.pair}
+                    timeframe={chart.timeframe}
+                    markets={[`${marketType === 'futures' ? 'BINANCE_FUTURES' : chart.exchange}:${chart.pair}`]}
+                    onPriceUpdate={(price) => handlePriceUpdate(chart.id, price)}
+                    onConnectionChange={(connected) => handleConnectionChange(chart.id, connected)}
+                    onChange24h={(change24h) => handleChange24hUpdate(chart.id, change24h)}
+                    marketType={marketType}
+                  />
                 </div>
-                
-                <Chart
-                  key={`${chart.id}-${chart.pair}-${chart.timeframe}-${layout}-${marketType}`}
-                  exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : chart.exchange}
-                  pair={chart.pair}
-                  timeframe={chart.timeframe}
-                  markets={[`${marketType === 'futures' ? 'BINANCE_FUTURES' : chart.exchange}:${chart.pair}`]}
-                  onPriceUpdate={(price) => handlePriceUpdate(chart.id, price)}
-                  onConnectionChange={(connected) => handleConnectionChange(chart.id, connected)}
-                  onChange24h={(change24h) => handleChange24hUpdate(chart.id, change24h)}
-                  marketType={marketType}
-                />
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
+
+          {/* Desktop: Alerts Panel */}
+          {showAlerts && (
+            <div className="hidden md:block border-l border-gray-800">
+              <AlertsPanel
+                exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
+                pair={activeChart.pair}
+                currentPrice={activeChart.currentPrice}
+              />
+            </div>
+          )}
+
+          {/* Desktop: Watchlist Panel */}
+          {showWatchlist && (
+            <div className="hidden md:block">
+              <Watchlist 
+                onSymbolClick={handleWatchlistSymbolClick}
+                currentSymbol={activeChart.pair}
+                marketType={marketType}
+              />
+            </div>
+          )}
         </div>
 
-        {/* Alerts Panel */}
-        {showAlerts && (
-          <div className="border-l border-gray-800">
-            <AlertsPanel
-              exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
-              pair={activeChart.pair}
-              currentPrice={activeChart.currentPrice}
-            />
-          </div>
-        )}
-
-        {/* Watchlist Panel */}
-        {showWatchlist && (
+        {/* MOBILE: Watchlist Tab (full screen) */}
+        <div className={`${mobileTab === 'watchlist' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-hidden`}>
           <Watchlist 
-            onSymbolClick={handleWatchlistSymbolClick}
+            onSymbolClick={(symbol) => {
+              handleWatchlistSymbolClick(symbol);
+              setMobileTab('chart'); // Auto switch to chart tab
+            }}
             currentSymbol={activeChart.pair}
             marketType={marketType}
           />
-        )}
+        </div>
+
+        {/* MOBILE: Alerts Tab (full screen) */}
+        <div className={`${mobileTab === 'alerts' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-hidden`}>
+          <AlertsPanel
+            exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
+            pair={activeChart.pair}
+            currentPrice={activeChart.currentPrice}
+          />
+        </div>
+
+        {/* MOBILE: Settings Tab (full screen) */}
+        <div className={`${mobileTab === 'settings' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-auto bg-gray-950 p-4`}>
+          <div className="space-y-6 max-w-md mx-auto">
+            <h2 className="text-xl font-bold text-white">Settings</h2>
+            
+            {/* Layout Selection */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300">Chart Layout</label>
+              <div className="grid grid-cols-4 gap-2">
+                {[1, 2, 4, 9].map((layoutOption) => (
+                  <button
+                    key={layoutOption}
+                    onClick={() => setLayout(layoutOption as 1 | 2 | 4 | 9)}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      layout === layoutOption
+                        ? 'border-blue-500 bg-blue-900/20 text-white'
+                        : 'border-gray-700 bg-gray-800 text-gray-400'
+                    }`}
+                  >
+                    {layoutOption === 1 ? '1x1' : layoutOption === 2 ? '1x2' : layoutOption === 4 ? '2x2' : '3x3'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Market Type */}
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-gray-300">Market Type</label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={() => setMarketType('spot')}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    marketType === 'spot'
+                      ? 'border-blue-500 bg-blue-900/20 text-white'
+                      : 'border-gray-700 bg-gray-800 text-gray-400'
+                  }`}
+                >
+                  Spot
+                </button>
+                <button
+                  onClick={() => setMarketType('futures')}
+                  className={`p-3 rounded-lg border-2 transition-all ${
+                    marketType === 'futures'
+                      ? 'border-blue-500 bg-blue-900/20 text-white'
+                      : 'border-gray-700 bg-gray-800 text-gray-400'
+                  }`}
+                >
+                  Futures
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
+      {/* MOBILE: Bottom Tab Navigation */}
+      <nav className="md:hidden border-t border-gray-800 bg-black flex items-center justify-around pb-safe">
+        <button
+          onClick={() => setMobileTab('chart')}
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors ${
+            mobileTab === 'chart' ? 'text-blue-400' : 'text-gray-500'
+          }`}
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          </svg>
+          <span className="text-[10px] mt-1">Grafik</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab('watchlist')}
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors ${
+            mobileTab === 'watchlist' ? 'text-blue-400' : 'text-gray-500'
+          }`}
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+          </svg>
+          <span className="text-[10px] mt-1">İzleme</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab('alerts')}
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative ${
+            mobileTab === 'alerts' ? 'text-blue-400' : 'text-gray-500'
+          }`}
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          </svg>
+          <span className="text-[10px] mt-1">Alarmlar</span>
+        </button>
+
+        <button
+          onClick={() => setMobileTab('settings')}
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors ${
+            mobileTab === 'settings' ? 'text-blue-400' : 'text-gray-500'
+          }`}
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          </svg>
+          <span className="text-[10px] mt-1">Ayarlar</span>
+        </button>
+      </nav>
 
       {/* Alert Modal - shows when alert triggers */}
       <AlertModal
@@ -724,8 +856,8 @@ export default function Home() {
         }}
       />
 
-      {/* Footer */}
-      <footer className="border-t border-gray-800 bg-black px-2 py-0.5 text-[9px] text-gray-500">
+      {/* Footer - Desktop Only */}
+      <footer className="hidden md:block border-t border-gray-800 bg-black px-2 py-0.5 text-[9px] text-gray-500">
         <div className="flex flex-wrap items-center justify-center gap-1.5 md:gap-3">
           <span className="whitespace-nowrap">{layout === 1 ? 'Single' : layout === 2 ? '1x2' : layout === 4 ? '2x2' : '3x3'}</span>
           <span className="whitespace-nowrap">{activeChart.pair.toUpperCase()}</span>
