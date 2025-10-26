@@ -200,18 +200,55 @@ export default function DrawingRenderer({
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
     
+    // Check if we need to extend the line
+    let x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
+    
+    if (drawing.extendRight || drawing.extendLeft) {
+      // Get the time scale width (excludes price scale area)
+      const chartWidth = chart.timeScale().width();
+      const extended = extendLine(p1.x, p1.y, p2.x, p2.y, 0, chartWidth, 0, containerHeight);
+      
+      if (drawing.extendRight && !drawing.extendLeft) {
+        // Only extend right (like ray)
+        const ray = extendRay(p1.x, p1.y, p2.x, p2.y, chartWidth, containerHeight);
+        x2 = ray.x2;
+        y2 = ray.y2;
+      } else if (drawing.extendLeft && !drawing.extendRight) {
+        // Only extend left (reverse ray)
+        const ray = extendRay(p2.x, p2.y, p1.x, p1.y, chartWidth, containerHeight);
+        x1 = ray.x2;
+        y1 = ray.y2;
+      } else if (drawing.extendRight && drawing.extendLeft) {
+        // Extend both directions
+        x1 = extended.x1;
+        y1 = extended.y1;
+        x2 = extended.x2;
+        y2 = extended.y2;
+      }
+    }
+    
     return (
-      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => !isPreview && onSelectDrawing(drawing.id)}
+        onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (!isPreview && isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+      >
         <line
-          x1={p1.x}
-          y1={p1.y}
-          x2={p2.x}
-          y2={p2.y}
+          x1={x1}
+          y1={y1}
+          x2={x2}
+          y2={y2}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : (isSelected ? '5,5' : 'none')}
+          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
           opacity={isPreview ? 0.7 : 1}
-          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
+          style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
         {isSelected && !isPreview && (
           <>
@@ -369,29 +406,17 @@ export default function DrawingRenderer({
 
   // Render rectangle
   const renderRectangle = (drawing: Drawing) => {
-    console.log('📦 renderRectangle called:', drawing.id, drawing.points);
-    
-    if (drawing.points.length < 2) {
-      console.log('❌ Rectangle: not enough points');
-      return null;
-    }
+    if (drawing.points.length < 2) return null;
     
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
     
-    console.log('📍 Rectangle pixels:', { p1, p2 });
-    
-    if (!p1 || !p2) {
-      console.log('❌ Rectangle: invalid pixel coordinates');
-      return null;
-    }
+    if (!p1 || !p2) return null;
 
     const x = Math.min(p1.x, p2.x);
     const y = Math.min(p1.y, p2.y);
     const width = Math.abs(p2.x - p1.x);
     const height = Math.abs(p2.y - p1.y);
-
-    console.log('✅ Rectangle dimensions:', { x, y, width, height });
 
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
@@ -444,18 +469,34 @@ export default function DrawingRenderer({
     const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => !isPreview && onSelectDrawing(drawing.id)}
+        onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (!isPreview && isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+      >
         <circle
           cx={center.x}
           cy={center.y}
           r={radius}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : 'none'}
+          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
           opacity={isPreview ? 0.7 : 1}
-          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
+          style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
+        {isSelected && !isPreview && (
+          <>
+            <circle cx={center.x} cy={center.y} r="5" fill={drawing.color || '#2962FF'} />
+            <circle cx={edge.x} cy={edge.y} r="5" fill={drawing.color || '#2962FF'} />
+          </>
+        )}
       </g>
     );
   };
@@ -478,7 +519,17 @@ export default function DrawingRenderer({
     const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => !isPreview && onSelectDrawing(drawing.id)}
+        onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (!isPreview && isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+      >
         <ellipse
           cx={cx}
           cy={cy}
@@ -486,11 +537,17 @@ export default function DrawingRenderer({
           ry={ry}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : 'none'}
+          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
           opacity={isPreview ? 0.7 : 1}
-          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
+          style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
+        {isSelected && !isPreview && (
+          <>
+            <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#2962FF'} />
+            <circle cx={p2.x} cy={p2.y} r="5" fill={drawing.color || '#2962FF'} />
+          </>
+        )}
       </g>
     );
   };
@@ -510,15 +567,25 @@ export default function DrawingRenderer({
     const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => !isPreview && onSelectDrawing(drawing.id)}
+        onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (!isPreview && isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+      >
         <polygon
           points={points}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : 'none'}
+          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
           opacity={isPreview ? 0.7 : 1}
-          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
+          style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
         {isSelected && !isPreview && (
           <>

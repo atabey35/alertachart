@@ -2374,7 +2374,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       points: [tempDrawing, currentPoint],
       color: '#2962FF',
       lineWidth: 2,
-      fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined
+      fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined,
+      extendRight: activeTool === 'trend' // Match final drawing behavior
     };
     
     setPreviewDrawing(preview);
@@ -2500,7 +2501,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           points: [tempDrawing, point],
           color: '#2962FF',
           lineWidth: 2,
-          fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined
+          fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined,
+          extendRight: activeTool === 'trend' // Trend line extends right by default
         };
         
         console.log('✅ 2-point drawing created:', newDrawing);
