@@ -36,7 +36,7 @@ interface ToolCategory {
   name: string;
   tools: Array<{
     id: DrawingTool;
-    icon: JSX.Element | string;
+    icon: React.ReactElement | string;
     label: string;
   }>;
 }
