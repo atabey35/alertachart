@@ -42,7 +42,8 @@ interface ToolCategory {
 }
 
 export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }: DrawingToolbarProps) {
-  const [expandedCategory, setExpandedCategory] = useState<string | null>('Lines');
+  // Keep all categories expanded by default for better UX
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null); 
 
   const toolCategories: ToolCategory[] = [
     {
@@ -166,42 +167,32 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
 
       <div className="h-px bg-gray-700 my-1"></div>
 
-      {/* Tool Categories */}
+      {/* Tool Categories - All expanded by default for easy access */}
       {toolCategories.map((category) => (
         <div key={category.name} className="flex flex-col">
-          <button
-            onClick={() => setExpandedCategory(expandedCategory === category.name ? null : category.name)}
-            className="px-2 py-1.5 text-xs text-gray-400 hover:text-white hover:bg-gray-800 rounded transition-all flex items-center justify-between gap-1"
-          >
-            <span className="font-medium">{category.name}</span>
-            <svg 
-              className={`w-3 h-3 transition-transform ${expandedCategory === category.name ? 'rotate-180' : ''}`}
-              fill="none" 
-              stroke="currentColor" 
-              viewBox="0 0 24 24"
-            >
-              <polyline points="6 9 12 15 18 9" strokeWidth="2"/>
-            </svg>
-          </button>
+          <div className="px-2 py-1.5 text-xs text-gray-500 font-medium">
+            {category.name}
+          </div>
 
-          {expandedCategory === category.name && (
-            <div className="flex flex-col gap-0.5 mt-0.5 pl-1">
-              {category.tools.map((tool) => (
-                <button
-                  key={tool.id}
-                  onClick={() => onToolChange(tool.id)}
-                  className={`px-2 py-2 text-sm rounded transition-all flex items-center justify-center ${
-                    activeTool === tool.id
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  }`}
-                  title={tool.label}
-                >
-                  {tool.icon}
-                </button>
-              ))}
-            </div>
-          )}
+          <div className="flex flex-col gap-0.5 pl-1">
+            {category.tools.map((tool) => (
+              <button
+                key={tool.id}
+                onClick={() => {
+                  console.log('🔧 Tool button clicked:', tool.id);
+                  onToolChange(tool.id);
+                }}
+                className={`px-2 py-2 text-sm rounded transition-all flex items-center justify-center ${
+                  activeTool === tool.id
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+                title={tool.label}
+              >
+                {tool.icon}
+              </button>
+            ))}
+          </div>
         </div>
       ))}
 
