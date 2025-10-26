@@ -2272,7 +2272,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined
         };
         
-        setDrawings(prev => [...prev, newDrawing]);
+        console.log('✅ Drawing completed:', newDrawing);
+        
+        setDrawings(prev => {
+          const updated = [...prev, newDrawing];
+          console.log('📊 Updated drawings array:', updated);
+          return updated;
+        });
         setTempDrawing(null);
         setPreviewDrawing(null);
         setActiveTool('none');
