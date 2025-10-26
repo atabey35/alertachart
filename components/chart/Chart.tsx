@@ -28,9 +28,8 @@ import DrawingToolbar, { DrawingTool } from './DrawingToolbar';
 import DrawingRenderer from './DrawingRenderer';
 import DrawingPropertiesModal from './DrawingPropertiesModal';
 
-// GLOBAL worker counter - survives component re-renders AND multiple instances
+// GLOBAL worker counter for unique IDs across all instances
 let globalWorkerCounter = 0;
-let currentWorkerGeneration = 0; // Track CURRENT active worker generation globally
 
 interface ChartProps {
   exchange: string;
@@ -72,6 +71,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   
   const cacheRef = useRef(new ChartCache());
   const workerRef = useRef<Worker | null>(null);
+  const currentWorkerGenerationRef = useRef<number>(0); // Track THIS instance's current worker generation
   const observerRef = useRef<MutationObserver | null>(null);
   const isInitialLoadRef = useRef(true);
   const isLoadingOlderRef = useRef(false); // Prevent duplicate requests
@@ -1412,10 +1412,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Reset connection state
     setWsConnected(false);
     
-    // INCREMENT GLOBAL worker counter - this survives component re-renders AND multiple instances!
+    // INCREMENT GLOBAL worker counter for unique IDs across all instances
     globalWorkerCounter += 1;
     const thisWorkerGeneration = globalWorkerCounter;
-    currentWorkerGeneration = thisWorkerGeneration; // Update global current generation
+    currentWorkerGenerationRef.current = thisWorkerGeneration; // Update THIS instance's current generation
     
     // Generate unique worker ID for debugging
     const workerId = Date.now().toString(36) + Math.random().toString(36).substring(7);
@@ -1430,9 +1430,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       (worker as any)._workerId = workerId;
 
       worker.onmessage = (event) => {
-        // CRITICAL: Ignore messages from old workers using GLOBAL generation counter
-        // Both variables are global and survive ALL component instances!
-        const currentGen = currentWorkerGeneration;
+        // CRITICAL: Ignore messages from old workers - check THIS instance's current generation
+        const currentGen = currentWorkerGenerationRef.current;
         
         // DEBUG: Always log the check (20% to catch it faster)
         if (event.data.event === 'tick' && Math.random() < 0.2) {
