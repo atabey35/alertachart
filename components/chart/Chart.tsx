@@ -2059,6 +2059,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     if (e.touches.length !== 1) return; // Only handle single touch
     
     const touch = e.touches[0];
+    
+    // If drawing tool is active, handle drawing instead of context menu
+    if (activeTool !== 'none') {
+      // Prevent chart interactions while drawing
+      e.preventDefault();
+      // Touch drawing will be handled on touchend
+      longPressPositionRef.current = { x: touch.clientX, y: touch.clientY };
+      return;
+    }
+    
+    // Otherwise, prepare for long-press context menu
     longPressPositionRef.current = { x: touch.clientX, y: touch.clientY };
     
     // Start long-press timer (500ms)
@@ -2071,9 +2082,19 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
-    // Cancel long-press if finger moves too much
-    if (longPressPositionRef.current && e.touches.length === 1) {
-      const touch = e.touches[0];
+    if (e.touches.length !== 1) return;
+    
+    const touch = e.touches[0];
+    
+    // If drawing tool is active, show preview
+    if (activeTool !== 'none' && tempDrawing) {
+      e.preventDefault();
+      handleMouseMoveForPreview(touch.clientX, touch.clientY);
+      return;
+    }
+    
+    // Cancel long-press if finger moves too much (for context menu)
+    if (longPressPositionRef.current) {
       const dx = touch.clientX - longPressPositionRef.current.x;
       const dy = touch.clientY - longPressPositionRef.current.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
@@ -2089,7 +2110,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    // If drawing tool is active, complete the drawing
+    if (activeTool !== 'none' && longPressPositionRef.current) {
+      handleChartClickForDrawing(longPressPositionRef.current.x, longPressPositionRef.current.y);
+    }
+    
     // Clear long-press timer
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -2992,7 +3018,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       
               <div 
                 ref={containerRef} 
-                className="w-full flex-grow relative"
+                className="w-full flex-grow relative pb-32 md:pb-0"
                 onTouchStart={handleTouchStart}
                 onTouchMove={handleTouchMove}
                 onTouchEnd={handleTouchEnd}
