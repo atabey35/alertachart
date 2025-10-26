@@ -25,6 +25,7 @@ import { floorTimestampToTimeframe } from '@/utils/helpers';
 import { calculateRSI, calculateMACD, calculateSMA, calculateEMA, calculateBollingerBands } from '@/utils/indicators';
 import ChartSettings, { ChartSettingsType, DEFAULT_SETTINGS } from './ChartSettings';
 import DrawingToolbar, { DrawingTool } from './DrawingToolbar';
+import DrawingRenderer from './DrawingRenderer';
 
 // GLOBAL worker counter - survives component re-renders AND multiple instances
 let globalWorkerCounter = 0;
@@ -170,6 +171,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [handlePositions, setHandlePositions] = useState<Array<{ x: number; y: number; drawingId: string; pointIndex: number }>>([]);
   const [showDrawingTools, setShowDrawingTools] = useState(false);
   const [showMobileHint, setShowMobileHint] = useState(true);
+  const [containerSize, setContainerSize] = useState({ width: 0, height: 0 });
   const drawingSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const horizontalLinesRef = useRef<Map<string, any>>(new Map()); // Store price lines for horizontal drawings
   const precisionSetRef = useRef<boolean>(false); // Track if precision has been set for current pair
@@ -194,6 +196,31 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }, 5000);
     
     return () => clearTimeout(timer);
+  }, []);
+
+  /**
+   * Track container size for DrawingRenderer
+   */
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const updateSize = () => {
+      if (containerRef.current) {
+        setContainerSize({
+          width: containerRef.current.clientWidth,
+          height: containerRef.current.clientHeight
+        });
+      }
+    };
+    
+    updateSize();
+    
+    const resizeObserver = new ResizeObserver(updateSize);
+    resizeObserver.observe(containerRef.current);
+    
+    return () => {
+      resizeObserver.disconnect();
+    };
   }, []);
 
   /**
@@ -2132,6 +2159,87 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     setSelectedDrawingId(null);
   };
 
+  /**
+   * Handle chart click to create drawings
+   */
+  const handleChartClickForDrawing = (clientX: number, clientY: number) => {
+    if (activeTool === 'none' || !containerRef.current || !chartRef.current || !seriesRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    
+    const timeScale = chartRef.current.timeScale();
+    const time = timeScale.coordinateToTime(x as any);
+    const price = seriesRef.current.coordinateToPrice(y);
+    
+    if (!time || price === null) return;
+    
+    const point: DrawingPoint = { time: time as Time, price };
+    
+    // Single-point tools (instant creation)
+    if (activeTool === 'horizontal' || activeTool === 'vertical' || activeTool === 'price-label' || activeTool === 'text') {
+      const newDrawing: Drawing = {
+        id: `drawing-${Date.now()}`,
+        type: activeTool as DrawingType,
+        points: [point],
+        color: '#2962FF',
+        lineWidth: 2,
+        text: activeTool === 'text' ? 'Text' : undefined
+      };
+      
+      setDrawings(prev => [...prev, newDrawing]);
+      setActiveTool('none');
+      return;
+    }
+    
+    // Multi-point tools
+    if (!tempDrawing) {
+      // First point
+      setTempDrawing(point);
+    } else {
+      // Second (or third) point
+      const pointCount = activeTool === 'triangle' || activeTool === 'channel' || activeTool === 'fib-extension' ? 3 : 2;
+      
+      // Check if we need more points
+      if (pointCount === 3 && drawings.find(d => d.id === 'temp' && d.points.length === 2)) {
+        // Add third point to temp drawing
+        setDrawings(prev => prev.map(d => {
+          if (d.id === 'temp') {
+            return { ...d, points: [...d.points, point], id: `drawing-${Date.now()}` };
+          }
+          return d;
+        }));
+        setTempDrawing(null);
+        setActiveTool('none');
+      } else if (pointCount === 3) {
+        // Create temp drawing with 2 points
+        const tempDraw: Drawing = {
+          id: 'temp',
+          type: activeTool as DrawingType,
+          points: [tempDrawing, point],
+          color: '#2962FF',
+          lineWidth: 2
+        };
+        setDrawings(prev => [...prev, tempDraw]);
+      } else {
+        // Complete 2-point drawing
+        const newDrawing: Drawing = {
+          id: `drawing-${Date.now()}`,
+          type: activeTool as DrawingType,
+          points: [tempDrawing, point],
+          color: '#2962FF',
+          lineWidth: 2,
+          fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined
+        };
+        
+        setDrawings(prev => [...prev, newDrawing]);
+        setTempDrawing(null);
+        setActiveTool('none');
+      }
+    }
+  };
+
   const handlePointDragStart = (drawingId: string, pointIndex: number) => {
     setDraggingPoint({ drawingId, pointIndex });
   };
@@ -2690,7 +2798,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                       zIndex: 8 
                     }}
                     onClick={(e) => {
-                      // Handle drawing tool clicks with precise coordinates
+                      e.stopPropagation();
+                      // Handle drawing creation
+                      handleChartClickForDrawing(e.clientX, e.clientY);
+                      
+                      // Legacy code for backwards compatibility
                       if (containerRef.current && chartRef.current && seriesRef.current) {
                         const rect = containerRef.current.getBoundingClientRect();
                         const x = e.clientX - rect.left;
@@ -2834,6 +2946,19 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     <div className="w-full h-full rounded-full bg-yellow-400 border-2 border-yellow-600 shadow-lg hover:scale-125 transition-transform" />
                   </div>
                 ))}
+
+                {/* Drawing Renderer - SVG Overlay for all drawing tools */}
+                {containerSize.width > 0 && containerSize.height > 0 && (
+                  <DrawingRenderer
+                    drawings={drawings}
+                    chart={chartRef.current}
+                    containerWidth={containerSize.width}
+                    containerHeight={containerSize.height}
+                    selectedDrawingId={selectedDrawingId}
+                    onSelectDrawing={setSelectedDrawingId}
+                    precision={chartSettings.priceScale}
+                  />
+                )}
 
                 {/* Countdown Timer (only if seconds visible setting is enabled) */}
                 {chartSettings.secondsVisible && (
