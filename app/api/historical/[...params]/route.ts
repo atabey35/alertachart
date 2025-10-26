@@ -50,7 +50,6 @@ function timeframeToInterval(timeframe: number): string {
   if (minutes < 1) return '1m';
   
   if (minutes === 1) return '1m';
-  if (minutes === 3) return '3m';
   if (minutes === 5) return '5m';
   if (minutes === 15) return '15m';
   if (minutes === 30) return '30m';

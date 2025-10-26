@@ -21,9 +21,12 @@ class Aggregator {
   private activeBar: Bar | null = null;
   private timeframe: number = 300; // 5 minutes default
   private activePairs: Set<string> = new Set();
+  private tickInterval: number | null = null; // Interval for periodic ticks
 
   constructor() {
+    console.log('[Aggregator] Worker initialized');
     this.initializeExchanges();
+    this.startTickInterval();
   }
 
   private initializeExchanges() {
@@ -41,6 +44,48 @@ class Aggregator {
     this.exchanges.set('BINANCE_FUTURES', binanceFutures);
     this.exchanges.set('BYBIT', bybit);
     this.exchanges.set('OKX', okx);
+  }
+
+  /**
+   * Start interval to emit ticks even when no trades arrive
+   * This ensures chart updates smoothly on low-frequency pairs (1m, 5m)
+   * Matches 15m behavior exactly
+   */
+  private startTickInterval() {
+    // Clear existing interval if any
+    if (this.tickInterval !== null) {
+      clearInterval(this.tickInterval);
+    }
+
+    console.log('[Aggregator] Starting tick interval (1s)');
+    
+    // Emit tick every second if we have an active bar
+    this.tickInterval = setInterval(() => {
+      if (this.activeBar) {
+        const now = Date.now();
+        const currentBarTime = floorTimestampToTimeframe(now, this.timeframe);
+
+        // Check if we need to create a new bar (time window changed)
+        if (this.activeBar.time !== currentBarTime) {
+          console.log('[Aggregator] New candle window:', new Date(currentBarTime).toISOString());
+          // Save the previous close price before emitting
+          const previousClose = this.activeBar.close;
+          
+          // Time window changed - emit old bar as completed
+          this.emit('bar', cloneBar(this.activeBar));
+          
+          // Create new bar with previous close as starting price
+          this.activeBar = createBar(currentBarTime, this.timeframe);
+          this.activeBar.open = previousClose;
+          this.activeBar.high = previousClose;
+          this.activeBar.low = previousClose;
+          this.activeBar.close = previousClose;
+        }
+
+        // Emit tick with current bar state (even if no new trades)
+        this.emit('tick', cloneBar(this.activeBar));
+      }
+    }, 1000) as unknown as number; // Update every second
   }
 
   private handleTrades(trades: Trade[]) {
@@ -80,12 +125,11 @@ class Aggregator {
       return;
     }
 
-    console.log(`[Aggregator] Connecting to ${data.exchange}:${data.pair}...`);
-
+    console.log(`[Aggregator] Connecting to ${data.exchange}:${data.pair}`);
+    
     // Connect if not connected
     if (exchange.apis.length === 0) {
       await exchange.connect();
-      console.log(`[Aggregator] Connected to ${data.exchange}`);
     }
 
     // Subscribe to pair
@@ -93,6 +137,7 @@ class Aggregator {
     await exchange.subscribe(api, data.pair);
     this.activePairs.add(`${data.exchange}:${data.pair}`);
 
+    console.log(`[Aggregator] Connected, emitting 'connected' event`);
     this.emit('connected', { exchange: data.exchange, pair: data.pair });
   }
 
@@ -121,19 +166,13 @@ class Aggregator {
    */
   initActiveBar(bar: Bar | null) {
     if (bar) {
-      console.log('[Aggregator] Initializing with last historical bar:', {
-        time: new Date(bar.time).toISOString(),
-        open: bar.open,
-        high: bar.high,
-        low: bar.low,
-        close: bar.close
-      });
+      console.log('[Aggregator] Initializing active bar:', new Date(bar.time).toISOString(), 'close:', bar.close);
       this.activeBar = { ...bar }; // Clone the bar
       
       // Emit initial tick so chart starts updating immediately
       // This prevents waiting for first trade
       this.emit('tick', cloneBar(this.activeBar));
-      console.log('[Aggregator] Emitted initial tick to start chart immediately');
+      console.log('[Aggregator] Initial tick emitted, interval will continue from here');
     } else {
       this.activeBar = null;
     }

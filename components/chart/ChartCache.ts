@@ -43,16 +43,22 @@ export default class ChartCache {
       // while updating with worker ticks (close price)
       const existingBar = chunk.bars[existingIndex];
       
+      // Worker ticks always have the latest close price - ALWAYS use it
       chunk.bars[existingIndex] = {
-        ...existingBar,  // Keep all existing data (high, low, volume, etc.)
-        ...bar,          // Update with new data (close, etc.)
-        // Ensure high/low are updated correctly
-        high: Math.max(existingBar.high || bar.high || 0, bar.high || existingBar.high || 0, bar.close || existingBar.close || 0),
-        low: Math.min(
-          existingBar.low && existingBar.low > 0 ? existingBar.low : (bar.low || bar.close || existingBar.close || Infinity),
-          bar.low && bar.low > 0 ? bar.low : (existingBar.low || bar.close || existingBar.close || Infinity),
-          bar.close || existingBar.close || Infinity
-        ),
+        time: bar.time,
+        open: bar.open && bar.open > 0 ? bar.open : existingBar.open,
+        high: Math.max(existingBar.high || 0, bar.high || 0, bar.close || 0),
+        low: existingBar.low && existingBar.low > 0 
+          ? Math.min(existingBar.low, bar.low && bar.low > 0 ? bar.low : existingBar.low, bar.close || existingBar.low)
+          : (bar.low && bar.low > 0 ? Math.min(bar.low, bar.close || bar.low) : (bar.close || existingBar.low)),
+        close: bar.close > 0 ? bar.close : existingBar.close, // FIXED: Always use new close if provided
+        volume: bar.volume && bar.volume > 0 ? bar.volume : existingBar.volume,
+        vbuy: bar.vbuy !== undefined && bar.vbuy > 0 ? bar.vbuy : existingBar.vbuy,
+        vsell: bar.vsell !== undefined && bar.vsell > 0 ? bar.vsell : existingBar.vsell,
+        cbuy: bar.cbuy !== undefined && bar.cbuy > 0 ? bar.cbuy : existingBar.cbuy,
+        csell: bar.csell !== undefined && bar.csell > 0 ? bar.csell : existingBar.csell,
+        lbuy: bar.lbuy !== undefined && bar.lbuy > 0 ? bar.lbuy : existingBar.lbuy,
+        lsell: bar.lsell !== undefined && bar.lsell > 0 ? bar.lsell : existingBar.lsell,
       };
     } else {
       // Add new bar
@@ -89,7 +95,7 @@ export default class ChartCache {
   }
 
   /**
-   * Get all bars
+   * Get all bars (deduplicated by time)
    */
   getAllBars(): Bar[] {
     const bars: Bar[] = [];
@@ -98,7 +104,19 @@ export default class ChartCache {
       bars.push(...chunk.bars);
     }
 
-    return bars.sort((a, b) => a.time - b.time);
+    // Sort REVERSE (newest first) so that when we add to Map, NEWEST bar overwrites old ones
+    bars.sort((a, b) => b.time - a.time); // REVERSE: Newest → Oldest
+    
+    // DEDUPLICATE: Use Map - since we iterate newest-first, newest bar for each time wins!
+    const barMap = new Map<number, Bar>();
+    for (const bar of bars) {
+      if (!barMap.has(bar.time)) {
+        barMap.set(bar.time, bar); // Only set if not already in map (first = newest)
+      }
+    }
+    
+    // Convert back to sorted array (oldest → newest)
+    return Array.from(barMap.values()).sort((a, b) => a.time - b.time);
   }
 
   /**

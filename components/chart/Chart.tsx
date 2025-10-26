@@ -26,6 +26,10 @@ import { calculateRSI, calculateMACD, calculateSMA, calculateEMA, calculateBolli
 import ChartSettings, { ChartSettingsType, DEFAULT_SETTINGS } from './ChartSettings';
 import DrawingToolbar, { DrawingTool } from './DrawingToolbar';
 
+// GLOBAL worker counter - survives component re-renders AND multiple instances
+let globalWorkerCounter = 0;
+let currentWorkerGeneration = 0; // Track CURRENT active worker generation globally
+
 interface ChartProps {
   exchange: string;
   pair: string;
@@ -988,6 +992,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Cleanup: terminate worker when component unmounts or dependencies change
     return () => {
       if (workerRef.current) {
+        workerRef.current.onmessage = null;
+        workerRef.current.onerror = null;
         workerRef.current.terminate();
         workerRef.current = null;
       }
@@ -1005,6 +1011,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     try {
       // Terminate old worker FIRST to prevent old data from coming in
       if (workerRef.current) {
+        workerRef.current.onmessage = null;
+        workerRef.current.onerror = null;
         workerRef.current.terminate();
         workerRef.current = null;
         console.log('[Chart] Terminated old worker');
@@ -1041,8 +1049,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         hoursBack = 1; // 1 hour (will fetch 1m bars and aggregate)
       } else if (currentTimeframe === 60) { // 1m
         hoursBack = 12; // 720 candles
-      } else if (currentTimeframe === 180) { // 3m
-        hoursBack = 18; // 360 candles
+      } else if (currentTimeframe === 300) { // 5m
+        hoursBack = 25; // 300 candles
       } else if (currentTimeframe === 900) { // 15m
         hoursBack = 48; // 192 candles
       } else if (currentTimeframe === 3600) { // 1h
@@ -1156,7 +1164,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           
           cacheRef.current.addBar(liveBar);
           updateChart();
-          console.log('[Chart] 🎯 Current candle added to cache and chart updated');
         } else {
           // Last bar IS the current window AND has data (from Railway)
           // Perfect! Keep it as-is, worker will continue updating it
@@ -1172,7 +1179,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       
       // Start worker immediately - current candle is already in cache
       // Worker will find it and start updating right away
-      console.log('[Chart] 🚀 Starting worker with current candle ready in cache');
       setupWorker();
     } catch (err) {
       console.error('[Chart] Load error:', err);
@@ -1291,55 +1297,114 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    * Setup Web Worker for real-time data
    */
   const setupWorker = () => {
+    // Terminate existing worker FIRST - before anything else
+    if (workerRef.current) {
+      console.log('[Chart] 🔥 Terminating existing worker FIRST');
+      // Remove event handlers first to prevent race conditions
+      workerRef.current.onmessage = null;
+      workerRef.current.onerror = null;
+      workerRef.current.terminate();
+      workerRef.current = null;
+      
+      // CRITICAL: Clear any pending RAF updates from old worker
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+        updateQueuedRef.current = false;
+      }
+    }
+    
     // Reset connection state
     setWsConnected(false);
     
-    // Terminate existing worker
-    if (workerRef.current) {
-      workerRef.current.terminate();
-    }
+    // INCREMENT GLOBAL worker counter - this survives component re-renders AND multiple instances!
+    globalWorkerCounter += 1;
+    const thisWorkerGeneration = globalWorkerCounter;
+    currentWorkerGeneration = thisWorkerGeneration; // Update global current generation
+    
+    // Generate unique worker ID for debugging
+    const workerId = Date.now().toString(36) + Math.random().toString(36).substring(7);
+    console.log('[Chart] 🆕 Creating NEW worker #' + thisWorkerGeneration, 'ID:', workerId.substring(0, 8));
 
     // Create new worker
     try {
       const worker = new Worker(new URL('@/workers/aggregator.ts', import.meta.url));
+      
+      // Store worker generation on the worker object
+      (worker as any)._workerGeneration = thisWorkerGeneration;
+      (worker as any)._workerId = workerId;
 
       worker.onmessage = (event) => {
+        // CRITICAL: Ignore messages from old workers using GLOBAL generation counter
+        // Both variables are global and survive ALL component instances!
+        const currentGen = currentWorkerGeneration;
+        
+        // DEBUG: Always log the check (20% to catch it faster)
+        if (event.data.event === 'tick' && Math.random() < 0.2) {
+          console.log('[Chart] 🔍 Check - worker gen:', thisWorkerGeneration, 'current:', currentGen, 'match:', currentGen === thisWorkerGeneration);
+        }
+        
+        if (currentGen !== thisWorkerGeneration) {
+          console.warn('[Chart] ⚠️ IGNORING OLD worker generation', thisWorkerGeneration, '- current:', currentGen);
+          return;
+        }
+        
         const { event: eventType, data } = event.data;
 
         switch (eventType) {
           case 'connected':
-            console.log('[Chart] WebSocket connected:', data);
+            console.log('[Chart] Worker #' + thisWorkerGeneration, 'connected');
             setWsConnected(true);
             
             // NOW that we're connected, initialize the active bar
-            // This ensures the worker can emit tick immediately
-            if (cacheRef.current) {
-              const allBars = cacheRef.current.getAllBars();
+            // CRITICAL: ALWAYS calculate current time window from NOW, not from cache
+            // Cache might have old bars from previous renders
+            if (cacheRef.current && workerRef.current) {
               const now = Date.now();
               const currentCandleTime = Math.floor(now / (timeframe * 1000)) * (timeframe * 1000);
               
-              // Find the current candle
+              console.log('[Chart] 📍 Current time window:', new Date(currentCandleTime).toISOString());
+              
+              // Try to find current window bar in cache
+              const allBars = cacheRef.current.getAllBars();
               let currentCandle = allBars.find(bar => bar.time === currentCandleTime);
               
-              if (currentCandle && workerRef.current) {
-                console.log('[Chart] 🚀 Sending current candle to worker after connection:', {
-                  time: new Date(currentCandle.time).toISOString(),
-                  open: currentCandle.open,
-                  close: currentCandle.close
-                });
-                
+              if (currentCandle) {
+                console.log('[Chart] ✅ Found current bar in cache, sending to worker:', currentCandle.close);
                 workerRef.current.postMessage({
                   op: 'initActiveBar',
                   data: currentCandle,
                 });
+              } else {
+                // No current bar in cache - find the LAST bar and use its close as open for new bar
+                if (allBars.length > 0) {
+                  const lastBar = allBars[allBars.length - 1];
+                  console.log('[Chart] ⚠️ No current window bar, using last bar close:', lastBar.close);
+                  const newBar = {
+                    time: currentCandleTime,
+                    open: lastBar.close,
+                    high: lastBar.close,
+                    low: lastBar.close,
+                    close: lastBar.close,
+                    volume: 0,
+                  };
+                  workerRef.current.postMessage({
+                    op: 'initActiveBar',
+                    data: newBar,
+                  });
+                } else {
+                  console.warn('[Chart] ❌ No bars in cache at all for worker init');
+                }
               }
             }
             break;
           case 'bar':
-            handleNewBar(data);
+            // Add worker generation to bar for debugging
+            handleNewBar({ ...data, _workerGen: thisWorkerGeneration });
             break;
           case 'tick':
-            handleTick(data);
+            // Add worker generation to tick for debugging
+            handleTick({ ...data, _workerGen: thisWorkerGeneration });
             break;
           case 'error':
             console.error('[Chart] Worker error:', data);
@@ -1373,7 +1438,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   /**
    * Handle new bar from worker
    */
-  const handleNewBar = (bar: Bar) => {
+  const handleNewBar = (bar: Bar & { _workerGen?: number }) => {
+    console.log('[Chart] 📊 New bar from worker #' + bar._workerGen, ':', new Date(bar.time).toISOString());
     cacheRef.current.addBar(bar);
     updateChart();
   };
@@ -1382,14 +1448,22 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    * Handle tick update from worker
    * Queue update via requestAnimationFrame (aggr.trade pattern)
    */
-  const handleTick = (bar: Bar) => {
+  const handleTick = (bar: Bar & { _workerGen?: number }) => {
     if (!cacheRef.current) {
-      console.error('[Chart] Cache not ready');
+      console.warn('[Chart] No cache in handleTick');
       return;
     }
     
+    // DEBUG: Log every tick to see what's happening
+    console.log('[Chart] 📥 Tick received:', bar.close, 'at', new Date(bar.time).toISOString());
+    
     // Add bar to cache
     cacheRef.current.addBar(bar);
+    
+    // DEBUG: Check what cache returns after adding
+    const allBars = cacheRef.current.getAllBars();
+    const lastBar = allBars[allBars.length - 1];
+    console.log('[Chart] 📤 Cache last bar after add:', lastBar.close, 'at', new Date(lastBar.time).toISOString());
     
     // Update current price immediately (works in background tabs)
     // This ensures title updates even when tab is not visible
@@ -1398,13 +1472,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       setCurrentPrice(bar.close);
     }
     
-    // Just add to cache - no special first tick handling
-    // The normal RAF queue will handle updates smoothly
-    
     // Only queue update if chart is ready - otherwise skip silently
     // Chart will update when it becomes ready via setData
     if (!seriesRef.current || !volumeSeriesRef.current || !chartRef.current) {
-      // Chart not ready yet - skip this tick, it's already in cache
+      // Don't spam console - chart updates will happen when refs are ready
       return;
     }
     
@@ -1427,8 +1498,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const updateChart = () => {
     // Exit early if series are disposed or null
     if (!seriesRef.current || !volumeSeriesRef.current || !chartRef.current) {
-      // Chart not ready - skip silently
-      // Ticks are already in cache, chart will render them when ready
       return;
     }
     
@@ -1437,8 +1506,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       // Attempt to access a property - if disposed, this will throw
       chartRef.current.timeScale();
     } catch (error) {
-      // Chart is disposed, skip update
-      console.log('[Chart] Chart disposed, skipping update');
       return;
     }
 
@@ -1558,17 +1625,31 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const barCountChanged = lastBarCountRef.current !== candleData.length;
     lastBarCountRef.current = candleData.length;
 
-    if (barCountChanged || isInitialLoadRef.current) {
-      // Full reload: use setData()
-      console.log('[Chart] 📊 Full update (setData) - bar count:', candleData.length);
-      seriesRef.current.setData(candleData);
-      volumeSeriesRef.current.setData(volumeData);
-    } else {
-      // Just last bar update: use update() for smooth animation
-      console.log('[Chart] 🔄 Live update (update) - last bar:', lastCandle.time, lastCandle.close);
-      seriesRef.current.update(lastCandle);
-      volumeSeriesRef.current.update(lastVolume);
-    }
+      try {
+        // SIMPLIFIED DEBUG - only show critical info
+        const lastBar = bars[bars.length - 1];
+        const secondLastBar = bars.length > 1 ? bars[bars.length - 2] : null;
+        
+        // Check for duplicate time bars
+        if (secondLastBar && secondLastBar.time === lastBar.time) {
+          console.error('[Chart] ⚠️ DUPLICATE TIME DETECTED!', 
+            'Bar', bars.length - 1, ':', secondLastBar.close, 
+            'vs Bar', bars.length, ':', lastBar.close,
+            'both at', new Date(lastBar.time).toISOString());
+        }
+        
+        // Only log 10% of updates
+        if (Math.random() < 0.1) {
+          console.log('[Chart] 📊 setData:', candleData.length, 'bars, last:', lastBar.close, 'at', new Date(lastBar.time).toISOString());
+        }
+        
+        // ALWAYS use setData for now - update() has rendering issues on short timeframes
+        seriesRef.current.setData(candleData);
+        volumeSeriesRef.current.setData(volumeData);
+      } catch (error) {
+        console.error('[Chart] Error in setData:', error);
+        return;
+      }
 
     // Update current price from latest candle (only if changed to prevent re-render loops)
     // Use a small epsilon to avoid floating point precision issues
@@ -1866,7 +1947,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Then fit all visible data
     if (chartRef.current) {
       chartRef.current.timeScale().fitContent();
-      console.log('[Chart] View reset - refreshed from cache and fit content');
     }
     setContextMenuVisible(false);
   };
@@ -2751,13 +2831,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                 {/* Countdown Timer (only if seconds visible setting is enabled) */}
                 {chartSettings.secondsVisible && (
                   <div 
-                    className="absolute right-12 top-2 bg-gray-900/90 border border-gray-700 backdrop-blur-sm px-2 py-1.5 rounded shadow-lg z-10"
+                    className="absolute right-20 top-2 bg-gray-900/80 border border-gray-700/50 backdrop-blur-sm px-1.5 py-1 rounded shadow-md z-10"
                   >
-                    <div className="flex items-center gap-1.5 text-teal-400">
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center gap-1 text-teal-400">
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
-                      <span className="text-xs font-mono font-medium">{countdown}</span>
+                      <span className="text-[10px] font-mono font-medium">{countdown}</span>
                     </div>
                   </div>
                 )}
