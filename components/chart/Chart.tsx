@@ -182,7 +182,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   
   // Load drawings from localStorage on mount
   useEffect(() => {
-    const storageKey = `drawings_${exchange}_${pair}_${timeframe}`;
+    const storageKey = `drawings_${exchange}_${pair}`;
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
@@ -193,18 +193,18 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     } catch (e) {
       console.error('[Chart] Failed to load drawings:', e);
     }
-  }, [exchange, pair, timeframe]);
+  }, [exchange, pair]);
   
   // Save drawings to localStorage whenever they change
   useEffect(() => {
-    const storageKey = `drawings_${exchange}_${pair}_${timeframe}`;
+    const storageKey = `drawings_${exchange}_${pair}`;
     try {
       localStorage.setItem(storageKey, JSON.stringify(drawings));
       console.log('[Chart] Saved drawings to localStorage:', drawings.length);
     } catch (e) {
       console.error('[Chart] Failed to save drawings:', e);
     }
-  }, [drawings, exchange, pair, timeframe]);
+  }, [drawings, exchange, pair]);
   
   // OHLCV legend state (TradingView-style hover info)
   const [legendData, setLegendData] = useState<{
