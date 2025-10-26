@@ -1154,6 +1154,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             high: lastHistoricalBar.close,
             low: lastHistoricalBar.close,
             close: lastHistoricalBar.close,
+            volume: 0,
             vbuy: 0,
             vsell: 0,
             cbuy: 0,
@@ -1387,6 +1388,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     low: lastBar.close,
                     close: lastBar.close,
                     volume: 0,
+                    vbuy: 0,
+                    vsell: 0,
+                    cbuy: 0,
+                    csell: 0,
+                    lbuy: 0,
+                    lsell: 0,
                   };
                   workerRef.current.postMessage({
                     op: 'initActiveBar',

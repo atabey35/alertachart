@@ -109,6 +109,7 @@ class HistoricalService extends EventEmitter {
               high: candle.high,
               low: candle.low,
               close: candle.close,
+              volume: candle.volume,
               vbuy: candle.volume / 2,
               vsell: candle.volume / 2,
               cbuy: 0,

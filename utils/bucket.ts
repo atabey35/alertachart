@@ -18,6 +18,7 @@ export function createBar(timestamp: number, timeframe: number): Bar {
     high: 0,
     low: Infinity,
     close: 0,
+    volume: 0,
     vbuy: 0,
     vsell: 0,
     cbuy: 0,
@@ -50,6 +51,7 @@ export function mergeTradeIntoBar(
   bar.low = Math.min(bar.low, price);
 
   // Update volume and counts
+  bar.volume += size;
   if (side === 'buy') {
     bar.vbuy += size;
     bar.cbuy++;
