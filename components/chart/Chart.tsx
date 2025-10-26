@@ -2102,6 +2102,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    * Drawing Tools Handlers
    */
   const handleToolChange = (tool: DrawingTool) => {
+    console.log('🎨 Tool changed to:', tool);
     setActiveTool(tool);
     setTempDrawing(null);
     setPreviewDrawing(null);
@@ -2761,13 +2762,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     style={{ 
                       cursor: 'crosshair', 
                       pointerEvents: 'auto',
-                      zIndex: 8 
+                      zIndex: 8,
+                      background: 'rgba(255,0,0,0.05)' // DEBUG: Subtle red tint to see overlay
                     }}
                     onMouseMove={(e) => {
                       // Show live preview while drawing
                       handleMouseMoveForPreview(e.clientX, e.clientY);
                     }}
                     onClick={(e) => {
+                      console.log('🖱️ Overlay clicked!', { activeTool });
                       e.stopPropagation();
                       handleChartClickForDrawing(e.clientX, e.clientY);
                     }}
