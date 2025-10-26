@@ -2220,6 +2220,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const deltaY = clientY - draggingDrawing.startY;
     
     const timeScale = chartRef.current.timeScale();
+    const visibleRange = timeScale.getVisibleRange();
+    const visibleLogicalRange = timeScale.getVisibleLogicalRange();
     
     // Convert delta pixels to time/price deltas
     setDrawings(prev => prev.map(drawing => {
@@ -2238,8 +2240,30 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           const newY = origY + deltaY;
           
           // Convert back to time/price
-          const newTime = timeScale.coordinateToTime(newX as any);
+          let newTime = timeScale.coordinateToTime(newX as any);
           const newPrice = seriesRef.current!.coordinateToPrice(newY);
+          
+          // If newTime is null (dragging outside data range), extrapolate
+          if (!newTime && visibleRange && visibleLogicalRange) {
+            const chartWidth = timeScale.width();
+            const lastBarCoordinate = timeScale.timeToCoordinate(visibleRange.to as any);
+            
+            if (lastBarCoordinate !== null && newX > lastBarCoordinate) {
+              const pixelsBeyond = newX - lastBarCoordinate;
+              const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
+              const pixelsPerBar = chartWidth / visibleBars;
+              const barsBeyond = pixelsBeyond / pixelsPerBar;
+              const extrapolatedTime = (visibleRange.to as number) + (barsBeyond * timeframe);
+              newTime = extrapolatedTime as any;
+            } else if (lastBarCoordinate !== null && newX < 0) {
+              const pixelsBefore = Math.abs(newX);
+              const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
+              const pixelsPerBar = chartWidth / visibleBars;
+              const barsBefore = pixelsBefore / pixelsPerBar;
+              const extrapolatedTime = (visibleRange.from as number) - (barsBefore * timeframe);
+              newTime = extrapolatedTime as any;
+            }
+          }
           
           if (!newTime || newPrice === null) return point;
           
@@ -2308,8 +2332,36 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const y = clientY - rect.top;
     
     const timeScale = chartRef.current.timeScale();
-    const time = timeScale.coordinateToTime(x as any);
+    let time = timeScale.coordinateToTime(x as any);
     const price = seriesRef.current.coordinateToPrice(y);
+    
+    // If time is null (mouse outside data range), extrapolate based on visible range
+    if (!time) {
+      const visibleRange = timeScale.getVisibleRange();
+      if (visibleRange) {
+        const visibleLogicalRange = timeScale.getVisibleLogicalRange();
+        if (visibleLogicalRange) {
+          const chartWidth = timeScale.width();
+          const lastBarCoordinate = timeScale.timeToCoordinate(visibleRange.to as any);
+          
+          if (lastBarCoordinate !== null && x > lastBarCoordinate) {
+            const pixelsBeyond = x - lastBarCoordinate;
+            const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
+            const pixelsPerBar = chartWidth / visibleBars;
+            const barsBeyond = pixelsBeyond / pixelsPerBar;
+            const extrapolatedTime = (visibleRange.to as number) + (barsBeyond * timeframe);
+            time = extrapolatedTime as any;
+          } else if (lastBarCoordinate !== null && x < 0) {
+            const pixelsBefore = Math.abs(x);
+            const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
+            const pixelsPerBar = chartWidth / visibleBars;
+            const barsBefore = pixelsBefore / pixelsPerBar;
+            const extrapolatedTime = (visibleRange.from as number) - (barsBefore * timeframe);
+            time = extrapolatedTime as any;
+          }
+        }
+      }
+    }
     
     if (!time || price === null) return;
     
@@ -2339,8 +2391,46 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const y = clientY - rect.top;
     
     const timeScale = chartRef.current.timeScale();
-    const time = timeScale.coordinateToTime(x as any);
+    let time = timeScale.coordinateToTime(x as any);
     const price = seriesRef.current.coordinateToPrice(y);
+    
+    // If time is null (clicked outside data range), extrapolate based on visible range
+    if (!time) {
+      const visibleRange = timeScale.getVisibleRange();
+      if (visibleRange) {
+        const visibleLogicalRange = timeScale.getVisibleLogicalRange();
+        if (visibleLogicalRange) {
+          // Get the time scale width
+          const chartWidth = timeScale.width();
+          
+          // Calculate how far beyond the last bar we clicked (in pixels)
+          const lastBarCoordinate = timeScale.timeToCoordinate(visibleRange.to as any);
+          
+          if (lastBarCoordinate !== null && x > lastBarCoordinate) {
+            // We're clicking to the right of the last bar
+            const pixelsBeyond = x - lastBarCoordinate;
+            
+            // Estimate bars beyond based on average bar width
+            const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
+            const pixelsPerBar = chartWidth / visibleBars;
+            const barsBeyond = pixelsBeyond / pixelsPerBar;
+            
+            // Extrapolate time (timeframe is in seconds)
+            const extrapolatedTime = (visibleRange.to as number) + (barsBeyond * timeframe);
+            time = extrapolatedTime as any;
+          } else if (lastBarCoordinate !== null && x < 0) {
+            // We're clicking to the left of the first bar
+            const pixelsBefore = Math.abs(x);
+            const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
+            const pixelsPerBar = chartWidth / visibleBars;
+            const barsBefore = pixelsBefore / pixelsPerBar;
+            
+            const extrapolatedTime = (visibleRange.from as number) - (barsBefore * timeframe);
+            time = extrapolatedTime as any;
+          }
+        }
+      }
+    }
     
     if (!time || price === null) return;
     
