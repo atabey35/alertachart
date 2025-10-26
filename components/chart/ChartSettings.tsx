@@ -78,7 +78,7 @@ export const DEFAULT_SETTINGS: ChartSettingsType = {
   showCrosshair: true,
   showTimeScale: true,
   timeScaleVisible: true,
-  secondsVisible: false,
+  secondsVisible: true,
   showRSI: false,
   rsiPeriod: 14,
   showMACD: false,
