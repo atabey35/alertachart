@@ -2272,13 +2272,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined
         };
         
-        console.log('✅ Drawing completed:', newDrawing);
-        
-        setDrawings(prev => {
-          const updated = [...prev, newDrawing];
-          console.log('📊 Updated drawings array:', updated);
-          return updated;
-        });
+        setDrawings(prev => [...prev, newDrawing]);
         setTempDrawing(null);
         setPreviewDrawing(null);
         setActiveTool('none');
@@ -2404,81 +2398,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
   };
 
-  const handleChartClick = (price: number, time: Time) => {
-    if (activeTool === 'none') return;
-
-    console.log('[Chart] Drawing click:', { price, time: new Date(time as number * 1000).toISOString(), activeTool });
-
-    if (activeTool === 'horizontal') {
-      // Horizontal line - single click
-      const drawing: Drawing = {
-        id: `h-${Date.now()}`,
-        type: 'horizontal',
-        points: [{ time, price }],
-        color: '#2196F3',
-        lineWidth: 2,
-      };
-      setDrawings((prev) => [...prev, drawing]);
-      setActiveTool('none'); // Reset after drawing
-      console.log('[Chart] Horizontal line created at price:', price);
-    } else if (activeTool === 'trend') {
-      // Trend line - needs two clicks
-      if (!tempDrawing) {
-        // First click
-        setTempDrawing({ time, price });
-        console.log('[Chart] Trend line - first point:', { time, price });
-      } else {
-        // Second click
-        const drawing: Drawing = {
-          id: `t-${Date.now()}`,
-          type: 'trend',
-          points: [tempDrawing, { time, price }],
-          color: '#FF9800',
-          lineWidth: 2,
-        };
-        setDrawings((prev) => [...prev, drawing]);
-        setTempDrawing(null);
-        setActiveTool('none');
-        console.log('[Chart] Trend line created from', tempDrawing, 'to', { time, price });
-      }
-    } else if (activeTool === 'rectangle') {
-      // Rectangle - needs two clicks
-      if (!tempDrawing) {
-        setTempDrawing({ time, price });
-        console.log('[Chart] Rectangle - first corner:', { time, price });
-      } else {
-        const drawing: Drawing = {
-          id: `r-${Date.now()}`,
-          type: 'rectangle',
-          points: [tempDrawing, { time, price }],
-          color: '#4CAF50',
-          lineWidth: 2,
-        };
-        setDrawings((prev) => [...prev, drawing]);
-        setTempDrawing(null);
-        setActiveTool('none');
-        console.log('[Chart] Rectangle created');
-      }
-    } else if (activeTool === 'circle') {
-      // Circle - needs two clicks (center + edge)
-      if (!tempDrawing) {
-        setTempDrawing({ time, price });
-        console.log('[Chart] Circle - center:', { time, price });
-      } else {
-        const drawing: Drawing = {
-          id: `c-${Date.now()}`,
-          type: 'circle',
-          points: [tempDrawing, { time, price }],
-          color: '#9C27B0',
-          lineWidth: 2,
-        };
-        setDrawings((prev) => [...prev, drawing]);
-        setTempDrawing(null);
-        setActiveTool('none');
-        console.log('[Chart] Circle created');
-      }
-    }
-  };
+  // ⚠️ Removed old handleChartClick - now using handleChartClickForDrawing with SVG rendering
 
   // Update handle positions when chart changes
   const updateHandlePositions = () => {
@@ -2849,30 +2769,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     }}
                     onClick={(e) => {
                       e.stopPropagation();
-                      // Handle drawing creation
                       handleChartClickForDrawing(e.clientX, e.clientY);
-                      
-                      // Legacy code for backwards compatibility
-                      if (containerRef.current && chartRef.current && seriesRef.current) {
-                        const rect = containerRef.current.getBoundingClientRect();
-                        const x = e.clientX - rect.left;
-                        const y = e.clientY - rect.top;
-                        
-                        // Convert pixel coordinates to logical coordinates
-                        const logicalX = x - 0; // Adjust for any padding/margin if needed
-                        const logicalY = y - 0;
-                        
-                        // Convert to time and price using chart's coordinate system
-                        const timeScale = chartRef.current.timeScale();
-                        const timeCoordinate = timeScale.coordinateToTime(logicalX as any);
-                        
-                        // For price, we need to account for the visible range
-                        const priceCoordinate = seriesRef.current.coordinateToPrice(logicalY);
-                        
-                        if (timeCoordinate && priceCoordinate !== null) {
-                          handleChartClick(priceCoordinate, timeCoordinate as Time);
-                        }
-                      }
                     }}
                   />
                 )}

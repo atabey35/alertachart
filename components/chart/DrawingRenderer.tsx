@@ -756,13 +756,6 @@ export default function DrawingRenderer({
     }
   };
 
-  console.log('🎨 DrawingRenderer render:', { 
-    drawingsCount: drawings.length, 
-    drawings,
-    containerWidth,
-    containerHeight 
-  });
-
   return (
     <svg
       width={containerWidth}
@@ -772,16 +765,11 @@ export default function DrawingRenderer({
         top: 0,
         left: 0,
         pointerEvents: 'none',
-        zIndex: 10,
-        // Debug: add a subtle border to see SVG bounds
-        // border: '1px solid rgba(255,0,0,0.2)'
+        zIndex: 10
       }}
     >
       <g style={{ pointerEvents: 'auto' }}>
-        {drawings.map(drawing => {
-          console.log('🖌️ Rendering drawing:', drawing);
-          return renderDrawing(drawing);
-        })}
+        {drawings.map(drawing => renderDrawing(drawing))}
       </g>
     </svg>
   );
