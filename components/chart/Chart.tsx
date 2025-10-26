@@ -2729,7 +2729,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                 {/* Countdown Timer (only if seconds visible setting is enabled) */}
                 {chartSettings.secondsVisible && (
                   <div 
-                    className="absolute right-2 top-2 bg-gray-900/90 border border-gray-700 backdrop-blur-sm px-2 py-1.5 rounded shadow-lg z-10"
+                    className="absolute right-12 top-2 bg-gray-900/90 border border-gray-700 backdrop-blur-sm px-2 py-1.5 rounded shadow-lg z-10"
                   >
                     <div className="flex items-center gap-1.5 text-teal-400">
                       <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
