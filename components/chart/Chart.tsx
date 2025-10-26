@@ -180,6 +180,32 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const horizontalLinesRef = useRef<Map<string, any>>(new Map()); // Store price lines for horizontal drawings
   const precisionSetRef = useRef<boolean>(false); // Track if precision has been set for current pair
   
+  // Load drawings from localStorage on mount
+  useEffect(() => {
+    const storageKey = `drawings_${exchange}_${pair}_${timeframe}`;
+    try {
+      const saved = localStorage.getItem(storageKey);
+      if (saved) {
+        const loadedDrawings = JSON.parse(saved);
+        setDrawings(loadedDrawings);
+        console.log('[Chart] Loaded drawings from localStorage:', loadedDrawings.length);
+      }
+    } catch (e) {
+      console.error('[Chart] Failed to load drawings:', e);
+    }
+  }, [exchange, pair, timeframe]);
+  
+  // Save drawings to localStorage whenever they change
+  useEffect(() => {
+    const storageKey = `drawings_${exchange}_${pair}_${timeframe}`;
+    try {
+      localStorage.setItem(storageKey, JSON.stringify(drawings));
+      console.log('[Chart] Saved drawings to localStorage:', drawings.length);
+    } catch (e) {
+      console.error('[Chart] Failed to save drawings:', e);
+    }
+  }, [drawings, exchange, pair, timeframe]);
+  
   // OHLCV legend state (TradingView-style hover info)
   const [legendData, setLegendData] = useState<{
     open: number;

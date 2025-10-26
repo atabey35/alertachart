@@ -90,6 +90,12 @@ export default function DrawingRenderer({
         key={drawing.id} 
         onClick={() => onSelectDrawing(drawing.id)}
         onDoubleClick={() => onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
       >
         <line
           x1={0}
@@ -99,20 +105,12 @@ export default function DrawingRenderer({
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
           strokeDasharray={getStrokeDashArray(drawing.lineStyle, isSelected)}
-          style={{ cursor: 'pointer' }}
+          style={{ cursor: isSelected ? 'move' : 'pointer' }}
         />
         {isSelected && (
           <circle cx={point.x} cy={point.y} r="5" fill={drawing.color || '#2962FF'} />
         )}
-        <text
-          x={10}
-          y={point.y - 5}
-          fill={drawing.color || '#2962FF'}
-          fontSize="12"
-          fontWeight="bold"
-        >
-          {formatPrice(drawing.points[0].price, precision)}
-        </text>
+        {/* No text label - price is shown on the right price scale */}
       </g>
     );
   };
@@ -127,7 +125,17 @@ export default function DrawingRenderer({
     const isSelected = selectedDrawingId === drawing.id;
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => onSelectDrawing(drawing.id)}
+        onDoubleClick={() => onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+      >
         <line
           x1={point.x}
           y1={0}
@@ -135,9 +143,12 @@ export default function DrawingRenderer({
           y2={containerHeight}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isSelected ? '5,5' : 'none'}
-          style={{ cursor: 'pointer' }}
+          strokeDasharray={getStrokeDashArray(drawing.lineStyle, isSelected)}
+          style={{ cursor: isSelected ? 'move' : 'pointer' }}
         />
+        {isSelected && (
+          <circle cx={point.x} cy={point.y} r="5" fill={drawing.color || '#2962FF'} />
+        )}
       </g>
     );
   };
