@@ -2196,7 +2196,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   };
 
   const handleUpdateDrawing = (updatedDrawing: Drawing) => {
-    setDrawings(prev => prev.map(d => d.id === updatedDrawing.id ? updatedDrawing : d));
+    console.log('🔄 Updating drawing:', updatedDrawing.id, 'fillColor:', updatedDrawing.fillColor);
+    setDrawings(prev => {
+      const updated = prev.map(d => d.id === updatedDrawing.id ? updatedDrawing : d);
+      console.log('🔄 Updated drawings array:', updated);
+      return updated;
+    });
     setEditingDrawing(null);
   };
 

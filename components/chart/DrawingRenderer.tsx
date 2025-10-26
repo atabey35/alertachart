@@ -431,6 +431,8 @@ export default function DrawingRenderer({
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
     
+    console.log('🔲 Rendering rectangle:', drawing.id, 'fillColor:', drawing.fillColor);
+    
     return (
       <g 
         key={drawing.id} 

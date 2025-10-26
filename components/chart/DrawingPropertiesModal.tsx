@@ -41,7 +41,8 @@ export default function DrawingPropertiesModal({
   if (!drawing) return null;
 
   const handleSave = () => {
-    onUpdate({
+    console.log('💾 Saving drawing with fillColor:', fillColor);
+    const updatedDrawing = {
       ...drawing,
       color,
       lineWidth,
@@ -50,7 +51,9 @@ export default function DrawingPropertiesModal({
       text,
       extendRight,
       extendLeft
-    });
+    };
+    console.log('💾 Updated drawing:', updatedDrawing);
+    onUpdate(updatedDrawing);
     onClose();
   };
 
@@ -156,9 +159,23 @@ export default function DrawingPropertiesModal({
             <div className="flex gap-2">
               <input
                 type="color"
-                value={fillColor.match(/#[0-9A-F]{6}/i)?.[0] || '#2962FF'}
+                value={(() => {
+                  // Extract RGB values from rgba string
+                  const match = fillColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+                  if (match) {
+                    const r = parseInt(match[1]).toString(16).padStart(2, '0');
+                    const g = parseInt(match[2]).toString(16).padStart(2, '0');
+                    const b = parseInt(match[3]).toString(16).padStart(2, '0');
+                    return `#${r}${g}${b}`;
+                  }
+                  return '#2962FF';
+                })()}
                 onChange={(e) => {
-                  const alpha = fillColor.match(/[\d.]+(?=\))/)?.[0] || '0.1';
+                  // Get current alpha from fillColor
+                  const alphaMatch = fillColor.match(/[\d.]+(?=\))/);
+                  const alpha = alphaMatch ? alphaMatch[0] : '0.1';
+                  
+                  // Convert hex to RGB
                   const rgb = e.target.value.match(/[0-9A-F]{2}/gi)?.map(x => parseInt(x, 16));
                   if (rgb) {
                     setFillColor(`rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha})`);
@@ -170,17 +187,31 @@ export default function DrawingPropertiesModal({
                 type="range"
                 min="0"
                 max="100"
-                value={Number((fillColor.match(/[\d.]+(?=\))/)?.[0] || '0.1')) * 100}
+                value={(() => {
+                  const alphaMatch = fillColor.match(/[\d.]+(?=\))/);
+                  return Number(alphaMatch ? alphaMatch[0] : '0.1') * 100;
+                })()}
                 onChange={(e) => {
                   const alpha = Number(e.target.value) / 100;
                   const colorMatch = fillColor.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
                   if (colorMatch) {
-                    setFillColor(`rgba(${colorMatch[1]}, ${colorMatch[2]}, ${colorMatch[3]}, ${alpha})`);
+                    setFillColor(`rgba(${colorMatch[1]}, ${colorMatch[2]}, ${colorMatch[3]}, ${alpha.toFixed(2)})`);
                   }
                 }}
                 className="flex-1"
                 title="Şeffaflık"
               />
+            </div>
+            <div className="mt-2 text-xs text-gray-400">
+              Önizleme: <span style={{ 
+                display: 'inline-block', 
+                width: '40px', 
+                height: '20px', 
+                backgroundColor: fillColor,
+                border: '1px solid #666',
+                verticalAlign: 'middle',
+                marginLeft: '4px'
+              }}></span> {fillColor}
             </div>
           </div>
         )}
