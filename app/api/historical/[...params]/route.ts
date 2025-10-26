@@ -41,16 +41,31 @@ function parseParams(params: string[]): HistoricalParams {
 
 /**
  * Convert timeframe (seconds) to Binance interval
+ * Note: Binance doesn't support sub-minute intervals, so we use 1m for anything < 1m
  */
 function timeframeToInterval(timeframe: number): string {
   const minutes = timeframe / 60;
+  
+  // For sub-minute timeframes (10s, 30s), use 1m and aggregate on client side
+  if (minutes < 1) return '1m';
+  
   if (minutes === 1) return '1m';
+  if (minutes === 3) return '3m';
   if (minutes === 5) return '5m';
   if (minutes === 15) return '15m';
+  if (minutes === 30) return '30m';
   if (minutes === 60) return '1h';
+  if (minutes === 120) return '2h';
   if (minutes === 240) return '4h';
+  if (minutes === 360) return '6h';
+  if (minutes === 480) return '8h';
+  if (minutes === 720) return '12h';
   if (minutes === 1440) return '1d';
-  return '5m'; // default
+  if (minutes === 4320) return '3d';
+  if (minutes === 10080) return '1w';
+  
+  // Default to 1m for anything else
+  return '1m';
 }
 
 /**

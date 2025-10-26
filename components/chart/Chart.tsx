@@ -73,6 +73,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const updateQueuedRef = useRef(false); // Is update queued via RAF?
   const rafIdRef = useRef<number | null>(null); // requestAnimationFrame ID
   const lastBarCountRef = useRef<number>(0); // Track bar count to detect full vs partial updates
+  const firstTickReceivedRef = useRef(false); // Has first tick been received from worker?
+  const pendingTicksRef = useRef<Bar[]>([]); // Buffer for ticks received before chart is ready
   const currentExchangeRef = useRef(exchange);
   const currentPairRef = useRef(pair);
   const currentTimeframeRef = useRef(timeframe);
@@ -199,8 +201,18 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     if (!containerRef.current) return;
 
     // Create chart
-    const width = containerRef.current.clientWidth || 800;
-    const height = containerRef.current.clientHeight || 600;
+    let width = containerRef.current.clientWidth || 800;
+    let height = containerRef.current.clientHeight || 600;
+    
+    // Ensure minimum dimensions - important for preventing height collapse
+    if (height < 100) {
+      console.warn(`[Chart] Height too small (${height}px), using minimum 400px`);
+      height = 400;
+    }
+    if (width < 100) {
+      console.warn(`[Chart] Width too small (${width}px), using minimum 600px`);
+      width = 600;
+    }
     
     console.log('[Chart] Creating chart with dimensions:', { width, height });
     
@@ -999,6 +1011,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       oldestTimestampRef.current = 0; // Reset oldest timestamp
       isLoadingOlderRef.current = false; // Reset loading flag
       lastBarCountRef.current = 0; // Reset bar count
+      firstTickReceivedRef.current = false; // Reset first tick flag
+      pendingTicksRef.current = []; // Clear buffered ticks
       precisionSetRef.current = false; // Reset precision flag for new pair
       setLoadingOlder(false);
       
@@ -1019,9 +1033,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       // Calculate optimal time range based on timeframe to get ~500-800 candles
       let hoursBack = 24;
       if (currentTimeframe === 10) { // 10s
-        hoursBack = 2; // 720 candles
+        hoursBack = 0.5; // 30 minutes (will fetch 1m bars and aggregate)
       } else if (currentTimeframe === 30) { // 30s
-        hoursBack = 4; // 480 candles
+        hoursBack = 1; // 1 hour (will fetch 1m bars and aggregate)
       } else if (currentTimeframe === 60) { // 1m
         hoursBack = 12; // 720 candles
       } else if (currentTimeframe === 300) { // 5m
@@ -1043,8 +1057,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
       console.log('[Chart] Fetching historical data:', { from, to, currentTimeframe, marketList });
 
-      // Use Railway backend for initial load (Vercel API is geo-blocked)
-      const response = await historicalService.fetch(from, to, currentTimeframe, marketList, true);
+      // USE RAILWAY FOR ALL TIMEFRAMES
+      // Railway includes current open candle with live data, which is critical for immediate chart movement
+      // Next.js/Binance API only returns closed candles, causing delays on short timeframes
+      const useRailway = true; // Always use Railway for consistent behavior
+      console.log(`[Chart] Using Railway backend for ${currentTimeframe}s timeframe`);
+      
+      const response = await historicalService.fetch(from, to, currentTimeframe, marketList, useRailway, marketType);
 
       // Check if exchange/pair changed during fetch
       if (currentExchange !== exchange || currentPair !== pair || currentTimeframe !== timeframe) {
@@ -1090,10 +1109,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           lastBarIsCurrentWindow: lastHistoricalBar.time === currentBarTime
         });
         
-        // Check if Railway bar is EMPTY (no trades yet)
-        const isRailwayBarEmpty = lastHistoricalBar.high === lastHistoricalBar.open && 
-                                  lastHistoricalBar.low === lastHistoricalBar.open && 
-                                  lastHistoricalBar.vbuy === 0;
+        // Check if last bar is EMPTY (no trades yet)
+        const isLastBarEmpty = lastHistoricalBar.high === lastHistoricalBar.open && 
+                               lastHistoricalBar.low === lastHistoricalBar.open && 
+                               lastHistoricalBar.vbuy === 0;
         
         console.log('[Chart] 📊 LAST BAR DETAILS:', {
           time: lastHistoricalBar.time,
@@ -1104,23 +1123,19 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           close: lastHistoricalBar.close,
           vbuy: lastHistoricalBar.vbuy,
           vsell: lastHistoricalBar.vsell,
-          isEmpty: isRailwayBarEmpty
+          isEmpty: isLastBarEmpty,
+          isBeforeCurrentWindow: lastHistoricalBar.time < currentBarTime
         });
         
-        // Create a new bar if:
-        // 1. Railway's last bar is BEFORE current window, OR
-        // 2. Railway bar IS current window BUT is EMPTY (no trades yet)
-        const shouldCreateNewBar = lastHistoricalBar.time < currentBarTime || 
-                                   (lastHistoricalBar.time === currentBarTime && isRailwayBarEmpty);
+        // ALWAYS create current candle if it doesn't match current time window
+        // This ensures immediate chart movement on all timeframes
+        const shouldCreateNewBar = lastHistoricalBar.time !== currentBarTime;
         
         if (shouldCreateNewBar) {
-          // Create a fresh bar because:
-          // - Railway's last bar is from previous window, OR
-          // - Railway's current bar is EMPTY (no trades yet)
-          const reason = lastHistoricalBar.time < currentBarTime ? 
-            'Railway bar is from previous window' : 
-            'Railway bar is EMPTY (no trades yet)';
-          console.log(`[Chart] ✅ Creating new bar - ${reason}`);
+          const reason = lastHistoricalBar.time < currentBarTime 
+            ? 'Last bar is from previous window - creating current open candle' 
+            : 'Last bar is EMPTY or from future - creating current open candle';
+          console.log(`[Chart] ✅ FORCE creating current candle - ${reason}`);
           
           const liveBar = {
             time: currentBarTime,
@@ -1138,10 +1153,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           
           cacheRef.current.addBar(liveBar);
           updateChart();
+          console.log('[Chart] 🎯 Current candle added to cache and chart updated');
         } else {
-          // Railway's last bar IS the current window AND has data
+          // Last bar IS the current window AND has data (from Railway)
           // Perfect! Keep it as-is, worker will continue updating it
-          console.log('[Chart] ✅ Railway bar has DATA - keeping it for live updates');
+          console.log('[Chart] ✅ Current window bar exists with data - keeping it for live updates');
+          // Still update chart to ensure it's visible
+          updateChart();
         }
       } else {
         console.warn('[Chart] No data received');
@@ -1149,7 +1167,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
       setIsLoading(false);
       
-      // Start worker after data is loaded
+      // Start worker immediately - current candle is already in cache
+      // Worker will find it and start updating right away
+      console.log('[Chart] 🚀 Starting worker with current candle ready in cache');
       setupWorker();
     } catch (err) {
       console.error('[Chart] Load error:', err);
@@ -1180,7 +1200,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       // Calculate time range for older data
       // Load same amount as initial load
       let hoursBack = 24;
-      if (currentTimeframe === 60) hoursBack = 12;
+      if (currentTimeframe === 10) hoursBack = 0.5;
+      else if (currentTimeframe === 30) hoursBack = 1;
+      else if (currentTimeframe === 60) hoursBack = 12;
       else if (currentTimeframe === 300) hoursBack = 24;
       else if (currentTimeframe === 900) hoursBack = 48;
       else if (currentTimeframe === 3600) hoursBack = 168;
@@ -1249,7 +1271,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const minutes = Math.floor(remaining / 60000);
       const seconds = Math.floor((remaining % 60000) / 1000);
       
-      setCountdown(`${minutes}:${seconds.toString().padStart(2, '0')}`);
+      const countdownText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+      setCountdown(countdownText);
     };
     
     // Update immediately
@@ -1284,6 +1307,30 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           case 'connected':
             console.log('[Chart] WebSocket connected:', data);
             setWsConnected(true);
+            
+            // NOW that we're connected, initialize the active bar
+            // This ensures the worker can emit tick immediately
+            if (cacheRef.current) {
+              const allBars = cacheRef.current.getAllBars();
+              const now = Date.now();
+              const currentCandleTime = Math.floor(now / (timeframe * 1000)) * (timeframe * 1000);
+              
+              // Find the current candle
+              let currentCandle = allBars.find(bar => bar.time === currentCandleTime);
+              
+              if (currentCandle && workerRef.current) {
+                console.log('[Chart] 🚀 Sending current candle to worker after connection:', {
+                  time: new Date(currentCandle.time).toISOString(),
+                  open: currentCandle.open,
+                  close: currentCandle.close
+                });
+                
+                workerRef.current.postMessage({
+                  op: 'initActiveBar',
+                  data: currentCandle,
+                });
+              }
+            }
             break;
           case 'bar':
             handleNewBar(data);
@@ -1301,16 +1348,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         console.error('[Worker] Error:', error);
       };
 
-      // Connect to exchange
-      worker.postMessage({
-        op: 'connect',
-        data: { exchange, pair },
-      });
-
-      // Set timeframe
+      // Set timeframe first
       worker.postMessage({
         op: 'setTimeframe',
         data: timeframe,
+      });
+
+      // Connect to exchange (this starts receiving live trades)
+      // After connection completes, we'll send initActiveBar in the 'connected' event handler
+      worker.postMessage({
+        op: 'connect',
+        data: { exchange, pair },
       });
 
       workerRef.current = worker;
@@ -1347,6 +1395,51 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       setCurrentPrice(bar.close);
     }
     
+    // For first tick, update chart IMMEDIATELY without RAF
+    // This ensures chart starts moving right away on short timeframes
+    if (!firstTickReceivedRef.current) {
+      firstTickReceivedRef.current = true;
+      console.log('[Chart] ⚡ First tick received - updating chart immediately');
+      
+      // If series not ready yet, buffer this tick and wait
+      if (!seriesRef.current || !chartRef.current) {
+        console.log('[Chart] Series not ready yet, buffering tick...');
+        pendingTicksRef.current.push(bar);
+        
+        // Try to process pending ticks when ready
+        const tryProcessPending = (retries = 0) => {
+          if (seriesRef.current && chartRef.current && cacheRef.current) {
+            console.log(`[Chart] ✅ Series ready! Processing ${pendingTicksRef.current.length} buffered ticks`);
+            // Add all pending ticks to cache
+            pendingTicksRef.current.forEach(pendingBar => {
+              cacheRef.current.addBar(pendingBar);
+            });
+            pendingTicksRef.current = [];
+            updateChart();
+          } else if (retries < 50) {
+            // Increased to 50 retries (5 seconds total)
+            setTimeout(() => tryProcessPending(retries + 1), 100);
+          } else {
+            console.error('[Chart] Failed to process buffered ticks after 50 retries (5 seconds)');
+            console.error('[Chart] Debug - seriesRef:', !!seriesRef.current, 'chartRef:', !!chartRef.current, 'cacheRef:', !!cacheRef.current);
+          }
+        };
+        
+        tryProcessPending();
+        return;
+      }
+      
+      updateChart();
+      return;
+    }
+    
+    // If there are pending ticks, it means chart isn't ready yet
+    // Buffer this tick too
+    if (pendingTicksRef.current.length > 0) {
+      pendingTicksRef.current.push(bar);
+      return;
+    }
+    
     // Queue single update per frame for chart rendering (aggr.trade style)
     if (!updateQueuedRef.current) {
       updateQueuedRef.current = true;
@@ -1381,7 +1474,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const bars = cacheRef.current.getAllBars();
     
     if (bars.length === 0) {
-      console.warn('[Chart] No bars to update');
       return;
     }
     
@@ -2673,16 +2765,19 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                   </div>
                 ))}
 
-                {/* Countdown Timer (TradingView style - attached below current price) */}
-                <div 
-                  className="absolute right-0 bg-teal-600 px-2 py-0.5 text-[10px] font-mono text-white z-10"
-                  style={{
-                    top: 'calc(50% + 16px)', // Below the current price label
-                    transform: 'translateY(-50%)'
-                  }}
-                >
-                  {countdown}
-                </div>
+                {/* Countdown Timer (only if seconds visible setting is enabled) */}
+                {chartSettings.secondsVisible && (
+                  <div 
+                    className="absolute right-2 top-2 bg-gray-900/90 border border-gray-700 backdrop-blur-sm px-2 py-1.5 rounded shadow-lg z-10"
+                  >
+                    <div className="flex items-center gap-1.5 text-teal-400">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-xs font-mono font-medium">{countdown}</span>
+                    </div>
+                  </div>
+                )}
 
                 {/* Toggle Legend Button (TradingView style - bottom left) */}
                 <button

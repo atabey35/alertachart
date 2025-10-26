@@ -12,7 +12,7 @@ import BybitExchange from './exchanges/BybitExchange';
 import OKXExchange from './exchanges/OKXExchange';
 
 interface AggregatorMessage {
-  op: 'connect' | 'disconnect' | 'subscribe' | 'unsubscribe' | 'setTimeframe';
+  op: 'connect' | 'disconnect' | 'subscribe' | 'unsubscribe' | 'setTimeframe' | 'initActiveBar';
   data?: any;
 }
 
@@ -115,6 +115,30 @@ class Aggregator {
     this.emit('timeframeChanged', timeframe);
   }
 
+  /**
+   * Initialize active bar with last historical candle
+   * This ensures smooth transition from historical to live data
+   */
+  initActiveBar(bar: Bar | null) {
+    if (bar) {
+      console.log('[Aggregator] Initializing with last historical bar:', {
+        time: new Date(bar.time).toISOString(),
+        open: bar.open,
+        high: bar.high,
+        low: bar.low,
+        close: bar.close
+      });
+      this.activeBar = { ...bar }; // Clone the bar
+      
+      // Emit initial tick so chart starts updating immediately
+      // This prevents waiting for first trade
+      this.emit('tick', cloneBar(this.activeBar));
+      console.log('[Aggregator] Emitted initial tick to start chart immediately');
+    } else {
+      this.activeBar = null;
+    }
+  }
+
   private emit(event: string, data: any) {
     // Send message to main thread
     postMessage({ event, data });
@@ -124,7 +148,7 @@ class Aggregator {
 // Worker message handler
 let aggregator: Aggregator | null = null;
 
-self.addEventListener('message', (event: MessageEvent<AggregatorMessage>) => {
+self.addEventListener('message', async (event: MessageEvent<AggregatorMessage>) => {
   const { op, data } = event.data;
 
   if (!aggregator) {
@@ -133,13 +157,16 @@ self.addEventListener('message', (event: MessageEvent<AggregatorMessage>) => {
 
   switch (op) {
     case 'connect':
-      aggregator.connect(data);
+      await aggregator.connect(data); // WAIT for connection to complete
       break;
     case 'disconnect':
-      aggregator.disconnect(data);
+      await aggregator.disconnect(data);
       break;
     case 'setTimeframe':
       aggregator.setTimeframe(data);
+      break;
+    case 'initActiveBar':
+      aggregator.initActiveBar(data);
       break;
   }
 });
