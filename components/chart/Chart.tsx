@@ -73,8 +73,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const updateQueuedRef = useRef(false); // Is update queued via RAF?
   const rafIdRef = useRef<number | null>(null); // requestAnimationFrame ID
   const lastBarCountRef = useRef<number>(0); // Track bar count to detect full vs partial updates
-  const firstTickReceivedRef = useRef(false); // Has first tick been received from worker?
-  const pendingTicksRef = useRef<Bar[]>([]); // Buffer for ticks received before chart is ready
   const currentExchangeRef = useRef(exchange);
   const currentPairRef = useRef(pair);
   const currentTimeframeRef = useRef(timeframe);
@@ -400,6 +398,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     chartRef.current = chart;
     seriesRef.current = series;
     volumeSeriesRef.current = volumeSeries;
+    
+    console.log('[Chart] ✅ Chart and series refs set:', {
+      chartRef: !!chartRef.current,
+      seriesRef: !!seriesRef.current,
+      volumeSeriesRef: !!volumeSeriesRef.current
+    });
 
     // Remove TradingView watermark aggressively
     const removeWatermark = () => {
@@ -683,6 +687,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
       
       // Clear all series refs BEFORE removing chart to prevent "Object is disposed" errors
+      console.log('[Chart] 🧹 Cleaning up chart and clearing refs');
       seriesRef.current = null;
       volumeSeriesRef.current = null;
       bbUpperRef.current = null;
@@ -1011,8 +1016,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       oldestTimestampRef.current = 0; // Reset oldest timestamp
       isLoadingOlderRef.current = false; // Reset loading flag
       lastBarCountRef.current = 0; // Reset bar count
-      firstTickReceivedRef.current = false; // Reset first tick flag
-      pendingTicksRef.current = []; // Clear buffered ticks
       precisionSetRef.current = false; // Reset precision flag for new pair
       setLoadingOlder(false);
       
@@ -1395,50 +1398,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       setCurrentPrice(bar.close);
     }
     
-    // For first tick, update chart IMMEDIATELY without RAF
-    // This ensures chart starts moving right away on short timeframes
-    if (!firstTickReceivedRef.current) {
-      firstTickReceivedRef.current = true;
-      console.log('[Chart] ⚡ First tick received - updating chart immediately');
-      
-      // If series not ready yet, buffer this tick and wait
-      if (!seriesRef.current || !chartRef.current) {
-        console.log('[Chart] Series not ready yet, buffering tick...');
-        pendingTicksRef.current.push(bar);
-        
-        // Try to process pending ticks when ready
-        const tryProcessPending = (retries = 0) => {
-          if (seriesRef.current && chartRef.current && cacheRef.current) {
-            console.log(`[Chart] ✅ Series ready! Processing ${pendingTicksRef.current.length} buffered ticks`);
-            // Add all pending ticks to cache
-            pendingTicksRef.current.forEach(pendingBar => {
-              cacheRef.current.addBar(pendingBar);
-            });
-            pendingTicksRef.current = [];
-            updateChart();
-          } else if (retries < 50) {
-            // Increased to 50 retries (5 seconds total)
-            setTimeout(() => tryProcessPending(retries + 1), 100);
-          } else {
-            console.error('[Chart] Failed to process buffered ticks after 50 retries (5 seconds)');
-            console.error('[Chart] Debug - seriesRef:', !!seriesRef.current, 'chartRef:', !!chartRef.current, 'cacheRef:', !!cacheRef.current);
-          }
-        };
-        
-        tryProcessPending();
-        return;
-      }
-      
-      updateChart();
-      return;
-    }
-    
-    // If there are pending ticks, it means chart isn't ready yet
-    // Buffer this tick too
-    if (pendingTicksRef.current.length > 0) {
-      pendingTicksRef.current.push(bar);
-      return;
-    }
+    // Just add to cache - no special first tick handling
+    // The normal RAF queue will handle updates smoothly
     
     // Queue single update per frame for chart rendering (aggr.trade style)
     if (!updateQueuedRef.current) {
