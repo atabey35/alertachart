@@ -1560,10 +1560,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
     if (barCountChanged || isInitialLoadRef.current) {
       // Full reload: use setData()
+      console.log('[Chart] 📊 Full update (setData) - bar count:', candleData.length);
       seriesRef.current.setData(candleData);
       volumeSeriesRef.current.setData(volumeData);
     } else {
       // Just last bar update: use update() for smooth animation
+      console.log('[Chart] 🔄 Live update (update) - last bar:', lastCandle.time, lastCandle.close);
       seriesRef.current.update(lastCandle);
       volumeSeriesRef.current.update(lastVolume);
     }
