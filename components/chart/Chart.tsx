@@ -2367,15 +2367,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     
     const currentPoint: DrawingPoint = { time: time as Time, price };
     
-    // Create preview drawing
+    // Create preview drawing - exactly as it will be saved
     const preview: Drawing = {
       id: 'preview',
       type: activeTool as DrawingType,
       points: [tempDrawing, currentPoint],
       color: '#2962FF',
       lineWidth: 2,
-      fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined,
-      extendRight: activeTool === 'trend' // Match final drawing behavior
+      fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined
+      // No extendRight - what you see is what you get
     };
     
     setPreviewDrawing(preview);
@@ -2501,8 +2501,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           points: [tempDrawing, point],
           color: '#2962FF',
           lineWidth: 2,
-          fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined,
-          extendRight: activeTool === 'trend' // Trend line extends right by default
+          fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined
+          // No default extendRight - user can enable via double-click properties
         };
         
         console.log('✅ 2-point drawing created:', newDrawing);

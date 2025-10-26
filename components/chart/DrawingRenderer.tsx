@@ -246,8 +246,8 @@ export default function DrawingRenderer({
           y2={y2}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
-          opacity={isPreview ? 0.7 : 1}
+          strokeDasharray={getStrokeDashArray(drawing.lineStyle, isSelected)}
+          opacity={isPreview ? 0.8 : 1}
           style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
         {isSelected && !isPreview && (
@@ -294,7 +294,7 @@ export default function DrawingRenderer({
           y2={extended.y2}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
+          strokeDasharray={getStrokeDashArray(drawing.lineStyle, isSelected)}
           opacity={isPreview ? 0.7 : 1}
           style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
@@ -342,7 +342,7 @@ export default function DrawingRenderer({
           y2={extended.y2}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
+          strokeDasharray={getStrokeDashArray(drawing.lineStyle, isSelected)}
           opacity={isPreview ? 0.7 : 1}
           style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
@@ -377,7 +377,17 @@ export default function DrawingRenderer({
     const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => !isPreview && onSelectDrawing(drawing.id)}
+        onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (!isPreview && isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+      >
         <line
           x1={p1.x}
           y1={p1.y}
@@ -385,14 +395,14 @@ export default function DrawingRenderer({
           y2={p2.y}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : 'none'}
-          opacity={isPreview ? 0.7 : 1}
-          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
+          strokeDasharray="none"
+          opacity={isPreview ? 0.8 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
         <polygon
           points={`${p2.x},${p2.y} ${arrowX1},${arrowY1} ${arrowX2},${arrowY2}`}
           fill={drawing.color || '#2962FF'}
-          opacity={isPreview ? 0.7 : 1}
+          opacity={isPreview ? 0.8 : 1}
         />
         {isSelected && !isPreview && (
           <>
@@ -440,7 +450,7 @@ export default function DrawingRenderer({
           height={height}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
+          strokeDasharray={getStrokeDashArray(drawing.lineStyle, isSelected)}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
           opacity={isPreview ? 0.7 : 1}
           style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
@@ -486,7 +496,7 @@ export default function DrawingRenderer({
           r={radius}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
+          strokeDasharray={getStrokeDashArray(drawing.lineStyle, isSelected)}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
           opacity={isPreview ? 0.7 : 1}
           style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
@@ -537,7 +547,7 @@ export default function DrawingRenderer({
           ry={ry}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
+          strokeDasharray={getStrokeDashArray(drawing.lineStyle, isSelected)}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
           opacity={isPreview ? 0.7 : 1}
           style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
@@ -582,7 +592,7 @@ export default function DrawingRenderer({
           points={points}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
+          strokeDasharray={getStrokeDashArray(drawing.lineStyle, isSelected)}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
           opacity={isPreview ? 0.7 : 1}
           style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
@@ -667,8 +677,8 @@ export default function DrawingRenderer({
           y2={p2.y}
           stroke={drawing.color || '#787B86'}
           strokeWidth={2}
-          strokeDasharray={isPreview ? '8,4' : '4,4'}
-          opacity={isPreview ? 0.7 : 1}
+          strokeDasharray="4,4"
+          opacity={isPreview ? 0.8 : 1}
           style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
         
@@ -863,7 +873,17 @@ export default function DrawingRenderer({
     const midY = (p1.y + p2.y) / 2;
     
     return (
-      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => !isPreview && onSelectDrawing(drawing.id)}
+        onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (!isPreview && isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+      >
         <line
           x1={p1.x}
           y1={p1.y}
@@ -871,16 +891,16 @@ export default function DrawingRenderer({
           y2={p2.y}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : 2}
-          strokeDasharray={isPreview ? '8,4' : 'none'}
-          opacity={isPreview ? 0.7 : 1}
-          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
+          strokeDasharray="none"
+          opacity={isPreview ? 0.8 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
         {/* Start marker */}
-        <line x1={p1.x - 5} y1={p1.y - 5} x2={p1.x + 5} y2={p1.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.7 : 1} />
-        <line x1={p1.x + 5} y1={p1.y - 5} x2={p1.x - 5} y2={p1.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.7 : 1} />
+        <line x1={p1.x - 5} y1={p1.y - 5} x2={p1.x + 5} y2={p1.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.8 : 1} />
+        <line x1={p1.x + 5} y1={p1.y - 5} x2={p1.x - 5} y2={p1.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.8 : 1} />
         {/* End marker */}
-        <line x1={p2.x - 5} y1={p2.y - 5} x2={p2.x + 5} y2={p2.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.7 : 1} />
-        <line x1={p2.x + 5} y1={p2.y - 5} x2={p2.x - 5} y2={p2.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.7 : 1} />
+        <line x1={p2.x - 5} y1={p2.y - 5} x2={p2.x + 5} y2={p2.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.8 : 1} />
+        <line x1={p2.x + 5} y1={p2.y - 5} x2={p2.x - 5} y2={p2.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.8 : 1} />
         
         {/* Info box - only show in final drawing, not in preview */}
         {!isPreview && (

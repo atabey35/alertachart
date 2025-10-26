@@ -16,10 +16,12 @@ export default function DrawingPropertiesModal({
   onUpdate,
   onDelete
 }: DrawingPropertiesModalProps) {
+  const defaultFillColor = 'rgba(41, 98, 255, 0.1)';
+  
   const [color, setColor] = useState(drawing?.color || '#2962FF');
   const [lineWidth, setLineWidth] = useState(drawing?.lineWidth || 2);
   const [lineStyle, setLineStyle] = useState<'solid' | 'dashed' | 'dotted'>(drawing?.lineStyle || 'solid');
-  const [fillColor, setFillColor] = useState(drawing?.fillColor || 'rgba(41, 98, 255, 0.1)');
+  const [fillColor, setFillColor] = useState(drawing?.fillColor || defaultFillColor);
   const [text, setText] = useState(drawing?.text || '');
   const [extendRight, setExtendRight] = useState(drawing?.extendRight || false);
   const [extendLeft, setExtendLeft] = useState(drawing?.extendLeft || false);
@@ -29,7 +31,7 @@ export default function DrawingPropertiesModal({
       setColor(drawing.color || '#2962FF');
       setLineWidth(drawing.lineWidth || 2);
       setLineStyle(drawing.lineStyle || 'solid');
-      setFillColor(drawing.fillColor || 'rgba(41, 98, 255, 0.1)');
+      setFillColor(drawing.fillColor || defaultFillColor);
       setText(drawing.text || '');
       setExtendRight(drawing.extendRight || false);
       setExtendLeft(drawing.extendLeft || false);
