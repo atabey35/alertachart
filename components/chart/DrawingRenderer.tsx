@@ -85,6 +85,10 @@ export default function DrawingRenderer({
 
     const isSelected = selectedDrawingId === drawing.id;
     
+    // Get the time scale width (excludes price scale area)
+    const timeScale = chart.timeScale();
+    const chartWidth = timeScale.width();
+    
     return (
       <g 
         key={drawing.id} 
@@ -100,7 +104,7 @@ export default function DrawingRenderer({
         <line
           x1={0}
           y1={point.y}
-          x2={containerWidth}
+          x2={chartWidth}
           y2={point.y}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
@@ -197,12 +201,24 @@ export default function DrawingRenderer({
     
     if (!p1 || !p2) return null;
 
-    const extended = extendRay(p1.x, p1.y, p2.x, p2.y, containerWidth, containerHeight);
+    // Get the time scale width (excludes price scale area)
+    const chartWidth = chart.timeScale().width();
+    const extended = extendRay(p1.x, p1.y, p2.x, p2.y, chartWidth, containerHeight);
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => !isPreview && onSelectDrawing(drawing.id)}
+        onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (!isPreview && isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+      >
         <line
           x1={p1.x}
           y1={p1.y}
@@ -210,12 +226,15 @@ export default function DrawingRenderer({
           y2={extended.y2}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : (isSelected ? '5,5' : 'none')}
+          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
           opacity={isPreview ? 0.7 : 1}
-          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
+          style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
         {isSelected && !isPreview && (
-          <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#2962FF'} />
+          <>
+            <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#2962FF'} />
+            <circle cx={p2.x} cy={p2.y} r="5" fill={drawing.color || '#2962FF'} />
+          </>
         )}
       </g>
     );
@@ -230,12 +249,24 @@ export default function DrawingRenderer({
     
     if (!p1 || !p2) return null;
 
-    const extended = extendLine(p1.x, p1.y, p2.x, p2.y, 0, containerWidth, 0, containerHeight);
+    // Get the time scale width (excludes price scale area)
+    const chartWidth = chart.timeScale().width();
+    const extended = extendLine(p1.x, p1.y, p2.x, p2.y, 0, chartWidth, 0, containerHeight);
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => !isPreview && onSelectDrawing(drawing.id)}
+        onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (!isPreview && isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+      >
         <line
           x1={extended.x1}
           y1={extended.y1}
@@ -243,9 +274,9 @@ export default function DrawingRenderer({
           y2={extended.y2}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : '4,4'}
+          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
           opacity={isPreview ? 0.7 : 1}
-          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
+          style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
         {isSelected && !isPreview && (
           <>
