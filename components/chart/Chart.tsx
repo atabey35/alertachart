@@ -1420,6 +1420,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const updateChart = () => {
     // Exit early if series are disposed or null
     if (!seriesRef.current || !volumeSeriesRef.current || !chartRef.current) {
+      // Chart not ready yet - schedule retry
+      console.log('[Chart] Chart not ready for update, scheduling retry...');
+      setTimeout(() => {
+        if (cacheRef.current && cacheRef.current.getAllBars().length > 0) {
+          updateChart(); // Retry once
+        }
+      }, 100);
       return;
     }
     
@@ -1429,6 +1436,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       chartRef.current.timeScale();
     } catch (error) {
       // Chart is disposed, skip update
+      console.log('[Chart] Chart disposed, skipping update');
       return;
     }
 
