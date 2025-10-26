@@ -2947,7 +2947,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     selectedDrawingId={selectedDrawingId}
                     onSelectDrawing={setSelectedDrawingId}
                     onDoubleClick={handleDrawingDoubleClick}
-                    precision={chartSettings.priceScale}
+                    precision={pair.toLowerCase().includes('btc') || pair.toLowerCase().includes('eth') ? 2 : 4}
                   />
                 )}
 
