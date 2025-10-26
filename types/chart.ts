@@ -8,6 +8,7 @@ export interface Bar {
   high: number;
   low: number;
   close: number;
+  volume: number; // Total volume
   vbuy: number; // Buy volume
   vsell: number; // Sell volume
   cbuy: number; // Buy count
