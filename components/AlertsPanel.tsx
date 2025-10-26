@@ -58,7 +58,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
   };
 
   return (
-    <div className="bg-gray-900 flex flex-col h-full overflow-hidden" style={{ width: '280px', minWidth: '280px' }}>
+    <div className="bg-gray-900 flex flex-col h-full w-full overflow-hidden">
       {/* Header */}
       <div className="border-b border-gray-800 px-3 py-2">
         <div className="flex items-center justify-between mb-2">
