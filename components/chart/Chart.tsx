@@ -73,7 +73,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const updateQueuedRef = useRef(false); // Is update queued via RAF?
   const rafIdRef = useRef<number | null>(null); // requestAnimationFrame ID
   const lastBarCountRef = useRef<number>(0); // Track bar count to detect full vs partial updates
-  const updateRetryScheduledRef = useRef(false); // Is retry already scheduled?
   const currentExchangeRef = useRef(exchange);
   const currentPairRef = useRef(pair);
   const currentTimeframeRef = useRef(timeframe);
@@ -1017,7 +1016,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       oldestTimestampRef.current = 0; // Reset oldest timestamp
       isLoadingOlderRef.current = false; // Reset loading flag
       lastBarCountRef.current = 0; // Reset bar count
-      updateRetryScheduledRef.current = false; // Reset retry flag
       precisionSetRef.current = false; // Reset precision flag for new pair
       setLoadingOlder(false);
       
@@ -1403,6 +1401,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Just add to cache - no special first tick handling
     // The normal RAF queue will handle updates smoothly
     
+    // Only queue update if chart is ready - otherwise skip silently
+    // Chart will update when it becomes ready via setData
+    if (!seriesRef.current || !volumeSeriesRef.current || !chartRef.current) {
+      // Chart not ready yet - skip this tick, it's already in cache
+      return;
+    }
+    
     // Queue single update per frame for chart rendering (aggr.trade style)
     if (!updateQueuedRef.current) {
       updateQueuedRef.current = true;
@@ -1422,17 +1427,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const updateChart = () => {
     // Exit early if series are disposed or null
     if (!seriesRef.current || !volumeSeriesRef.current || !chartRef.current) {
-      // Chart not ready yet - schedule retry ONLY if not already scheduled
-      if (!updateRetryScheduledRef.current) {
-        updateRetryScheduledRef.current = true;
-        console.log('[Chart] Chart not ready for update, scheduling single retry...');
-        setTimeout(() => {
-          updateRetryScheduledRef.current = false;
-          if (cacheRef.current && cacheRef.current.getAllBars().length > 0) {
-            updateChart(); // Retry once
-          }
-        }, 100);
-      }
+      // Chart not ready - skip silently
+      // Ticks are already in cache, chart will render them when ready
       return;
     }
     
