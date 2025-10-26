@@ -2916,6 +2916,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                   <DrawingRenderer
                     drawings={previewDrawing ? [...drawings, previewDrawing] : drawings}
                     chart={chartRef.current}
+                    series={seriesRef.current}
                     containerWidth={containerSize.width}
                     containerHeight={containerSize.height}
                     selectedDrawingId={selectedDrawingId}

@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { Drawing } from '@/types/drawing';
-import { IChartApi } from 'lightweight-charts';
+import { IChartApi, ISeriesApi } from 'lightweight-charts';
 import { 
   FIB_RETRACEMENT_LEVELS, 
   FIB_EXTENSION_LEVELS,
@@ -22,6 +22,7 @@ import {
 interface DrawingRendererProps {
   drawings: Drawing[];
   chart: IChartApi | null;
+  series: ISeriesApi<"Candlestick"> | null;
   containerWidth: number;
   containerHeight: number;
   selectedDrawingId: string | null;
@@ -32,22 +33,22 @@ interface DrawingRendererProps {
 export default function DrawingRenderer({
   drawings,
   chart,
+  series,
   containerWidth,
   containerHeight,
   selectedDrawingId,
   onSelectDrawing,
   precision = 2
 }: DrawingRendererProps) {
-  if (!chart) return null;
+  if (!chart || !series) return null;
 
   // Convert price/time coordinates to pixel coordinates
   const toPixels = (time: number, price: number): { x: number; y: number } | null => {
     try {
       const timeScale = chart.timeScale();
-      const priceScale = (chart as any).priceScale('right');
       
       const x = timeScale.timeToCoordinate(time as any);
-      const y = priceScale.priceToCoordinate(price);
+      const y = series.priceToCoordinate(price);
       
       console.log('🔍 toPixels:', { time, price, x, y });
       
