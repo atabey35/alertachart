@@ -227,6 +227,18 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   }, []);
 
   /**
+   * Disable chart interactions when drawing tool is active
+   */
+  useEffect(() => {
+    if (!chartRef.current) return;
+    
+    chartRef.current.applyOptions({
+      handleScroll: activeTool === 'none',
+      handleScale: activeTool === 'none',
+    });
+  }, [activeTool]);
+
+  /**
    * Initialize chart
    */
   useEffect(() => {
@@ -263,6 +275,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           color: chartSettings.showGrid ? chartSettings.gridHorizontalColor : 'transparent',
         },
       },
+      handleScroll: true,
+      handleScale: true,
       crosshair: {
         mode: chartSettings.showCrosshair ? 1 : 0,
       },
@@ -2787,8 +2801,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     style={{ 
                       cursor: 'crosshair', 
                       pointerEvents: 'auto',
-                      zIndex: 8,
-                      background: 'rgba(255,0,0,0.05)' // DEBUG: Subtle red tint to see overlay
+                      zIndex: 50, // Higher z-index to be above chart
+                      background: 'transparent'
                     }}
                     onMouseMove={(e) => {
                       // Show live preview while drawing
