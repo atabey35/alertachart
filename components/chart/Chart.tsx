@@ -1484,6 +1484,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const candleMap = new Map<Time, CandlestickData>();
     const volumeMap = new Map<Time, HistogramData>();
     
+    // Get the last bar timestamp for special handling
+    const lastBarTime = bars.length > 0 ? bars[bars.length - 1].time : 0;
+    
     for (const bar of bars) {
       const time = Math.floor(bar.time / 1000) as Time;
       
@@ -1501,12 +1504,19 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       
       // Determine color: green if more buy volume, red if more sell volume
       let volumeColor: string;
-      if (bar.vbuy > bar.vsell) {
+      
+      // For the CURRENT BAR (last bar with live updates), use candle direction instead of vbuy/vsell
+      // This ensures live bars are colored green/red even before trades arrive
+      if (bar.time === lastBarTime && bar.open > 0) {
+        // Use candle direction (close vs open) for live bar
+        volumeColor = bar.close >= bar.open ? chartSettings.volumeUpColor : chartSettings.volumeDownColor;
+      } else if (bar.vbuy > bar.vsell) {
         volumeColor = chartSettings.volumeUpColor;
       } else if (bar.vsell > bar.vbuy) {
         volumeColor = chartSettings.volumeDownColor;
       } else {
-        volumeColor = '#75757580'; // Gray if equal
+        // For historical bars with equal vbuy/vsell, use candle direction
+        volumeColor = bar.close >= bar.open ? chartSettings.volumeUpColor : chartSettings.volumeDownColor;
       }
       
       volumeMap.set(time, {
