@@ -2225,7 +2225,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         text: activeTool === 'text' ? 'Text' : undefined
       };
       
-      setDrawings(prev => [...prev, newDrawing]);
+      console.log('✅ Single-point drawing created:', newDrawing);
+      
+      setDrawings(prev => {
+        const updated = [...prev, newDrawing];
+        console.log('📊 Drawings after add:', updated);
+        return updated;
+      });
       setActiveTool('none');
       setTempDrawing(null);
       setPreviewDrawing(null);
@@ -2235,8 +2241,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Multi-point tools
     if (!tempDrawing) {
       // First point
+      console.log('📍 First point set for', activeTool, ':', point);
       setTempDrawing(point);
     } else {
+      console.log('📍 Second point for', activeTool, ':', point);
       // Second (or third) point
       const pointCount = activeTool === 'triangle' || activeTool === 'channel' || activeTool === 'fib-extension' ? 3 : 2;
       
@@ -2273,7 +2281,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined
         };
         
-        setDrawings(prev => [...prev, newDrawing]);
+        console.log('✅ 2-point drawing created:', newDrawing);
+        
+        setDrawings(prev => {
+          const updated = [...prev, newDrawing];
+          console.log('📊 Drawings after add:', updated);
+          return updated;
+        });
         setTempDrawing(null);
         setPreviewDrawing(null);
         setActiveTool('none');
