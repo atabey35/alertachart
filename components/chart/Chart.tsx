@@ -1041,8 +1041,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         hoursBack = 1; // 1 hour (will fetch 1m bars and aggregate)
       } else if (currentTimeframe === 60) { // 1m
         hoursBack = 12; // 720 candles
-      } else if (currentTimeframe === 300) { // 5m
-        hoursBack = 24; // 288 candles
+      } else if (currentTimeframe === 180) { // 3m
+        hoursBack = 18; // 360 candles
       } else if (currentTimeframe === 900) { // 15m
         hoursBack = 48; // 192 candles
       } else if (currentTimeframe === 3600) { // 1h
@@ -1206,7 +1206,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       if (currentTimeframe === 10) hoursBack = 0.5;
       else if (currentTimeframe === 30) hoursBack = 1;
       else if (currentTimeframe === 60) hoursBack = 12;
-      else if (currentTimeframe === 300) hoursBack = 24;
+      else if (currentTimeframe === 180) hoursBack = 18;
       else if (currentTimeframe === 900) hoursBack = 48;
       else if (currentTimeframe === 3600) hoursBack = 168;
       else if (currentTimeframe === 14400) hoursBack = 720;

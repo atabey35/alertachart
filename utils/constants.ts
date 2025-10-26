@@ -11,7 +11,7 @@ export const TIMEFRAMES = [
   10,        // 10s
   30,        // 30s
   60,        // 1m
-  300,       // 5m
+  180,       // 3m
   900,       // 15m
   3600,      // 1h
   14400,     // 4h
@@ -19,7 +19,7 @@ export const TIMEFRAMES = [
 ];
 
 // Default timeframe
-export const DEFAULT_TIMEFRAME = 300; // 5m
+export const DEFAULT_TIMEFRAME = 900; // 15m
 
 // Exchanges
 export const SUPPORTED_EXCHANGES: string[] = [
