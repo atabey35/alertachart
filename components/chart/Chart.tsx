@@ -171,6 +171,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [editingDrawing, setEditingDrawing] = useState<Drawing | null>(null); // Drawing being edited in modal
   const [draggingPoint, setDraggingPoint] = useState<{ drawingId: string; pointIndex: number } | null>(null);
+  const [draggingDrawing, setDraggingDrawing] = useState<{ drawingId: string; startX: number; startY: number; originalPoints: DrawingPoint[] } | null>(null);
   const [handlePositions, setHandlePositions] = useState<Array<{ x: number; y: number; drawingId: string; pointIndex: number }>>([]);
   const [showDrawingTools, setShowDrawingTools] = useState(false);
   const [showMobileHint, setShowMobileHint] = useState(true);
@@ -237,6 +238,29 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       handleScale: activeTool === 'none',
     });
   }, [activeTool]);
+
+  /**
+   * Handle drawing drag (move and end)
+   */
+  useEffect(() => {
+    if (!draggingDrawing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      handleDrawingDragMove(e.clientX, e.clientY);
+    };
+
+    const handleMouseUp = () => {
+      handleDrawingDragEnd();
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [draggingDrawing]);
 
   /**
    * Initialize chart
@@ -2150,6 +2174,63 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     setEditingDrawing(null);
   };
 
+  const handleDrawingDragStart = (drawingId: string, clientX: number, clientY: number) => {
+    const drawing = drawings.find(d => d.id === drawingId);
+    if (!drawing) return;
+    
+    setDraggingDrawing({
+      drawingId,
+      startX: clientX,
+      startY: clientY,
+      originalPoints: [...drawing.points]
+    });
+  };
+
+  const handleDrawingDragMove = (clientX: number, clientY: number) => {
+    if (!draggingDrawing || !containerRef.current || !chartRef.current || !seriesRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const deltaX = clientX - draggingDrawing.startX;
+    const deltaY = clientY - draggingDrawing.startY;
+    
+    const timeScale = chartRef.current.timeScale();
+    
+    // Convert delta pixels to time/price deltas
+    setDrawings(prev => prev.map(drawing => {
+      if (drawing.id !== draggingDrawing.drawingId) return drawing;
+      
+      const newPoints = draggingDrawing.originalPoints.map((point, idx) => {
+        try {
+          // Get original pixel position
+          const origX = timeScale.timeToCoordinate(point.time as any);
+          const origY = seriesRef.current!.priceToCoordinate(point.price);
+          
+          if (origX === null || origY === null) return point;
+          
+          // Apply delta
+          const newX = origX + deltaX;
+          const newY = origY + deltaY;
+          
+          // Convert back to time/price
+          const newTime = timeScale.coordinateToTime(newX as any);
+          const newPrice = seriesRef.current!.coordinateToPrice(newY);
+          
+          if (!newTime || newPrice === null) return point;
+          
+          return { time: newTime as Time, price: newPrice };
+        } catch (e) {
+          return point;
+        }
+      });
+      
+      return { ...drawing, points: newPoints };
+    }));
+  };
+
+  const handleDrawingDragEnd = () => {
+    setDraggingDrawing(null);
+  };
+
   const handleDeleteDrawing = (id: string) => {
     // Remove trend line series
     const series = drawingSeriesRef.current.get(id);
@@ -2947,6 +3028,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     selectedDrawingId={selectedDrawingId}
                     onSelectDrawing={setSelectedDrawingId}
                     onDoubleClick={handleDrawingDoubleClick}
+                    onDragStart={handleDrawingDragStart}
                     precision={pair.toLowerCase().includes('btc') || pair.toLowerCase().includes('eth') ? 2 : 4}
                   />
                 )}

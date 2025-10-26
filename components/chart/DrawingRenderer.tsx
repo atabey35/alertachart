@@ -28,6 +28,7 @@ interface DrawingRendererProps {
   selectedDrawingId: string | null;
   onSelectDrawing: (id: string | null) => void;
   onDoubleClick?: (drawing: Drawing) => void;
+  onDragStart?: (drawingId: string, clientX: number, clientY: number) => void;
   precision?: number;
 }
 
@@ -40,6 +41,7 @@ export default function DrawingRenderer({
   selectedDrawingId,
   onSelectDrawing,
   onDoubleClick,
+  onDragStart,
   precision = 2
 }: DrawingRendererProps) {
   if (!chart || !series) return null;
@@ -326,6 +328,12 @@ export default function DrawingRenderer({
         key={drawing.id} 
         onClick={() => !isPreview && onSelectDrawing(drawing.id)}
         onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+        onMouseDown={(e) => {
+          if (!isPreview && isSelected && onDragStart) {
+            e.stopPropagation();
+            onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
       >
         <rect
           x={x}
@@ -337,7 +345,7 @@ export default function DrawingRenderer({
           strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
           opacity={isPreview ? 0.7 : 1}
-          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
+          style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
         />
         {isSelected && !isPreview && (
           <>
