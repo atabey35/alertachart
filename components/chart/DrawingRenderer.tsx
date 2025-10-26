@@ -49,10 +49,16 @@ export default function DrawingRenderer({
       const x = timeScale.timeToCoordinate(time as any);
       const y = priceScale.priceToCoordinate(price);
       
-      if (x === null || y === null) return null;
+      console.log('🔍 toPixels:', { time, price, x, y });
+      
+      if (x === null || y === null) {
+        console.log('❌ toPixels returned null');
+        return null;
+      }
       
       return { x, y };
     } catch (e) {
+      console.log('❌ toPixels error:', e);
       return null;
     }
   };
@@ -270,17 +276,29 @@ export default function DrawingRenderer({
 
   // Render rectangle
   const renderRectangle = (drawing: Drawing) => {
-    if (drawing.points.length < 2) return null;
+    console.log('📦 renderRectangle called:', drawing.id, drawing.points);
+    
+    if (drawing.points.length < 2) {
+      console.log('❌ Rectangle: not enough points');
+      return null;
+    }
     
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
     
-    if (!p1 || !p2) return null;
+    console.log('📍 Rectangle pixels:', { p1, p2 });
+    
+    if (!p1 || !p2) {
+      console.log('❌ Rectangle: invalid pixel coordinates');
+      return null;
+    }
 
     const x = Math.min(p1.x, p2.x);
     const y = Math.min(p1.y, p2.y);
     const width = Math.abs(p2.x - p1.x);
     const height = Math.abs(p2.y - p1.y);
+
+    console.log('✅ Rectangle dimensions:', { x, y, width, height });
 
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
