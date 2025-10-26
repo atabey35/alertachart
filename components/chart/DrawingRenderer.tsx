@@ -162,9 +162,10 @@ export default function DrawingRenderer({
 
     const extended = extendRay(p1.x, p1.y, p2.x, p2.y, containerWidth, containerHeight);
     const isSelected = selectedDrawingId === drawing.id;
+    const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         <line
           x1={p1.x}
           y1={p1.y}
@@ -172,10 +173,11 @@ export default function DrawingRenderer({
           y2={extended.y2}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isSelected ? '5,5' : 'none'}
-          style={{ cursor: 'pointer' }}
+          strokeDasharray={isPreview ? '8,4' : (isSelected ? '5,5' : 'none')}
+          opacity={isPreview ? 0.7 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
-        {isSelected && (
+        {isSelected && !isPreview && (
           <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#2962FF'} />
         )}
       </g>
@@ -193,9 +195,10 @@ export default function DrawingRenderer({
 
     const extended = extendLine(p1.x, p1.y, p2.x, p2.y, 0, containerWidth, 0, containerHeight);
     const isSelected = selectedDrawingId === drawing.id;
+    const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         <line
           x1={extended.x1}
           y1={extended.y1}
@@ -203,9 +206,16 @@ export default function DrawingRenderer({
           y2={extended.y2}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray="4,4"
-          style={{ cursor: 'pointer' }}
+          strokeDasharray={isPreview ? '8,4' : '4,4'}
+          opacity={isPreview ? 0.7 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
+        {isSelected && !isPreview && (
+          <>
+            <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#2962FF'} />
+            <circle cx={p2.x} cy={p2.y} r="5" fill={drawing.color || '#2962FF'} />
+          </>
+        )}
       </g>
     );
   };
@@ -228,9 +238,10 @@ export default function DrawingRenderer({
     const arrowY2 = p2.y - arrowSize * Math.sin(angle + Math.PI / 6);
 
     const isSelected = selectedDrawingId === drawing.id;
+    const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         <line
           x1={p1.x}
           y1={p1.y}
@@ -238,12 +249,21 @@ export default function DrawingRenderer({
           y2={p2.y}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          style={{ cursor: 'pointer' }}
+          strokeDasharray={isPreview ? '8,4' : 'none'}
+          opacity={isPreview ? 0.7 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
         <polygon
           points={`${p2.x},${p2.y} ${arrowX1},${arrowY1} ${arrowX2},${arrowY2}`}
           fill={drawing.color || '#2962FF'}
+          opacity={isPreview ? 0.7 : 1}
         />
+        {isSelected && !isPreview && (
+          <>
+            <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#2962FF'} />
+            <circle cx={p2.x} cy={p2.y} r="5" fill={drawing.color || '#2962FF'} />
+          </>
+        )}
       </g>
     );
   };
@@ -360,16 +380,26 @@ export default function DrawingRenderer({
 
     const points = `${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`;
     const isSelected = selectedDrawingId === drawing.id;
+    const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         <polygon
           points={points}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
+          strokeDasharray={isPreview ? '8,4' : 'none'}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
-          style={{ cursor: 'pointer' }}
+          opacity={isPreview ? 0.7 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
+        {isSelected && !isPreview && (
+          <>
+            <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#2962FF'} />
+            <circle cx={p2.x} cy={p2.y} r="5" fill={drawing.color || '#2962FF'} />
+            <circle cx={p3.x} cy={p3.y} r="5" fill={drawing.color || '#2962FF'} />
+          </>
+        )}
       </g>
     );
   };
@@ -431,9 +461,10 @@ export default function DrawingRenderer({
     );
 
     const isSelected = selectedDrawingId === drawing.id;
+    const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         {/* Base line */}
         <line
           x1={p1.x}
@@ -442,11 +473,13 @@ export default function DrawingRenderer({
           y2={p2.y}
           stroke={drawing.color || '#787B86'}
           strokeWidth={2}
-          strokeDasharray="4,4"
+          strokeDasharray={isPreview ? '8,4' : '4,4'}
+          opacity={isPreview ? 0.7 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
         
-        {/* Fib levels */}
-        {fibLevels.map((level, i) => {
+        {/* Fib levels - only show in final drawing, not in preview */}
+        {!isPreview && fibLevels.map((level, i) => {
           const levelPoint = toPixels(drawing.points[0].time as number, level.price);
           if (!levelPoint) return null;
           
@@ -473,6 +506,12 @@ export default function DrawingRenderer({
             </g>
           );
         })}
+        {isSelected && !isPreview && (
+          <>
+            <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#787B86'} />
+            <circle cx={p2.x} cy={p2.y} r="5" fill={drawing.color || '#787B86'} />
+          </>
+        )}
       </g>
     );
   };
@@ -530,28 +569,42 @@ export default function DrawingRenderer({
 
   // Render text annotation
   const renderText = (drawing: Drawing) => {
-    if (drawing.points.length < 1 || !drawing.text) return null;
+    if (drawing.points.length < 1) return null;
     
     const point = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     if (!point) return null;
 
     const isSelected = selectedDrawingId === drawing.id;
+    const displayText = drawing.text || 'Text'; // Default text if none provided
     
     return (
       <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+        {/* Background box for better visibility */}
+        <rect
+          x={point.x - 30}
+          y={point.y - 15}
+          width={60}
+          height={20}
+          fill="rgba(0, 0, 0, 0.7)"
+          stroke={drawing.color || '#2962FF'}
+          strokeWidth={isSelected ? 2 : 1}
+          rx="3"
+          style={{ cursor: 'pointer' }}
+        />
         <text
           x={point.x}
           y={point.y}
           fill={drawing.color || '#FFFFFF'}
-          fontSize="14"
+          fontSize="12"
           fontWeight="bold"
           style={{ cursor: 'pointer' }}
           textAnchor="middle"
+          dominantBaseline="middle"
         >
-          {drawing.text}
+          {displayText}
         </text>
         {isSelected && (
-          <circle cx={point.x} cy={point.y} r="3" fill={drawing.color || '#FFFFFF'} />
+          <circle cx={point.x} cy={point.y + 15} r="3" fill={drawing.color || '#2962FF'} />
         )}
       </g>
     );
@@ -611,11 +664,12 @@ export default function DrawingRenderer({
     );
 
     const isSelected = selectedDrawingId === drawing.id;
+    const isPreview = drawing.id === 'preview';
     const midX = (p1.x + p2.x) / 2;
     const midY = (p1.y + p2.y) / 2;
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         <line
           x1={p1.x}
           y1={p1.y}
@@ -623,35 +677,41 @@ export default function DrawingRenderer({
           y2={p2.y}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : 2}
-          style={{ cursor: 'pointer' }}
+          strokeDasharray={isPreview ? '8,4' : 'none'}
+          opacity={isPreview ? 0.7 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
         {/* Start marker */}
-        <line x1={p1.x - 5} y1={p1.y - 5} x2={p1.x + 5} y2={p1.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" />
-        <line x1={p1.x + 5} y1={p1.y - 5} x2={p1.x - 5} y2={p1.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" />
+        <line x1={p1.x - 5} y1={p1.y - 5} x2={p1.x + 5} y2={p1.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.7 : 1} />
+        <line x1={p1.x + 5} y1={p1.y - 5} x2={p1.x - 5} y2={p1.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.7 : 1} />
         {/* End marker */}
-        <line x1={p2.x - 5} y1={p2.y - 5} x2={p2.x + 5} y2={p2.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" />
-        <line x1={p2.x + 5} y1={p2.y - 5} x2={p2.x - 5} y2={p2.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" />
+        <line x1={p2.x - 5} y1={p2.y - 5} x2={p2.x + 5} y2={p2.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.7 : 1} />
+        <line x1={p2.x + 5} y1={p2.y - 5} x2={p2.x - 5} y2={p2.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.7 : 1} />
         
-        {/* Info box */}
-        <rect
-          x={midX - 60}
-          y={midY - 35}
-          width="120"
-          height="55"
-          fill="rgba(0, 0, 0, 0.8)"
-          stroke={drawing.color || '#2962FF'}
-          strokeWidth="1"
-          rx="4"
-        />
-        <text x={midX} y={midY - 20} fill="#FFFFFF" fontSize="11" textAnchor="middle" fontWeight="bold">
-          {measurement.priceChange}
-        </text>
-        <text x={midX} y={midY - 5} fill="#26A69A" fontSize="10" textAnchor="middle">
-          {measurement.percentChange}
-        </text>
-        <text x={midX} y={midY + 10} fill="#787B86" fontSize="9" textAnchor="middle">
-          {measurement.bars} bars • {measurement.timeDiff}
-        </text>
+        {/* Info box - only show in final drawing, not in preview */}
+        {!isPreview && (
+          <>
+            <rect
+              x={midX - 60}
+              y={midY - 35}
+              width="120"
+              height="55"
+              fill="rgba(0, 0, 0, 0.8)"
+              stroke={drawing.color || '#2962FF'}
+              strokeWidth="1"
+              rx="4"
+            />
+            <text x={midX} y={midY - 20} fill="#FFFFFF" fontSize="11" textAnchor="middle" fontWeight="bold">
+              {measurement.priceChange}
+            </text>
+            <text x={midX} y={midY - 5} fill="#26A69A" fontSize="10" textAnchor="middle">
+              {measurement.percentChange}
+            </text>
+            <text x={midX} y={midY + 10} fill="#787B86" fontSize="9" textAnchor="middle">
+              {measurement.bars} bars • {measurement.timeDiff}
+            </text>
+          </>
+        )}
       </g>
     );
   };
