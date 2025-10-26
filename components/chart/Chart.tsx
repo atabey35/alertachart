@@ -3146,6 +3146,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     onDoubleClick={handleDrawingDoubleClick}
                     onDragStart={handleDrawingDragStart}
                     precision={pair.toLowerCase().includes('btc') || pair.toLowerCase().includes('eth') ? 2 : 4}
+                    timeframe={timeframe}
                   />
                 )}
 

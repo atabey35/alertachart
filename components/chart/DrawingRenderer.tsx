@@ -30,6 +30,7 @@ interface DrawingRendererProps {
   onDoubleClick?: (drawing: Drawing) => void;
   onDragStart?: (drawingId: string, clientX: number, clientY: number) => void;
   precision?: number;
+  timeframe?: number; // Timeframe in seconds
 }
 
 export default function DrawingRenderer({
@@ -42,7 +43,8 @@ export default function DrawingRenderer({
   onSelectDrawing,
   onDoubleClick,
   onDragStart,
-  precision = 2
+  precision = 2,
+  timeframe = 300
 }: DrawingRendererProps) {
   if (!chart || !series) return null;
 
@@ -59,13 +61,42 @@ export default function DrawingRenderer({
     try {
       const timeScale = chart.timeScale();
       
-      const x = timeScale.timeToCoordinate(time as any);
+      let x = timeScale.timeToCoordinate(time as any);
       const y = series.priceToCoordinate(price);
       
-      console.log('🔍 toPixels:', { time, price, x, y });
+      // If x is null (time is outside visible range), extrapolate pixel position
+      if (x === null) {
+        const visibleRange = timeScale.getVisibleRange();
+        const visibleLogicalRange = timeScale.getVisibleLogicalRange();
+        
+        if (visibleRange && visibleLogicalRange) {
+          const chartWidth = timeScale.width();
+          const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
+          const pixelsPerBar = chartWidth / visibleBars;
+          
+          // Check if time is beyond the last bar (to the right)
+          if (time > (visibleRange.to as number)) {
+            const lastBarX = timeScale.timeToCoordinate(visibleRange.to as any);
+            if (lastBarX !== null) {
+              // Calculate how many bars beyond using actual timeframe
+              const timeDiff = time - (visibleRange.to as number);
+              const barsBeyond = timeDiff / timeframe;
+              x = (lastBarX + (barsBeyond * pixelsPerBar)) as any;
+            }
+          } 
+          // Check if time is before the first bar (to the left)
+          else if (time < (visibleRange.from as number)) {
+            const firstBarX = timeScale.timeToCoordinate(visibleRange.from as any);
+            if (firstBarX !== null) {
+              const timeDiff = (visibleRange.from as number) - time;
+              const barsBefore = timeDiff / timeframe;
+              x = (firstBarX - (barsBefore * pixelsPerBar)) as any;
+            }
+          }
+        }
+      }
       
       if (x === null || y === null) {
-        console.log('❌ toPixels returned null');
         return null;
       }
       
