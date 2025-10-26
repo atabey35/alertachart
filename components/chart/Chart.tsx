@@ -166,6 +166,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [activeTool, setActiveTool] = useState<DrawingTool>('none');
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [tempDrawing, setTempDrawing] = useState<DrawingPoint | null>(null);
+  const [previewDrawing, setPreviewDrawing] = useState<Drawing | null>(null); // Live preview while drawing
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [draggingPoint, setDraggingPoint] = useState<{ drawingId: string; pointIndex: number } | null>(null);
   const [handlePositions, setHandlePositions] = useState<Array<{ x: number; y: number; drawingId: string; pointIndex: number }>>([]);
@@ -2103,6 +2104,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const handleToolChange = (tool: DrawingTool) => {
     setActiveTool(tool);
     setTempDrawing(null);
+    setPreviewDrawing(null);
   };
 
   const handleClearAllDrawings = () => {
@@ -2160,6 +2162,40 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   };
 
   /**
+   * Handle mouse move to show live preview
+   */
+  const handleMouseMoveForPreview = (clientX: number, clientY: number) => {
+    if (activeTool === 'none' || !tempDrawing || !containerRef.current || !chartRef.current || !seriesRef.current) {
+      setPreviewDrawing(null);
+      return;
+    }
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    
+    const timeScale = chartRef.current.timeScale();
+    const time = timeScale.coordinateToTime(x as any);
+    const price = seriesRef.current.coordinateToPrice(y);
+    
+    if (!time || price === null) return;
+    
+    const currentPoint: DrawingPoint = { time: time as Time, price };
+    
+    // Create preview drawing
+    const preview: Drawing = {
+      id: 'preview',
+      type: activeTool as DrawingType,
+      points: [tempDrawing, currentPoint],
+      color: '#2962FF',
+      lineWidth: 2,
+      fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.1)' : undefined
+    };
+    
+    setPreviewDrawing(preview);
+  };
+
+  /**
    * Handle chart click to create drawings
    */
   const handleChartClickForDrawing = (clientX: number, clientY: number) => {
@@ -2190,6 +2226,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       
       setDrawings(prev => [...prev, newDrawing]);
       setActiveTool('none');
+      setTempDrawing(null);
+      setPreviewDrawing(null);
       return;
     }
     
@@ -2211,6 +2249,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           return d;
         }));
         setTempDrawing(null);
+        setPreviewDrawing(null);
         setActiveTool('none');
       } else if (pointCount === 3) {
         // Create temp drawing with 2 points
@@ -2235,6 +2274,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         
         setDrawings(prev => [...prev, newDrawing]);
         setTempDrawing(null);
+        setPreviewDrawing(null);
         setActiveTool('none');
       }
     }
@@ -2797,6 +2837,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                       pointerEvents: 'auto',
                       zIndex: 8 
                     }}
+                    onMouseMove={(e) => {
+                      // Show live preview while drawing
+                      handleMouseMoveForPreview(e.clientX, e.clientY);
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       // Handle drawing creation
@@ -2950,7 +2994,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                 {/* Drawing Renderer - SVG Overlay for all drawing tools */}
                 {containerSize.width > 0 && containerSize.height > 0 && (
                   <DrawingRenderer
-                    drawings={drawings}
+                    drawings={previewDrawing ? [...drawings, previewDrawing] : drawings}
                     chart={chartRef.current}
                     containerWidth={containerSize.width}
                     containerHeight={containerSize.height}

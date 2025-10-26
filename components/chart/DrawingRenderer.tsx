@@ -126,9 +126,10 @@ export default function DrawingRenderer({
     if (!p1 || !p2) return null;
 
     const isSelected = selectedDrawingId === drawing.id;
+    const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         <line
           x1={p1.x}
           y1={p1.y}
@@ -136,10 +137,11 @@ export default function DrawingRenderer({
           y2={p2.y}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isSelected ? '5,5' : 'none'}
-          style={{ cursor: 'pointer' }}
+          strokeDasharray={isPreview ? '8,4' : (isSelected ? '5,5' : 'none')}
+          opacity={isPreview ? 0.7 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
-        {isSelected && (
+        {isSelected && !isPreview && (
           <>
             <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#2962FF'} />
             <circle cx={p2.x} cy={p2.y} r="5" fill={drawing.color || '#2962FF'} />
@@ -261,9 +263,10 @@ export default function DrawingRenderer({
     const height = Math.abs(p2.y - p1.y);
 
     const isSelected = selectedDrawingId === drawing.id;
+    const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         <rect
           x={x}
           y={y}
@@ -271,8 +274,10 @@ export default function DrawingRenderer({
           height={height}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
+          strokeDasharray={isPreview ? '8,4' : 'none'}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
-          style={{ cursor: 'pointer' }}
+          opacity={isPreview ? 0.7 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
       </g>
     );
@@ -289,17 +294,20 @@ export default function DrawingRenderer({
 
     const radius = Math.sqrt(Math.pow(edge.x - center.x, 2) + Math.pow(edge.y - center.y, 2));
     const isSelected = selectedDrawingId === drawing.id;
+    const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         <circle
           cx={center.x}
           cy={center.y}
           r={radius}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
+          strokeDasharray={isPreview ? '8,4' : 'none'}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
-          style={{ cursor: 'pointer' }}
+          opacity={isPreview ? 0.7 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
       </g>
     );
@@ -320,9 +328,10 @@ export default function DrawingRenderer({
     const ry = Math.abs(p2.y - p1.y) / 2;
 
     const isSelected = selectedDrawingId === drawing.id;
+    const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         <ellipse
           cx={cx}
           cy={cy}
@@ -330,8 +339,10 @@ export default function DrawingRenderer({
           ry={ry}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
+          strokeDasharray={isPreview ? '8,4' : 'none'}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
-          style={{ cursor: 'pointer' }}
+          opacity={isPreview ? 0.7 : 1}
+          style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
       </g>
     );
