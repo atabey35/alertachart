@@ -33,8 +33,11 @@ export interface Drawing {
   points: DrawingPoint[];
   color?: string;
   lineWidth?: number;
+  lineStyle?: 'solid' | 'dashed' | 'dotted';
   text?: string; // For text annotations
   fillColor?: string; // For shapes with fill
+  extendRight?: boolean; // Extend line to the right
+  extendLeft?: boolean; // Extend line to the left
 }
 
 export interface HorizontalLineDrawing extends Drawing {

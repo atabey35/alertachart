@@ -27,6 +27,7 @@ interface DrawingRendererProps {
   containerHeight: number;
   selectedDrawingId: string | null;
   onSelectDrawing: (id: string | null) => void;
+  onDoubleClick?: (drawing: Drawing) => void;
   precision?: number;
 }
 
@@ -38,9 +39,18 @@ export default function DrawingRenderer({
   containerHeight,
   selectedDrawingId,
   onSelectDrawing,
+  onDoubleClick,
   precision = 2
 }: DrawingRendererProps) {
   if (!chart || !series) return null;
+
+  // Convert line style to SVG strokeDasharray
+  const getStrokeDashArray = (style?: 'solid' | 'dashed' | 'dotted', isSelected?: boolean) => {
+    if (isSelected) return '5,5';
+    if (style === 'dashed') return '8,4';
+    if (style === 'dotted') return '2,2';
+    return 'none';
+  };
 
   // Convert price/time coordinates to pixel coordinates
   const toPixels = (time: number, price: number): { x: number; y: number } | null => {
@@ -74,7 +84,11 @@ export default function DrawingRenderer({
     const isSelected = selectedDrawingId === drawing.id;
     
     return (
-      <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => onSelectDrawing(drawing.id)}
+        onDoubleClick={() => onDoubleClick?.(drawing)}
+      >
         <line
           x1={0}
           y1={point.y}
@@ -82,9 +96,12 @@ export default function DrawingRenderer({
           y2={point.y}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isSelected ? '5,5' : 'none'}
+          strokeDasharray={getStrokeDashArray(drawing.lineStyle, isSelected)}
           style={{ cursor: 'pointer' }}
         />
+        {isSelected && (
+          <circle cx={point.x} cy={point.y} r="5" fill={drawing.color || '#2962FF'} />
+        )}
         <text
           x={10}
           y={point.y - 5}
@@ -305,7 +322,11 @@ export default function DrawingRenderer({
     const isPreview = drawing.id === 'preview';
     
     return (
-      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
+      <g 
+        key={drawing.id} 
+        onClick={() => !isPreview && onSelectDrawing(drawing.id)}
+        onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+      >
         <rect
           x={x}
           y={y}
@@ -313,11 +334,17 @@ export default function DrawingRenderer({
           height={height}
           stroke={drawing.color || '#2962FF'}
           strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
-          strokeDasharray={isPreview ? '8,4' : 'none'}
+          strokeDasharray={isPreview ? '8,4' : getStrokeDashArray(drawing.lineStyle, isSelected)}
           fill={drawing.fillColor || 'rgba(41, 98, 255, 0.1)'}
           opacity={isPreview ? 0.7 : 1}
           style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
+        {isSelected && !isPreview && (
+          <>
+            <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#2962FF'} />
+            <circle cx={p2.x} cy={p2.y} r="5" fill={drawing.color || '#2962FF'} />
+          </>
+        )}
       </g>
     );
   };

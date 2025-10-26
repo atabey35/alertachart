@@ -26,6 +26,7 @@ import { calculateRSI, calculateMACD, calculateSMA, calculateEMA, calculateBolli
 import ChartSettings, { ChartSettingsType, DEFAULT_SETTINGS } from './ChartSettings';
 import DrawingToolbar, { DrawingTool } from './DrawingToolbar';
 import DrawingRenderer from './DrawingRenderer';
+import DrawingPropertiesModal from './DrawingPropertiesModal';
 
 // GLOBAL worker counter - survives component re-renders AND multiple instances
 let globalWorkerCounter = 0;
@@ -168,6 +169,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [tempDrawing, setTempDrawing] = useState<DrawingPoint | null>(null);
   const [previewDrawing, setPreviewDrawing] = useState<Drawing | null>(null); // Live preview while drawing
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [editingDrawing, setEditingDrawing] = useState<Drawing | null>(null); // Drawing being edited in modal
   const [draggingPoint, setDraggingPoint] = useState<{ drawingId: string; pointIndex: number } | null>(null);
   const [handlePositions, setHandlePositions] = useState<Array<{ x: number; y: number; drawingId: string; pointIndex: number }>>([]);
   const [showDrawingTools, setShowDrawingTools] = useState(false);
@@ -2125,6 +2127,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     setSelectedDrawingId(null);
   };
 
+  const handleDrawingDoubleClick = (drawing: Drawing) => {
+    setEditingDrawing(drawing);
+  };
+
+  const handleUpdateDrawing = (updatedDrawing: Drawing) => {
+    setDrawings(prev => prev.map(d => d.id === updatedDrawing.id ? updatedDrawing : d));
+    setEditingDrawing(null);
+  };
+
   const handleDeleteDrawing = (id: string) => {
     // Remove trend line series
     const series = drawingSeriesRef.current.get(id);
@@ -2921,6 +2932,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     containerHeight={containerSize.height}
                     selectedDrawingId={selectedDrawingId}
                     onSelectDrawing={setSelectedDrawingId}
+                    onDoubleClick={handleDrawingDoubleClick}
                     precision={chartSettings.priceScale}
                   />
                 )}
@@ -3055,6 +3067,19 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         settings={chartSettings}
         onSave={handleSaveSettings}
       />
+
+      {/* Drawing Properties Modal */}
+      {editingDrawing && (
+        <DrawingPropertiesModal
+          drawing={editingDrawing}
+          onClose={() => setEditingDrawing(null)}
+          onUpdate={handleUpdateDrawing}
+          onDelete={() => {
+            handleDeleteDrawing(editingDrawing.id);
+            setEditingDrawing(null);
+          }}
+        />
+      )}
     </div>
   );
 }
