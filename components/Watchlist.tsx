@@ -39,7 +39,13 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [newCategoryName, setNewCategoryName] = useState('');
   const [width, setWidth] = useState(300); // Compact like TradingView
   const [isResizing, setIsResizing] = useState(false);
+  const [isClient, setIsClient] = useState(false);
   const categoryScrollRef = useRef<HTMLDivElement>(null);
+
+  // Detect client-side for responsive width
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Load favorites and categories from localStorage
   useEffect(() => {
@@ -312,7 +318,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
   return (
     <div 
-      className="bg-gray-900 md:border-l border-gray-800 flex flex-col relative h-full w-full overflow-hidden"
+      className="bg-gray-900 md:border-l border-gray-800 flex flex-col relative h-full overflow-hidden"
+      style={{ width: isClient && window.innerWidth >= 768 ? `${width}px` : '100%' }}
     >
       {/* Resize Handle - Desktop only */}
       <div
@@ -392,7 +399,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       )}
 
       {/* Category Filters */}
-      <div ref={categoryScrollRef} className="border-b border-gray-800 px-2 py-2 flex gap-1 overflow-x-auto bg-gray-900 scrollbar-thin">
+      <div ref={categoryScrollRef} className="border-b border-gray-800 px-2 py-2 flex flex-nowrap gap-1 overflow-x-auto bg-gray-900 scrollbar-thin">
         <button
           onClick={() => setSelectedFilter('ALL')}
           className={`text-xs px-2 py-1 rounded transition-colors whitespace-nowrap ${

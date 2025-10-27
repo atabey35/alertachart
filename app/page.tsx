@@ -708,7 +708,7 @@ export default function Home() {
 
           {/* Desktop: Watchlist Panel */}
           {showWatchlist && (
-            <div className="hidden md:block">
+            <div className="hidden md:block flex-shrink-0 h-full">
               <Watchlist 
                 onSymbolClick={handleWatchlistSymbolClick}
                 currentSymbol={activeChart.pair}

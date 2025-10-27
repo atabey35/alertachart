@@ -191,18 +191,18 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
         </div>
 
         {/* Category Filters */}
-        <div className="flex gap-2 px-4 py-3 border-b border-gray-800 overflow-x-auto scrollbar-hide bg-[#1E222D]/50">
+        <div className="flex flex-wrap gap-2.5 px-4 py-4 border-b border-gray-800 bg-[#1E222D]/50">
           {CATEGORIES.map(cat => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
+              className={`px-5 py-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
                 selectedCategory === cat.id
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105'
-                  : 'bg-[#2A2E39] text-gray-400 hover:bg-gray-700 hover:text-white hover:scale-105'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                  : 'bg-[#2A2E39] text-gray-400 hover:bg-gray-700 hover:text-white'
               }`}
             >
-              <span className="text-base">{cat.icon}</span>
+              <span className="text-lg">{cat.icon}</span>
               <span>{cat.name}</span>
             </button>
           ))}
