@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import SymbolSearchModal from './SymbolSearchModal';
 
 interface WatchlistItem {
   symbol: string;
@@ -29,6 +30,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddSymbol, setShowAddSymbol] = useState(false);
+  const [showSymbolSearchModal, setShowSymbolSearchModal] = useState(false);
   const [categories, setCategories] = useState<string[]>(['MAJOR', 'DEFI', 'MEME']);
   const [symbolCategories, setSymbolCategories] = useState<Map<string, string>>(new Map());
   const [favorites, setFavorites] = useState<Set<string>>(new Set());
@@ -213,6 +215,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
     }
     setShowAddSymbol(false);
+    setShowSymbolSearchModal(false);
     setSearchQuery('');
   };
 
@@ -332,7 +335,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         </div>
         <div className="flex items-center gap-1">
           <button
-            onClick={() => setShowAddSymbol(!showAddSymbol)}
+            onClick={() => setShowSymbolSearchModal(true)}
             className="p-1 text-gray-400 hover:text-white transition-colors"
             title="Add Symbol"
           >
@@ -620,6 +623,14 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           {watchlist.length} {watchlist.length === 1 ? 'symbol' : 'symbols'}
         </div>
       </div>
+
+      {/* Symbol Search Modal */}
+      <SymbolSearchModal
+        isOpen={showSymbolSearchModal}
+        onClose={() => setShowSymbolSearchModal(false)}
+        onAddSymbol={addSymbol}
+        marketType={marketType}
+      />
     </div>
   );
 }

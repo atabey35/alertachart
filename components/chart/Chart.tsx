@@ -40,9 +40,10 @@ interface ChartProps {
   onConnectionChange?: (connected: boolean) => void;
   onChange24h?: (change24h: number) => void;
   marketType?: 'spot' | 'futures';
+  loadDelay?: number; // Delay before starting data fetch (for sequential loading)
 }
 
-export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, onChange24h, marketType = 'spot' }: ChartProps) {
+export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, onChange24h, marketType = 'spot', loadDelay = 0 }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rsiContainerRef = useRef<HTMLDivElement>(null);
   const macdContainerRef = useRef<HTMLDivElement>(null);
@@ -1098,6 +1099,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    * Load historical data from API
    */
   const loadHistoricalData = async () => {
+    // Apply sequential loading delay if specified
+    if (loadDelay > 0) {
+      console.log(`[Chart] ⏱️ Waiting ${loadDelay}ms before loading (sequential)`);
+      await new Promise(resolve => setTimeout(resolve, loadDelay));
+    }
+
     setIsLoading(true);
     setError(null);
     setWsConnected(false);

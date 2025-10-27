@@ -655,7 +655,7 @@ export default function Home() {
                 height: getGridHeight()
               }}
             >
-              {charts.slice(0, layout).map((chart) => (
+              {charts.slice(0, layout).map((chart, index) => (
                 <div
                   key={chart.id}
                   onClick={() => setActiveChartId(chart.id)}
@@ -688,6 +688,7 @@ export default function Home() {
                     onConnectionChange={(connected) => handleConnectionChange(chart.id, connected)}
                     onChange24h={(change24h) => handleChange24hUpdate(chart.id, change24h)}
                     marketType={marketType}
+                    loadDelay={index * 300}
                   />
                 </div>
               ))}
