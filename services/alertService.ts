@@ -80,6 +80,17 @@ class AlertService {
     return alert;
   }
 
+  updateAlert(id: string, newPrice: number, currentPrice: number) {
+    const alert = this.alerts.find(a => a.id === id);
+    if (alert && !alert.isTriggered) {
+      alert.price = newPrice;
+      alert.direction = newPrice > currentPrice ? 'above' : 'below';
+      this.saveToStorage();
+      this.notifyListeners();
+      console.log('[AlertService] Alert updated:', alert);
+    }
+  }
+
   removeAlert(id: string) {
     this.alerts = this.alerts.filter(a => a.id !== id);
     this.saveToStorage();
