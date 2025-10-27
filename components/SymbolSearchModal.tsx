@@ -35,28 +35,6 @@ const MEME_TOKENS = ['DOGE', 'SHIB', 'PEPE', 'FLOKI', 'BONK', 'WIF', 'DEGEN', 'M
 const LAYER1_TOKENS = ['ETH', 'SOL', 'ADA', 'AVAX', 'DOT', 'NEAR', 'FTM', 'ATOM', 'ALGO', 'EOS'];
 const AI_TOKENS = ['FET', 'AGIX', 'OCEAN', 'RNDR', 'AI', 'TAO', 'ARKM'];
 
-// Popular crypto logo URLs (using CoinGecko CDN)
-const LOGO_BASE = 'https://assets.coingecko.com/coins/images';
-const CRYPTO_LOGOS: { [key: string]: string } = {
-  'BTC': `${LOGO_BASE}/1/small/bitcoin.png`,
-  'ETH': `${LOGO_BASE}/279/small/ethereum.png`,
-  'BNB': `${LOGO_BASE}/825/small/bnb-icon2_2x.png`,
-  'SOL': `${LOGO_BASE}/4128/small/solana.png`,
-  'XRP': `${LOGO_BASE}/44/small/xrp-symbol-white-128.png`,
-  'ADA': `${LOGO_BASE}/975/small/cardano.png`,
-  'DOGE': `${LOGO_BASE}/5/small/dogecoin.png`,
-  'AVAX': `${LOGO_BASE}/12559/small/Avalanche_Circle_RedWhite_Trans.png`,
-  'DOT': `${LOGO_BASE}/12171/small/polkadot.png`,
-  'MATIC': `${LOGO_BASE}/4713/small/matic-token-icon.png`,
-  'UNI': `${LOGO_BASE}/12504/small/uni.jpg`,
-  'LINK': `${LOGO_BASE}/877/small/chainlink-new-logo.png`,
-  'ATOM': `${LOGO_BASE}/1481/small/cosmos_hub.png`,
-  'LTC': `${LOGO_BASE}/2/small/litecoin.png`,
-  'ETC': `${LOGO_BASE}/453/small/ethereum-classic-logo.png`,
-  'SHIB': `${LOGO_BASE}/11939/small/shiba.png`,
-  'PEPE': `${LOGO_BASE}/29850/small/pepe-token.jpeg`,
-};
-
 export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, marketType = 'spot' }: SymbolSearchModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -213,19 +191,19 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
         </div>
 
         {/* Category Filters */}
-        <div className="flex gap-2 p-4 border-b border-gray-800 overflow-x-auto scrollbar-thin">
+        <div className="flex gap-2 px-4 py-3 border-b border-gray-800 overflow-x-auto scrollbar-hide bg-[#1E222D]/50">
           {CATEGORIES.map(cat => (
             <button
               key={cat.id}
               onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2 rounded-md text-sm font-medium whitespace-nowrap transition-all ${
+              className={`px-4 py-2.5 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
                 selectedCategory === cat.id
-                  ? 'bg-blue-600 text-white shadow-lg'
-                  : 'bg-[#1E222D] text-gray-400 hover:bg-gray-700 hover:text-white'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 scale-105'
+                  : 'bg-[#2A2E39] text-gray-400 hover:bg-gray-700 hover:text-white hover:scale-105'
               }`}
             >
-              <span className="mr-1.5">{cat.icon}</span>
-              {cat.name}
+              <span className="text-base">{cat.icon}</span>
+              <span>{cat.name}</span>
             </button>
           ))}
         </div>
@@ -249,9 +227,9 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
             </div>
           ) : (
             <div className="divide-y divide-gray-800">
-              {filteredSymbols.slice(0, 100).map(symbol => {
-                const logoUrl = CRYPTO_LOGOS[symbol.baseAsset];
+              {filteredSymbols.slice(0, 150).map(symbol => {
                 const isMajor = MAJOR_TOKENS.includes(symbol.baseAsset);
+                const logoPath = `/logos/${symbol.baseAsset.toLowerCase()}.png`;
                 
                 return (
                   <div
@@ -260,23 +238,25 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
                     onClick={() => handleAddSymbol(symbol.symbol)}
                   >
                     <div className="flex items-center gap-3 flex-1">
-                      {/* Logo */}
-                      {logoUrl ? (
+                      {/* Logo - using local logos from /public/logos */}
+                      <div className="relative w-10 h-10 flex-shrink-0">
                         <img 
-                          src={logoUrl} 
+                          src={logoPath}
                           alt={symbol.baseAsset}
-                          className="w-10 h-10 rounded-full"
+                          className="w-10 h-10 rounded-full object-cover"
                           onError={(e) => {
-                            // Fallback to gradient if image fails
-                            e.currentTarget.style.display = 'none';
-                            e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                            // Fallback to gradient if logo not found
+                            const target = e.currentTarget;
+                            target.style.display = 'none';
+                            const fallback = target.nextElementSibling as HTMLElement;
+                            if (fallback) fallback.style.display = 'flex';
                           }}
                         />
-                      ) : null}
-                      <div 
-                        className={`w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold ${logoUrl ? 'hidden' : ''}`}
-                      >
-                        {symbol.baseAsset.charAt(0)}
+                        <div 
+                          className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 hidden items-center justify-center text-white font-bold text-sm"
+                        >
+                          {symbol.baseAsset.charAt(0)}
+                        </div>
                       </div>
                       
                       {/* Symbol Info */}
@@ -317,8 +297,8 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
         {/* Footer */}
         <div className="p-3 border-t border-gray-800 bg-[#1E222D] flex items-center justify-between">
           <div className="text-xs text-gray-500">
-            {filteredSymbols.length > 100 ? (
-              <span>Showing 100 of <strong className="text-gray-400">{filteredSymbols.length}</strong> symbols</span>
+            {filteredSymbols.length > 150 ? (
+              <span>Showing 150 of <strong className="text-gray-400">{filteredSymbols.length}</strong> symbols</span>
             ) : (
               <span><strong className="text-gray-400">{filteredSymbols.length}</strong> symbols • {marketType === 'futures' ? 'Futures' : 'Spot'} market</span>
             )}
