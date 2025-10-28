@@ -972,13 +972,6 @@ export default function DrawingRenderer({
     }
   };
 
-  console.log('🎨 DrawingRenderer RENDER:', { 
-    drawingsCount: drawings.length,
-    containerWidth,
-    containerHeight,
-    hasChart: !!chart
-  });
-
   return (
     <svg
       width={containerWidth}
@@ -992,10 +985,7 @@ export default function DrawingRenderer({
       }}
     >
       <g style={{ pointerEvents: 'auto' }}>
-        {drawings.map(drawing => {
-          console.log('🖌️ Rendering drawing:', drawing.type, drawing.id);
-          return renderDrawing(drawing);
-        })}
+        {drawings.map(drawing => renderDrawing(drawing))}
       </g>
     </svg>
   );

@@ -24,7 +24,6 @@ class Aggregator {
   private tickInterval: number | null = null; // Interval for periodic ticks
 
   constructor() {
-    console.log('[Aggregator] Worker initialized');
     this.initializeExchanges();
     this.startTickInterval();
   }
@@ -57,8 +56,6 @@ class Aggregator {
       clearInterval(this.tickInterval);
     }
 
-    console.log('[Aggregator] Starting tick interval (1s)');
-    
     // Emit tick every second if we have an active bar
     this.tickInterval = setInterval(() => {
       if (this.activeBar) {
@@ -67,7 +64,6 @@ class Aggregator {
 
         // Check if we need to create a new bar (time window changed)
         if (this.activeBar.time !== currentBarTime) {
-          console.log('[Aggregator] New candle window:', new Date(currentBarTime).toISOString());
           // Save the previous close price before emitting
           const previousClose = this.activeBar.close;
           
@@ -125,8 +121,6 @@ class Aggregator {
       return;
     }
 
-    console.log(`[Aggregator] Connecting to ${data.exchange}:${data.pair}`);
-    
     // Connect if not connected
     if (exchange.apis.length === 0) {
       await exchange.connect();
@@ -137,7 +131,6 @@ class Aggregator {
     await exchange.subscribe(api, data.pair);
     this.activePairs.add(`${data.exchange}:${data.pair}`);
 
-    console.log(`[Aggregator] Connected, emitting 'connected' event`);
     this.emit('connected', { exchange: data.exchange, pair: data.pair });
   }
 
@@ -166,13 +159,11 @@ class Aggregator {
    */
   initActiveBar(bar: Bar | null) {
     if (bar) {
-      console.log('[Aggregator] Initializing active bar:', new Date(bar.time).toISOString(), 'close:', bar.close);
       this.activeBar = { ...bar }; // Clone the bar
       
       // Emit initial tick so chart starts updating immediately
       // This prevents waiting for first trade
       this.emit('tick', cloneBar(this.activeBar));
-      console.log('[Aggregator] Initial tick emitted, interval will continue from here');
     } else {
       this.activeBar = null;
     }
