@@ -56,25 +56,42 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
         const response = await fetch(baseUrl);
         const data = await response.json();
         
-        const usdtPairs = data.symbols
-          .filter((s: any) => s.quoteAsset === 'USDT' && s.status === 'TRADING')
+        // Get all trading pairs (USDT, BTC, ETH, BNB, BUSD, FDUSD, etc.)
+        const allPairs = data.symbols
+          .filter((s: any) => s.status === 'TRADING')
           .map((s: any) => ({
             symbol: s.symbol.toLowerCase(),
             baseAsset: s.baseAsset,
             quoteAsset: s.quoteAsset,
-            displayName: `${s.baseAsset}/USDT`,
+            displayName: `${s.baseAsset}/${s.quoteAsset}`,
           }))
           .sort((a: SymbolInfo, b: SymbolInfo) => {
-            // Sort major tokens first
+            // Sort by quote asset priority: USDT > BTC > ETH > BNB > others
+            const quotePriority: { [key: string]: number } = {
+              'USDT': 0,
+              'BTC': 1,
+              'ETH': 2,
+              'BNB': 3,
+              'BUSD': 4,
+              'FDUSD': 5,
+            };
+            
+            const aPriority = quotePriority[a.quoteAsset] ?? 999;
+            const bPriority = quotePriority[b.quoteAsset] ?? 999;
+            
+            if (aPriority !== bPriority) return aPriority - bPriority;
+            
+            // Within same quote asset, sort major tokens first
             const aIsMajor = MAJOR_TOKENS.includes(a.baseAsset);
             const bIsMajor = MAJOR_TOKENS.includes(b.baseAsset);
             if (aIsMajor && !bIsMajor) return -1;
             if (!aIsMajor && bIsMajor) return 1;
+            
             return a.baseAsset.localeCompare(b.baseAsset);
           });
         
-        setSymbols(usdtPairs);
-        console.log(`[Pairs] ✅ Loaded ${usdtPairs.length} ${marketType.toUpperCase()} USDT trading pairs from Binance`);
+        setSymbols(allPairs);
+        console.log(`[Pairs] ✅ Loaded ${allPairs.length} ${marketType.toUpperCase()} trading pairs from Binance`);
       } catch (error) {
         console.error('[Pairs] ❌ Failed to fetch symbols:', error);
       } finally {
@@ -150,7 +167,7 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
           <div>
             <h2 className="text-xl font-semibold text-white">Symbol Search</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              {marketType === 'futures' ? 'Binance Futures' : 'Binance Spot'} • USDT Pairs
+              {marketType === 'futures' ? 'Binance Futures' : 'Binance Spot'} • All Trading Pairs
             </p>
           </div>
           <button

@@ -113,7 +113,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       setWatchlist(JSON.parse(savedWatchlist));
     } else {
       // Default symbols
-      setWatchlist(['btcusdt', 'ethusdt', 'solusdt', 'bnbusdt', 'xrpusdt', 'adausdt']);
+      setWatchlist(['btcusdt', 'ethusdt', 'ethbtc', 'solusdt', 'bnbusdt', 'xrpusdt', 'adausdt']);
     }
   }, [marketType]);
 
@@ -374,7 +374,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                 addSymbol(searchQuery.trim());
               }
             }}
-            placeholder="Add symbol (e.g. avaxusdt)"
+            placeholder="Add symbol (e.g. btcusdt, ethbtc)"
             className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-1.5 text-sm focus:outline-none focus:border-blue-500"
             autoFocus
           />
@@ -540,19 +540,45 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                       </svg>
                     </button>
                     {/* Coin Logo */}
-                    <img 
-                      src={`/logos/${symbol.replace('usdt', '')}.png`}
-                      alt={symbol}
-                      className="w-5 h-5 rounded-full"
-                      onError={(e) => {
-                        // Fallback: Hide image if logo not found
-                        e.currentTarget.style.display = 'none';
-                      }}
-                    />
-                    <span className="font-mono text-xs font-semibold text-white">
-                      {symbol.replace('usdt', '').toUpperCase()}
-                    </span>
-                    <span className="text-[10px] text-gray-500">/USDT</span>
+                    {(() => {
+                      // Parse symbol to get base and quote assets correctly
+                      const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
+                      let baseAsset = '';
+                      let quoteAsset = 'USDT';
+                      
+                      const upperSymbol = symbol.toUpperCase();
+                      for (const quote of quoteAssets) {
+                        if (upperSymbol.endsWith(quote)) {
+                          quoteAsset = quote;
+                          baseAsset = upperSymbol.slice(0, -quote.length);
+                          break;
+                        }
+                      }
+                      
+                      // If no quote asset found, assume entire symbol is base asset
+                      if (!baseAsset) {
+                        baseAsset = upperSymbol;
+                      }
+                      
+                      return (
+                        <>
+                          <img 
+                            src={`/logos/${baseAsset.toLowerCase()}.png`}
+                            alt={baseAsset}
+                            className="w-5 h-5 rounded-full"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                          <span className="font-mono text-xs font-semibold text-white">
+                            {baseAsset}
+                          </span>
+                          <span className="text-[10px] text-gray-500">
+                            /{quoteAsset}
+                          </span>
+                        </>
+                      );
+                    })()}
                     {symbolCategories.has(symbol) && (
                       <span className="text-[9px] px-1 py-0.5 bg-blue-600/30 text-blue-400 rounded">
                         {symbolCategories.get(symbol)}

@@ -9,6 +9,7 @@ import Chart from '@/components/chart/Chart';
 import AlertsPanel from '@/components/AlertsPanel';
 import Watchlist from '@/components/Watchlist';
 import AlertModal from '@/components/AlertModal';
+import SymbolSearchModal from '@/components/SymbolSearchModal';
 import alertService from '@/services/alertService';
 import { PriceAlert } from '@/types/alert';
 import { TIMEFRAMES } from '@/utils/constants';
@@ -120,6 +121,7 @@ export default function Home() {
   const [showAlerts, setShowAlerts] = useState(false);
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
   const [mobileTab, setMobileTab] = useState<'chart' | 'watchlist' | 'alerts' | 'settings'>('chart');
+  const [showSymbolSearch, setShowSymbolSearch] = useState(false);
 
   // Load saved watchlist visibility on mount
   useEffect(() => {
@@ -198,36 +200,53 @@ export default function Home() {
         
         const data = await response.json();
         
-        // Filter for USDT pairs that are actively trading
-        const usdtPairs = data.symbols
+        // Get all trading pairs (not just USDT)
+        const allPairs = data.symbols
           ?.filter((symbol: any) => {
-            const isUsdt = symbol.symbol?.endsWith('USDT');
             const isTrading = symbol.status === 'TRADING';
             
             // For spot, check permissions
             if (marketType === 'spot') {
               const hasSpot = !symbol.permissions?.length || symbol.permissions.includes('SPOT');
-              return isUsdt && isTrading && hasSpot;
+              return isTrading && hasSpot;
             }
             
             // For futures, check contractType
             if (marketType === 'futures') {
               const isPerpetual = symbol.contractType === 'PERPETUAL';
-              return isUsdt && isTrading && isPerpetual;
+              return isTrading && isPerpetual;
             }
             
-            return isUsdt && isTrading;
+            return isTrading;
           })
           .map((symbol: any) => symbol.symbol.toLowerCase())
-          .sort(); // Alphabetically sorted
+          .sort((a: string, b: string) => {
+            // Sort by quote asset priority: USDT > BTC > ETH > BNB
+            const getQuotePriority = (sym: string) => {
+              const upper = sym.toUpperCase();
+              if (upper.endsWith('USDT')) return 0;
+              if (upper.endsWith('BTC')) return 1;
+              if (upper.endsWith('ETH')) return 2;
+              if (upper.endsWith('BNB')) return 3;
+              if (upper.endsWith('BUSD')) return 4;
+              if (upper.endsWith('FDUSD')) return 5;
+              return 999;
+            };
+            
+            const aPriority = getQuotePriority(a);
+            const bPriority = getQuotePriority(b);
+            
+            if (aPriority !== bPriority) return aPriority - bPriority;
+            return a.localeCompare(b);
+          });
         
         // Check if we got valid data
-        if (!usdtPairs || usdtPairs.length === 0) {
-          throw new Error('No USDT pairs found');
+        if (!allPairs || allPairs.length === 0) {
+          throw new Error('No trading pairs found');
         }
         
-        console.log(`[Pairs] ✅ Loaded ${usdtPairs.length} ${marketType.toUpperCase()} USDT trading pairs from Binance`);
-        setPairs(usdtPairs);
+        console.log(`[Pairs] ✅ Loaded ${allPairs.length} ${marketType.toUpperCase()} trading pairs from Binance`);
+        setPairs(allPairs);
       } catch (error) {
         console.error(`[Pairs] ❌ Failed to fetch Binance ${marketType} pairs:`, error);
         // Fallback to popular default pairs
@@ -586,58 +605,45 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Pair Search Input */}
-            <div className="relative ml-2">
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && filteredPairs.length > 0) {
-                    updateActiveChart({ pair: filteredPairs[0] });
-                    setSearchQuery('');
-                  }
-                }}
-                placeholder="Search coin..."
-                className="bg-gray-900 border border-gray-700 rounded pl-8 pr-2 py-1.5 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500 w-32 md:w-40"
-              />
+            {/* Symbol Search Button */}
+            <button
+              onClick={() => setShowSymbolSearch(true)}
+              className="ml-2 flex items-center gap-2 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 md:py-2 text-xs md:text-sm hover:border-blue-500 hover:bg-gray-800 transition-colors group"
+            >
               <svg 
-                className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" 
+                className="w-4 h-4 text-gray-500 group-hover:text-blue-400" 
                 fill="none" 
                 stroke="currentColor" 
                 viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-            </div>
-
-            {/* Pair selector dropdown */}
-            <select
-              value={activeChart.pair}
-              onChange={(e) => {
-                updateActiveChart({ pair: e.target.value });
-                setSearchQuery(''); // Clear search after selection
-              }}
-              className="bg-gray-900 border border-gray-700 rounded px-2 py-1.5 md:px-3 md:py-2 text-xs md:text-sm focus:outline-none focus:border-blue-500"
-              disabled={loadingPairs}
-            >
-              {loadingPairs ? (
-                <option>Loading pairs...</option>
-              ) : filteredPairs.length === 0 ? (
-                <option>No results</option>
-              ) : (
-                filteredPairs.map((p) => (
-                  <option key={p} value={p}>
-                    {p.replace('usdt', '').toUpperCase()}/USDT
-                  </option>
-                ))
-              )}
-            </select>
+              <span className="hidden md:inline text-gray-300 group-hover:text-white">
+                {(() => {
+                  const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
+                  let baseAsset = activeChart.pair.toUpperCase();
+                  let quoteAsset = 'USDT';
+                  
+                  for (const quote of quoteAssets) {
+                    if (activeChart.pair.toUpperCase().endsWith(quote)) {
+                      quoteAsset = quote;
+                      baseAsset = activeChart.pair.toUpperCase().slice(0, -quote.length);
+                      break;
+                    }
+                  }
+                  
+                  return `${baseAsset}/${quoteAsset}`;
+                })()}
+              </span>
+              <svg className="w-3 h-3 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
             
             {/* Pair count indicator */}
             {!loadingPairs && (
-              <div className="hidden md:block text-xs text-gray-500 whitespace-nowrap">
-                {searchQuery ? `${filteredPairs.length} found` : `${pairs.length} pairs`}
+              <div className="hidden md:block text-xs text-gray-500 whitespace-nowrap ml-2">
+                {pairs.length} pairs
               </div>
             )}
           </div>
@@ -668,7 +674,21 @@ export default function Home() {
                   {/* Chart label */}
                   <div className="absolute top-1 left-1 z-20 bg-gray-900/80 px-2 py-1 rounded text-xs font-mono pointer-events-none flex items-center gap-1.5">
                     <span className={chart.id === activeChartId ? 'text-blue-400' : 'text-gray-400'}>
-                      {chart.pair.replace('usdt', '').toUpperCase()}/USDT
+                      {(() => {
+                        const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
+                        let baseAsset = chart.pair.toUpperCase();
+                        let quoteAsset = 'USDT';
+                        
+                        for (const quote of quoteAssets) {
+                          if (chart.pair.toUpperCase().endsWith(quote)) {
+                            quoteAsset = quote;
+                            baseAsset = chart.pair.toUpperCase().slice(0, -quote.length);
+                            break;
+                          }
+                        }
+                        
+                        return `${baseAsset}/${quoteAsset}`;
+                      })()}
                     </span>
                     {chart.isConnected && (
                       <span className="flex items-center gap-1 text-[10px] text-green-400">
@@ -855,6 +875,17 @@ export default function Home() {
             setTriggeredAlert(null);
           }
         }}
+      />
+
+      {/* Symbol Search Modal for Chart */}
+      <SymbolSearchModal
+        isOpen={showSymbolSearch}
+        onClose={() => setShowSymbolSearch(false)}
+        onAddSymbol={(symbol) => {
+          updateActiveChart({ pair: symbol });
+          setShowSymbolSearch(false);
+        }}
+        marketType={marketType}
       />
 
       {/* Footer - Desktop Only */}
