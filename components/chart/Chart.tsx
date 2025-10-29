@@ -41,9 +41,11 @@ interface ChartProps {
   onChange24h?: (change24h: number) => void;
   marketType?: 'spot' | 'futures';
   loadDelay?: number; // Delay before starting data fetch (for sequential loading)
+  hideToolbar?: boolean; // Hide internal toolbar for multi-chart layout
+  externalActiveTool?: DrawingTool; // Use external tool state for multi-chart
 }
 
-export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, onChange24h, marketType = 'spot', loadDelay = 0 }: ChartProps) {
+export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, onChange24h, marketType = 'spot', loadDelay = 0, hideToolbar = false, externalActiveTool }: ChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rsiContainerRef = useRef<HTMLDivElement>(null);
   const macdContainerRef = useRef<HTMLDivElement>(null);
@@ -164,8 +166,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
   }, []);
 
-  // Drawing tool states
-  const [activeTool, setActiveTool] = useState<DrawingTool>('none');
+  // Drawing tool states (use external if provided for multi-chart)
+  const [internalActiveTool, setInternalActiveTool] = useState<DrawingTool>('none');
+  const activeTool = externalActiveTool !== undefined ? externalActiveTool : internalActiveTool;
+  const setActiveTool = externalActiveTool !== undefined ? () => {} : setInternalActiveTool;
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [tempDrawing, setTempDrawing] = useState<DrawingPoint | null>(null);
   const [isDrawingBrush, setIsDrawingBrush] = useState(false);
@@ -3087,14 +3091,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       
       {/* Chart container with left toolbar */}
       <div className="w-full flex-grow flex">
-        {/* Drawing Toolbar - Left side (Desktop only) */}
-        <div className="hidden md:block">
-          <DrawingToolbar
-            activeTool={activeTool}
-            onToolChange={handleToolChange}
-            onClearAll={handleClearAllDrawings}
-          />
-        </div>
+        {/* Drawing Toolbar - Left side (Desktop only, hide if external toolbar is shown) */}
+        {!hideToolbar && (
+          <div className="hidden md:block">
+            <DrawingToolbar
+              activeTool={activeTool}
+              onToolChange={handleToolChange}
+              onClearAll={handleClearAllDrawings}
+            />
+          </div>
+        )}
 
         <div 
           ref={containerRef} 

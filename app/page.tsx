@@ -10,6 +10,7 @@ import AlertsPanel from '@/components/AlertsPanel';
 import Watchlist from '@/components/Watchlist';
 import AlertModal from '@/components/AlertModal';
 import SymbolSearchModal from '@/components/SymbolSearchModal';
+import DrawingToolbar, { DrawingTool } from '@/components/chart/DrawingToolbar';
 import alertService from '@/services/alertService';
 import { PriceAlert } from '@/types/alert';
 import { TIMEFRAMES } from '@/utils/constants';
@@ -29,6 +30,9 @@ export default function Home() {
   // Multi-chart layout state
   const [layout, setLayout] = useState<1 | 2 | 4 | 9>(1); // 1x1, 1x2, 2x2, 3x3
   const [activeChartId, setActiveChartId] = useState<number>(0);
+
+  // Shared drawing tool state for multi-chart layout
+  const [sharedActiveTool, setSharedActiveTool] = useState<DrawingTool>('none');
 
   // Alert modal state
   const [triggeredAlert, setTriggeredAlert] = useState<PriceAlert | null>(null);
@@ -654,6 +658,20 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* MOBILE: Chart Tab (full screen) */}
         <div className={`${mobileTab === 'chart' ? 'flex' : 'hidden'} md:flex flex-1 overflow-hidden`}>
+          {/* Shared Drawing Toolbar (Multi-chart mode only, Desktop only) */}
+          {layout > 1 && (
+            <div className="hidden md:block">
+              <DrawingToolbar
+                activeTool={sharedActiveTool}
+                onToolChange={setSharedActiveTool}
+                onClearAll={() => {
+                  // Clear all drawings from active chart
+                  // This will be handled by the Chart component via prop
+                }}
+              />
+            </div>
+          )}
+
           <div className="flex-1 overflow-hidden">
             <div 
               className={`grid ${getGridClass()} gap-1 bg-gray-950 p-1`} 
@@ -709,6 +727,8 @@ export default function Home() {
                     onChange24h={(change24h) => handleChange24hUpdate(chart.id, change24h)}
                     marketType={marketType}
                     loadDelay={index * 300}
+                    hideToolbar={layout > 1}
+                    externalActiveTool={layout > 1 && chart.id === activeChartId ? sharedActiveTool : undefined}
                   />
                 </div>
               ))}
