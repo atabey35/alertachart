@@ -50,7 +50,21 @@ interface ToolCategory {
 export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }: DrawingToolbarProps) {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
-  const closeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+  const toolbarRef = React.useRef<HTMLDivElement>(null);
+
+  // Close popup when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (toolbarRef.current && !toolbarRef.current.contains(event.target as Node)) {
+        setOpenCategory(null);
+      }
+    };
+
+    if (openCategory) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [openCategory]);
 
   // TradingView-style categories with main icons
   const toolCategories: ToolCategory[] = [
@@ -178,20 +192,22 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
     return category.tools.some(tool => tool.id === activeTool);
   };
 
-  const handleCategoryMouseEnter = (categoryId: string) => {
-    // Cancel any pending close
-    if (closeTimeoutRef.current) {
-      clearTimeout(closeTimeoutRef.current);
-      closeTimeoutRef.current = null;
+  const handleCategoryClick = (categoryId: string, defaultTool: DrawingTool) => {
+    if (openCategory === categoryId) {
+      // If already open, activate default tool and close
+      onToolChange(defaultTool);
+      setOpenCategory(null);
+    } else {
+      // Open this category
+      setOpenCategory(categoryId);
     }
-    setOpenCategory(categoryId);
   };
 
-  const handleCategoryMouseLeave = () => {
-    // Delay closing to allow moving to popup
-    closeTimeoutRef.current = setTimeout(() => {
-      setOpenCategory(null);
-    }, 200);
+  const handleCategoryMouseEnter = (categoryId: string) => {
+    // Only open on hover if nothing is open yet
+    if (!openCategory) {
+      setOpenCategory(categoryId);
+    }
   };
 
   return (
@@ -284,7 +300,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
       </div>
 
       {/* DESKTOP: TradingView-style left toolbar with popup submenus */}
-      <div className="hidden md:block relative h-full">
+      <div ref={toolbarRef} className="hidden md:block relative h-full">
         <div className="flex flex-col gap-0.5 bg-gray-900 border-r border-gray-700 h-full pt-20 px-1">
           {/* Cursor/Select Tool */}
           <button
@@ -311,13 +327,8 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
           {toolCategories.map((category) => (
             <div key={category.id} className="relative">
               <button
-                onClick={() => {
-                  // Click activates default tool directly
-                  onToolChange(category.defaultTool);
-                  setOpenCategory(null);
-                }}
+                onClick={() => handleCategoryClick(category.id, category.defaultTool)}
                 onMouseEnter={() => handleCategoryMouseEnter(category.id)}
-                onMouseLeave={handleCategoryMouseLeave}
                 className={`w-10 h-10 rounded flex items-center justify-center transition-all group ${
                   isCategoryActive(category)
                     ? 'bg-blue-600 text-white'
@@ -340,8 +351,6 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
               {openCategory === category.id && (
                 <div 
                   className="absolute left-12 top-0 min-w-[180px] bg-gray-900/98 border border-gray-700/50 rounded-lg shadow-2xl backdrop-blur-md p-2 animate-in fade-in slide-in-from-left-2 duration-150 z-50"
-                  onMouseEnter={() => handleCategoryMouseEnter(category.id)}
-                  onMouseLeave={handleCategoryMouseLeave}
                 >
                   <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-2 py-1 mb-1">
                     {category.name}
