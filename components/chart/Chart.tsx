@@ -868,7 +868,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const rsiSeries = rsiChart.addLineSeries({
         color: '#2962FF',
         lineWidth: 2,
-        title: `RSI (${chartSettings.rsiPeriod})`,
+        title: `RSI (${chartSettingsRef.current.rsiPeriod})`,
       });
 
       // Add RSI reference lines
@@ -899,11 +899,39 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         title: 'Oversold',
       });
 
-      // Sync time scale with main chart
+      // Sync time scale with main chart (bidirectional)
       if (chartRef.current) {
-        chartRef.current.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+        const mainChart = chartRef.current;
+        
+        // Main chart → RSI chart
+        mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
           if (range) {
             rsiChart.timeScale().setVisibleLogicalRange(range);
+          }
+        });
+
+        // RSI chart → Main chart
+        rsiChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (range) {
+            mainChart.timeScale().setVisibleLogicalRange(range);
+          }
+        });
+
+        // Crosshair sync: Main chart → RSI chart
+        mainChart.subscribeCrosshairMove((param) => {
+          if (param.time) {
+            rsiChart.setCrosshairPosition(0, param.time, rsiSeries);
+          } else {
+            rsiChart.clearCrosshairPosition();
+          }
+        });
+
+        // Crosshair sync: RSI chart → Main chart
+        rsiChart.subscribeCrosshairMove((param) => {
+          if (param.time && seriesRef.current) {
+            mainChart.setCrosshairPosition(0, param.time, seriesRef.current);
+          } else {
+            mainChart.clearCrosshairPosition();
           }
         });
       }
@@ -938,6 +966,66 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       clearTimeout(timeoutId);
     };
   }, [chartSettings.showRSI, chartSettings.rsiPeriod]);
+
+  /**
+   * Resize all charts when indicators change
+   */
+  useEffect(() => {
+    // Small delay to let the DOM update
+    const resizeTimer = setTimeout(() => {
+      try {
+        // Save current visible range to preserve zoom level
+        let savedRange = null;
+        if (chartRef.current) {
+          try {
+            savedRange = chartRef.current.timeScale().getVisibleLogicalRange();
+          } catch (e) {
+            // Ignore if range not available
+          }
+        }
+
+        // Resize main chart
+        if (containerRef.current && chartRef.current) {
+          const width = containerRef.current.clientWidth;
+          const height = containerRef.current.clientHeight;
+          if (width > 0 && height > 0) {
+            chartRef.current.resize(width, height);
+          }
+        }
+
+        // Resize RSI chart
+        if (rsiContainerRef.current && rsiChartRef.current) {
+          const width = rsiContainerRef.current.clientWidth;
+          const height = rsiContainerRef.current.clientHeight - 25;
+          if (width > 0 && height > 0) {
+            rsiChartRef.current.applyOptions({ width, height });
+          }
+        }
+
+        // Resize MACD chart
+        if (macdContainerRef.current && macdChartRef.current) {
+          const width = macdContainerRef.current.clientWidth;
+          const height = macdContainerRef.current.clientHeight - 25;
+          if (width > 0 && height > 0) {
+            macdChartRef.current.applyOptions({ width, height });
+          }
+        }
+
+        // Restore saved range after resize
+        if (savedRange && chartRef.current) {
+          try {
+            chartRef.current.timeScale().setVisibleLogicalRange(savedRange);
+          } catch (e) {
+            // Ignore if range restoration fails
+          }
+        }
+      } catch (error) {
+        // Charts might be disposed, ignore
+      }
+    }, 100);
+
+    return () => clearTimeout(resizeTimer);
+  }, [chartSettings.showRSI, chartSettings.showMACD]);
 
   /**
    * Create MACD chart in separate panel
@@ -1002,11 +1090,39 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         title: '',
       });
 
-      // Sync time scale with main chart
+      // Sync time scale with main chart (bidirectional)
       if (chartRef.current) {
-        chartRef.current.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+        const mainChart = chartRef.current;
+        
+        // Main chart → MACD chart
+        mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
           if (range) {
             macdChart.timeScale().setVisibleLogicalRange(range);
+          }
+        });
+
+        // MACD chart → Main chart
+        macdChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (range) {
+            mainChart.timeScale().setVisibleLogicalRange(range);
+          }
+        });
+
+        // Crosshair sync: Main chart → MACD chart
+        mainChart.subscribeCrosshairMove((param) => {
+          if (param.time) {
+            macdChart.setCrosshairPosition(0, param.time, macdLine);
+          } else {
+            macdChart.clearCrosshairPosition();
+          }
+        });
+
+        // Crosshair sync: MACD chart → Main chart
+        macdChart.subscribeCrosshairMove((param) => {
+          if (param.time && seriesRef.current) {
+            mainChart.setCrosshairPosition(0, param.time, seriesRef.current);
+          } else {
+            mainChart.clearCrosshairPosition();
           }
         });
       }
