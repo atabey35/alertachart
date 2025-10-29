@@ -2475,7 +2475,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     setDrawings(prev => [...prev, newDrawing]);
     setIsDrawingBrush(false);
     setBrushPoints([]);
-    setActiveTool('none');
+    // DON'T reset tool - stay in brush mode for multiple drawings
   };
 
   const handleChartClickForDrawing = (clientX: number, clientY: number) => {
@@ -2552,7 +2552,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         console.log('📊 Drawings after add:', updated);
         return updated;
       });
-      setActiveTool('none');
+      // Stay in tool mode for multiple drawings
       setTempDrawing(null);
       setPreviewDrawing(null);
       return;
@@ -2579,7 +2579,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         }));
         setTempDrawing(null);
         setPreviewDrawing(null);
-        setActiveTool('none');
+        // Stay in tool mode for multiple drawings
       } else if (pointCount === 3) {
         // Create temp drawing with 2 points
         const tempDraw: Drawing = {
@@ -2611,7 +2611,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         });
         setTempDrawing(null);
         setPreviewDrawing(null);
-        setActiveTool('none');
+        // Stay in tool mode for multiple drawings
       }
     }
   };
