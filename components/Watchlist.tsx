@@ -26,7 +26,7 @@ interface WatchlistProps {
 export default function Watchlist({ onSymbolClick, currentSymbol, marketType = 'spot' }: WatchlistProps) {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [priceData, setPriceData] = useState<Map<string, WatchlistItem>>(new Map());
-  const [prevPrices, setPrevPrices] = useState<Map<string, number>>(new Map());
+  const prevPricesRef = useRef<Map<string, number>>(new Map()); // Use ref instead of state
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddSymbol, setShowAddSymbol] = useState(false);
@@ -158,7 +158,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         data.forEach((ticker: any) => {
           const symbol = ticker.symbol.toLowerCase();
           const currentPrice = parseFloat(ticker.lastPrice);
-          const prevPrice = prevPrices.get(symbol);
+          const prevPrice = prevPricesRef.current.get(symbol);
           
           // Determine price flash direction
           let priceFlash: 'up' | 'down' | null = null;
@@ -180,7 +180,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         });
         
         setPriceData(newPriceData);
-        setPrevPrices(newPrevPrices);
+        prevPricesRef.current = newPrevPrices; // Update ref directly (no re-render)
         
         // Clear flash after animation
         setTimeout(() => {
@@ -192,8 +192,6 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
             return updated;
           });
         }, 500);
-        
-        console.log(`[Watchlist ${marketType}] Updated ${data.length} symbols (${result.cached ? 'cached' : 'fresh'})`);
       } catch (error: any) {
         // Silently ignore network errors, timeouts, and CORS issues
         // This prevents console spam when API is temporarily unavailable
@@ -207,10 +205,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     };
 
     fetchPrices();
-    const interval = setInterval(fetchPrices, 10000); // Update every 10s (reduce rate limit issues)
+    const interval = setInterval(fetchPrices, 10000); // Update every 10s
 
     return () => clearInterval(interval);
-  }, [watchlist, marketType, prevPrices, symbolCategories, favorites]);
+  }, [watchlist, marketType, symbolCategories, favorites]); // Removed prevPrices to prevent interval reset
 
   const addSymbol = (symbol: string) => {
     const normalizedSymbol = symbol.toLowerCase();
