@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import SymbolSearchModal from './SymbolSearchModal';
+import alertService from '@/services/alertService';
 
 interface WatchlistItem {
   symbol: string;
@@ -177,6 +178,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           });
           
           newPrevPrices.set(symbol, currentPrice);
+          
+          // Check price alerts for this symbol (works for all coins, not just active chart)
+          const exchange = marketType === 'futures' ? 'BINANCE_FUTURES' : 'BINANCE';
+          alertService.checkPrice(exchange, symbol, currentPrice);
         });
         
         setPriceData(newPriceData);
