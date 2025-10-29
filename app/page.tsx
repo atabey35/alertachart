@@ -675,17 +675,19 @@ export default function Home() {
             </svg>
           </button>
 
-          {/* Shared Drawing Toolbar (Multi-chart mode, Desktop only) */}
+          {/* Shared Drawing Toolbar (Multi-chart mode, Desktop only) - Overlay */}
           {layout > 1 && showDrawingToolbar && (
-            <div className="hidden md:block">
-              <DrawingToolbar
-                activeTool={sharedActiveTool}
-                onToolChange={setSharedActiveTool}
-                onClearAll={() => {
-                  // Clear all drawings from active chart
-                  // This will be handled by the Chart component via prop
-                }}
-              />
+            <div className="hidden md:block absolute left-0 top-0 h-full z-[100] pointer-events-none">
+              <div className="pointer-events-auto">
+                <DrawingToolbar
+                  activeTool={sharedActiveTool}
+                  onToolChange={setSharedActiveTool}
+                  onClearAll={() => {
+                    // Clear all drawings from active chart
+                    // This will be handled by the Chart component via prop
+                  }}
+                />
+              </div>
             </div>
           )}
 

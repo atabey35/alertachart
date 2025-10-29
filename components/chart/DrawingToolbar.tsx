@@ -301,7 +301,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
 
       {/* DESKTOP: TradingView-style left toolbar with popup submenus */}
       <div ref={toolbarRef} className="hidden md:block relative h-full">
-        <div className="flex flex-col gap-0.5 bg-gray-900 border-r border-gray-700 h-full pt-20 px-1">
+        <div className="flex flex-col gap-0.5 bg-gray-900/95 backdrop-blur-sm border-r border-gray-700 h-full pt-20 px-1">
           {/* Cursor/Select Tool */}
           <button
             onClick={() => {

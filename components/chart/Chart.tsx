@@ -3090,21 +3090,23 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       )}
       
       {/* Chart container with left toolbar */}
-      <div className="w-full flex-grow flex">
-        {/* Drawing Toolbar - Left side (Desktop only, hide if external toolbar is shown) */}
+      <div className="w-full flex-grow relative">
+        {/* Drawing Toolbar - Left side (Desktop only, hide if external toolbar is shown) - Overlay */}
         {!hideToolbar && (
-          <div className="hidden md:block">
-            <DrawingToolbar
-              activeTool={activeTool}
-              onToolChange={handleToolChange}
-              onClearAll={handleClearAllDrawings}
-            />
+          <div className="hidden md:block absolute left-0 top-0 h-full z-[100] pointer-events-none">
+            <div className="pointer-events-auto">
+              <DrawingToolbar
+                activeTool={activeTool}
+                onToolChange={handleToolChange}
+                onClearAll={handleClearAllDrawings}
+              />
+            </div>
           </div>
         )}
 
         <div 
           ref={containerRef} 
-          className="flex-1 relative"
+          className="w-full h-full relative"
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
