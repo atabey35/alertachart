@@ -33,6 +33,7 @@ export default function Home() {
 
   // Shared drawing tool state for multi-chart layout
   const [sharedActiveTool, setSharedActiveTool] = useState<DrawingTool>('none');
+  const [showSharedToolbar, setShowSharedToolbar] = useState(true);
 
   // Alert modal state
   const [triggeredAlert, setTriggeredAlert] = useState<PriceAlert | null>(null);
@@ -657,9 +658,27 @@ export default function Home() {
       {/* Main Content - Charts + Alerts + Watchlist */}
       <div className="flex flex-1 overflow-hidden relative">
         {/* MOBILE: Chart Tab (full screen) */}
-        <div className={`${mobileTab === 'chart' ? 'flex' : 'hidden'} md:flex flex-1 overflow-hidden`}>
-          {/* Shared Drawing Toolbar (Multi-chart mode only, Desktop only) */}
+        <div className={`${mobileTab === 'chart' ? 'flex' : 'hidden'} md:flex flex-1 overflow-hidden relative`}>
+          {/* Shared Drawing Toolbar Toggle Button (Multi-chart mode only) */}
           {layout > 1 && (
+            <button
+              onClick={() => setShowSharedToolbar(!showSharedToolbar)}
+              className={`hidden md:flex absolute ${showSharedToolbar ? 'left-12' : 'left-0'} top-1/2 -translate-y-1/2 z-[110] w-6 h-16 bg-gray-800/90 border border-gray-700 hover:bg-gray-700 rounded-r-lg items-center justify-center transition-all shadow-lg`}
+              title={showSharedToolbar ? 'Hide Drawing Tools' : 'Show Drawing Tools'}
+            >
+              <svg 
+                className={`w-3 h-3 text-gray-400 transition-transform ${showSharedToolbar ? '' : 'rotate-180'}`}
+                fill="none" 
+                stroke="currentColor" 
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+          )}
+
+          {/* Shared Drawing Toolbar (Multi-chart mode only, Desktop only) */}
+          {layout > 1 && showSharedToolbar && (
             <div className="hidden md:block">
               <DrawingToolbar
                 activeTool={sharedActiveTool}
@@ -728,7 +747,7 @@ export default function Home() {
                     marketType={marketType}
                     loadDelay={index * 300}
                     hideToolbar={layout > 1}
-                    externalActiveTool={layout > 1 && chart.id === activeChartId ? sharedActiveTool : undefined}
+                    externalActiveTool={layout > 1 && showSharedToolbar && chart.id === activeChartId ? sharedActiveTool : undefined}
                   />
                 </div>
               ))}
