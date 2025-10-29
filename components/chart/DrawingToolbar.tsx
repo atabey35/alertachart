@@ -255,8 +255,8 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
       </div>
 
       {/* DESKTOP: TradingView-style left toolbar with popup submenus */}
-      <div className="hidden md:block absolute top-14 left-2 z-[100]">
-        <div className="flex flex-col gap-0.5 bg-gray-900/95 border border-gray-700/50 rounded-lg p-1 shadow-2xl backdrop-blur-sm">
+      <div className="hidden md:block relative h-full">
+        <div className="flex flex-col gap-0.5 bg-gray-900 border-r border-gray-700 h-full pt-20 px-1">
           {/* Cursor/Select Tool */}
           <button
             onClick={() => {
@@ -304,7 +304,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
               {/* Popup Submenu - Opens to the right */}
               {openCategory === category.id && (
                 <div 
-                  className="absolute left-12 top-0 min-w-[180px] bg-gray-900/98 border border-gray-700/50 rounded-lg shadow-2xl backdrop-blur-md p-2 animate-in fade-in slide-in-from-left-2 duration-150"
+                  className="absolute left-12 top-0 min-w-[180px] bg-gray-900/98 border border-gray-700/50 rounded-lg shadow-2xl backdrop-blur-md p-2 animate-in fade-in slide-in-from-left-2 duration-150 z-50"
                   onMouseLeave={() => setOpenCategory(null)}
                 >
                   <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-2 py-1 mb-1">

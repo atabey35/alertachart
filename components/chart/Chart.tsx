@@ -2884,7 +2884,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </div>
       )}
 
-      {/* Drawing Tools Toggle Button */}
+      {/* Drawing Tools Toggle Button (Mobile only) */}
       <button
         onClick={() => {
           const newState = !showDrawingTools;
@@ -2896,7 +2896,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             setSelectedDrawingId(null);
           }
         }}
-        className={`absolute top-32 left-2 z-20 p-2 rounded-lg transition-all shadow-lg ${
+        className={`md:hidden absolute top-32 left-2 z-20 p-2 rounded-lg transition-all shadow-lg ${
           showDrawingTools 
             ? 'bg-blue-600 text-white' 
             : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
@@ -2908,14 +2908,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </svg>
       </button>
 
-      {/* Drawing Toolbar */}
-      {showDrawingTools && (
-        <DrawingToolbar
-          activeTool={activeTool}
-          onToolChange={handleToolChange}
-          onClearAll={handleClearAllDrawings}
-        />
-      )}
+      {/* Drawing Toolbar (Mobile - Bottom) */}
+      <div className="md:hidden">
+        {showDrawingTools && (
+          <DrawingToolbar
+            activeTool={activeTool}
+            onToolChange={handleToolChange}
+            onClearAll={handleClearAllDrawings}
+          />
+        )}
+      </div>
 
       {/* Selected Drawing Info */}
       {selectedDrawingId && (
@@ -3023,13 +3025,24 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </div>
       )}
       
-              <div 
-                ref={containerRef} 
-                className="w-full flex-grow relative"
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-              >
+      {/* Chart container with left toolbar */}
+      <div className="w-full flex-grow flex">
+        {/* Drawing Toolbar - Left side (Desktop only) */}
+        <div className="hidden md:block">
+          <DrawingToolbar
+            activeTool={activeTool}
+            onToolChange={handleToolChange}
+            onClearAll={handleClearAllDrawings}
+          />
+        </div>
+
+        <div 
+          ref={containerRef} 
+          className="flex-1 relative"
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+        >
                 {/* Transparent overlay for drawing only (when active tool is selected) */}
                 {activeTool !== 'none' && (
                   <div
@@ -3224,6 +3237,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                   )}
                 </button>
               </div>
+      </div> {/* End chart container with toolbar */}
 
       {/* RSI Indicator Panel */}
       {chartSettings.showRSI && (
