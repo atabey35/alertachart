@@ -98,7 +98,26 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [currentPrice, setCurrentPrice] = useState<number>(0);
   const [chartSettings, setChartSettings] = useState<ChartSettingsType>(DEFAULT_SETTINGS);
+  const chartSettingsRef = useRef<ChartSettingsType>(DEFAULT_SETTINGS); // ✅ REF for up-to-date values
   const [showLegend, setShowLegend] = useState(true);
+  
+  // Load settings from localStorage after mount (avoid hydration mismatch)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const saved = localStorage.getItem('chartSettings');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          const merged = { ...DEFAULT_SETTINGS, ...parsed };
+          console.log('[Chart] 📂 Loaded settings from localStorage:', merged);
+          setChartSettings(merged); // Update state (for re-render)
+          chartSettingsRef.current = merged; // ✅ Update ref immediately (for updateIndicators)
+        }
+      } catch (e) {
+        console.error('[Chart] Failed to load settings:', e);
+      }
+    }
+  }, []); // Run once on mount
   // Alarm button state - simpler approach
   const [alarmButton, setAlarmButton] = useState<{ visible: boolean; price: number; y: number } | null>(null);
   const isHoveringButtonRef = useRef(false);
@@ -815,9 +834,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    * Create indicator charts in separate panels
    */
   useEffect(() => {
-    // RSI Chart
-    if (chartSettings.showRSI && rsiContainerRef.current) {
-      const rsiChart = createChart(rsiContainerRef.current, {
+    // RSI Chart - add small delay to ensure ref is attached after settings load
+    if (!chartSettings.showRSI) {
+      rsiChartRef.current = null;
+      rsiSeriesRef.current = null;
+      return;
+    }
+
+    // Wait for ref to be attached (especially after settings load from localStorage)
+    const timeoutId = setTimeout(() => {
+      if (rsiContainerRef.current) {
+        const rsiChart = createChart(rsiContainerRef.current, {
         width: rsiContainerRef.current.clientWidth,
         height: rsiContainerRef.current.clientHeight - 25, // Account for header
         layout: {
@@ -895,6 +922,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       });
       resizeObserver.observe(rsiContainerRef.current);
 
+      // Cleanup function for the chart
       return () => {
         resizeObserver.disconnect();
         // Clear refs before removing chart
@@ -902,18 +930,32 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         rsiChartRef.current = null;
         rsiChart.remove();
       };
-    } else {
-      rsiChartRef.current = null;
-      rsiSeriesRef.current = null;
     }
+    }, 50); // Small delay to ensure ref is attached
+
+    // Cleanup function for the timeout
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [chartSettings.showRSI, chartSettings.rsiPeriod]);
 
   /**
    * Create MACD chart in separate panel
    */
   useEffect(() => {
-    if (chartSettings.showMACD && macdContainerRef.current) {
-      const macdChart = createChart(macdContainerRef.current, {
+    // MACD Chart - add small delay to ensure ref is attached after settings load
+    if (!chartSettings.showMACD) {
+      macdChartRef.current = null;
+      macdLineSeriesRef.current = null;
+      macdSignalSeriesRef.current = null;
+      macdHistogramSeriesRef.current = null;
+      return;
+    }
+
+    // Wait for ref to be attached (especially after settings load from localStorage)
+    const timeoutId = setTimeout(() => {
+      if (macdContainerRef.current) {
+        const macdChart = createChart(macdContainerRef.current, {
         width: macdContainerRef.current.clientWidth,
         height: macdContainerRef.current.clientHeight - 25, // Account for header
         layout: {
@@ -985,6 +1027,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       });
       resizeObserver.observe(macdContainerRef.current);
 
+      // Cleanup function for the chart
       return () => {
         resizeObserver.disconnect();
         // Clear refs before removing chart
@@ -994,12 +1037,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         macdChartRef.current = null;
         macdChart.remove();
       };
-    } else {
-      macdChartRef.current = null;
-      macdLineSeriesRef.current = null;
-      macdSignalSeriesRef.current = null;
-      macdHistogramSeriesRef.current = null;
     }
+    }, 50); // Small delay to ensure ref is attached
+
+    // Cleanup function for the timeout
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [chartSettings.showMACD, chartSettings.macdFast, chartSettings.macdSlow, chartSettings.macdSignal]);
 
   /**
@@ -1612,6 +1656,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const updateChart = () => {
     // Exit early if series are disposed or null
     if (!seriesRef.current || !volumeSeriesRef.current || !chartRef.current) {
+      console.log('[updateChart] ⚠️ Series not ready, skipping');
       return;
     }
     
@@ -1620,10 +1665,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       // Attempt to access a property - if disposed, this will throw
       chartRef.current.timeScale();
     } catch (error) {
+      console.log('[updateChart] ⚠️ Chart disposed, skipping');
       return;
     }
 
     const bars = cacheRef.current.getAllBars();
+    
+    // DEBUG: Log every 20th update
+    if (Math.random() < 0.05) {
+      console.log('[updateChart] 📊 Called with', bars.length, 'bars');
+    }
     
     if (bars.length === 0) {
       return;
@@ -1775,9 +1826,23 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Update indicators with throttling (max once per second)
     // This keeps indicators responsive to price changes while preventing expensive recalculation on every tick
     const now = Date.now();
-    const shouldUpdateIndicators = barCountChanged || (now - lastIndicatorUpdateRef.current > 1000);
+    const timeSinceLastUpdate = now - lastIndicatorUpdateRef.current;
+    const shouldUpdateIndicators = barCountChanged || (timeSinceLastUpdate > 1000);
+    
+    // DEBUG: Log indicator update logic (every 10th update to avoid spam)
+    if (Math.random() < 0.1) {
+      console.log('[Indicators] Update check:', {
+        barCountChanged,
+        timeSinceLastUpdate: timeSinceLastUpdate + 'ms',
+        shouldUpdate: shouldUpdateIndicators,
+        barCount: bars.length,
+        lastUpdate: lastIndicatorUpdateRef.current,
+        now: now
+      });
+    }
     
     if (shouldUpdateIndicators) {
+      console.log('[Indicators] 🔄 Updating indicators, bars:', bars.length, 'last close:', bars[bars.length - 1]?.close);
       updateIndicators(bars);
       lastIndicatorUpdateRef.current = now;
     }
@@ -1802,15 +1867,31 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   };
 
   const updateIndicators = (bars: Bar[]) => {
-    if (bars.length < 30) return; // Need minimum data for indicators
+    if (bars.length < 30) {
+      console.log('[Indicators] ⚠️ Not enough data:', bars.length, 'bars (need 30+)');
+      return; // Need minimum data for indicators
+    }
     
     // Safety check: don't update if chart is disposed
-    if (!chartRef.current) return;
+    if (!chartRef.current) {
+      console.log('[Indicators] ⚠️ Chart not ready');
+      return;
+    }
+
+    const settings = chartSettingsRef.current; // ✅ Use ref for up-to-date values
+
+    console.log('[Indicators] ✅ Updating with', bars.length, 'bars, last close:', bars[bars.length - 1].close);
+    console.log('[Indicators] Settings check:', {
+      showRSI: settings.showRSI,
+      showMACD: settings.showMACD,
+      hasRSISeries: !!rsiSeriesRef.current,
+      hasMACDSeries: !!macdLineSeriesRef.current
+    });
 
     // Update RSI
-    if (chartSettings.showRSI && rsiSeriesRef.current) {
+    if (settings.showRSI && rsiSeriesRef.current) {
       try {
-        const rsiValues = calculateRSI(bars, chartSettings.rsiPeriod);
+        const rsiValues = calculateRSI(bars, settings.rsiPeriod);
         const rsiData = bars
           .map((bar, index) => ({
             time: Math.floor(bar.time / 1000) as Time,
@@ -1819,21 +1900,23 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           .filter(d => d.value !== null && !isNaN(d.value) && d.value >= 0 && d.value <= 100);
 
         if (rsiData.length > 0) {
+          const lastRSI = rsiData[rsiData.length - 1];
+          console.log('[Indicators] RSI updated, last value:', lastRSI.value);
           rsiSeriesRef.current.setData(rsiData as any);
         }
       } catch (error) {
-        // Series might be disposed, ignore
+        console.error('[Indicators] ❌ RSI error:', error);
       }
     }
 
     // Update MACD
-    if (chartSettings.showMACD && macdLineSeriesRef.current && macdSignalSeriesRef.current && macdHistogramSeriesRef.current) {
+    if (settings.showMACD && macdLineSeriesRef.current && macdSignalSeriesRef.current && macdHistogramSeriesRef.current) {
       try {
         const { macd, signal, histogram } = calculateMACD(
           bars,
-          chartSettings.macdFast,
-          chartSettings.macdSlow,
-          chartSettings.macdSignal
+          settings.macdFast,
+          settings.macdSlow,
+          settings.macdSignal
         );
 
         const macdData = bars
@@ -1859,19 +1942,27 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           .filter(d => d.value !== null && !isNaN(d.value));
 
         if (macdData.length > 0) {
+          const lastMACD = macdData[macdData.length - 1];
+          const lastSignal = signalData[signalData.length - 1];
+          const lastHisto = histogramData[histogramData.length - 1];
+          console.log('[Indicators] MACD updated, last values:', {
+            macd: lastMACD.value,
+            signal: lastSignal.value,
+            histogram: lastHisto.value
+          });
           macdLineSeriesRef.current.setData(macdData as any);
           macdSignalSeriesRef.current.setData(signalData as any);
           macdHistogramSeriesRef.current.setData(histogramData as any);
         }
       } catch (error) {
-        // Series might be disposed, ignore
+        console.error('[Indicators] ❌ MACD error:', error);
       }
     }
 
     // Update Bollinger Bands
-    if (chartSettings.showBB && bbUpperRef.current && bbMiddleRef.current && bbLowerRef.current) {
+    if (settings.showBB && bbUpperRef.current && bbMiddleRef.current && bbLowerRef.current) {
       try {
-        const { upper, middle, lower } = calculateBollingerBands(bars, chartSettings.bbPeriod, chartSettings.bbStdDev);
+        const { upper, middle, lower } = calculateBollingerBands(bars, settings.bbPeriod, settings.bbStdDev);
         
         const upperData = bars
           .map((bar, index) => ({
@@ -1905,7 +1996,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
 
     // Update MA 50
-    if (chartSettings.showMA50 && ma50Ref.current) {
+    if (settings.showMA50 && ma50Ref.current) {
       try {
         const ma50Values = calculateEMA(bars, 50);
         const ma50Data = bars
@@ -1924,7 +2015,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
 
     // Update MA 100
-    if (chartSettings.showMA100 && ma100Ref.current) {
+    if (settings.showMA100 && ma100Ref.current) {
       try {
         const ma100Values = calculateEMA(bars, 100);
         const ma100Data = bars
@@ -1943,7 +2034,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
 
     // Update MA 200
-    if (chartSettings.showMA200 && ma200Ref.current) {
+    if (settings.showMA200 && ma200Ref.current) {
       try {
         const ma200Values = calculateEMA(bars, 200);
         const ma200Data = bars
@@ -1962,7 +2053,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
 
     // Update SMA 50
-    if (chartSettings.showSMA50 && sma50Ref.current) {
+    if (settings.showSMA50 && sma50Ref.current) {
       try {
         const sma50Values = calculateSMA(bars, 50);
         const sma50Data = bars
@@ -1981,7 +2072,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
 
     // Update SMA 100
-    if (chartSettings.showSMA100 && sma100Ref.current) {
+    if (settings.showSMA100 && sma100Ref.current) {
       try {
         const sma100Values = calculateSMA(bars, 100);
         const sma100Data = bars
@@ -2000,7 +2091,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
 
     // Update SMA 200
-    if (chartSettings.showSMA200 && sma200Ref.current) {
+    if (settings.showSMA200 && sma200Ref.current) {
       try {
         const sma200Values = calculateSMA(bars, 200);
         const sma200Data = bars
@@ -2201,13 +2292,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   };
 
   const handleSaveSettings = (newSettings: ChartSettingsType) => {
+    console.log('[Chart] 💾 Saving settings:', newSettings);
     setChartSettings(newSettings);
+    chartSettingsRef.current = newSettings; // ✅ Update ref immediately
     // Save to localStorage
     if (typeof window !== 'undefined') {
       localStorage.setItem('chartSettings', JSON.stringify(newSettings));
+      console.log('[Chart] ✅ Settings saved to localStorage');
     }
-    // Reload chart with new settings
-    window.location.reload();
+    // No need to reload - indicators will update automatically via useEffect
   };
 
   /**
