@@ -83,6 +83,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const rafIdRef = useRef<number | null>(null); // requestAnimationFrame ID
   const lastBarCountRef = useRef<number>(0); // Track bar count to detect full vs partial updates
   const lastIndicatorUpdateRef = useRef<number>(0); // Track last indicator update time (throttle)
+  const lastSetDataTimeRef = useRef<number>(0); // Track last full setData call
+  const isInitialDataLoadedRef = useRef<boolean>(false); // Track if initial data loaded
   const currentExchangeRef = useRef(exchange);
   const currentPairRef = useRef(pair);
   const currentTimeframeRef = useRef(timeframe);
@@ -1293,6 +1295,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       isLoadingOlderRef.current = false; // Reset loading flag
       lastBarCountRef.current = 0; // Reset bar count
       precisionSetRef.current = false; // Reset precision flag for new pair
+      isInitialDataLoadedRef.current = false; // Reset update strategy flag
+      lastSetDataTimeRef.current = 0; // Reset setData timer
       setLoadingOlder(false);
       
       // Clear chart data immediately to prevent old data from showing
@@ -1924,9 +1928,26 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           console.log('[Chart] 📊 setData:', candleData.length, 'bars, last:', lastBar.close, 'at', new Date(lastBar.time).toISOString());
         }
         
-        // ALWAYS use setData for now - update() has rendering issues on short timeframes
-        seriesRef.current.setData(candleData);
-        volumeSeriesRef.current.setData(volumeData);
+        // Smart update strategy:
+        // - Use setData for initial load or when bar count changes (new bar added)
+        // - Use update for real-time ticks on the same bar (more accurate, prevents color glitches)
+        const now = Date.now();
+        const timeSinceLastSetData = now - lastSetDataTimeRef.current;
+        const useUpdate = isInitialDataLoadedRef.current && !barCountChanged && timeSinceLastSetData > 500;
+        
+        if (useUpdate && candleData.length > 0 && volumeData.length > 0) {
+          // Real-time update: only update last bar (faster and more accurate)
+          const lastCandle = candleData[candleData.length - 1];
+          const lastVolume = volumeData[volumeData.length - 1];
+          seriesRef.current.update(lastCandle);
+          volumeSeriesRef.current.update(lastVolume);
+        } else {
+          // Full update: set all data (initial load or new bar)
+          seriesRef.current.setData(candleData);
+          volumeSeriesRef.current.setData(volumeData);
+          lastSetDataTimeRef.current = now;
+          isInitialDataLoadedRef.current = true;
+        }
       } catch (error) {
         console.error('[Chart] Error in setData:', error);
         return;
