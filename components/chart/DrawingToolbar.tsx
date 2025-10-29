@@ -1,6 +1,6 @@
 /**
  * Drawing Toolbar Component - TradingView Style
- * Complete set of professional drawing tools
+ * Vertical left toolbar with popup sub-menus
  */
 
 'use client';
@@ -32,23 +32,29 @@ interface DrawingToolbarProps {
   onClearAll: () => void;
 }
 
+interface ToolItem {
+  id: DrawingTool;
+  icon: React.ReactElement;
+  label: string;
+}
+
 interface ToolCategory {
+  id: string;
   name: string;
-  tools: Array<{
-    id: DrawingTool;
-    icon: React.ReactElement | string;
-    label: string;
-  }>;
+  icon: React.ReactElement;
+  tools: ToolItem[];
 }
 
 export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }: DrawingToolbarProps) {
-  // Keep all categories expanded by default for better UX
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
-  const [isMobileExpanded, setIsMobileExpanded] = useState(false); 
+  const [openCategory, setOpenCategory] = useState<string | null>(null);
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
 
+  // TradingView-style categories with main icons
   const toolCategories: ToolCategory[] = [
     {
+      id: 'lines',
       name: 'Lines',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4" strokeWidth="2.5"/></svg>,
       tools: [
         { 
           id: 'trend', 
@@ -88,7 +94,9 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
       ]
     },
     {
+      id: 'shapes',
       name: 'Shapes',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" strokeWidth="2.5" rx="2"/></svg>,
       tools: [
         { 
           id: 'rectangle', 
@@ -113,7 +121,9 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
       ]
     },
     {
+      id: 'fibonacci',
       name: 'Fibonacci',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4" strokeWidth="2.5"/><line x1="4" y1="20" x2="20" y2="20" strokeWidth="1.5" opacity="0.5"/><line x1="4" y1="16" x2="20" y2="16" strokeWidth="1.5" opacity="0.5"/><line x1="4" y1="12" x2="20" y2="12" strokeWidth="1.5" opacity="0.5"/></svg>,
       tools: [
         { 
           id: 'fib-retracement', 
@@ -128,7 +138,9 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
       ]
     },
     {
-      name: 'Annotations',
+      id: 'annotations',
+      name: 'Text',
+      icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><text x="6" y="18" fontSize="16" fill="currentColor" fontWeight="bold">T</text></svg>,
       tools: [
         { 
           id: 'text', 
@@ -149,14 +161,18 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
     },
   ];
 
+  // Check if any tool in a category is active
+  const isCategoryActive = (category: ToolCategory) => {
+    return category.tools.some(tool => tool.id === activeTool);
+  };
+
   return (
     <>
-      {/* MOBILE: Bottom horizontal toolbar (below md breakpoint - 768px) */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-gray-900 via-gray-900/95 to-transparent pb-safe">
-        {/* Expand/Collapse Toggle */}
+      {/* MOBILE: Bottom horizontal toolbar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-gradient-to-t from-gray-900/98 to-transparent pb-safe backdrop-blur-md">
         <button
           onClick={() => setIsMobileExpanded(!isMobileExpanded)}
-          className="absolute -top-10 right-4 w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-500 rounded-full shadow-2xl flex items-center justify-center text-white"
+          className="absolute -top-10 right-4 w-10 h-10 bg-blue-600 rounded-full shadow-xl flex items-center justify-center text-white"
         >
           <svg 
             className={`w-5 h-5 transition-transform ${isMobileExpanded ? 'rotate-180' : ''}`}
@@ -168,34 +184,30 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
           </svg>
         </button>
 
-        {/* Toolbar Content - Horizontal Scroll */}
         <div 
           className={`transition-all duration-300 ${
             isMobileExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
           } overflow-hidden`}
         >
           <div className="flex gap-2 p-3 overflow-x-auto hide-scrollbar">
-            {/* Select Tool */}
             <button
               onClick={() => {
                 onToolChange('none');
                 setIsMobileExpanded(false);
               }}
-              className={`flex-shrink-0 w-14 h-14 rounded-xl transition-all flex flex-col items-center justify-center gap-1 ${
+              className={`flex-shrink-0 w-12 h-12 rounded-lg transition-all flex items-center justify-center ${
                 activeTool === 'none'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg'
+                  ? 'bg-blue-600 text-white'
                   : 'bg-gray-800 text-gray-400'
               }`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path d="M3 3 L13 9 L9 11 L7 15 L5 13 L9 11 L3 3Z" strokeWidth="2" fill="currentColor"/>
               </svg>
-              <span className="text-[9px]">Select</span>
             </button>
 
-            {/* All Tools - Horizontal */}
             {toolCategories.map((category) => (
-              <React.Fragment key={category.name}>
+              <React.Fragment key={category.id}>
                 {category.tools.map((tool) => (
                   <button
                     key={tool.id}
@@ -203,114 +215,140 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
                       onToolChange(tool.id);
                       setIsMobileExpanded(false);
                     }}
-                    className={`flex-shrink-0 w-14 h-14 rounded-xl transition-all flex flex-col items-center justify-center gap-1 ${
+                    className={`flex-shrink-0 w-12 h-12 rounded-lg transition-all flex items-center justify-center ${
                       activeTool === tool.id
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg'
+                        ? 'bg-blue-600 text-white'
                         : 'bg-gray-800 text-gray-400'
                     }`}
                   >
-                    <div className="w-5 h-5 flex items-center justify-center">
-                      {tool.icon}
-                    </div>
-                    <span className="text-[9px] truncate w-full text-center px-1">{tool.label}</span>
+                    {tool.icon}
                   </button>
                 ))}
               </React.Fragment>
             ))}
 
-            {/* Clear All */}
             <button
               onClick={() => {
                 onClearAll();
                 setIsMobileExpanded(false);
               }}
-              className="flex-shrink-0 w-14 h-14 rounded-xl bg-red-900/20 text-red-400 flex flex-col items-center justify-center gap-1"
+              className="flex-shrink-0 w-12 h-12 rounded-lg bg-red-900/30 text-red-400 flex items-center justify-center"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
               </svg>
-              <span className="text-[9px]">Clear</span>
             </button>
           </div>
         </div>
 
-        {/* Active Tool Indicator - Always Visible */}
-        <div className="border-t border-gray-700 bg-gray-900 p-3 flex items-center justify-between">
-          <div className="text-sm text-gray-400">
-            Active: <span className="text-blue-400 font-semibold">
-              {activeTool === 'none' ? 'Select' : toolCategories.flatMap(c => c.tools).find(t => t.id === activeTool)?.label || 'None'}
-            </span>
+        <div className="border-t border-gray-800 bg-gray-900/95 p-2.5 flex items-center justify-between">
+          <div className="text-xs text-gray-400">
+            {activeTool === 'none' ? 'Select Tool' : toolCategories.flatMap(c => c.tools).find(t => t.id === activeTool)?.label || 'None'}
           </div>
           <button
             onClick={() => setIsMobileExpanded(!isMobileExpanded)}
-            className="text-xs text-blue-400"
+            className="text-xs text-blue-400 font-medium"
           >
-            {isMobileExpanded ? 'Hide Tools' : 'Show Tools'}
+            {isMobileExpanded ? 'Hide' : 'Tools'}
           </button>
         </div>
       </div>
 
-      {/* DESKTOP: Left vertical toolbar (768px and above) */}
-      <div className="hidden md:flex absolute top-44 left-2 z-10 flex-col gap-1 bg-gradient-to-br from-gray-900 to-gray-800 border border-gray-600/50 rounded-xl p-2 shadow-2xl backdrop-blur-sm max-h-[calc(100vh-200px)] overflow-y-auto">
-        {/* Select Tool */}
-        <button
-          onClick={() => onToolChange('none')}
-          className={`px-2 py-2 text-sm rounded-lg transition-all flex items-center justify-center group ${
-            activeTool === 'none'
-              ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/50'
-              : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-          }`}
-          title="Select / Move"
-        >
-          <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path d="M3 3 L13 9 L9 11 L7 15 L5 13 L9 11 L3 3Z" strokeWidth="2" fill="currentColor"/>
-          </svg>
-        </button>
+      {/* DESKTOP: TradingView-style left toolbar with popup submenus */}
+      <div className="hidden md:block absolute top-14 left-2 z-[100]">
+        <div className="flex flex-col gap-0.5 bg-gray-900/95 border border-gray-700/50 rounded-lg p-1 shadow-2xl backdrop-blur-sm">
+          {/* Cursor/Select Tool */}
+          <button
+            onClick={() => {
+              onToolChange('none');
+              setOpenCategory(null);
+            }}
+            className={`w-10 h-10 rounded flex items-center justify-center transition-all ${
+              activeTool === 'none'
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+            }`}
+            title="Cursor"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path d="M3 3 L13 9 L9 11 L7 15 L5 13 L9 11 L3 3Z" strokeWidth="2" fill="currentColor"/>
+            </svg>
+          </button>
 
-        <div className="h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent my-1"></div>
+          <div className="h-px bg-gray-800 my-0.5"></div>
 
-        {/* Tool Categories - All expanded by default for easy access */}
-        {toolCategories.map((category) => (
-          <div key={category.name} className="flex flex-col">
-            <div className="px-2 py-1.5 text-[10px] text-gray-400 font-semibold tracking-wider uppercase">
-              {category.name}
-            </div>
-
-            <div className="flex flex-col gap-0.5 pl-1">
-              {category.tools.map((tool) => (
-                <button
-                  key={tool.id}
-                  onClick={() => {
-                    onToolChange(tool.id);
-                  }}
-                  className={`px-2 py-2 text-sm rounded-lg transition-all flex items-center justify-center group ${
-                    activeTool === tool.id
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-500 text-white shadow-lg shadow-blue-500/50 scale-105'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-700/50 hover:scale-105'
-                  }`}
-                  title={tool.label}
+          {/* Category Icons - TradingView Style */}
+          {toolCategories.map((category) => (
+            <div key={category.id} className="relative">
+              <button
+                onClick={() => setOpenCategory(openCategory === category.id ? null : category.id)}
+                onMouseEnter={() => setOpenCategory(category.id)}
+                className={`w-10 h-10 rounded flex items-center justify-center transition-all group ${
+                  isCategoryActive(category)
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                }`}
+                title={category.name}
+              >
+                {category.icon}
+                {/* Small arrow indicator for submenu */}
+                <svg 
+                  className="w-2.5 h-2.5 absolute right-1 bottom-1 opacity-50" 
+                  fill="currentColor" 
+                  viewBox="0 0 24 24"
                 >
-                  <div className="group-hover:scale-110 transition-transform">
-                    {tool.icon}
+                  <path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z"/>
+                </svg>
+              </button>
+
+              {/* Popup Submenu - Opens to the right */}
+              {openCategory === category.id && (
+                <div 
+                  className="absolute left-12 top-0 min-w-[180px] bg-gray-900/98 border border-gray-700/50 rounded-lg shadow-2xl backdrop-blur-md p-2 animate-in fade-in slide-in-from-left-2 duration-150"
+                  onMouseLeave={() => setOpenCategory(null)}
+                >
+                  <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-2 py-1 mb-1">
+                    {category.name}
                   </div>
-                </button>
-              ))}
+                  <div className="space-y-0.5">
+                    {category.tools.map((tool) => (
+                      <button
+                        key={tool.id}
+                        onClick={() => {
+                          onToolChange(tool.id);
+                          setOpenCategory(null);
+                        }}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-all ${
+                          activeTool === tool.id
+                            ? 'bg-blue-600 text-white'
+                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                        }`}
+                      >
+                        <div className="w-4 h-4 flex-shrink-0">
+                          {tool.icon}
+                        </div>
+                        <span className="whitespace-nowrap">{tool.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          ))}
 
-        <div className="h-px bg-gradient-to-r from-transparent via-gray-600 to-transparent my-1"></div>
+          <div className="h-px bg-gray-800 my-0.5"></div>
 
-        {/* Clear All */}
-        <button
-          onClick={onClearAll}
-          className="px-2 py-2 text-sm rounded-lg text-red-400 hover:text-red-300 hover:bg-red-900/20 transition-all flex items-center justify-center group hover:scale-105"
-          title="Clear All Drawings"
-        >
-          <svg className="w-4 h-4 group-hover:scale-110 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
+          {/* Clear All */}
+          <button
+            onClick={onClearAll}
+            className="w-10 h-10 rounded flex items-center justify-center text-red-400 hover:bg-red-900/20 hover:text-red-300 transition-all"
+            title="Clear All Drawings"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       <style jsx global>{`
@@ -323,6 +361,17 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
         }
         .pb-safe {
           padding-bottom: env(safe-area-inset-bottom, 0);
+        }
+        @keyframes fade-in {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+        @keyframes slide-in-from-left-2 {
+          from { transform: translateX(-0.5rem); }
+          to { transform: translateX(0); }
+        }
+        .animate-in {
+          animation: fade-in 0.15s ease-out, slide-in-from-left-2 0.15s ease-out;
         }
       `}</style>
     </>
