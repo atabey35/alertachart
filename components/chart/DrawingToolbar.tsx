@@ -42,12 +42,14 @@ interface ToolCategory {
   id: string;
   name: string;
   icon: React.ReactElement;
+  defaultTool: DrawingTool; // Default tool when clicking category icon
   tools: ToolItem[];
 }
 
 export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }: DrawingToolbarProps) {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+  const closeTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // TradingView-style categories with main icons
   const toolCategories: ToolCategory[] = [
@@ -55,6 +57,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
       id: 'lines',
       name: 'Lines',
       icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4" strokeWidth="2.5"/></svg>,
+      defaultTool: 'trend', // Default: Trend Line
       tools: [
         { 
           id: 'trend', 
@@ -97,6 +100,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
       id: 'shapes',
       name: 'Shapes',
       icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" strokeWidth="2.5" rx="2"/></svg>,
+      defaultTool: 'rectangle', // Default: Rectangle
       tools: [
         { 
           id: 'rectangle', 
@@ -124,6 +128,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
       id: 'fibonacci',
       name: 'Fibonacci',
       icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4" strokeWidth="2.5"/><line x1="4" y1="20" x2="20" y2="20" strokeWidth="1.5" opacity="0.5"/><line x1="4" y1="16" x2="20" y2="16" strokeWidth="1.5" opacity="0.5"/><line x1="4" y1="12" x2="20" y2="12" strokeWidth="1.5" opacity="0.5"/></svg>,
+      defaultTool: 'fib-retracement', // Default: Fib Retracement
       tools: [
         { 
           id: 'fib-retracement', 
@@ -141,6 +146,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
       id: 'annotations',
       name: 'Text',
       icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><text x="6" y="18" fontSize="16" fill="currentColor" fontWeight="bold">T</text></svg>,
+      defaultTool: 'text', // Default: Text
       tools: [
         { 
           id: 'text', 
@@ -164,6 +170,22 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
   // Check if any tool in a category is active
   const isCategoryActive = (category: ToolCategory) => {
     return category.tools.some(tool => tool.id === activeTool);
+  };
+
+  const handleCategoryMouseEnter = (categoryId: string) => {
+    // Cancel any pending close
+    if (closeTimeoutRef.current) {
+      clearTimeout(closeTimeoutRef.current);
+      closeTimeoutRef.current = null;
+    }
+    setOpenCategory(categoryId);
+  };
+
+  const handleCategoryMouseLeave = () => {
+    // Delay closing to allow moving to popup
+    closeTimeoutRef.current = setTimeout(() => {
+      setOpenCategory(null);
+    }, 200);
   };
 
   return (
@@ -201,8 +223,9 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
                   : 'bg-gray-800 text-gray-400'
               }`}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path d="M3 3 L13 9 L9 11 L7 15 L5 13 L9 11 L3 3Z" strokeWidth="2" fill="currentColor"/>
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
             </button>
 
@@ -270,8 +293,9 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
             }`}
             title="Cursor"
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path d="M3 3 L13 9 L9 11 L7 15 L5 13 L9 11 L3 3Z" strokeWidth="2" fill="currentColor"/>
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
           </button>
 
@@ -281,8 +305,13 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
           {toolCategories.map((category) => (
             <div key={category.id} className="relative">
               <button
-                onClick={() => setOpenCategory(openCategory === category.id ? null : category.id)}
-                onMouseEnter={() => setOpenCategory(category.id)}
+                onClick={() => {
+                  // Click activates default tool directly
+                  onToolChange(category.defaultTool);
+                  setOpenCategory(null);
+                }}
+                onMouseEnter={() => handleCategoryMouseEnter(category.id)}
+                onMouseLeave={handleCategoryMouseLeave}
                 className={`w-10 h-10 rounded flex items-center justify-center transition-all group ${
                   isCategoryActive(category)
                     ? 'bg-blue-600 text-white'
@@ -305,7 +334,8 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
               {openCategory === category.id && (
                 <div 
                   className="absolute left-12 top-0 min-w-[180px] bg-gray-900/98 border border-gray-700/50 rounded-lg shadow-2xl backdrop-blur-md p-2 animate-in fade-in slide-in-from-left-2 duration-150 z-50"
-                  onMouseLeave={() => setOpenCategory(null)}
+                  onMouseEnter={() => handleCategoryMouseEnter(category.id)}
+                  onMouseLeave={handleCategoryMouseLeave}
                 >
                   <div className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider px-2 py-1 mb-1">
                     {category.name}
