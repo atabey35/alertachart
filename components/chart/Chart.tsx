@@ -82,6 +82,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const updateQueuedRef = useRef(false); // Is update queued via RAF?
   const rafIdRef = useRef<number | null>(null); // requestAnimationFrame ID
   const lastBarCountRef = useRef<number>(0); // Track bar count to detect full vs partial updates
+  const lastIndicatorUpdateRef = useRef<number>(0); // Track last indicator update time (throttle)
   const currentExchangeRef = useRef(exchange);
   const currentPairRef = useRef(pair);
   const currentTimeframeRef = useRef(timeframe);
@@ -1771,8 +1772,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       setCurrentPrice(lastCandle.close);
     }
 
-    // Update indicators
-    updateIndicators(bars);
+    // Update indicators with throttling (max once per second)
+    // This keeps indicators responsive to price changes while preventing expensive recalculation on every tick
+    const now = Date.now();
+    const shouldUpdateIndicators = barCountChanged || (now - lastIndicatorUpdateRef.current > 1000);
+    
+    if (shouldUpdateIndicators) {
+      updateIndicators(bars);
+      lastIndicatorUpdateRef.current = now;
+    }
 
     // Only fit content on initial load, then allow user to scroll freely
     if (chartRef.current && candleData.length > 0 && isInitialLoadRef.current) {
