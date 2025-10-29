@@ -356,6 +356,52 @@ export default function DrawingRenderer({
     );
   };
 
+  // Render brush (freehand)
+  const renderBrush = (drawing: Drawing) => {
+    if (drawing.points.length < 2) return null;
+    
+    // Convert all points to pixels
+    const pixelPoints = drawing.points
+      .map(point => toPixels(point.time as number, point.price))
+      .filter(p => p !== null) as Array<{ x: number; y: number }>;
+    
+    if (pixelPoints.length < 2) return null;
+
+    const isSelected = selectedDrawingId === drawing.id;
+    
+    // Create path string
+    const pathData = pixelPoints.reduce((path, point, index) => {
+      if (index === 0) {
+        return `M ${point.x} ${point.y}`;
+      }
+      return `${path} L ${point.x} ${point.y}`;
+    }, '');
+    
+    return (
+      <g 
+        key={drawing.id} 
+        onClick={() => onSelectDrawing(drawing.id)}
+        onDoubleClick={() => onDoubleClick?.(drawing)}
+      >
+        <path
+          d={pathData}
+          stroke={drawing.color || '#2962FF'}
+          strokeWidth={isSelected ? 3 : (drawing.lineWidth || 2)}
+          fill="none"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ cursor: isSelected ? 'move' : 'pointer' }}
+        />
+        {isSelected && pixelPoints.length > 0 && (
+          <>
+            <circle cx={pixelPoints[0].x} cy={pixelPoints[0].y} r="5" fill={drawing.color || '#2962FF'} />
+            <circle cx={pixelPoints[pixelPoints.length - 1].x} cy={pixelPoints[pixelPoints.length - 1].y} r="5" fill={drawing.color || '#2962FF'} />
+          </>
+        )}
+      </g>
+    );
+  };
+
   // Render arrow
   const renderArrow = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
@@ -947,6 +993,8 @@ export default function DrawingRenderer({
         return renderExtended(drawing);
       case 'arrow':
         return renderArrow(drawing);
+      case 'brush':
+        return renderBrush(drawing);
       case 'rectangle':
         return renderRectangle(drawing);
       case 'circle':

@@ -168,6 +168,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [activeTool, setActiveTool] = useState<DrawingTool>('none');
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [tempDrawing, setTempDrawing] = useState<DrawingPoint | null>(null);
+  const [isDrawingBrush, setIsDrawingBrush] = useState(false);
+  const [brushPoints, setBrushPoints] = useState<DrawingPoint[]>([]);
   const [previewDrawing, setPreviewDrawing] = useState<Drawing | null>(null); // Live preview while drawing
   const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
   const [editingDrawing, setEditingDrawing] = useState<Drawing | null>(null); // Drawing being edited in modal
@@ -2421,8 +2423,66 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   /**
    * Handle chart click to create drawings
    */
+  const handleBrushStart = (clientX: number, clientY: number) => {
+    if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    
+    const timeScale = chartRef.current.timeScale();
+    const time = timeScale.coordinateToTime(x as any);
+    const price = seriesRef.current.coordinateToPrice(y);
+    
+    if (!time || price === null) return;
+    
+    setIsDrawingBrush(true);
+    setBrushPoints([{ time: time as Time, price }]);
+  };
+
+  const handleBrushMove = (clientX: number, clientY: number) => {
+    if (!isDrawingBrush || !containerRef.current || !chartRef.current || !seriesRef.current) return;
+    
+    const rect = containerRef.current.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    
+    const timeScale = chartRef.current.timeScale();
+    const time = timeScale.coordinateToTime(x as any);
+    const price = seriesRef.current.coordinateToPrice(y);
+    
+    if (!time || price === null) return;
+    
+    setBrushPoints(prev => [...prev, { time: time as Time, price }]);
+  };
+
+  const handleBrushEnd = () => {
+    if (!isDrawingBrush || brushPoints.length < 2) {
+      setIsDrawingBrush(false);
+      setBrushPoints([]);
+      return;
+    }
+    
+    // Create brush drawing
+    const newDrawing: Drawing = {
+      id: `drawing-${Date.now()}`,
+      type: 'brush',
+      points: brushPoints,
+      color: '#2962FF',
+      lineWidth: 2
+    };
+    
+    setDrawings(prev => [...prev, newDrawing]);
+    setIsDrawingBrush(false);
+    setBrushPoints([]);
+    setActiveTool('none');
+  };
+
   const handleChartClickForDrawing = (clientX: number, clientY: number) => {
     if (activeTool === 'none' || !containerRef.current || !chartRef.current || !seriesRef.current) return;
+    
+    // Brush is handled separately with mouse events
+    if (activeTool === 'brush') return;
     
     const rect = containerRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
@@ -3053,14 +3113,37 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                       zIndex: 50, // Higher z-index to be above chart
                       background: 'transparent'
                     }}
+                    onMouseDown={(e) => {
+                      if (activeTool === 'brush') {
+                        e.stopPropagation();
+                        handleBrushStart(e.clientX, e.clientY);
+                      }
+                    }}
                     onMouseMove={(e) => {
-                      // Show live preview while drawing
-                      handleMouseMoveForPreview(e.clientX, e.clientY);
+                      if (activeTool === 'brush' && isDrawingBrush) {
+                        handleBrushMove(e.clientX, e.clientY);
+                      } else {
+                        // Show live preview while drawing
+                        handleMouseMoveForPreview(e.clientX, e.clientY);
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      if (activeTool === 'brush' && isDrawingBrush) {
+                        e.stopPropagation();
+                        handleBrushEnd();
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      if (activeTool === 'brush' && isDrawingBrush) {
+                        handleBrushEnd();
+                      }
                     }}
                     onClick={(e) => {
-                      console.log('🖱️ Overlay clicked!', { activeTool });
-                      e.stopPropagation();
-                      handleChartClickForDrawing(e.clientX, e.clientY);
+                      if (activeTool !== 'brush') {
+                        console.log('🖱️ Overlay clicked!', { activeTool });
+                        e.stopPropagation();
+                        handleChartClickForDrawing(e.clientX, e.clientY);
+                      }
                     }}
                   />
                 )}
@@ -3188,7 +3271,26 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                 {/* Drawing Renderer - SVG Overlay for all drawing tools */}
                 {containerSize.width > 0 && containerSize.height > 0 && (
                   <DrawingRenderer
-                    drawings={previewDrawing ? [...drawings, previewDrawing] : drawings}
+                    drawings={
+                      (() => {
+                        let allDrawings = [...drawings];
+                        // Add preview drawing
+                        if (previewDrawing) {
+                          allDrawings.push(previewDrawing);
+                        }
+                        // Add brush preview
+                        if (isDrawingBrush && brushPoints.length > 0) {
+                          allDrawings.push({
+                            id: 'brush-preview',
+                            type: 'brush',
+                            points: brushPoints,
+                            color: '#2962FF',
+                            lineWidth: 2
+                          });
+                        }
+                        return allDrawings;
+                      })()
+                    }
                     chart={chartRef.current}
                     series={seriesRef.current}
                     containerWidth={containerSize.width}

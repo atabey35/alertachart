@@ -11,6 +11,7 @@ export type DrawingType =
   | 'ray'
   | 'extended'
   | 'arrow'
+  | 'brush'
   | 'rectangle' 
   | 'circle'
   | 'ellipse'
