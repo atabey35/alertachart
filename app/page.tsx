@@ -31,9 +31,9 @@ export default function Home() {
   const [layout, setLayout] = useState<1 | 2 | 4 | 9>(1); // 1x1, 1x2, 2x2, 3x3
   const [activeChartId, setActiveChartId] = useState<number>(0);
 
-  // Shared drawing tool state for multi-chart layout
+  // Shared drawing tool state for all layouts
   const [sharedActiveTool, setSharedActiveTool] = useState<DrawingTool>('none');
-  const [showSharedToolbar, setShowSharedToolbar] = useState(true);
+  const [showDrawingToolbar, setShowDrawingToolbar] = useState(true);
 
   // Alert modal state
   const [triggeredAlert, setTriggeredAlert] = useState<PriceAlert | null>(null);
@@ -659,26 +659,24 @@ export default function Home() {
       <div className="flex flex-1 overflow-hidden relative">
         {/* MOBILE: Chart Tab (full screen) */}
         <div className={`${mobileTab === 'chart' ? 'flex' : 'hidden'} md:flex flex-1 overflow-hidden relative`}>
-          {/* Shared Drawing Toolbar Toggle Button (Multi-chart mode only) */}
-          {layout > 1 && (
-            <button
-              onClick={() => setShowSharedToolbar(!showSharedToolbar)}
-              className={`hidden md:flex absolute ${showSharedToolbar ? 'left-12' : 'left-0'} top-1/2 -translate-y-1/2 z-[110] w-6 h-16 bg-gray-800/90 border border-gray-700 hover:bg-gray-700 rounded-r-lg items-center justify-center transition-all shadow-lg`}
-              title={showSharedToolbar ? 'Hide Drawing Tools' : 'Show Drawing Tools'}
+          {/* Drawing Toolbar Toggle Button (Always visible on Desktop) */}
+          <button
+            onClick={() => setShowDrawingToolbar(!showDrawingToolbar)}
+            className={`hidden md:flex absolute ${showDrawingToolbar ? 'left-12' : 'left-0'} top-1/2 -translate-y-1/2 z-[110] w-6 h-16 bg-gray-800/90 border border-gray-700 hover:bg-gray-700 rounded-r-lg items-center justify-center transition-all shadow-lg`}
+            title={showDrawingToolbar ? 'Hide Drawing Tools' : 'Show Drawing Tools'}
+          >
+            <svg 
+              className={`w-3 h-3 text-gray-400 transition-transform ${showDrawingToolbar ? '' : 'rotate-180'}`}
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
             >
-              <svg 
-                className={`w-3 h-3 text-gray-400 transition-transform ${showSharedToolbar ? '' : 'rotate-180'}`}
-                fill="none" 
-                stroke="currentColor" 
-                viewBox="0 0 24 24"
-              >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-          )}
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+          </button>
 
-          {/* Shared Drawing Toolbar (Multi-chart mode only, Desktop only) */}
-          {layout > 1 && showSharedToolbar && (
+          {/* Shared Drawing Toolbar (Multi-chart mode, Desktop only) */}
+          {layout > 1 && showDrawingToolbar && (
             <div className="hidden md:block">
               <DrawingToolbar
                 activeTool={sharedActiveTool}
@@ -746,8 +744,8 @@ export default function Home() {
                     onChange24h={(change24h) => handleChange24hUpdate(chart.id, change24h)}
                     marketType={marketType}
                     loadDelay={index * 300}
-                    hideToolbar={layout > 1}
-                    externalActiveTool={layout > 1 && showSharedToolbar && chart.id === activeChartId ? sharedActiveTool : undefined}
+                    hideToolbar={!showDrawingToolbar || layout > 1}
+                    externalActiveTool={layout > 1 && showDrawingToolbar && chart.id === activeChartId ? sharedActiveTool : undefined}
                   />
                 </div>
               ))}
