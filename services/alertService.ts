@@ -132,6 +132,25 @@ class AlertService {
       // Notify trigger listeners (for modal)
       this.alertTriggerListeners.forEach(listener => listener(alert));
       
+      // Send message to React Native WebView (for mobile notifications)
+      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+        try {
+          (window as any).ReactNativeWebView.postMessage(JSON.stringify({
+            type: 'ALERT_TRIGGERED',
+            alert: {
+              id: alert.id,
+              exchange: alert.exchange,
+              pair: alert.pair,
+              price: alert.price,
+              direction: alert.direction,
+              triggeredAt: alert.triggeredAt,
+            }
+          }));
+        } catch (e) {
+          console.debug('[AlertService] Failed to send message to React Native:', e);
+        }
+      }
+      
       console.log('[AlertService] Alert triggered:', alert);
     }
   }
