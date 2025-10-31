@@ -659,7 +659,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                             /{quoteAsset}
                           </span>
                           {hasAlert && (
-                            <svg className="w-3.5 h-3.5 text-blue-400" fill="currentColor" viewBox="0 0 24 24" title="Active alerts">
+                            <svg className="w-3.5 h-3.5 text-blue-400" fill="currentColor" viewBox="0 0 24 24" aria-label="Active alerts" role="img">
+                              <title>Active alerts</title>
                               <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6v-5a6 6 0 0 0-5-5.91V4a1 1 0 1 0-2 0v1.09A6 6 0 0 0 6 11v5l-2 2v1h16v-1l-2-2z" />
                             </svg>
                           )}
