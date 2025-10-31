@@ -1,0 +1,504 @@
+/**
+ * Chart Settings Modal
+ * Allows users to customize chart appearance
+ */
+
+'use client';
+
+import { useState, useEffect } from 'react';
+
+export interface ChartSettingsType {
+  // Watermark
+  showWatermark: boolean;
+  
+  // Grid
+  showGrid: boolean;
+  gridVerticalColor: string;
+  gridHorizontalColor: string;
+  
+  // Candlestick colors
+  upColor: string;
+  downColor: string;
+  wickUpColor: string;
+  wickDownColor: string;
+  
+  // Volume colors
+  volumeUpColor: string;
+  volumeDownColor: string;
+  
+  // Background
+  backgroundColor: string;
+  textColor: string;
+  
+  // Crosshair
+  showCrosshair: boolean;
+  
+  // Time scale
+  showTimeScale: boolean;
+  timeScaleVisible: boolean;
+  secondsVisible: boolean;
+  
+  // Indicators
+  showRSI: boolean;
+  rsiPeriod: number;
+  showMACD: boolean;
+  macdFast: number;
+  macdSlow: number;
+  macdSignal: number;
+  
+  // Bollinger Bands
+  showBB: boolean;
+  bbPeriod: number;
+  bbStdDev: number;
+  
+  // Moving Averages (EMA)
+  showMA50: boolean;
+  showMA100: boolean;
+  showMA200: boolean;
+  
+  // Simple Moving Averages (SMA)
+  showSMA50: boolean;
+  showSMA100: boolean;
+  showSMA200: boolean;
+}
+
+export const DEFAULT_SETTINGS: ChartSettingsType = {
+  showWatermark: false,
+  showGrid: true,
+  gridVerticalColor: '#1a1a1a',
+  gridHorizontalColor: '#1a1a1a',
+  upColor: '#26a69a',
+  downColor: '#ef5350',
+  wickUpColor: '#26a69a',
+  wickDownColor: '#ef5350',
+  volumeUpColor: '#26a69a80',
+  volumeDownColor: '#ef535080',
+  backgroundColor: '#0a0a0a',
+  textColor: '#d1d4dc',
+  showCrosshair: true,
+  showTimeScale: true,
+  timeScaleVisible: true,
+  secondsVisible: true,
+  showRSI: false,
+  rsiPeriod: 14,
+  showMACD: false,
+  macdFast: 12,
+  macdSlow: 26,
+  macdSignal: 9,
+  showBB: false,
+  bbPeriod: 20,
+  bbStdDev: 2,
+  showMA50: false,
+  showMA100: false,
+  showMA200: false,
+  showSMA50: false,
+  showSMA100: false,
+  showSMA200: false,
+};
+
+interface ChartSettingsProps {
+  isOpen: boolean;
+  onClose: () => void;
+  settings: ChartSettingsType;
+  onSave: (settings: ChartSettingsType) => void;
+}
+
+export default function ChartSettings({ isOpen, onClose, settings, onSave }: ChartSettingsProps) {
+  const [localSettings, setLocalSettings] = useState<ChartSettingsType>(settings);
+
+  useEffect(() => {
+    setLocalSettings(settings);
+  }, [settings]);
+
+  const handleSave = () => {
+    onSave(localSettings);
+    onClose();
+  };
+
+  const handleReset = () => {
+    setLocalSettings(DEFAULT_SETTINGS);
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+      <div className="bg-gray-900 border border-gray-700 rounded-lg shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+          <h2 className="text-xl font-bold text-white">Chart Settings</h2>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-white transition-colors"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+          {/* General */}
+          <section>
+            <h3 className="text-lg font-semibold text-white mb-3">General</h3>
+            <div className="space-y-3">
+              <label className="flex items-center justify-between">
+                <span className="text-gray-300">Show Grid</span>
+                <input
+                  type="checkbox"
+                  checked={localSettings.showGrid}
+                  onChange={(e) => setLocalSettings({ ...localSettings, showGrid: e.target.checked })}
+                  className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+                />
+              </label>
+
+              <label className="flex items-center justify-between">
+                <span className="text-gray-300">Show Crosshair</span>
+                <input
+                  type="checkbox"
+                  checked={localSettings.showCrosshair}
+                  onChange={(e) => setLocalSettings({ ...localSettings, showCrosshair: e.target.checked })}
+                  className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+                />
+              </label>
+
+              <label className="flex items-center justify-between">
+                <span className="text-gray-300">Show Time</span>
+                <input
+                  type="checkbox"
+                  checked={localSettings.timeScaleVisible}
+                  onChange={(e) => setLocalSettings({ ...localSettings, timeScaleVisible: e.target.checked })}
+                  className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+                />
+              </label>
+
+              <label className="flex items-center justify-between">
+                <span className="text-gray-300">Show Seconds</span>
+                <input
+                  type="checkbox"
+                  checked={localSettings.secondsVisible}
+                  onChange={(e) => setLocalSettings({ ...localSettings, secondsVisible: e.target.checked })}
+                  className="w-5 h-5 rounded border-gray-600 bg-gray-800 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+                />
+              </label>
+            </div>
+          </section>
+
+          {/* Candlestick Colors */}
+          <section>
+            <h3 className="text-lg font-semibold text-white mb-3">Candlestick Colors</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="space-y-2">
+                <span className="text-sm text-gray-300">Up Color</span>
+                <input
+                  type="color"
+                  value={localSettings.upColor}
+                  onChange={(e) => setLocalSettings({ ...localSettings, upColor: e.target.value })}
+                  className="w-full h-10 rounded border border-gray-600 bg-gray-800"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm text-gray-300">Down Color</span>
+                <input
+                  type="color"
+                  value={localSettings.downColor}
+                  onChange={(e) => setLocalSettings({ ...localSettings, downColor: e.target.value })}
+                  className="w-full h-10 rounded border border-gray-600 bg-gray-800"
+                />
+              </label>
+            </div>
+          </section>
+
+          {/* Volume Colors */}
+          <section>
+            <h3 className="text-lg font-semibold text-white mb-3">Volume Colors</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="space-y-2">
+                <span className="text-sm text-gray-300">Buy Volume</span>
+                <input
+                  type="color"
+                  value={localSettings.volumeUpColor.replace('80', '')}
+                  onChange={(e) => setLocalSettings({ ...localSettings, volumeUpColor: e.target.value + '80' })}
+                  className="w-full h-10 rounded border border-gray-600 bg-gray-800"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm text-gray-300">Sell Volume</span>
+                <input
+                  type="color"
+                  value={localSettings.volumeDownColor.replace('80', '')}
+                  onChange={(e) => setLocalSettings({ ...localSettings, volumeDownColor: e.target.value + '80' })}
+                  className="w-full h-10 rounded border border-gray-600 bg-gray-800"
+                />
+              </label>
+            </div>
+          </section>
+
+          {/* Background & Grid */}
+          <section>
+            <h3 className="text-lg font-semibold text-white mb-3">Background & Grid</h3>
+            <div className="grid grid-cols-2 gap-4">
+              <label className="space-y-2">
+                <span className="text-sm text-gray-300">Background</span>
+                <input
+                  type="color"
+                  value={localSettings.backgroundColor}
+                  onChange={(e) => setLocalSettings({ ...localSettings, backgroundColor: e.target.value })}
+                  className="w-full h-10 rounded border border-gray-600 bg-gray-800"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm text-gray-300">Text Color</span>
+                <input
+                  type="color"
+                  value={localSettings.textColor}
+                  onChange={(e) => setLocalSettings({ ...localSettings, textColor: e.target.value })}
+                  className="w-full h-10 rounded border border-gray-600 bg-gray-800"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm text-gray-300">Grid Vertical</span>
+                <input
+                  type="color"
+                  value={localSettings.gridVerticalColor}
+                  onChange={(e) => setLocalSettings({ ...localSettings, gridVerticalColor: e.target.value })}
+                  className="w-full h-10 rounded border border-gray-600 bg-gray-800"
+                />
+              </label>
+
+              <label className="space-y-2">
+                <span className="text-sm text-gray-300">Grid Horizontal</span>
+                <input
+                  type="color"
+                  value={localSettings.gridHorizontalColor}
+                  onChange={(e) => setLocalSettings({ ...localSettings, gridHorizontalColor: e.target.value })}
+                  className="w-full h-10 rounded border border-gray-600 bg-gray-800"
+                />
+              </label>
+            </div>
+          </section>
+
+          {/* Technical Indicators */}
+          <section>
+            <h3 className="text-lg font-semibold text-white mb-3">Technical Indicators</h3>
+            <div className="space-y-4">
+              {/* RSI */}
+              <div className="space-y-3 p-4 bg-gray-800 rounded-lg">
+                <label className="flex items-center justify-between">
+                  <span className="text-gray-300 font-medium">RSI (Relative Strength Index)</span>
+                  <input
+                    type="checkbox"
+                    checked={localSettings.showRSI}
+                    onChange={(e) => setLocalSettings({ ...localSettings, showRSI: e.target.checked })}
+                    className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+                  />
+                </label>
+                {localSettings.showRSI && (
+                  <label className="flex items-center justify-between">
+                    <span className="text-sm text-gray-400">Period</span>
+                    <input
+                      type="number"
+                      min="2"
+                      max="100"
+                      value={localSettings.rsiPeriod}
+                      onChange={(e) => setLocalSettings({ ...localSettings, rsiPeriod: parseInt(e.target.value) || 14 })}
+                      className="w-20 px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                    />
+                  </label>
+                )}
+              </div>
+
+              {/* MACD */}
+              <div className="space-y-3 p-4 bg-gray-800 rounded-lg">
+                <label className="flex items-center justify-between">
+                  <span className="text-gray-300 font-medium">MACD</span>
+                  <input
+                    type="checkbox"
+                    checked={localSettings.showMACD}
+                    onChange={(e) => setLocalSettings({ ...localSettings, showMACD: e.target.checked })}
+                    className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+                  />
+                </label>
+                {localSettings.showMACD && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <label className="space-y-1">
+                      <span className="text-xs text-gray-400">Fast</span>
+                      <input
+                        type="number"
+                        min="2"
+                        max="100"
+                        value={localSettings.macdFast}
+                        onChange={(e) => setLocalSettings({ ...localSettings, macdFast: parseInt(e.target.value) || 12 })}
+                        className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs text-gray-400">Slow</span>
+                      <input
+                        type="number"
+                        min="2"
+                        max="100"
+                        value={localSettings.macdSlow}
+                        onChange={(e) => setLocalSettings({ ...localSettings, macdSlow: parseInt(e.target.value) || 26 })}
+                        className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs text-gray-400">Signal</span>
+                      <input
+                        type="number"
+                        min="2"
+                        max="100"
+                        value={localSettings.macdSignal}
+                        onChange={(e) => setLocalSettings({ ...localSettings, macdSignal: parseInt(e.target.value) || 9 })}
+                        className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Bollinger Bands */}
+              <div className="space-y-3 p-4 bg-gray-800 rounded-lg">
+                <label className="flex items-center justify-between">
+                  <span className="text-gray-300 font-medium">Bollinger Bands</span>
+                  <input
+                    type="checkbox"
+                    checked={localSettings.showBB}
+                    onChange={(e) => setLocalSettings({ ...localSettings, showBB: e.target.checked })}
+                    className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900"
+                  />
+                </label>
+                {localSettings.showBB && (
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="space-y-1">
+                      <span className="text-xs text-gray-400">Period</span>
+                      <input
+                        type="number"
+                        min="2"
+                        max="100"
+                        value={localSettings.bbPeriod}
+                        onChange={(e) => setLocalSettings({ ...localSettings, bbPeriod: parseInt(e.target.value) || 20 })}
+                        className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </label>
+                    <label className="space-y-1">
+                      <span className="text-xs text-gray-400">Std Dev</span>
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        step="0.1"
+                        value={localSettings.bbStdDev}
+                        onChange={(e) => setLocalSettings({ ...localSettings, bbStdDev: parseFloat(e.target.value) || 2 })}
+                        className="w-full px-2 py-1 text-sm bg-gray-700 border border-gray-600 rounded text-white focus:outline-none focus:border-blue-500"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Moving Averages (EMA) */}
+              <div className="space-y-3 p-4 bg-gray-800 rounded-lg">
+                <div className="text-gray-300 font-medium mb-2">Moving Averages (EMA)</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showMA50}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showMA50: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-400">MA 50</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showMA100}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showMA100: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-400">MA 100</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showMA200}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showMA200: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600"
+                    />
+                    <span className="text-sm text-gray-400">MA 200</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Simple Moving Averages (SMA) */}
+              <div className="space-y-3 p-4 bg-gray-800 rounded-lg">
+                <div className="text-gray-300 font-medium mb-2">Simple Moving Averages (SMA)</div>
+                <div className="grid grid-cols-3 gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showSMA50}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showSMA50: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-600"
+                    />
+                    <span className="text-sm text-gray-400">SMA 50</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showSMA100}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showSMA100: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-600"
+                    />
+                    <span className="text-sm text-gray-400">SMA 100</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={localSettings.showSMA200}
+                      onChange={(e) => setLocalSettings({ ...localSettings, showSMA200: e.target.checked })}
+                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-600"
+                    />
+                    <span className="text-sm text-gray-400">SMA 200</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between px-6 py-4 border-t border-gray-700">
+          <button
+            onClick={handleReset}
+            className="px-4 py-2 text-sm font-medium text-gray-300 hover:text-white transition-colors"
+          >
+            Reset to Default
+          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm font-medium text-gray-300 bg-gray-800 rounded hover:bg-gray-700 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded hover:bg-blue-700 transition-colors"
+            >
+              Save Settings
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
