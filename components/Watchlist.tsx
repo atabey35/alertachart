@@ -46,11 +46,23 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [dragOverSymbol, setDragOverSymbol] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; symbol: string } | null>(null);
+  const [symbolsWithAlerts, setSymbolsWithAlerts] = useState<Set<string>>(new Set());
 
   // Detect client-side for responsive width
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Track which symbols have active alerts for this market type
+  useEffect(() => {
+    const exchange = marketType === 'futures' ? 'BINANCE_FUTURES' : 'BINANCE';
+    const unsubscribe = alertService.subscribe((allAlerts) => {
+      const active = allAlerts.filter(a => !a.isTriggered && a.exchange === exchange);
+      const set = new Set<string>(active.map(a => a.pair.toLowerCase()));
+      setSymbolsWithAlerts(set);
+    });
+    return unsubscribe;
+  }, [marketType]);
 
   // Load favorites and categories from localStorage
   useEffect(() => {
@@ -629,6 +641,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                         baseAsset = upperSymbol;
                       }
                       
+                      const hasAlert = symbolsWithAlerts.has(symbol);
                       return (
                         <>
                           <img 
@@ -645,6 +658,11 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                           <span className="text-[10px] text-gray-500">
                             /{quoteAsset}
                           </span>
+                          {hasAlert && (
+                            <svg className="w-3.5 h-3.5 text-blue-400" fill="currentColor" viewBox="0 0 24 24" title="Active alerts">
+                              <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6v-5a6 6 0 0 0-5-5.91V4a1 1 0 1 0-2 0v1.09A6 6 0 0 0 6 11v5l-2 2v1h16v-1l-2-2z" />
+                            </svg>
+                          )}
                         </>
                       );
                     })()}
