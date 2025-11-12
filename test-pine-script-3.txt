@@ -1,0 +1,27 @@
+//@version=5
+indicator("Adaptive Moving Average", shorttitle="AMA", overlay=true)
+
+// Input Settings
+length = input.int(14, "AMA Length", minval=1)
+fast_length = input.int(2, "Fast Length", minval=1)
+slow_length = input.int(30, "Slow Length", minval=1)
+
+// Calculate AMA (Adaptive Moving Average)
+sc = 2.0 / (fast_length + 1)
+sc_slow = 2.0 / (slow_length + 1)
+dir = math.abs(close - close[length])
+vol = math.sum(math.abs(close - close[1]), length)
+er = vol != 0 ? dir / vol : 0
+smooth = math.pow(er * (sc - sc_slow) + sc_slow, 2)
+ama = 0.0
+ama := close * smooth + ama[1] * (1 - smooth)
+
+// Also calculate standard EMA and SMA for comparison
+ema14 = ta.ema(close, 14)
+sma20 = ta.sma(close, 20)
+
+// Plot
+plot(ama, "AMA", color=color.new(color.lime, 0), linewidth=2)
+plot(ema14, "EMA 14", color=color.new(color.blue, 0), linewidth=1)
+plot(sma20, "SMA 20", color=color.new(color.orange, 0), linewidth=1)
+
