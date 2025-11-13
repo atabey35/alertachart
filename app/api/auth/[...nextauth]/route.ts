@@ -25,10 +25,21 @@ const authOptions: NextAuthOptions = {
         email: user?.email,
         name: user?.name,
         providerAccountId: account?.providerAccountId,
+        profile,
       });
 
-      if (!account || !user.email) {
-        console.error('[NextAuth] Missing account or email:', { account: !!account, email: user?.email });
+      if (!account) {
+        console.error('[NextAuth] Missing account');
+        return false;
+      }
+
+      // For Apple: if email is not shared, use Apple user ID as email
+      const userEmail = user.email || (account.provider === 'apple' 
+        ? `${account.providerAccountId}@privaterelay.appleid.com` 
+        : null);
+
+      if (!userEmail) {
+        console.error('[NextAuth] Missing email and cannot generate fallback');
         return false;
       }
 
@@ -58,8 +69,8 @@ const authOptions: NextAuthOptions = {
               provider_user_id,
               plan
             ) VALUES (
-              ${user.email},
-              ${user.name || ''},
+              ${userEmail},
+              ${user.name || account.providerAccountId},
               ${account.provider},
               ${account.providerAccountId},
               'free'
