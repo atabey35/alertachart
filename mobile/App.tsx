@@ -47,6 +47,35 @@ export default function App() {
     initializeApp();
   }, []);
 
+  // Deep link listener for OAuth callback
+  useEffect(() => {
+    const handleDeepLink = (event: { url: string }) => {
+      console.log('[App] Deep link received:', event.url);
+      addDebugLog(`Deep link: ${event.url}`);
+      
+      if (event.url.includes('auth/success')) {
+        console.log('[App] OAuth success, reloading WebView');
+        addDebugLog('OAuth success - reloading');
+        // WebView will automatically pick up the new session
+      }
+    };
+
+    // Listen for deep links
+    const subscription = Linking.addEventListener('url', handleDeepLink);
+
+    // Check if app was opened with a deep link
+    Linking.getInitialURL().then((url) => {
+      if (url) {
+        console.log('[App] App opened with URL:', url);
+        handleDeepLink({ url });
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, []);
+
   const initializeApp = async () => {
     try {
       // 1. Notification handler'ı kur

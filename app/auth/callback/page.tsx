@@ -10,27 +10,18 @@ export default function AuthCallback() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      // Check if opened from mobile app
-      const isNativeApp = window.navigator.userAgent.includes('AlertaChart') || 
-                          (window as any).isNativeApp;
+      // Try to open the app using deep link
+      const appUrl = 'com.kriptokirmizi.alerta://auth/success';
       
-      if (isNativeApp) {
-        // Send auth token to native app via bridge
-        if ((window as any).ReactNativeWebView) {
-          (window as any).ReactNativeWebView.postMessage(
-            JSON.stringify({
-              type: 'AUTH_SUCCESS',
-              user: session.user,
-            })
-          );
-        }
-        
-        // Redirect to home in app
+      // Attempt to open app
+      window.location.href = appUrl;
+      
+      // Fallback: If app doesn't open in 2 seconds, redirect to web home
+      const timeout = setTimeout(() => {
         router.push('/');
-      } else {
-        // Web: redirect to home
-        router.push('/');
-      }
+      }, 2000);
+      
+      return () => clearTimeout(timeout);
     } else if (status === 'unauthenticated') {
       // Auth failed, redirect to home
       router.push('/');
