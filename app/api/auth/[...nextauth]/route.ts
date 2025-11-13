@@ -5,7 +5,7 @@ import { neon } from "@neondatabase/serverless";
 
 const sql = neon(process.env.DATABASE_URL!);
 
-export const authOptions: NextAuthOptions = {
+const authOptions: NextAuthOptions = {
   providers: [
     AppleProvider({
       clientId: process.env.APPLE_CLIENT_ID!,
