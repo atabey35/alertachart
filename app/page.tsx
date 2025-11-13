@@ -225,7 +225,7 @@ export default function Home() {
   const [showWatchlist, setShowWatchlist] = useState(true);
   const [showAlerts, setShowAlerts] = useState(false);
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
-  const [mobileTab, setMobileTab] = useState<'chart' | 'watchlist' | 'alerts' | 'settings'>('chart');
+  const [mobileTab, setMobileTab] = useState<'chart' | 'watchlist' | 'alerts' | 'aggr' | 'settings'>('chart');
   const [showSymbolSearch, setShowSymbolSearch] = useState(false);
 
   // Load saved watchlist visibility on mount
@@ -1017,6 +1017,32 @@ export default function Home() {
           />
         </div>
 
+        {/* MOBILE: Aggr Tab (full screen) */}
+        <div className={`${mobileTab === 'aggr' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-hidden bg-gray-950`}>
+          {user ? (
+            <iframe
+              src="https://aggr.alertachart.com?embed=true"
+              className="w-full h-full border-0"
+              title="Aggr Trading Dashboard"
+              allow="clipboard-write; clipboard-read"
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+              <svg className="w-16 h-16 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <h3 className="text-xl font-bold text-white mb-2">Giriş Yapmanız Gerekiyor</h3>
+              <p className="text-gray-400 mb-6">Aggr trading dashboard'unu kullanmak için lütfen giriş yapın.</p>
+              <button
+                onClick={() => setShowAuthModal(true)}
+                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Giriş Yap
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* MOBILE: Settings Tab (full screen) */}
         <div className={`${mobileTab === 'settings' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-auto bg-gray-950 p-4`}>
           <div className="space-y-6 max-w-md mx-auto">
@@ -1193,6 +1219,20 @@ export default function Home() {
           </svg>
           <span className="text-[10px] mt-1">Alarmlar</span>
         </button>
+
+        {user && (
+          <button
+            onClick={() => setMobileTab('aggr')}
+            className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors ${
+              mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'
+            }`}
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+            <span className="text-[10px] mt-1">Aggr</span>
+          </button>
+        )}
 
         <button
           onClick={() => setMobileTab('settings')}

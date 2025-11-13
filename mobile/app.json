@@ -2,7 +2,7 @@
   "expo": {
     "name": "Alerta Chart - TradeSync",
     "slug": "alerta",
-    "version": "1.2.1",
+    "version": "1.4.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -19,10 +19,11 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.kriptokirmizi.alerta",
-      "buildNumber": "6",
+      "buildNumber": "5",
       "infoPlist": {
         "NSCameraUsageDescription": "This app does not use the camera.",
         "NSMicrophoneUsageDescription": "This app does not use the microphone.",
+        "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
           "remote-notification"
         ]

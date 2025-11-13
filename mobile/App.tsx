@@ -21,6 +21,12 @@ SplashScreen.preventAutoHideAsync();
 // App version - sabit değer (expo-application production build'de sorunlu)
 const APP_VERSION = '1.0.0';
 
+// Aggr WebView URL - kkaggr projenizi deploy ettiğiniz URL
+// Örnek: 'https://aggr.kriptokirmizi.com' veya Railway/Vercel URL'niz
+// Development için: 'http://localhost:5173' (kkaggr-main'i npm run dev ile çalıştırın)
+// TODO: Kendi deploy URL'nizi buraya yazın
+const AGGR_URL = 'https://example.com/aggr'; // Placeholder URL
+
 export default function App() {
   const [pushToken, setPushToken] = useState<string | null>(null);
   const [deviceId, setDeviceId] = useState<string | null>(null);
