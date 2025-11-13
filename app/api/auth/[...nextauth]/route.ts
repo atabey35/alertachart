@@ -19,7 +19,17 @@ const authOptions: NextAuthOptions = {
   
   callbacks: {
     async signIn({ user, account, profile }) {
-      if (!account || !user.email) return false;
+      console.log('[NextAuth] signIn callback:', {
+        provider: account?.provider,
+        email: user?.email,
+        name: user?.name,
+        providerAccountId: account?.providerAccountId,
+      });
+
+      if (!account || !user.email) {
+        console.error('[NextAuth] Missing account or email:', { account: !!account, email: user?.email });
+        return false;
+      }
 
       try {
         // Check if user exists
@@ -29,8 +39,16 @@ const authOptions: NextAuthOptions = {
           AND provider_user_id = ${account.providerAccountId}
         `;
 
+        console.log('[NextAuth] Existing user check:', { found: existingUser.length > 0 });
+
         if (existingUser.length === 0) {
           // Create new user
+          console.log('[NextAuth] Creating new user:', {
+            email: user.email,
+            name: user.name,
+            provider: account.provider,
+          });
+
           await sql`
             INSERT INTO users (
               email, 
@@ -46,6 +64,8 @@ const authOptions: NextAuthOptions = {
               'free'
             )
           `;
+
+          console.log('[NextAuth] User created successfully');
         } else {
           // Update last login
           await sql`
@@ -58,7 +78,7 @@ const authOptions: NextAuthOptions = {
 
         return true;
       } catch (error) {
-        console.error('Sign in error:', error);
+        console.error('[NextAuth] Sign in error:', error);
         return false;
       }
     },
