@@ -15,14 +15,13 @@ interface AuthTokens {
 }
 
 class AuthService {
-  private accessToken: string | null = null;
-  private refreshToken: string | null = null;
   private user: User | null = null;
   private listeners: ((user: User | null) => void)[] = [];
 
   constructor() {
     if (typeof window !== 'undefined') {
-      this.loadFromStorage();
+      // Check authentication on init
+      this.checkAuth();
       
       // Listen for AUTH_TOKEN from native app (when app is reopened)
       window.addEventListener('nativeMessage', this.handleNativeMessage);
@@ -50,99 +49,42 @@ class AuthService {
 
     const token = typeof detail.token === 'string' ? detail.token : null;
     if (token) {
-      console.log('[AuthService] AUTH_TOKEN received from native app (restored from storage)');
-      // Token'ı kaydet
-      this.accessToken = token;
-      this.saveToStorage();
-      
-      // User bilgisini token'dan decode et (JWT token'dan)
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.userId && payload.email) {
-          this.user = {
-            id: payload.userId,
-            email: payload.email,
-            name: payload.name,
-          };
-          this.saveToStorage();
-          this.notifyListeners();
-          console.log('[AuthService] User info restored from token:', this.user);
-        }
-      } catch (e) {
-        console.warn('[AuthService] Failed to decode user info from token:', e);
-        // Token geçerli ama user bilgisi decode edilemedi, backend'den çekmeyi dene
-        this.fetchUserInfo();
-      }
+      console.log('[AuthService] AUTH_TOKEN received from native app');
+      // For native app, we still need to handle tokens
+      // Check auth status
+      this.checkAuth();
     }
   };
 
-  private async fetchUserInfo() {
-    if (!this.accessToken) return;
-    
+  /**
+   * Check authentication status using httpOnly cookies
+   */
+  async checkAuth(): Promise<User | null> {
     try {
-      const response = await fetch('/api/auth/user', {
-        headers: {
-          'Authorization': `Bearer ${this.accessToken}`,
-        },
+      const response = await fetch('/api/auth/me', {
+        credentials: 'include', // Send cookies
       });
       
       if (response.ok) {
         const data = await response.json();
         this.user = data.user;
-        this.saveToStorage();
         this.notifyListeners();
-        console.log('[AuthService] User info fetched from backend:', this.user);
+        console.log('[AuthService] User authenticated:', this.user);
+        return this.user;
+      } else {
+        this.user = null;
+        this.notifyListeners();
+        return null;
       }
     } catch (e) {
-      console.warn('[AuthService] Failed to fetch user info:', e);
-    }
-  };
-
-  private loadFromStorage() {
-    try {
-      const storedAccessToken = localStorage.getItem('auth_access_token');
-      const storedRefreshToken = localStorage.getItem('auth_refresh_token');
-      const storedUser = localStorage.getItem('auth_user');
-
-      if (storedAccessToken) {
-        this.accessToken = storedAccessToken;
-      }
-      if (storedRefreshToken) {
-        this.refreshToken = storedRefreshToken;
-      }
-      if (storedUser) {
-        this.user = JSON.parse(storedUser);
-      }
-    } catch (e) {
-      console.error('[AuthService] Failed to load from storage:', e);
+      console.warn('[AuthService] Failed to check auth:', e);
+      this.user = null;
+      this.notifyListeners();
+      return null;
     }
   }
 
-  private saveToStorage() {
-    if (typeof window === 'undefined') return;
-
-    try {
-      if (this.accessToken) {
-        localStorage.setItem('auth_access_token', this.accessToken);
-      } else {
-        localStorage.removeItem('auth_access_token');
-      }
-
-      if (this.refreshToken) {
-        localStorage.setItem('auth_refresh_token', this.refreshToken);
-      } else {
-        localStorage.removeItem('auth_refresh_token');
-      }
-
-      if (this.user) {
-        localStorage.setItem('auth_user', JSON.stringify(this.user));
-      } else {
-        localStorage.removeItem('auth_user');
-      }
-    } catch (e) {
-      console.error('[AuthService] Failed to save to storage:', e);
-    }
-  }
+  // Removed localStorage methods - using httpOnly cookies now
 
   private notifyListeners() {
     this.listeners.forEach(listener => listener(this.user));
@@ -160,11 +102,12 @@ class AuthService {
   /**
    * Register new user
    */
-  async register(email: string, password: string, name?: string): Promise<{ user: User; tokens: AuthTokens }> {
+  async register(email: string, password: string, name?: string): Promise<{ user: User }> {
     // Use Next.js API route (works in both web and mobile WebView)
     const response = await fetch('/api/auth/register', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // Important: receive cookies
       body: JSON.stringify({ email, password, name }),
     });
 
@@ -174,28 +117,26 @@ class AuthService {
     }
 
     const data = await response.json();
-
-    this.accessToken = data.tokens.accessToken;
-    this.refreshToken = data.tokens.refreshToken;
     this.user = data.user;
-
-    this.saveToStorage();
     this.notifyListeners();
 
     // Native app'te ise token'ı native'e gönder (sendToNative varsa)
-    this.sendTokenToNative(data.tokens.accessToken);
+    if (data.token) {
+      this.sendTokenToNative(data.token);
+    }
 
-    return { user: data.user, tokens: data.tokens };
+    return { user: data.user };
   }
 
   /**
    * Login user
    */
-  async login(email: string, password: string): Promise<{ user: User; tokens: AuthTokens }> {
+  async login(email: string, password: string): Promise<{ user: User }> {
     // Use Next.js API route (works in both web and mobile WebView)
     const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include', // Important: receive cookies
       body: JSON.stringify({ email, password }),
     });
 
@@ -205,18 +146,15 @@ class AuthService {
     }
 
     const data = await response.json();
-
-    this.accessToken = data.tokens.accessToken;
-    this.refreshToken = data.tokens.refreshToken;
     this.user = data.user;
-
-    this.saveToStorage();
     this.notifyListeners();
 
     // Native app'te ise token'ı native'e gönder (sendToNative varsa)
-    this.sendTokenToNative(data.tokens.accessToken);
+    if (data.token) {
+      this.sendTokenToNative(data.token);
+    }
 
-    return { user: data.user, tokens: data.tokens };
+    return { user: data.user };
   }
 
   /**
@@ -237,23 +175,16 @@ class AuthService {
    * Logout user
    */
   async logout(): Promise<void> {
-    if (this.refreshToken) {
-      try {
-        await fetch('/api/auth/logout', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refreshToken: this.refreshToken }),
-        });
-      } catch (e) {
-        console.error('[AuthService] Failed to logout on server:', e);
-      }
+    try {
+      await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include', // Send cookies
+      });
+    } catch (e) {
+      console.error('[AuthService] Failed to logout on server:', e);
     }
 
-    this.accessToken = null;
-    this.refreshToken = null;
     this.user = null;
-
-    this.saveToStorage();
     this.notifyListeners();
 
     // Native app'te ise token'ı temizle (sendToNative varsa)
@@ -266,50 +197,7 @@ class AuthService {
     }
   }
 
-  /**
-   * Refresh access token
-   */
-  async refreshAccessToken(): Promise<string | null> {
-    if (!this.refreshToken) {
-      return null;
-    }
-
-    try {
-      const response = await fetch('/api/auth/refresh', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ refreshToken: this.refreshToken }),
-      });
-
-      if (!response.ok) {
-        // Refresh token expired, logout
-        await this.logout();
-        return null;
-      }
-
-      const data = await response.json();
-      this.accessToken = data.tokens.accessToken;
-      this.saveToStorage();
-
-      return this.accessToken;
-    } catch (e) {
-      console.error('[AuthService] Failed to refresh token:', e);
-      await this.logout();
-      return null;
-    }
-  }
-
-  /**
-   * Get current access token (with auto-refresh if needed)
-   */
-  async getAccessToken(): Promise<string | null> {
-    if (!this.accessToken && this.refreshToken) {
-      // Try to refresh
-      await this.refreshAccessToken();
-    }
-
-    return this.accessToken;
-  }
+  // Removed token refresh methods - cookies handle this automatically
 
   /**
    * Get current user
@@ -322,17 +210,16 @@ class AuthService {
    * Check if user is authenticated
    */
   isAuthenticated(): boolean {
-    return this.user !== null && this.accessToken !== null;
+    return this.user !== null;
   }
 
   /**
    * Get authorization header for API calls
+   * Note: With httpOnly cookies, no need for Authorization header
+   * Just use credentials: 'include' in fetch calls
    */
   async getAuthHeader(): Promise<Record<string, string>> {
-    const token = await this.getAccessToken();
-    if (token) {
-      return { Authorization: `Bearer ${token}` };
-    }
+    // Cookies are sent automatically with credentials: 'include'
     return {};
   }
 }
