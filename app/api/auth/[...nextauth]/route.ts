@@ -10,6 +10,7 @@ const authOptions: NextAuthOptions = {
     AppleProvider({
       clientId: process.env.APPLE_CLIENT_ID!,
       clientSecret: process.env.APPLE_CLIENT_SECRET!,
+      checks: ['state'], // Disable PKCE, only use state
     }),
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
