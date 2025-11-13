@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { StyleSheet, View, Platform, BackHandler, Alert, Dimensions } from 'react-native';
+import { StyleSheet, View, Platform, BackHandler, Alert, Dimensions, Linking } from 'react-native';
 import WebView from 'react-native-webview';
 import { WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
 import Constants from 'expo-constants';
@@ -205,9 +205,42 @@ export default function AppWebView({
   };
 
   const handleNavigationStateChange = (navState: WebViewNavigation) => {
+    const url = navState.url;
+    
+    // Intercept OAuth URLs and open in external browser
+    if (url.includes('/api/auth/signin/google') || 
+        url.includes('/api/auth/signin/apple') ||
+        url.includes('accounts.google.com') ||
+        url.includes('appleid.apple.com')) {
+      console.log('[WebView] Detected OAuth URL, opening in external browser:', url);
+      Linking.openURL(url);
+      // Go back to prevent WebView from loading OAuth page
+      if (webViewRef.current && canGoBack) {
+        webViewRef.current.goBack();
+      }
+      return;
+    }
+    
     setCanGoBack(navState.canGoBack);
     setCurrentUrl(navState.url);
     onNavigationStateChange?.(navState);
+  };
+
+  // Intercept OAuth URLs and open in external browser
+  const handleShouldStartLoadWithRequest = (request: any) => {
+    const url = request.url;
+    
+    // Check if this is an OAuth URL (Google or Apple)
+    if (url.includes('/api/auth/signin/google') || 
+        url.includes('/api/auth/signin/apple') ||
+        url.includes('accounts.google.com') ||
+        url.includes('appleid.apple.com')) {
+      console.log('[WebView] Opening OAuth URL in external browser:', url);
+      Linking.openURL(url);
+      return false; // Prevent WebView from loading
+    }
+    
+    return true; // Allow WebView to load
   };
 
   const handleError = (syntheticEvent: any) => {
@@ -285,6 +318,7 @@ export default function AppWebView({
         
         // Navigation
         onNavigationStateChange={handleNavigationStateChange}
+        onShouldStartLoadWithRequest={handleShouldStartLoadWithRequest}
         onLoadEnd={handleLoadEnd}
         allowsBackForwardNavigationGestures={Platform.OS === 'ios'}
         
