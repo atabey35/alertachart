@@ -167,6 +167,9 @@ export default function Home() {
 
   // Subscribe to auth state changes
   useEffect(() => {
+    // Check auth on mount (for cookie-based auth)
+    authService.checkAuth();
+    
     setUser(authService.getUser());
     const unsubscribe = authService.subscribe((currentUser) => {
       setUser(currentUser);
