@@ -11,8 +11,8 @@ import { INJECTED_JAVASCRIPT, parseWebMessage, sendMessageToWeb } from '../utils
 // Expo Go'da da production URL kullan (local development için development build kullanılmalı)
 // Sadece development build'de (standalone) local URL kullan
 const isDevelopmentBuild = Constants.executionEnvironment === 'standalone' && __DEV__;
-// Geçici olarak her zaman production URL kullan (localhost çalışmıyor)
-const WEBVIEW_URL = 'https://alerta.kriptokirmizi.com';
+// Production URL - alertachart.com
+const WEBVIEW_URL = 'https://alertachart.com';
 
 interface AppWebViewProps {
   pushToken: string | null;

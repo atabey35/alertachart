@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
+import { SessionProvider } from '@/components/SessionProvider';
 import './globals.css';
 
 // Viewport configuration (prevents page zoom on mobile - app-like behavior)
@@ -175,7 +176,9 @@ export default function RootLayout({
             style={{ display: 'none', visibility: 'hidden' }}
           />
         </noscript>
-        {children}
+        <SessionProvider>
+          {children}
+        </SessionProvider>
       </body>
     </html>
   );

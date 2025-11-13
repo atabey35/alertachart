@@ -15,9 +15,11 @@
     "eventemitter3": "^5.0.1",
     "expo-server-sdk": "^3.10.0",
     "html2canvas": "^1.4.1",
+    "jsonwebtoken": "^9.0.2",
     "lightweight-charts": "^4.2.0",
     "lodash.merge": "^4.6.2",
     "next": "^15.0.0",
+    "next-auth": "^4.24.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "ws": "^8.18.0"
