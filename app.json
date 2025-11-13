@@ -2,11 +2,11 @@
   "expo": {
     "extra": {
       "eas": {
-        "projectId": "7dd2abbd-f0f6-4943-8712-649988b5b235"
+        "projectId": "f4eb3196-3d5b-4aa0-9d0f-6075466f4f12"
       }
     },
     "ios": {
-      "bundleIdentifier": "com.kriptokirmizi.alertachart",
+      "bundleIdentifier": "com.kriptokirmizi.alerta",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
       }
