@@ -10,18 +10,11 @@ export default function AuthCallback() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      // Try to open the app using deep link
-      const appUrl = 'com.kriptokirmizi.alerta://auth/success';
+      // Use universal link to open app
+      const appUrl = 'https://alertachart.com/app/auth/success';
       
-      // Attempt to open app
+      // Redirect to universal link (will open app if installed)
       window.location.href = appUrl;
-      
-      // Fallback: If app doesn't open in 2 seconds, redirect to web home
-      const timeout = setTimeout(() => {
-        router.push('/');
-      }, 2000);
-      
-      return () => clearTimeout(timeout);
     } else if (status === 'unauthenticated') {
       // Auth failed, redirect to home
       router.push('/');
