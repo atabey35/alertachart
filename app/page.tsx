@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { useSession, signOut } from 'next-auth/react';
 import Chart from '@/components/chart/Chart';
 import AlertsPanel from '@/components/AlertsPanel';
 import Watchlist from '@/components/Watchlist';
@@ -44,6 +45,7 @@ export default function Home() {
   // Auth state
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
+  const { data: session, status } = useSession();
 
 
   // Initialize safe area listener for native app
@@ -165,18 +167,31 @@ export default function Home() {
     return () => unsubscribe();
   }, []);
 
-  // Subscribe to auth state changes
+  // Subscribe to auth state changes (both OAuth and legacy)
   useEffect(() => {
-    // Check auth on mount (for cookie-based auth)
+    // Check legacy auth on mount (for cookie-based auth)
     authService.checkAuth();
     
-    setUser(authService.getUser());
+    // Sync NextAuth session with user state
+    if (status === 'authenticated' && session?.user) {
+      setUser({
+        id: (session.user as any).id || 0,
+        email: session.user.email || '',
+        name: session.user.name || undefined,
+      });
+    } else if (status === 'unauthenticated') {
+      // Fall back to legacy auth
+      setUser(authService.getUser());
+    }
+    
     const unsubscribe = authService.subscribe((currentUser) => {
-      setUser(currentUser);
+      if (status !== 'authenticated') {
+        setUser(currentUser);
+      }
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [session, status]);
 
   // Save active chart ID whenever it changes
   useEffect(() => {
@@ -554,7 +569,11 @@ export default function Home() {
                       <span className="text-gray-300 text-xs">{user.email}</span>
                       <button
                         onClick={async () => {
-                          await authService.logout();
+                          if (status === 'authenticated') {
+                            await signOut({ callbackUrl: '/' });
+                          } else {
+                            await authService.logout();
+                          }
                         }}
                         className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition"
                       >
@@ -1062,7 +1081,11 @@ export default function Home() {
                   </div>
                   <button
                     onClick={async () => {
-                      await authService.logout();
+                      if (status === 'authenticated') {
+                        await signOut({ callbackUrl: '/' });
+                      } else {
+                        await authService.logout();
+                      }
                     }}
                     className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition"
                   >
