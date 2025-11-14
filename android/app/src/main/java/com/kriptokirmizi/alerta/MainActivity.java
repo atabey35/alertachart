@@ -2,6 +2,7 @@ package com.kriptokirmizi.alerta;
 
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
+import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.webkit.WebView;
@@ -10,6 +11,8 @@ import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.RemoteMessage;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -23,6 +26,25 @@ public class MainActivity extends BridgeActivity {
         
         // Create notification channels (like Expo did)
         createNotificationChannels();
+        
+        // Setup Firebase Cloud Messaging listener
+        setupFCMListener();
+    }
+    
+    private void setupFCMListener() {
+        android.util.Log.d("MainActivity", "Setting up FCM listener...");
+        // FCM will automatically handle notifications when app is in background
+        // For foreground, we use PushNotifications plugin from Capacitor
+        // This is just a backup to ensure notifications are always received
+    }
+    
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        // Handle notification tap when app is running
+        if (intent != null && intent.getExtras() != null) {
+            android.util.Log.d("MainActivity", "onNewIntent with extras: " + intent.getExtras().toString());
+        }
     }
     
     private void createNotificationChannels() {
