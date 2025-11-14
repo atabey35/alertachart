@@ -358,6 +358,30 @@
     appleBtn.addEventListener('click', handleAppleLogin);
     emailBtn.addEventListener('click', handleEmailLogin);
 
+    // Initialize push notifications
+    async function initPushNotifications() {
+      try {
+        console.log('[Login] Initializing push notifications...');
+        const { PushNotifications } = window.Capacitor.Plugins;
+        
+        // Request permission
+        const permResult = await PushNotifications.requestPermissions();
+        if (permResult.receive !== 'granted') {
+          console.warn('[Login] Push notification permission not granted');
+          return;
+        }
+        
+        // Register with FCM
+        await PushNotifications.register();
+        console.log('[Login] ✅ Push notifications registered');
+      } catch (error) {
+        console.error('[Login] Push notification error:', error);
+      }
+    }
+    
+    // Start push notifications on page load
+    initPushNotifications();
+
     console.log('[Login] App initialized');
   </script>
 </body>

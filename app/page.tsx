@@ -15,6 +15,7 @@ import AuthModal from '@/components/AuthModal';
 import DrawingToolbar, { DrawingTool } from '@/components/chart/DrawingToolbar';
 import alertService from '@/services/alertService';
 import { authService } from '@/services/authService';
+import { pushNotificationService } from '@/services/pushNotificationService';
 import { PriceAlert } from '@/types/alert';
 import { TIMEFRAMES } from '@/utils/constants';
 import { getTimeframeForHuman } from '@/utils/helpers';
@@ -60,6 +61,20 @@ export default function Home() {
   useEffect(() => {
     initSafeAreaListener();
   }, []);
+
+  // Initialize push notifications for Capacitor
+  useEffect(() => {
+    if (isCapacitor) {
+      console.log('[App] Initializing push notifications...');
+      pushNotificationService.initialize();
+      
+      // Listen for push notifications
+      pushNotificationService.onNotificationReceived((notification) => {
+        console.log('[App] Push notification received:', notification);
+        // Show alert modal or handle notification
+      });
+    }
+  }, [isCapacitor]);
 
   // Load chart/watchlist from URL params (for sharing)
   useEffect(() => {
