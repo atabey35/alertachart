@@ -1071,14 +1071,55 @@ export default function Home() {
             <h2 className="text-xl font-bold text-white">Settings</h2>
             
             {/* Auth Section */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <label className="block text-sm font-medium text-gray-300">Hesap</label>
               {user ? (
-                <div className="space-y-2">
-                  <div className="p-3 rounded-lg border border-gray-700 bg-gray-800">
-                    <div className="text-sm text-gray-300">{user.email}</div>
-                    {user.name && <div className="text-xs text-gray-400 mt-1">{user.name}</div>}
+                <div className="space-y-3">
+                  {/* User Info Card */}
+                  <div className="p-4 rounded-xl border border-gray-700 bg-gradient-to-br from-gray-800 to-gray-900 shadow-lg">
+                    <div className="flex items-start gap-3">
+                      {/* User Avatar */}
+                      <div className="flex-shrink-0 w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                        {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+                      </div>
+                      
+                      {/* User Details */}
+                      <div className="flex-1 min-w-0">
+                        {user.name && (
+                          <div className="text-base font-semibold text-white truncate">
+                            {user.name}
+                          </div>
+                        )}
+                        <div className="text-sm text-gray-400 truncate">
+                          {user.email}
+                        </div>
+                        
+                        {/* Additional Info */}
+                        <div className="mt-2 pt-2 border-t border-gray-700 space-y-1">
+                          <div className="flex items-center gap-2 text-xs">
+                            <span className="text-gray-500">User ID:</span>
+                            <span className="text-gray-400 font-mono">#{user.id}</span>
+                          </div>
+                          {(user as any).provider && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-gray-500">Login Method:</span>
+                              <span className="text-gray-400 capitalize">{(user as any).provider}</span>
+                            </div>
+                          )}
+                          {(user as any).plan && (
+                            <div className="flex items-center gap-2 text-xs">
+                              <span className="text-gray-500">Plan:</span>
+                              <span className={`font-semibold uppercase ${(user as any).plan === 'premium' ? 'text-yellow-400' : 'text-gray-400'}`}>
+                                {(user as any).plan}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
+                  
+                  {/* Logout Button */}
                   <button
                     onClick={async () => {
                       if (status === 'authenticated') {
@@ -1087,7 +1128,7 @@ export default function Home() {
                         await authService.logout();
                       }
                     }}
-                    className="w-full px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition"
+                    className="w-full px-4 py-2.5 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
                   >
                     Çıkış Yap
                   </button>
@@ -1095,7 +1136,7 @@ export default function Home() {
               ) : (
                 <button
                   onClick={() => setShowAuthModal(true)}
-                  className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition"
+                  className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   Giriş Yap / Kayıt Ol
                 </button>
