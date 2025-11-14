@@ -254,13 +254,18 @@
         console.log('[Login] Backend auth successful!');
         const data = httpResponse.data;
 
-        // Load remote app with auth tokens in URL
+        // Load remote app with auth tokens + device ID in URL
         console.log('[Login] Loading remote app with auth tokens...');
         const WebViewController = window.Capacitor.Plugins.WebViewController;
         
         if (WebViewController) {
-          const authUrl = `https://alertachart.com/capacitor-auth?capacitor_auth=true&access_token=${encodeURIComponent(data.tokens.accessToken)}&refresh_token=${encodeURIComponent(data.tokens.refreshToken)}`;
-          console.log('[Login] Auth URL:', authUrl);
+          // Get device ID from localStorage
+          const deviceId = localStorage.getItem('native_device_id') || 'unknown';
+          const platform = localStorage.getItem('native_platform') || 'android';
+          
+          const authUrl = `https://alertachart.com/capacitor-auth?capacitor_auth=true&access_token=${encodeURIComponent(data.tokens.accessToken)}&refresh_token=${encodeURIComponent(data.tokens.refreshToken)}&device_id=${encodeURIComponent(deviceId)}&platform=${encodeURIComponent(platform)}`;
+          console.log('[Login] Auth URL with device ID:', authUrl);
+          console.log('[Login] Device ID being passed:', deviceId);
           await WebViewController.loadUrl({ url: authUrl });
           console.log('[Login] Remote app loaded with auth!');
         } else {
@@ -318,13 +323,18 @@
         console.log('[Login] Backend auth successful!');
         const data = httpResponse.data;
 
-        // Load remote app with auth tokens in URL
+        // Load remote app with auth tokens + device ID in URL
         console.log('[Login] Loading remote app with auth tokens...');
         const WebViewController = window.Capacitor.Plugins.WebViewController;
         
         if (WebViewController) {
-          const authUrl = `https://alertachart.com/capacitor-auth?capacitor_auth=true&access_token=${encodeURIComponent(data.tokens.accessToken)}&refresh_token=${encodeURIComponent(data.tokens.refreshToken)}`;
-          console.log('[Login] Auth URL:', authUrl);
+          // Get device ID from localStorage
+          const deviceId = localStorage.getItem('native_device_id') || 'unknown';
+          const platform = localStorage.getItem('native_platform') || 'android';
+          
+          const authUrl = `https://alertachart.com/capacitor-auth?capacitor_auth=true&access_token=${encodeURIComponent(data.tokens.accessToken)}&refresh_token=${encodeURIComponent(data.tokens.refreshToken)}&device_id=${encodeURIComponent(deviceId)}&platform=${encodeURIComponent(platform)}`;
+          console.log('[Login] Auth URL with device ID:', authUrl);
+          console.log('[Login] Device ID being passed:', deviceId);
           await WebViewController.loadUrl({ url: authUrl });
           console.log('[Login] Remote app loaded with auth!');
         } else {

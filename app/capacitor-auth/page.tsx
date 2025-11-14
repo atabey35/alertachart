@@ -13,11 +13,26 @@ function CapacitorAuthContent() {
     const isCapacitorAuth = searchParams.get('capacitor_auth');
     const accessToken = searchParams.get('access_token');
     const refreshToken = searchParams.get('refresh_token');
+    const deviceId = searchParams.get('device_id');
+    const platform = searchParams.get('platform');
 
-    console.log('[CapacitorAuth] Params:', { isCapacitorAuth, hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken });
+    console.log('[CapacitorAuth] Params:', { 
+      isCapacitorAuth, 
+      hasAccessToken: !!accessToken, 
+      hasRefreshToken: !!refreshToken,
+      deviceId,
+      platform
+    });
 
     if (isCapacitorAuth === 'true' && accessToken && refreshToken) {
       console.log('[CapacitorAuth] Setting auth session via API...');
+      
+      // 🔥 SAVE DEVICE ID TO LOCALSTORAGE (for alarm system)
+      if (deviceId && typeof window !== 'undefined') {
+        localStorage.setItem('native_device_id', deviceId);
+        localStorage.setItem('native_platform', platform || 'android');
+        console.log('[CapacitorAuth] ✅ Device ID saved to localStorage:', deviceId);
+      }
       
       // Set cookies via Next.js API endpoint (server-side, httpOnly)
       fetch('/api/auth/set-capacitor-session', {
