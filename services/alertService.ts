@@ -303,10 +303,10 @@ class AlertService {
   triggerAlert(id: string) {
     const alert = this.alerts.find(a => a.id === id);
     if (alert && !alert.isTriggered) {
-      // Eğer nativeDeviceId yoksa, tekrar yükle (window.nativeDeviceId veya localStorage'dan)
-      if (!this.nativeDeviceId) {
-        this.loadDeviceId();
-      }
+      // 🔥 HER ZAMAN deviceId'yi yeniden yükle (localStorage'dan güncel değeri al)
+      console.log('[AlertService] 🔄 Reloading device ID from localStorage before triggering alarm...');
+      this.loadDeviceId();
+      console.log('[AlertService] 📱 Device ID after reload:', this.nativeDeviceId);
       
       // Eğer alarm'da deviceId yoksa ama nativeDeviceId varsa, güncelle
       if (!alert.deviceId && this.nativeDeviceId) {
@@ -357,8 +357,9 @@ class AlertService {
       
       // Send push notification to mobile devices via backend (only if deviceId exists - native app context)
       // Web'den kurulan alarmlar için push notification gönderme, sadece web tarayıcısında bildirim göster
-      // isNativeApp kontrolü: window.isNativeApp veya window.ReactNativeWebView varlığı
+      // isNativeApp kontrolü: Capacitor, window.isNativeApp veya window.ReactNativeWebView varlığı
       const isNativeApp = typeof window !== 'undefined' && (
+        (window as any).Capacitor !== undefined ||  // 🔥 Capacitor support
         (window as any).isNativeApp === true || 
         typeof (window as any).ReactNativeWebView !== 'undefined'
       );
@@ -386,6 +387,7 @@ class AlertService {
         nativeDeviceId: this.nativeDeviceId,
         finalDeviceId: finalDeviceId,
         isNativeApp,
+        hasCapacitor: typeof window !== 'undefined' ? (window as any).Capacitor !== undefined : false,
         hasReactNativeWebView: typeof window !== 'undefined' ? typeof (window as any).ReactNativeWebView !== 'undefined' : false,
         willSendPush: typeof window !== 'undefined' && finalDeviceId && isNativeApp && hasAuthToken,
         windowExists: typeof window !== 'undefined',
