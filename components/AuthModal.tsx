@@ -28,11 +28,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   const [loading, setLoading] = useState(false);
   const [isCapacitor, setIsCapacitor] = useState(false);
 
-  // Capacitor kontrolü
+  // Capacitor kontrolü - ŞİMDİLİK DEVRE DIŞI (Web auth kullan)
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Capacitor) {
-      setIsCapacitor(true);
-      console.log('[AuthModal] Capacitor detected - will use native auth');
+      console.log('[AuthModal] Capacitor detected - using web auth (NextAuth) for now');
+      // Native plugin kullanmak yerine web auth kullan
+      setIsCapacitor(false);
     }
   }, []);
 
