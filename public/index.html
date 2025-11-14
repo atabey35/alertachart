@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Alerta Chart - Login</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+      color: white;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+    }
+    
+    .logo {
+      width: 80px;
+      height: 80px;
+      margin: 0 auto 20px;
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      font-weight: bold;
+      box-shadow: 0 10px 30px rgba(59, 130, 246, 0.3);
+    }
+    
+    h1 {
+      font-size: 28px;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    p {
+      color: #9ca3af;
+      margin-bottom: 40px;
+      font-size: 14px;
+    }
+    
+    .auth-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    button {
+      width: 100%;
+      padding: 16px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+    
+    button:active {
+      transform: scale(0.98);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .google-btn {
+      background: white;
+      color: #1f2937;
+    }
+    
+    .google-btn:hover {
+      background: #f9fafb;
+    }
+    
+    .apple-btn {
+      background: #000;
+      color: white;
+      border: 1px solid #374151;
+    }
+    
+    .apple-btn:hover {
+      background: #1f2937;
+    }
+    
+    .email-btn {
+      background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+      color: white;
+    }
+    
+    .email-btn:hover {
+      background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    }
+    
+    .error {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid #ef4444;
+      color: #fca5a5;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      font-size: 14px;
+      display: none;
+    }
+    
+    .error.show {
+      display: block;
+    }
+    
+    .spinner {
+      border: 3px solid rgba(255, 255, 255, 0.3);
+      border-top: 3px solid white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      animation: spin 1s linear infinite;
+      display: none;
+    }
+    
+    button:disabled .spinner {
+      display: inline-block;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">A</div>
+    <h1>Alerta Chart</h1>
+    <p>Sign in to access advanced crypto charting</p>
+    
+    <div id="error" class="error"></div>
+    
+    <div class="auth-buttons">
+      <button id="googleBtn" class="google-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24">
+          <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+          <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+          <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+          <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+        </svg>
+        <span>Continue with Google</span>
+        <div class="spinner"></div>
+      </button>
+      
+      <button id="appleBtn" class="apple-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+          <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+        </svg>
+        <span>Continue with Apple</span>
+        <div class="spinner"></div>
+      </button>
+      
+      <button id="emailBtn" class="email-btn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        <span>Continue with Email</span>
+        <div class="spinner"></div>
+      </button>
+    </div>
+  </div>
+
+  <script type="module">
+    // Check if running in Capacitor
+    const isCapacitor = window.Capacitor !== undefined;
+    
+    if (!isCapacitor) {
+      // If not in Capacitor, redirect to main site immediately
+      window.location.href = 'https://alertachart.com';
+    }
+
+    const errorDiv = document.getElementById('error');
+    const googleBtn = document.getElementById('googleBtn');
+    const appleBtn = document.getElementById('appleBtn');
+    const emailBtn = document.getElementById('emailBtn');
+
+    function showError(message) {
+      errorDiv.textContent = message;
+      errorDiv.classList.add('show');
+      setTimeout(() => errorDiv.classList.remove('show'), 5000);
+    }
+
+    function disableButtons(disabled) {
+      googleBtn.disabled = disabled;
+      appleBtn.disabled = disabled;
+      emailBtn.disabled = disabled;
+    }
+
+    async function handleGoogleLogin() {
+      disableButtons(true);
+      
+      try {
+        console.log('[Login] Starting Google Sign-In');
+        
+        // Import Google Auth plugin
+        const { GoogleAuth } = window.Capacitor.Plugins;
+        
+        if (!GoogleAuth) {
+          throw new Error('Google Auth plugin not available');
+        }
+
+        // Native Google Sign-In
+        const result = await GoogleAuth.signIn();
+        console.log('[Login] Google Sign-In success:', result);
+
+        // Send to backend
+        const response = await fetch('https://alertachart-backend-production.up.railway.app/api/auth/google-native', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            idToken: result.authentication?.idToken || result.authentication?.accessToken,
+            email: result.email,
+            name: result.name || result.givenName,
+            imageUrl: result.imageUrl,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Backend authentication failed');
+        }
+
+        const data = await response.json();
+        console.log('[Login] Backend auth successful:', data);
+
+        // Redirect to main app with token
+        window.location.href = `https://alertachart.com?auth=success&token=${encodeURIComponent(data.tokens.accessToken)}`;
+        
+      } catch (error) {
+        console.error('[Login] Google Sign-In error:', error);
+        showError(error.message || 'Google sign-in failed');
+        disableButtons(false);
+      }
+    }
+
+    async function handleAppleLogin() {
+      disableButtons(true);
+      
+      try {
+        console.log('[Login] Starting Apple Sign-In');
+        
+        const { SignInWithApple } = window.Capacitor.Plugins;
+        
+        if (!SignInWithApple) {
+          throw new Error('Apple Sign-In plugin not available');
+        }
+
+        const result = await SignInWithApple.authorize({
+          clientId: 'com.kriptokirmizi.alerta.web',
+          redirectURI: 'https://alertachart.com/auth/callback',
+          scopes: 'email name',
+        });
+
+        console.log('[Login] Apple Sign-In success:', result);
+
+        // Send to backend
+        const response = await fetch('https://alertachart-backend-production.up.railway.app/api/auth/apple-native', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            identityToken: result.response.identityToken,
+            authorizationCode: result.response.authorizationCode,
+            email: result.response.email,
+            givenName: result.response.givenName,
+            familyName: result.response.familyName,
+          }),
+        });
+
+        if (!response.ok) {
+          throw new Error('Backend authentication failed');
+        }
+
+        const data = await response.json();
+        console.log('[Login] Backend auth successful:', data);
+
+        // Redirect to main app with token
+        window.location.href = `https://alertachart.com?auth=success&token=${encodeURIComponent(data.tokens.accessToken)}`;
+        
+      } catch (error) {
+        console.error('[Login] Apple Sign-In error:', error);
+        showError(error.message || 'Apple sign-in failed');
+        disableButtons(false);
+      }
+    }
+
+    function handleEmailLogin() {
+      // Redirect to main site for email/password auth
+      window.location.href = 'https://alertachart.com';
+    }
+
+    // Event listeners
+    googleBtn.addEventListener('click', handleGoogleLogin);
+    appleBtn.addEventListener('click', handleAppleLogin);
+    emailBtn.addEventListener('click', handleEmailLogin);
+
+    console.log('[Login] Capacitor login screen loaded');
+  </script>
+</body>
+</html>
+
