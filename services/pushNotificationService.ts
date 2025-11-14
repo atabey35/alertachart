@@ -109,29 +109,33 @@ class CapacitorPushNotificationService implements PushNotificationService {
         osVersion: osVersion,
       });
 
-      // Register device with backend API
+      // Register device with backend API using CapacitorHttp (bypasses CORS)
+      const { CapacitorHttp } = (window as any).Capacitor.Plugins;
+      if (!CapacitorHttp) {
+        console.warn('[PushNotification] CapacitorHttp not available, cannot register token');
+        return;
+      }
+
       const backendUrl = 'https://alertachart-backend-production.up.railway.app';
-      const response = await fetch(`${backendUrl}/api/push/register`, {
-        method: 'POST',
+      const httpResponse = await CapacitorHttp.post({
+        url: `${backendUrl}/api/push/register`,
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
+        data: {
           token: token,
           platform: platform,
           deviceId: deviceId,
           model: model,
           osVersion: osVersion,
           appVersion: '1.0.0',
-        }),
+        },
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        console.log('[PushNotification] ✅ Token registered successfully:', result);
+      if (httpResponse.status === 200) {
+        console.log('[PushNotification] ✅ Token registered successfully:', httpResponse.data);
       } else {
-        const errorText = await response.text();
-        console.error('[PushNotification] Failed to register token:', errorText);
+        console.error('[PushNotification] Failed to register token:', httpResponse.data);
       }
     } catch (error) {
       console.error('[PushNotification] Error registering token:', error);
