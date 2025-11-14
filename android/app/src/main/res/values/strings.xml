@@ -4,4 +4,5 @@
     <string name="title_activity_main">Alerta Chart</string>
     <string name="package_name">com.kriptokirmizi.alerta</string>
     <string name="custom_url_scheme">com.kriptokirmizi.alerta</string>
+    <string name="server_client_id">776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com</string>
 </resources>
