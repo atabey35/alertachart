@@ -85,10 +85,10 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          idToken: result.authentication.idToken,
-          email: result.email,
-          name: result.displayName,
-          imageUrl: result.imageUrl,
+          idToken: result.authentication?.idToken || '',
+          email: result.email || '',
+          name: result.name || result.givenName || '',
+          imageUrl: result.imageUrl || '',
         }),
       });
       
