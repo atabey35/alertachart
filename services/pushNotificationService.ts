@@ -74,44 +74,44 @@ class CapacitorPushNotificationService implements PushNotificationService {
 
   private async registerTokenWithBackend(token: string): Promise<void> {
     try {
-      console.log('[PushNotification] Registering token with backend...');
+      console.log('[PushNotification] Registering FCM token with backend...');
+      console.log('[PushNotification] Token:', token.substring(0, 30) + '...');
       
       // Get device info
       const { Device } = (window as any).Capacitor.Plugins;
       const deviceInfo = await Device.getInfo();
       const deviceId = await Device.getId();
 
-      // Get user info from cookies
-      const cookies = document.cookie.split(';').reduce((acc: any, cookie) => {
-        const [key, value] = cookie.trim().split('=');
-        acc[key] = value;
-        return acc;
-      }, {});
+      console.log('[PushNotification] Device info:', {
+        platform: deviceInfo.platform,
+        deviceId: deviceId.identifier,
+        model: deviceInfo.model,
+        osVersion: deviceInfo.osVersion,
+      });
 
-      const accessToken = cookies.accessToken;
-
-      // Register device
-      const response = await fetch('/api/push/register', {
+      // Register device with backend API
+      const backendUrl = 'https://alertachart-backend-production.up.railway.app';
+      const response = await fetch(`${backendUrl}/api/push/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
         },
-        credentials: 'include',
         body: JSON.stringify({
-          token,
+          token: token,
           platform: deviceInfo.platform,
           deviceId: deviceId.identifier,
-          model: deviceInfo.model,
-          osVersion: deviceInfo.osVersion,
+          model: deviceInfo.model || 'Unknown',
+          osVersion: deviceInfo.osVersion || 'Unknown',
           appVersion: '1.0.0',
         }),
       });
 
       if (response.ok) {
-        console.log('[PushNotification] ✅ Token registered with backend');
+        const result = await response.json();
+        console.log('[PushNotification] ✅ Token registered successfully:', result);
       } else {
-        console.error('[PushNotification] Failed to register token:', await response.text());
+        const errorText = await response.text();
+        console.error('[PushNotification] Failed to register token:', errorText);
       }
     } catch (error) {
       console.error('[PushNotification] Error registering token:', error);

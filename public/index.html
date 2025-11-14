@@ -362,18 +362,61 @@
     async function initPushNotifications() {
       try {
         console.log('[Login] Initializing push notifications...');
-        const { PushNotifications } = window.Capacitor.Plugins;
+        const { PushNotifications, Device } = window.Capacitor.Plugins;
         
         // Request permission
+        console.log('[Login] Requesting push notification permission...');
         const permResult = await PushNotifications.requestPermissions();
+        console.log('[Login] Permission result:', permResult);
+        
         if (permResult.receive !== 'granted') {
           console.warn('[Login] Push notification permission not granted');
           return;
         }
         
         // Register with FCM
+        console.log('[Login] Registering with FCM...');
         await PushNotifications.register();
-        console.log('[Login] ✅ Push notifications registered');
+        
+        // Listen for registration
+        PushNotifications.addListener('registration', async (token) => {
+          console.log('[Login] ✅ FCM Token received:', token.value);
+          
+          // Register token with backend
+          try {
+            const deviceInfo = await Device.getInfo();
+            const deviceId = await Device.getId();
+            
+            console.log('[Login] Registering token with backend...');
+            const response = await fetch('https://alertachart-backend-production.up.railway.app/api/push/register', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                token: token.value,
+                platform: deviceInfo.platform,
+                deviceId: deviceId.identifier,
+                model: deviceInfo.model || 'Unknown',
+                osVersion: deviceInfo.osVersion || 'Unknown',
+                appVersion: '1.0.0',
+              }),
+            });
+            
+            if (response.ok) {
+              console.log('[Login] ✅ Token registered with backend');
+            } else {
+              console.error('[Login] Failed to register token:', await response.text());
+            }
+          } catch (error) {
+            console.error('[Login] Error registering token:', error);
+          }
+        });
+        
+        // Listen for registration errors
+        PushNotifications.addListener('registrationError', (error) => {
+          console.error('[Login] FCM registration error:', error);
+        });
+        
+        console.log('[Login] ✅ Push notifications initialized');
       } catch (error) {
         console.error('[Login] Push notification error:', error);
       }
