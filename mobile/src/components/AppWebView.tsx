@@ -36,6 +36,14 @@ export default function AppWebView({
   const [canGoBack, setCanGoBack] = useState(false);
   const [currentUrl, setCurrentUrl] = useState(WEBVIEW_URL);
 
+  // Warm up browser for better OAuth performance and cookie sharing
+  useEffect(() => {
+    WebBrowser.warmUpAsync();
+    return () => {
+      WebBrowser.coolDownAsync();
+    };
+  }, []);
+
   // Android back button handler
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -250,8 +258,16 @@ export default function AppWebView({
         // NextAuth'un callback URL'si: com.kriptokirmizi.alerta://auth/callback?...
         if (result.url.includes('auth/callback') || result.url.includes('auth/success')) {
           console.log('[WebView] OAuth callback received, reloading WebView');
-          // WebView'ı yenile - session cookie'si otomatik olarak yüklenecek
-          webViewRef.current?.reload();
+          
+          // ÇÖZÜM: WebView'ı yenilemek yerine direkt alertachart.com'a yönlendir
+          // In-app browser'daki session cookie'si WebView'a aktarılmaz
+          // Bu yüzden kullanıcıyı web sitesine yönlendirip cookie'yi oradan almalıyız
+          setCurrentUrl('https://alertachart.com/');
+          
+          // Biraz bekle ve reload et (session cookie'sinin set edilmesi için)
+          setTimeout(() => {
+            webViewRef.current?.reload();
+          }, 1000);
         }
       } else if (result.type === 'cancel') {
         console.log('[WebView] User cancelled OAuth');
@@ -304,6 +320,10 @@ export default function AppWebView({
         ref={webViewRef}
         source={{ uri: currentUrl }}
         style={styles.webview}
+        
+        // Cookie sharing with system browser (for OAuth)
+        sharedCookiesEnabled={true}
+        thirdPartyCookiesEnabled={true}
         
         // JavaScript & Injection
         javaScriptEnabled={true}
