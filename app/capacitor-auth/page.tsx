@@ -16,23 +16,32 @@ function CapacitorAuthContent() {
     console.log('[CapacitorAuth] Params:', { isCapacitorAuth, hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken });
 
     if (isCapacitorAuth === 'true' && accessToken && refreshToken) {
-      console.log('[CapacitorAuth] Setting auth cookies...');
+      console.log('[CapacitorAuth] Setting auth session via API...');
       
-      // Set cookies via document.cookie (client-side)
-      const domain = '.alertachart.com';
-      
-      // Set access token (15 min)
-      document.cookie = `accessToken=${accessToken}; path=/; domain=${domain}; max-age=900; secure; samesite=none`;
-      
-      // Set refresh token (7 days)
-      document.cookie = `refreshToken=${refreshToken}; path=/; domain=${domain}; max-age=604800; secure; samesite=none`;
-      
-      console.log('[CapacitorAuth] Cookies set! Redirecting to home...');
-      
-      // Redirect to home without auth params
-      setTimeout(() => {
-        router.replace('/');
-      }, 500);
+      // Set cookies via Next.js API endpoint (server-side, httpOnly)
+      fetch('/api/auth/set-capacitor-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ accessToken, refreshToken }),
+      })
+        .then(async (response) => {
+          if (response.ok) {
+            console.log('[CapacitorAuth] Session set successfully! Redirecting...');
+            // Wait a bit for cookies to be set
+            setTimeout(() => {
+              router.replace('/');
+            }, 300);
+          } else {
+            const error = await response.json();
+            console.error('[CapacitorAuth] Failed to set session:', error);
+            router.replace('/');
+          }
+        })
+        .catch((error) => {
+          console.error('[CapacitorAuth] Error setting session:', error);
+          router.replace('/');
+        });
     } else {
       console.log('[CapacitorAuth] No auth params, redirecting to home...');
       router.replace('/');
