@@ -384,8 +384,25 @@
           
           // Register token with backend
           try {
-            const deviceInfo = await Device.getInfo();
-            const deviceId = await Device.getId();
+            // Try to get device info, fallback to defaults if Device plugin not available
+            let platform = 'android';
+            let deviceId = 'unknown-device';
+            let model = 'Unknown';
+            let osVersion = 'Unknown';
+            
+            try {
+              const { Device } = window.Capacitor.Plugins;
+              if (Device) {
+                const deviceInfo = await Device.getInfo();
+                const deviceIdInfo = await Device.getId();
+                platform = deviceInfo.platform || 'android';
+                deviceId = deviceIdInfo.identifier || deviceId;
+                model = deviceInfo.model || model;
+                osVersion = deviceInfo.osVersion || osVersion;
+              }
+            } catch (deviceError) {
+              console.warn('[Login] Device plugin not available, using fallbacks');
+            }
             
             console.log('[Login] Registering token with backend...');
             const response = await fetch('https://alertachart-backend-production.up.railway.app/api/push/register', {
@@ -393,10 +410,10 @@
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 token: token.value,
-                platform: deviceInfo.platform,
-                deviceId: deviceId.identifier,
-                model: deviceInfo.model || 'Unknown',
-                osVersion: deviceInfo.osVersion || 'Unknown',
+                platform: platform,
+                deviceId: deviceId,
+                model: model,
+                osVersion: osVersion,
                 appVersion: '1.0.0',
               }),
             });

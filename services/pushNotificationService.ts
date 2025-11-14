@@ -26,6 +26,11 @@ class CapacitorPushNotificationService implements PushNotificationService {
       console.log('[PushNotification] Initializing...');
 
       const { PushNotifications } = (window as any).Capacitor.Plugins;
+      
+      if (!PushNotifications) {
+        console.warn('[PushNotification] PushNotifications plugin not available (remote app context)');
+        return;
+      }
 
       // Request permission
       const permResult = await PushNotifications.requestPermissions();
@@ -77,16 +82,31 @@ class CapacitorPushNotificationService implements PushNotificationService {
       console.log('[PushNotification] Registering FCM token with backend...');
       console.log('[PushNotification] Token:', token.substring(0, 30) + '...');
       
-      // Get device info
-      const { Device } = (window as any).Capacitor.Plugins;
-      const deviceInfo = await Device.getInfo();
-      const deviceId = await Device.getId();
+      // Try to get device info, fallback to defaults if Device plugin not available
+      let platform = 'android';
+      let deviceId = 'unknown-device';
+      let model = 'Unknown';
+      let osVersion = 'Unknown';
+      
+      try {
+        const { Device } = (window as any).Capacitor.Plugins;
+        if (Device) {
+          const deviceInfo = await Device.getInfo();
+          const deviceIdInfo = await Device.getId();
+          platform = deviceInfo.platform || 'android';
+          deviceId = deviceIdInfo.identifier || deviceId;
+          model = deviceInfo.model || model;
+          osVersion = deviceInfo.osVersion || osVersion;
+        }
+      } catch (deviceError) {
+        console.warn('[PushNotification] Device plugin not available, using fallbacks');
+      }
 
       console.log('[PushNotification] Device info:', {
-        platform: deviceInfo.platform,
-        deviceId: deviceId.identifier,
-        model: deviceInfo.model,
-        osVersion: deviceInfo.osVersion,
+        platform: platform,
+        deviceId: deviceId,
+        model: model,
+        osVersion: osVersion,
       });
 
       // Register device with backend API
@@ -98,10 +118,10 @@ class CapacitorPushNotificationService implements PushNotificationService {
         },
         body: JSON.stringify({
           token: token,
-          platform: deviceInfo.platform,
-          deviceId: deviceId.identifier,
-          model: deviceInfo.model || 'Unknown',
-          osVersion: deviceInfo.osVersion || 'Unknown',
+          platform: platform,
+          deviceId: deviceId,
+          model: model,
+          osVersion: osVersion,
           appVersion: '1.0.0',
         }),
       });
