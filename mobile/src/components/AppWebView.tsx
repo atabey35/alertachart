@@ -216,9 +216,22 @@ export default function AppWebView({
   const handleNavigationStateChange = (navState: WebViewNavigation) => {
     const url = navState.url;
     
-    // ÇÖZÜM: OAuth URL'lerini WebView içinde yükle, harici browser açma
-    // WebView içinde OAuth yapıldığında session cookie'si otomatik olarak paylaşılır
-    // Artık intercept etmiyoruz, WebView'ın kendi yüklemesine izin veriyoruz
+    // ÇÖZÜM: OAuth URL'lerini intercept et ve ASWebAuthenticationSession ile aç
+    // Google WebView'da OAuth'u engelliyor (disallowed_useragent)
+    // ASWebAuthenticationSession kullanmak zorundayız
+    if (url.includes('/api/auth/signin/google') || 
+        url.includes('/api/auth/signin/apple')) {
+      console.log('[WebView] Detected OAuth URL, opening in-app browser:', url);
+      
+      // In-app browser aç
+      openInAppBrowser(url);
+      
+      // WebView'ı geri al
+      if (webViewRef.current && canGoBack) {
+        webViewRef.current.goBack();
+      }
+      return;
+    }
     
     setCanGoBack(navState.canGoBack);
     setCurrentUrl(navState.url);
@@ -231,31 +244,31 @@ export default function AppWebView({
       console.log('[WebView] Opening in-app browser for URL:', url);
       
       // WebBrowser.openAuthSessionAsync uses:
-      // - iOS: ASWebAuthenticationSession
-      // - Android: Chrome Custom Tabs
-      const result = await WebBrowser.openAuthSessionAsync(url, 'com.kriptokirmizi.alerta://');
+      // - iOS: ASWebAuthenticationSession (Google izin veriyor)
+      // - Android: Chrome Custom Tabs (Google izin veriyor)
+      const result = await WebBrowser.openAuthSessionAsync(url, 'https://alertachart.com');
       
       console.log('[WebView] In-app browser result:', result);
       
       if (result.type === 'success') {
-        // OAuth başarılı, callback URL'den token çıkar
+        // OAuth başarılı
         console.log('[WebView] OAuth success, callback URL:', result.url);
         
-        // Callback URL'den token çıkar ve WebView'ı yenile
-        // NextAuth'un callback URL'si: com.kriptokirmizi.alerta://auth/callback?...
-        if (result.url.includes('auth/callback') || result.url.includes('auth/success')) {
-          console.log('[WebView] OAuth callback received, reloading WebView');
-          
-          // ÇÖZÜM: WebView'ı yenilemek yerine direkt alertachart.com'a yönlendir
-          // In-app browser'daki session cookie'si WebView'a aktarılmaz
-          // Bu yüzden kullanıcıyı web sitesine yönlendirip cookie'yi oradan almalıyız
-          setCurrentUrl('https://alertachart.com/');
-          
-          // Biraz bekle ve reload et (session cookie'sinin set edilmesi için)
-          setTimeout(() => {
-            webViewRef.current?.reload();
-          }, 1000);
-        }
+        // ÇÖZÜM: ASWebAuthenticationSession'daki cookie'leri WebView ile paylaş
+        // iOS'ta ASWebAuthenticationSession Safari cookie'lerini kullanır
+        // WebView da Safari cookie'lerini kullanır (sharedCookiesEnabled=true ile)
+        // Yani artık cookie paylaşıldı!
+        
+        // WebView'ı ana sayfaya yönlendir
+        console.log('[WebView] Reloading WebView to pick up session');
+        setCurrentUrl('https://alertachart.com/');
+        
+        // Biraz bekle ve reload et
+        setTimeout(() => {
+          if (webViewRef.current) {
+            webViewRef.current.reload();
+          }
+        }, 500);
       } else if (result.type === 'cancel') {
         console.log('[WebView] User cancelled OAuth');
       } else if (result.type === 'dismiss') {
@@ -271,13 +284,19 @@ export default function AppWebView({
     }
   };
 
-  // ÇÖZÜM: OAuth URL'lerini WebView içinde yükle
+  // OAuth URL'lerini intercept et
   const handleShouldStartLoadWithRequest = (request: any) => {
     const url = request.url;
     
-    // Tüm URL'lerin WebView içinde yüklenmesine izin ver
-    // OAuth artık WebView içinde gerçekleşecek, cookie sharing sorunu olmayacak
-    return true; // Allow WebView to load everything
+    // OAuth URL'lerini in-app browser'da aç (Google WebView'ı engelliyor)
+    if (url.includes('/api/auth/signin/google') || 
+        url.includes('/api/auth/signin/apple')) {
+      console.log('[WebView] Opening OAuth in-app browser:', url);
+      openInAppBrowser(url);
+      return false; // Prevent WebView from loading
+    }
+    
+    return true; // Allow other URLs to load in WebView
   };
 
   const handleError = (syntheticEvent: any) => {
