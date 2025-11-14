@@ -29,9 +29,16 @@ function CapacitorAuthContent() {
       
       // 🔥 SAVE DEVICE ID TO LOCALSTORAGE (for alarm system)
       if (deviceId && typeof window !== 'undefined') {
+        console.log('[CapacitorAuth] 💾 Saving device ID to localStorage...', deviceId);
         localStorage.setItem('native_device_id', deviceId);
         localStorage.setItem('native_platform', platform || 'android');
-        console.log('[CapacitorAuth] ✅ Device ID saved to localStorage:', deviceId);
+        
+        // Verify it was saved
+        const savedDeviceId = localStorage.getItem('native_device_id');
+        console.log('[CapacitorAuth] ✅ Device ID saved to localStorage:', savedDeviceId);
+        console.log('[CapacitorAuth] 🔍 Verification:', savedDeviceId === deviceId ? 'SUCCESS' : 'FAILED');
+      } else {
+        console.warn('[CapacitorAuth] ⚠️ Device ID not provided in URL params!');
       }
       
       // Set cookies via Next.js API endpoint (server-side, httpOnly)
