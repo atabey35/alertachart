@@ -384,7 +384,7 @@
           
           // Register token with backend
           try {
-            // Try to get device info, fallback to defaults if Device plugin not available
+            // Get device info (should work in local context)
             let platform = 'android';
             let deviceId = 'unknown-device';
             let model = 'Unknown';
@@ -393,15 +393,31 @@
             try {
               const { Device } = window.Capacitor.Plugins;
               if (Device) {
+                console.log('[Login] Getting device info...');
                 const deviceInfo = await Device.getInfo();
                 const deviceIdInfo = await Device.getId();
                 platform = deviceInfo.platform || 'android';
-                deviceId = deviceIdInfo.identifier || deviceId;
-                model = deviceInfo.model || model;
-                osVersion = deviceInfo.osVersion || osVersion;
+                deviceId = deviceIdInfo.identifier || `device-${Date.now()}`;
+                model = deviceInfo.model || 'Unknown';
+                osVersion = deviceInfo.osVersion || 'Unknown';
+                
+                console.log('[Login] Device info retrieved:', { platform, deviceId, model, osVersion });
+                
+                // 🔥 STORE DEVICE ID IN LOCALSTORAGE (for remote app to use)
+                localStorage.setItem('native_device_id', deviceId);
+                localStorage.setItem('native_platform', platform);
+                console.log('[Login] ✅ Device ID saved to localStorage:', deviceId);
+              } else {
+                console.warn('[Login] Device plugin not available');
+                // Fallback: generate unique deviceId based on token
+                deviceId = `fcm-${token.value.substring(0, 20)}`;
+                localStorage.setItem('native_device_id', deviceId);
               }
             } catch (deviceError) {
-              console.warn('[Login] Device plugin not available, using fallbacks');
+              console.warn('[Login] Device plugin error, using fallback:', deviceError);
+              // Fallback: generate unique deviceId based on token
+              deviceId = `fcm-${token.value.substring(0, 20)}`;
+              localStorage.setItem('native_device_id', deviceId);
             }
             
             console.log('[Login] Registering token with backend...');
