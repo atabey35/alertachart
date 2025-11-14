@@ -11,29 +11,15 @@ function MobileAuthCallbackContent() {
 
   useEffect(() => {
     if (status === 'authenticated') {
-      console.log('[Mobile Callback] Auth successful, redirecting to app');
+      console.log('[Mobile Callback] Auth successful, redirecting to home');
       
-      // Deep link to open mobile app
-      // Use custom URL scheme: com.kriptokirmizi.alerta://
-      const deepLink = 'com.kriptokirmizi.alerta://auth/success';
-      
-      // Try to open the app with deep link
-      window.location.href = deepLink;
-      
-      // Fallback: If app doesn't open in 3 seconds, redirect to web
-      setTimeout(() => {
-        window.location.href = 'https://alertachart.com';
-      }, 3000);
+      // OAuth başarılı - WebView içinde home'a yönlendir
+      // WebView içinde çalıştığı için session cookie'si zaten var
+      router.push('/');
     } else if (status === 'unauthenticated') {
-      console.log('[Mobile Callback] Auth failed');
-      // Auth failed, try to open app with error
-      const deepLink = 'com.kriptokirmizi.alerta://auth/error';
-      window.location.href = deepLink;
-      
-      // Fallback
-      setTimeout(() => {
-        router.push('/');
-      }, 2000);
+      console.log('[Mobile Callback] Auth failed, redirecting to home');
+      // Auth başarısız - home'a yönlendir
+      router.push('/');
     }
   }, [status, session, router]);
 

@@ -216,22 +216,9 @@ export default function AppWebView({
   const handleNavigationStateChange = (navState: WebViewNavigation) => {
     const url = navState.url;
     
-    // Intercept OAuth URLs and open in IN-APP browser (not external browser)
-    if (url.includes('/api/auth/signin/google') || 
-        url.includes('/api/auth/signin/apple') ||
-        url.includes('accounts.google.com') ||
-        url.includes('appleid.apple.com')) {
-      console.log('[WebView] Detected OAuth URL, opening in IN-APP browser:', url);
-      
-      // Open in-app browser (uses ASWebAuthenticationSession on iOS, Chrome Custom Tabs on Android)
-      openInAppBrowser(url);
-      
-      // Go back to prevent WebView from loading OAuth page
-      if (webViewRef.current && canGoBack) {
-        webViewRef.current.goBack();
-      }
-      return;
-    }
+    // ÇÖZÜM: OAuth URL'lerini WebView içinde yükle, harici browser açma
+    // WebView içinde OAuth yapıldığında session cookie'si otomatik olarak paylaşılır
+    // Artık intercept etmiyoruz, WebView'ın kendi yüklemesine izin veriyoruz
     
     setCanGoBack(navState.canGoBack);
     setCurrentUrl(navState.url);
@@ -284,21 +271,13 @@ export default function AppWebView({
     }
   };
 
-  // Intercept OAuth URLs and open in IN-APP browser (not external browser)
+  // ÇÖZÜM: OAuth URL'lerini WebView içinde yükle
   const handleShouldStartLoadWithRequest = (request: any) => {
     const url = request.url;
     
-    // Check if this is an OAuth URL (Google or Apple)
-    if (url.includes('/api/auth/signin/google') || 
-        url.includes('/api/auth/signin/apple') ||
-        url.includes('accounts.google.com') ||
-        url.includes('appleid.apple.com')) {
-      console.log('[WebView] Opening OAuth URL in IN-APP browser:', url);
-      openInAppBrowser(url);
-      return false; // Prevent WebView from loading
-    }
-    
-    return true; // Allow WebView to load
+    // Tüm URL'lerin WebView içinde yüklenmesine izin ver
+    // OAuth artık WebView içinde gerçekleşecek, cookie sharing sorunu olmayacak
+    return true; // Allow WebView to load everything
   };
 
   const handleError = (syntheticEvent: any) => {
