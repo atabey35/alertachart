@@ -1,5 +1,13 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Output for Capacitor (static export)
+  // TEMPORARILY DISABLED - API routes prevent static export
+  // output: 'export',
+  // distDir: 'out',
+  // images: {
+  //   unoptimized: true, // Required for static export
+  // },
+  
   // Disable ESLint during build to prevent warnings from blocking deployment
   eslint: {
     ignoreDuringBuilds: true,
