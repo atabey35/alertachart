@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Suspense } from 'react';
+import { authService } from '@/services/authService';
 
 function CapacitorAuthContent() {
   const router = useRouter();
@@ -27,11 +28,14 @@ function CapacitorAuthContent() {
       })
         .then(async (response) => {
           if (response.ok) {
-            console.log('[CapacitorAuth] Session set successfully! Redirecting...');
-            // Wait a bit for cookies to be set
-            setTimeout(() => {
-              router.replace('/');
-            }, 300);
+            console.log('[CapacitorAuth] Session set successfully!');
+            
+            // ✅ Trigger authService to check auth and update user state
+            await authService.checkAuth();
+            console.log('[CapacitorAuth] Auth state updated, redirecting...');
+            
+            // Redirect to home
+            router.replace('/');
           } else {
             const error = await response.json();
             console.error('[CapacitorAuth] Failed to set session:', error);

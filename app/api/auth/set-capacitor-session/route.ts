@@ -18,8 +18,31 @@ export async function POST(request: NextRequest) {
     
     console.log('[set-capacitor-session] Setting cookies from native login');
     
-    // Create response
-    const response = NextResponse.json({ success: true });
+    // Fetch user info from backend using the access token
+    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3002';
+    let userData = null;
+    
+    try {
+      const userResponse = await fetch(`${backendUrl}/api/auth/me`, {
+        headers: {
+          'Cookie': `accessToken=${accessToken}; refreshToken=${refreshToken}`,
+        },
+      });
+      
+      if (userResponse.ok) {
+        const result = await userResponse.json();
+        userData = result.user;
+        console.log('[set-capacitor-session] User data fetched:', userData?.email);
+      }
+    } catch (e) {
+      console.error('[set-capacitor-session] Failed to fetch user data:', e);
+    }
+    
+    // Create response with user data
+    const response = NextResponse.json({ 
+      success: true,
+      user: userData 
+    });
     
     // Set access token cookie (15 minutes - httpOnly + secure)
     response.cookies.set('accessToken', accessToken, {
