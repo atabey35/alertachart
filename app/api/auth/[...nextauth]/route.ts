@@ -140,6 +140,11 @@ const authOptions: NextAuthOptions = {
     signIn: '/', // Redirect to home page for sign in
   },
 
+  // Mobile deep link callback support
+  // This allows the app to handle OAuth redirects
+  // via custom URL scheme: com.kriptokirmizi.alerta://
+  // NextAuth will use this for OAuth callback URLs
+
   session: {
     strategy: "jwt",
   },

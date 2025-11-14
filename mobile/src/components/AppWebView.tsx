@@ -3,6 +3,7 @@ import { StyleSheet, View, Platform, BackHandler, Alert, Dimensions, Linking } f
 import WebView from 'react-native-webview';
 import { WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
 import Constants from 'expo-constants';
+import * as WebBrowser from 'expo-web-browser';
 import { INJECTED_JAVASCRIPT, parseWebMessage, sendMessageToWeb } from '../utils/bridge';
 
 // Production URL
@@ -207,13 +208,16 @@ export default function AppWebView({
   const handleNavigationStateChange = (navState: WebViewNavigation) => {
     const url = navState.url;
     
-    // Intercept OAuth URLs and open in external browser
+    // Intercept OAuth URLs and open in IN-APP browser (not external browser)
     if (url.includes('/api/auth/signin/google') || 
         url.includes('/api/auth/signin/apple') ||
         url.includes('accounts.google.com') ||
         url.includes('appleid.apple.com')) {
-      console.log('[WebView] Detected OAuth URL, opening in external browser:', url);
-      Linking.openURL(url);
+      console.log('[WebView] Detected OAuth URL, opening in IN-APP browser:', url);
+      
+      // Open in-app browser (uses ASWebAuthenticationSession on iOS, Chrome Custom Tabs on Android)
+      openInAppBrowser(url);
+      
       // Go back to prevent WebView from loading OAuth page
       if (webViewRef.current && canGoBack) {
         webViewRef.current.goBack();
@@ -226,7 +230,45 @@ export default function AppWebView({
     onNavigationStateChange?.(navState);
   };
 
-  // Intercept OAuth URLs and open in external browser
+  // Open URL in in-app browser (ASWebAuthenticationSession on iOS, Chrome Custom Tabs on Android)
+  const openInAppBrowser = async (url: string) => {
+    try {
+      console.log('[WebView] Opening in-app browser for URL:', url);
+      
+      // WebBrowser.openAuthSessionAsync uses:
+      // - iOS: ASWebAuthenticationSession
+      // - Android: Chrome Custom Tabs
+      const result = await WebBrowser.openAuthSessionAsync(url, 'com.kriptokirmizi.alerta://');
+      
+      console.log('[WebView] In-app browser result:', result);
+      
+      if (result.type === 'success') {
+        // OAuth başarılı, callback URL'den token çıkar
+        console.log('[WebView] OAuth success, callback URL:', result.url);
+        
+        // Callback URL'den token çıkar ve WebView'ı yenile
+        // NextAuth'un callback URL'si: com.kriptokirmizi.alerta://auth/callback?...
+        if (result.url.includes('auth/callback') || result.url.includes('auth/success')) {
+          console.log('[WebView] OAuth callback received, reloading WebView');
+          // WebView'ı yenile - session cookie'si otomatik olarak yüklenecek
+          webViewRef.current?.reload();
+        }
+      } else if (result.type === 'cancel') {
+        console.log('[WebView] User cancelled OAuth');
+      } else if (result.type === 'dismiss') {
+        console.log('[WebView] OAuth dismissed');
+      }
+    } catch (error) {
+      console.error('[WebView] In-app browser error:', error);
+      Alert.alert(
+        'Giriş Hatası',
+        'Giriş yapılırken bir hata oluştu. Lütfen tekrar deneyin.',
+        [{ text: 'Tamam' }]
+      );
+    }
+  };
+
+  // Intercept OAuth URLs and open in IN-APP browser (not external browser)
   const handleShouldStartLoadWithRequest = (request: any) => {
     const url = request.url;
     
@@ -235,8 +277,8 @@ export default function AppWebView({
         url.includes('/api/auth/signin/apple') ||
         url.includes('accounts.google.com') ||
         url.includes('appleid.apple.com')) {
-      console.log('[WebView] Opening OAuth URL in external browser:', url);
-      Linking.openURL(url);
+      console.log('[WebView] Opening OAuth URL in IN-APP browser:', url);
+      openInAppBrowser(url);
       return false; // Prevent WebView from loading
     }
     

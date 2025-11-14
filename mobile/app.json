@@ -20,13 +20,24 @@
       "supportsTablet": true,
       "bundleIdentifier": "com.kriptokirmizi.alerta",
       "buildNumber": "5",
-      "associatedDomains": ["applinks:alertachart.com"],
+      "associatedDomains": [
+        "applinks:alertachart.com",
+        "webcredentials:alertachart.com"
+      ],
       "infoPlist": {
         "NSCameraUsageDescription": "This app does not use the camera.",
         "NSMicrophoneUsageDescription": "This app does not use the microphone.",
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
           "remote-notification"
+        ],
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.kriptokirmizi.alerta"
+            ],
+            "CFBundleURLName": "com.kriptokirmizi.alerta"
+          }
         ]
       }
     },
@@ -54,9 +65,29 @@
               "scheme": "https",
               "host": "alertachart.com",
               "pathPrefix": "/auth/callback"
+            },
+            {
+              "scheme": "https",
+              "host": "alertachart.com",
+              "pathPrefix": "/auth/mobile-callback"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        },
+        {
+          "action": "VIEW",
+          "data": [
+            {
+              "scheme": "com.kriptokirmizi.alerta"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ]
     },
@@ -70,7 +101,8 @@
           "icon": "./assets/notification-icon.png",
           "color": "#0a84ff"
         }
-      ]
+      ],
+      "expo-web-browser"
     ],
     "scheme": "com.kriptokirmizi.alerta",
     "extra": {

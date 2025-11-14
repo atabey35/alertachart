@@ -74,7 +74,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         <div className="space-y-3 mb-6">
           <button
             type="button"
-            onClick={() => signIn('apple', { callbackUrl: '/' })}
+            onClick={() => {
+              // Detect if running in mobile app (native WebView)
+              const isMobileApp = typeof window !== 'undefined' && (window as any).isNativeApp;
+              const callbackUrl = isMobileApp ? '/auth/mobile-callback' : '/';
+              signIn('apple', { callbackUrl });
+            }}
             className="w-full py-3 px-4 bg-black hover:bg-gray-900 text-white font-medium rounded-lg transition flex items-center justify-center gap-3 border border-gray-700"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
@@ -85,7 +90,12 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
           <button
             type="button"
-            onClick={() => signIn('google', { callbackUrl: '/' })}
+            onClick={() => {
+              // Detect if running in mobile app (native WebView)
+              const isMobileApp = typeof window !== 'undefined' && (window as any).isNativeApp;
+              const callbackUrl = isMobileApp ? '/auth/mobile-callback' : '/';
+              signIn('google', { callbackUrl });
+            }}
             className="w-full py-3 px-4 bg-white hover:bg-gray-100 text-gray-900 font-medium rounded-lg transition flex items-center justify-center gap-3 border border-gray-300"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
