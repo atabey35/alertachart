@@ -134,3 +134,4 @@ rm -rf ~/Library/Developer/Xcode/DerivedData
 - **Fiziksel Cihaz:** Gerçek performansı görmek için fiziksel cihaz kullanın
 
 
+

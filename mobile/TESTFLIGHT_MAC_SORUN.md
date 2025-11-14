@@ -36,3 +36,4 @@ Mac Catalyst desteği eklemek gerekir (karmaşık):
 - **Mac Test:** Gerekli değil, iOS cihazda test yeterli
 
 
+

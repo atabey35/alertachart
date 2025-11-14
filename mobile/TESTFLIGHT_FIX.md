@@ -102,3 +102,4 @@ eas credentials --platform ios
 3. TestFlight'ta build'in expire olup olmadığını kontrol edin (90 gün)
 4. Yeni bir build alıp submit edin
 
+

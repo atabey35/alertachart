@@ -137,3 +137,4 @@ eas build --profile production --platform ios
 - ✅ TestFlight'tan indirilebiliyor
 - ✅ Uygulama açılıyor ve çalışıyor
 
+

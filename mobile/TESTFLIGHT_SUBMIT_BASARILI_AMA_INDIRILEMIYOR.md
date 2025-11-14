@@ -134,3 +134,4 @@ eas submit --platform ios --latest
    - Submit edin
    - TestFlight grubuna ekleyin
 
+

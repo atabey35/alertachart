@@ -115,3 +115,4 @@ eas submit --platform ios --latest
 4. **Yeni build alın ve submit edin**
 
 
+

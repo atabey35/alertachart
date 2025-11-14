@@ -190,15 +190,7 @@
     </div>
   </div>
 
-  <script type="module">
-    // Check if running in Capacitor
-    const isCapacitor = window.Capacitor !== undefined;
-    
-    if (!isCapacitor) {
-      // If not in Capacitor, redirect to main site immediately
-      window.location.href = 'https://alertachart.com';
-    }
-
+  <script>
     const errorDiv = document.getElementById('error');
     const googleBtn = document.getElementById('googleBtn');
     const appleBtn = document.getElementById('appleBtn');
@@ -222,41 +214,63 @@
       try {
         console.log('[Login] Starting Google Sign-In');
         
-        // Import Google Auth plugin
-        const { GoogleAuth } = window.Capacitor.Plugins;
+        const GoogleAuth = window.Capacitor.Plugins.GoogleAuth;
         
         if (!GoogleAuth) {
           throw new Error('Google Auth plugin not available');
         }
 
-        // Native Google Sign-In
+        // Initialize
+        try {
+          await GoogleAuth.initialize();
+        } catch (e) {
+          console.log('[Login] GoogleAuth already initialized');
+        }
+
+        // Sign in
         const result = await GoogleAuth.signIn();
         console.log('[Login] Google Sign-In success:', result);
 
-        // Send to backend
-        const response = await fetch('https://alertachart-backend-production.up.railway.app/api/auth/google-native', {
-          method: 'POST',
+        // Send to backend using CapacitorHttp
+        const CapacitorHttp = window.Capacitor.Plugins.CapacitorHttp;
+        
+        const httpResponse = await CapacitorHttp.post({
+          url: 'https://alertachart-backend-production.up.railway.app/api/auth/google-native',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          data: {
             idToken: result.authentication?.idToken || result.authentication?.accessToken,
             email: result.email,
             name: result.name || result.givenName,
             imageUrl: result.imageUrl,
-          }),
+          },
         });
 
-        if (!response.ok) {
-          throw new Error('Backend authentication failed');
+        console.log('[Login] Backend response:', httpResponse);
+
+        if (httpResponse.status !== 200) {
+          throw new Error(httpResponse.data?.error || 'Backend error');
         }
 
-        const data = await response.json();
-        console.log('[Login] Backend auth successful:', data);
+        console.log('[Login] Backend auth successful!');
+        const data = httpResponse.data;
 
-        // Redirect to main app with token
-        window.location.href = `https://alertachart.com?auth=success&token=${encodeURIComponent(data.tokens.accessToken)}`;
+        // Load remote app with auth tokens in URL
+        console.log('[Login] Loading remote app with auth tokens...');
+        const WebViewController = window.Capacitor.Plugins.WebViewController;
+        
+        if (WebViewController) {
+          const authUrl = `https://alertachart.com/capacitor-auth?capacitor_auth=true&access_token=${encodeURIComponent(data.tokens.accessToken)}&refresh_token=${encodeURIComponent(data.tokens.refreshToken)}`;
+          console.log('[Login] Auth URL:', authUrl);
+          await WebViewController.loadUrl({ url: authUrl });
+          console.log('[Login] Remote app loaded with auth!');
+        } else {
+          console.error('[Login] WebViewController plugin not found!');
+          showError('Failed to load app');
+          disableButtons(false);
+        }
         
       } catch (error) {
-        console.error('[Login] Google Sign-In error:', error);
+        console.error('[Login] Error:', error);
         showError(error.message || 'Google sign-in failed');
         disableButtons(false);
       }
@@ -268,7 +282,7 @@
       try {
         console.log('[Login] Starting Apple Sign-In');
         
-        const { SignInWithApple } = window.Capacitor.Plugins;
+        const SignInWithApple = window.Capacitor.Plugins.SignInWithApple;
         
         if (!SignInWithApple) {
           throw new Error('Apple Sign-In plugin not available');
@@ -283,46 +297,68 @@
         console.log('[Login] Apple Sign-In success:', result);
 
         // Send to backend
-        const response = await fetch('https://alertachart-backend-production.up.railway.app/api/auth/apple-native', {
-          method: 'POST',
+        const CapacitorHttp = window.Capacitor.Plugins.CapacitorHttp;
+        
+        const httpResponse = await CapacitorHttp.post({
+          url: 'https://alertachart-backend-production.up.railway.app/api/auth/apple-native',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
+          data: {
             identityToken: result.response.identityToken,
             authorizationCode: result.response.authorizationCode,
             email: result.response.email,
             givenName: result.response.givenName,
             familyName: result.response.familyName,
-          }),
+          },
         });
 
-        if (!response.ok) {
-          throw new Error('Backend authentication failed');
+        if (httpResponse.status !== 200) {
+          throw new Error(httpResponse.data?.error || 'Backend error');
         }
 
-        const data = await response.json();
-        console.log('[Login] Backend auth successful:', data);
+        console.log('[Login] Backend auth successful!');
+        const data = httpResponse.data;
 
-        // Redirect to main app with token
-        window.location.href = `https://alertachart.com?auth=success&token=${encodeURIComponent(data.tokens.accessToken)}`;
+        // Load remote app with auth tokens in URL
+        console.log('[Login] Loading remote app with auth tokens...');
+        const WebViewController = window.Capacitor.Plugins.WebViewController;
+        
+        if (WebViewController) {
+          const authUrl = `https://alertachart.com/capacitor-auth?capacitor_auth=true&access_token=${encodeURIComponent(data.tokens.accessToken)}&refresh_token=${encodeURIComponent(data.tokens.refreshToken)}`;
+          console.log('[Login] Auth URL:', authUrl);
+          await WebViewController.loadUrl({ url: authUrl });
+          console.log('[Login] Remote app loaded with auth!');
+        } else {
+          console.error('[Login] WebViewController plugin not found!');
+          showError('Failed to load app');
+          disableButtons(false);
+        }
         
       } catch (error) {
-        console.error('[Login] Apple Sign-In error:', error);
+        console.error('[Login] Error:', error);
         showError(error.message || 'Apple sign-in failed');
         disableButtons(false);
       }
     }
 
-    function handleEmailLogin() {
-      // Redirect to main site for email/password auth
-      window.location.href = 'https://alertachart.com';
+    async function handleEmailLogin() {
+      // Load remote app for email/password auth
+      console.log('[Login] Loading remote app for email auth...');
+      const WebViewController = window.Capacitor.Plugins.WebViewController;
+      
+      if (WebViewController) {
+        await WebViewController.loadUrl({ url: 'https://alertachart.com' });
+        console.log('[Login] Remote app loaded!');
+      } else {
+        console.error('[Login] WebViewController plugin not found!');
+        showError('Failed to load app');
+      }
     }
 
-    // Event listeners
     googleBtn.addEventListener('click', handleGoogleLogin);
     appleBtn.addEventListener('click', handleAppleLogin);
     emailBtn.addEventListener('click', handleEmailLogin);
 
-    console.log('[Login] Capacitor login screen loaded');
+    console.log('[Login] App initialized');
   </script>
 </body>
 </html>

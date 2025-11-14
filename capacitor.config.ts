@@ -4,7 +4,7 @@ const config: CapacitorConfig = {
   appId: 'com.kriptokirmizi.alerta',
   appName: 'Alerta Chart',
   webDir: 'public', // Local login screen
-  // No server.url - use local files for auth, then redirect to remote
+  // No server.url - load local files first, then native code loads remote app
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],

@@ -75,3 +75,4 @@ Sonra Xcode'da:
 - **Xcode SDK:** iOS 26.1 SDK yüklü ama simulator runtime yok
 
 
+

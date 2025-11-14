@@ -103,3 +103,4 @@ eas submit --platform ios --latest
    - Yeni build alın
    - Submit edin
 
+

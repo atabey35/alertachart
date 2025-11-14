@@ -31,3 +31,4 @@ adb logcat | grep -E "(ReactNativeJS|ExpoModules|expo-notifications|Alerta|Devic
 
 
 
+

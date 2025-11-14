@@ -46,3 +46,4 @@ adb logcat | grep -E "(ReactNativeJS|Device ID|Push token|registerPushToken|Fail
 
 
 
+

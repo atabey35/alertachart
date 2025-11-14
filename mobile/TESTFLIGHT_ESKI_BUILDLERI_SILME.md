@@ -96,3 +96,4 @@ TestFlight uygulamasında build'ler otomatik olarak güncellenir:
 - **Yeni Build:** Yeni build aldığınızda otomatik olarak TestFlight'a eklenir
 
 
+
