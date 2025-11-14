@@ -165,6 +165,12 @@ export default function RootLayout({
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
+
+        {/* Capacitor Runtime for Native Plugins */}
+        <Script
+          src="https://cdn.jsdelivr.net/npm/@capacitor/core@7.4.4/dist/capacitor.js"
+          strategy="beforeInteractive"
+        />
       </head>
       <body className="bg-[#0a0a0a] text-white">
         {/* Google Tag Manager (noscript) */}
