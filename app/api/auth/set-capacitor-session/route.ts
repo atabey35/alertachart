@@ -1,9 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { neon } from '@neondatabase/serverless';
+import { encode } from 'next-auth/jwt';
+import { authOptions } from '@/lib/authOptions';
+
+const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * POST /api/auth/set-capacitor-session
  * Sets authentication cookies from Capacitor native login tokens
  * This is called from /capacitor-auth page after native Google/Apple login
+ * 
+ * 🔥 CRITICAL: Also creates NextAuth session so useSession() works
  */
 export async function POST(request: NextRequest) {
   try {
@@ -21,6 +28,7 @@ export async function POST(request: NextRequest) {
     // Fetch user info from backend using the access token
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:3002';
     let userData = null;
+    let userEmail = null;
     
     try {
       const userResponse = await fetch(`${backendUrl}/api/auth/me`, {
@@ -32,10 +40,54 @@ export async function POST(request: NextRequest) {
       if (userResponse.ok) {
         const result = await userResponse.json();
         userData = result.user;
-        console.log('[set-capacitor-session] User data fetched:', userData?.email);
+        userEmail = userData?.email;
+        console.log('[set-capacitor-session] User data fetched:', userEmail);
       }
     } catch (e) {
       console.error('[set-capacitor-session] Failed to fetch user data:', e);
+    }
+    
+    // 🔥 CRITICAL: Create NextAuth session if we have user email
+    let nextAuthToken = null;
+    if (userEmail) {
+      try {
+        // Find user in database by email
+        const users = await sql`
+          SELECT id, email, name, provider, provider_user_id, plan, expiry_date
+          FROM users
+          WHERE email = ${userEmail}
+          LIMIT 1
+        `;
+        
+        if (users.length > 0) {
+          const dbUser = users[0];
+          
+          // Create NextAuth JWT token
+          const token = {
+            sub: dbUser.provider_user_id || dbUser.id.toString(),
+            email: dbUser.email,
+            name: dbUser.name,
+            provider: dbUser.provider || 'google',
+            id: dbUser.id,
+            plan: dbUser.plan,
+            isPremium: dbUser.plan === 'premium' && 
+              (!dbUser.expiry_date || new Date(dbUser.expiry_date) > new Date()),
+          };
+          
+          // Encode JWT token
+          nextAuthToken = await encode({
+            token,
+            secret: process.env.NEXTAUTH_SECRET!,
+            maxAge: 30 * 24 * 60 * 60, // 30 days
+          });
+          
+          console.log('[set-capacitor-session] NextAuth token created for:', userEmail);
+        } else {
+          console.warn('[set-capacitor-session] User not found in database:', userEmail);
+        }
+      } catch (e) {
+        console.error('[set-capacitor-session] Failed to create NextAuth session:', e);
+      }
     }
     
     // Create response with user data
@@ -62,7 +114,19 @@ export async function POST(request: NextRequest) {
       maxAge: 604800, // 7 days
     });
     
-    console.log('[set-capacitor-session] Cookies set successfully');
+    // 🔥 CRITICAL: Set NextAuth session token cookie
+    if (nextAuthToken) {
+      response.cookies.set('next-auth.session-token', nextAuthToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      });
+      console.log('[set-capacitor-session] NextAuth session cookie set successfully');
+    }
+    
+    console.log('[set-capacitor-session] All cookies set successfully');
     
     return response;
   } catch (error: any) {
