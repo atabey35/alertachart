@@ -301,11 +301,21 @@ class AlertService {
   }
 
   triggerAlert(id: string) {
+    // 🚨 CRITICAL DEBUG - Bu log MUTLAKA görünmeli!
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.error('[AlertService] 🚨 triggerAlert() CALLED! ID:', id);
+    console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
     const alert = this.alerts.find(a => a.id === id);
+    console.error('[AlertService] 🔍 Alert found:', alert ? 'YES' : 'NO');
+    console.error('[AlertService] 🔍 Alert isTriggered:', alert?.isTriggered);
+    
     if (alert && !alert.isTriggered) {
       // 🔥 HER ZAMAN deviceId'yi yeniden yükle (localStorage'dan güncel değeri al)
+      console.error('[AlertService] 🔄 Reloading device ID from localStorage...');
       console.log('[AlertService] 🔄 Reloading device ID from localStorage before triggering alarm...');
       this.loadDeviceId();
+      console.error('[AlertService] 📱 Device ID after reload:', this.nativeDeviceId);
       console.log('[AlertService] 📱 Device ID after reload:', this.nativeDeviceId);
       
       // Eğer alarm'da deviceId yoksa ama nativeDeviceId varsa, güncelle
@@ -396,6 +406,11 @@ class AlertService {
       };
       
       console.log('[AlertService] 🔔 Triggering alert:', JSON.stringify(debugInfo, null, 2));
+      console.error('[AlertService] 🔔 DEBUG INFO:');
+      console.error('  finalDeviceId:', finalDeviceId || 'NULL');
+      console.error('  isNativeApp:', isNativeApp);
+      console.error('  hasAuthToken:', hasAuthToken);
+      console.error('  willSendPush:', debugInfo.willSendPush);
       
       // Push notification gönder: deviceId VE isNativeApp VE authToken olmalı
       if (typeof window !== 'undefined' && finalDeviceId && isNativeApp && hasAuthToken) {
