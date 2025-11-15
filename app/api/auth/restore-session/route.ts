@@ -155,10 +155,11 @@ export async function POST(request: NextRequest) {
     
     // Set NextAuth session token cookie
     if (nextAuthToken) {
+      // 🔥 CRITICAL: Use sameSite: 'none' and secure: true for iOS WebView compatibility
       response.cookies.set('next-auth.session-token', nextAuthToken, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
+        secure: true, // Always secure for iOS
+        sameSite: 'none', // Required for cross-site requests in iOS WebView
         path: '/',
         maxAge: 30 * 24 * 60 * 60, // 30 days
       });

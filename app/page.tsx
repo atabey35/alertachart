@@ -56,7 +56,7 @@ export default function Home() {
   const [showLoginScreen, setShowLoginScreen] = useState(false); // Native login screen for web
   const [showEmailForm, setShowEmailForm] = useState(false); // Email/password form in login screen
   const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const [isCapacitor, setIsCapacitor] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
@@ -306,51 +306,82 @@ export default function Home() {
     
     // 🔥 CRITICAL: Try to restore session if missing but refresh token exists
     // This runs on app startup to restore session from cookies
-    if (status === 'unauthenticated' && isCapacitor) {
-      const restoreSession = async () => {
-        try {
-          console.log('[App] 🔄 Session missing, attempting to restore from refresh token...');
-          
-          // Check if we have user email in localStorage (indicates previous login)
-          const savedEmail = typeof window !== 'undefined' ? localStorage.getItem('user_email') : null;
-          if (!savedEmail) {
-            console.log('[App] ℹ️ No saved email found, skipping session restore');
-            return;
-          }
-          
-          console.log('[App] 📧 Saved email found:', savedEmail, '- attempting session restore...');
-          
-          const response = await fetch('/api/auth/restore-session', {
-            method: 'POST',
-            credentials: 'include', // 🔥 CRITICAL: Include cookies
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            console.log('[App] ✅ Session restored successfully:', result);
-            
-            // Force NextAuth to re-check session
-            // Use window.location.reload() to fully refresh the app state
-            setTimeout(() => {
-              window.location.reload();
-            }, 300);
-          } else {
-            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
-            console.log('[App] ⚠️ Session restore failed:', error);
-            // Clear saved email if restore failed
-            if (typeof window !== 'undefined') {
-              localStorage.removeItem('user_email');
-            }
-          }
-        } catch (error) {
-          console.error('[App] ❌ Error restoring session:', error);
-        }
-      };
+    // Check directly for Capacitor (don't rely on isCapacitor state which may not be set yet)
+    const checkAndRestoreSession = () => {
+      const hasCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
       
-      // Try to restore session after a short delay (wait for cookies to be available)
-      // Increased delay to ensure cookies are fully loaded
-      setTimeout(restoreSession, 1000);
-    }
+      if (hasCapacitor && (status === 'unauthenticated' || status === 'loading')) {
+        const restoreSession = async () => {
+          try {
+            // Wait a bit for cookies to be available
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            console.log('[App] 🔄 Checking for session restore (status:', status, ')...');
+            
+            // Check if we have user email in localStorage (indicates previous login)
+            const savedEmail = typeof window !== 'undefined' ? localStorage.getItem('user_email') : null;
+            if (!savedEmail) {
+              console.log('[App] ℹ️ No saved email found, skipping session restore');
+              return;
+            }
+            
+            console.log('[App] 📧 Saved email found:', savedEmail, '- attempting session restore...');
+            
+            const response = await fetch('/api/auth/restore-session', {
+              method: 'POST',
+              credentials: 'include', // 🔥 CRITICAL: Include cookies
+            });
+            
+            if (response.ok) {
+              const result = await response.json();
+              console.log('[App] ✅ Session restored successfully:', result);
+              
+              // Force NextAuth to re-check session
+              // First try to update the session
+              try {
+                await update();
+                console.log('[App] ✅ NextAuth session updated');
+                
+                // Wait a bit for session to propagate
+                await new Promise(resolve => setTimeout(resolve, 300));
+                
+                // Reload to ensure everything is synced
+                console.log('[App] 🔄 Reloading page to sync session state...');
+                window.location.reload();
+              } catch (updateError) {
+                console.warn('[App] ⚠️ Failed to update NextAuth session:', updateError);
+                // Still reload even if update fails
+                setTimeout(() => {
+                  console.log('[App] 🔄 Reloading page after session restore...');
+                  window.location.reload();
+                }, 500);
+              }
+            } else {
+              const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+              console.log('[App] ⚠️ Session restore failed:', error);
+              // Clear saved email if restore failed
+              if (typeof window !== 'undefined') {
+                localStorage.removeItem('user_email');
+              }
+            }
+          } catch (error) {
+            console.error('[App] ❌ Error restoring session:', error);
+          }
+        };
+        
+        // Try to restore session after a short delay (wait for cookies to be available)
+        // Run immediately if status is unauthenticated, or after a delay if still loading
+        if (status === 'unauthenticated') {
+          setTimeout(restoreSession, 1000);
+        } else if (status === 'loading') {
+          // Wait a bit longer if status is still loading
+          setTimeout(restoreSession, 2000);
+        }
+      }
+    };
+    
+    // Run session restore check
+    checkAndRestoreSession();
     
     // Sync NextAuth session with user state
     if (status === 'authenticated' && session?.user) {
