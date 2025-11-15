@@ -166,6 +166,12 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
 
+        {/* Google Identity Services (GIS) for Web OAuth */}
+        <Script
+          src="https://accounts.google.com/gsi/client"
+          strategy="beforeInteractive"
+        />
+        
         {/* Capacitor Runtime for Native Plugins */}
         <Script
           src="https://cdn.jsdelivr.net/npm/@capacitor/core@7.4.4/dist/capacitor.js"
