@@ -66,7 +66,7 @@ export default function Home() {
   
   // Simple premium access check - use userPlan.hasPremiumAccess (from API) or fallback to fullUser
   // This ensures database changes are reflected immediately
-  const hasPremiumAccessValue = userPlan?.hasPremiumAccess ?? hasPremiumAccessValue ?? false;
+  const hasPremiumAccessValue: boolean = userPlan?.hasPremiumAccess ?? hasPremiumAccess(fullUser) ?? false;
 
   // Capacitor kontrolü
   useEffect(() => {
