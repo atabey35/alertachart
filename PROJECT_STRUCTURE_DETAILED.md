@@ -37,7 +37,70 @@ npm start        # Production server
 
 ---
 
-### 2. **Mobil Uygulama - Expo (AKTİF) ✅**
+### 2. **Mobil Uygulama - Capacitor (AKTİF) ✅**
+**Konum:** Root klasör (`/`)
+
+**Teknoloji Stack:**
+- **Framework:** Capacitor 7.4.4
+- **Platform:** iOS & Android
+- **Notifications:** Capacitor Push Notifications
+- **Build:** Capacitor CLI
+
+**Mimari:**
+```
+┌─────────────────────────────────────┐
+│   Capacitor Native App              │
+│   ┌─────────────────────────────┐  │
+│   │  Capacitor WebView           │  │
+│   │  ┌─────────────────────────┐ │  │
+│   │  │  Next.js Web App         │  │  │
+│   │  │  (Remote: alertachart.com)│ │  │
+│   │  └─────────────────────────┘ │  │
+│   └─────────────────────────────┘  │
+│                                     │
+│   Native Plugins:                   │
+│   - Google Auth                     │
+│   - Apple Sign In                   │
+│   - Push Notifications              │
+│   - Local Notifications             │
+│   - WebViewController (Custom)     │
+└─────────────────────────────────────┘
+```
+
+**Ana Dosyalar:**
+- `capacitor.config.ts` - Capacitor yapılandırması
+- `android/app/src/main/java/com/kriptokirmizi/alerta/MainActivity.java` - Android native code
+- `ios/App/App/AppDelegate.swift` - iOS native code
+- `public/capacitor-index.html` - Capacitor entry point (local login screen)
+- `services/pushNotificationService.ts` - Capacitor push service
+- `app/capacitor-auth/page.tsx` - Capacitor auth callback
+
+**Build Komutları:**
+```bash
+npm run build          # Next.js build
+npx cap sync          # Capacitor sync (copy web files to native)
+npx cap open ios      # Xcode'da aç
+npx cap open android  # Android Studio'da aç
+```
+
+**Deployment:**
+- **Android:** Android Studio ile build → Google Play Store
+- **iOS:** Xcode ile build → App Store
+
+**Özellikler:**
+- ✅ Capacitor WebView içinde Next.js web uygulaması
+- ✅ Remote URL (`https://alertachart.com`) - local login screen'den redirect
+- ✅ Push notifications (Capacitor Push Notifications + FCM)
+- ✅ Local notifications (Capacitor Local Notifications)
+- ✅ OAuth (Google/Apple native plugins)
+- ✅ Custom WebViewController plugin (URL control)
+- ✅ Native bridge (Capacitor plugins)
+
+**Not:** Expo'dan Capacitor'e geçiş yapıldı. Capacitor şu an aktif sistem.
+
+---
+
+### 3. **Mobil Uygulama - Expo (ESKİ) ⚠️**
 **Konum:** `mobile/` klasörü
 
 **Teknoloji Stack:**
@@ -84,77 +147,19 @@ eas build --platform android  # Production Android build
 eas build --platform ios      # Production iOS build
 ```
 
-**Deployment:**
-- **Android:** Google Play Store
-- **iOS:** App Store (TestFlight)
+**Durum:** ⚠️ Eski sistem, artık kullanılmıyor
 
-**Özellikler:**
-- ✅ WebView içinde Next.js web uygulaması
-- ✅ Push notifications (Expo Notifications)
-- ✅ Device ID yönetimi
-- ✅ Deep linking (OAuth callbacks)
-- ✅ In-app browser (OAuth için)
-- ✅ Native bridge (Web ↔ Native communication)
-
----
-
-### 3. **Mobil Uygulama - Capacitor (ESKİ/ALTERNATİF) ⚠️**
-**Konum:** Root klasör (`/`)
-
-**Teknoloji Stack:**
-- **Framework:** Capacitor 7.4.4
-- **Platform:** iOS & Android
-- **Notifications:** Capacitor Push Notifications
-- **Build:** Capacitor CLI
-
-**Mimari:**
-```
-┌─────────────────────────────────────┐
-│   Capacitor Native App              │
-│   ┌─────────────────────────────┐  │
-│   │  Capacitor WebView           │  │
-│   │  ┌─────────────────────────┐ │  │
-│   │  │  Next.js Web App         │  │  │
-│   │  │  (Built & Bundled)       │  │  │
-│   │  └─────────────────────────┘ │  │
-│   └─────────────────────────────┘  │
-│                                     │
-│   Native Plugins:                   │
-│   - Google Auth                     │
-│   - Apple Sign In                   │
-│   - Push Notifications              │
-│   - Local Notifications             │
-└─────────────────────────────────────┘
-```
-
-**Ana Dosyalar:**
-- `capacitor.config.ts` - Capacitor yapılandırması
-- `android/` - Android native projesi
-- `ios/App/` - iOS native projesi
-- `public/capacitor-index.html` - Capacitor entry point
-- `services/pushNotificationService.ts` - Capacitor push service
-
-**Build Komutları:**
-```bash
-npm run build          # Next.js build
-npx cap sync          # Capacitor sync (copy web files to native)
-npx cap open ios      # Xcode'da aç
-npx cap open android  # Android Studio'da aç
-```
-
-**Durum:** ⚠️ Yapılandırılmış ama aktif olarak kullanılmıyor
-
-**Not:** Capacitor yapısı mevcut ama production'da Expo kullanılıyor. Capacitor muhtemelen eski bir deneme veya alternatif yapı.
+**Not:** Expo'dan Capacitor'e geçiş yapıldı. `mobile/` klasörü eski Expo yapısını içeriyor.
 
 ---
 
 ## 🔄 WebView → Native App Dönüşümü
 
-### ✅ Expo ile Native App (AKTİF)
+### ✅ Capacitor ile Native App (AKTİF)
 
 **Soru:** "WebView uygulamayı Capacitor ile native app haline getirebildik mi?"
 
-**Cevap:** Evet, ama **Capacitor ile değil, Expo ile!**
+**Cevap:** Evet, **Capacitor ile native app haline getirildi!**
 
 **Nasıl Çalışıyor:**
 
@@ -163,68 +168,91 @@ npx cap open android  # Android Studio'da aç
    - Tam fonksiyonel web uygulaması
    - Responsive design (mobile-friendly)
 
-2. **Mobil App (Expo):**
-   - React Native WebView içinde web uygulamasını yüklüyor
-   - `mobile/src/components/AppWebView.tsx` → WebView component
-   - URL: `https://alertachart.com` (production)
+2. **Mobil App (Capacitor):**
+   - Capacitor WebView içinde web uygulamasını yüklüyor
+   - Entry point: `public/capacitor-index.html` (local login screen)
+   - Login sonrası: `https://alertachart.com` (remote app)
    - Native özellikler ekleniyor:
-     - Push notifications
-     - Device ID
-     - Deep linking
-     - OAuth (in-app browser)
+     - Push notifications (Capacitor Push Notifications + FCM)
+     - Local notifications (Capacitor Local Notifications)
+     - Device ID (Capacitor Device plugin)
+     - OAuth (Google/Apple native plugins)
+     - Custom WebViewController plugin (URL control)
 
 3. **Native Bridge:**
    - Web ↔ Native communication
-   - `window.ReactNativeWebView.postMessage()` - Web'den Native'e
-   - `onMessage` handler - Native'den Web'e
-   - `injectedJavaScript` - Web'e script inject
+   - `window.Capacitor.Plugins.*` - Capacitor plugins
+   - `window.Capacitor.getPlatform()` - Platform detection
+   - Custom plugins (WebViewController)
 
 **Avantajlar:**
 - ✅ Web uygulaması tek bir kodbase
-- ✅ Native özellikler eklenebilir
-- ✅ Hızlı development (web değişiklikleri anında yansır)
-- ✅ EAS Build ile kolay deployment
+- ✅ Native özellikler eklenebilir (Capacitor plugins)
+- ✅ Local login screen (offline support)
+- ✅ Remote app (web değişiklikleri anında yansır)
+- ✅ Native plugins (Google Auth, Apple Sign In, Push, etc.)
 
 **Dezavantajlar:**
 - ⚠️ WebView performansı native'den düşük olabilir
-- ⚠️ İnternet bağlantısı gerekiyor (remote URL)
+- ⚠️ İnternet bağlantısı gerekiyor (remote app için)
 - ⚠️ Native UI component'leri kullanılamaz
 
----
-
-### ⚠️ Capacitor ile Native App (ESKİ/ALTERNATİF)
-
-**Durum:** Yapılandırılmış ama aktif değil
-
-**Nasıl Çalışır (Teorik):**
+**Build Süreci:**
 
 1. **Next.js Build:**
    ```bash
    npm run build
    ```
-   - `out/` veya `.next/` klasöründe static files
+   - Web dosyaları `.next/` klasöründe
 
 2. **Capacitor Sync:**
    ```bash
    npx cap sync
    ```
-   - Web dosyalarını `android/app/src/main/assets/` ve `ios/App/public/` klasörlerine kopyalar
+   - Web dosyalarını `android/app/src/main/assets/public/` ve `ios/App/public/` klasörlerine kopyalar
    - Native projeleri günceller
+   - Plugin'leri sync eder
 
 3. **Native Build:**
-   - Android: Android Studio ile build
-   - iOS: Xcode ile build
+   - Android: `npx cap open android` → Android Studio'da build
+   - iOS: `npx cap open ios` → Xcode'da build
 
-**Farklar (Expo vs Capacitor):**
+---
 
-| Özellik | Expo (Aktif) | Capacitor (Eski) |
-|---------|--------------|------------------|
-| **WebView URL** | Remote (`https://alertachart.com`) | Local (bundled files) |
-| **Build** | EAS Build (cloud) | Local (Android Studio/Xcode) |
-| **Deployment** | EAS Submit | Manuel (Play Store/App Store) |
-| **Development** | Expo Go / Dev Client | Native IDE |
-| **Hot Reload** | ✅ Var | ❌ Yok |
-| **Native Plugins** | Expo plugins | Capacitor plugins |
+### ⚠️ Expo ile Native App (ESKİ)
+
+**Durum:** Eski sistem, artık kullanılmıyor
+
+**Nasıl Çalışıyordu:**
+
+1. **Mobil App (Expo):**
+   - React Native WebView içinde web uygulamasını yüklüyordu
+   - `mobile/src/components/AppWebView.tsx` → WebView component
+   - URL: `https://alertachart.com` (production)
+   - Native özellikler:
+     - Push notifications (Expo Notifications)
+     - Device ID
+     - Deep linking
+     - OAuth (in-app browser)
+
+2. **Native Bridge:**
+   - Web ↔ Native communication
+   - `window.ReactNativeWebView.postMessage()` - Web'den Native'e
+   - `onMessage` handler - Native'den Web'e
+   - `injectedJavaScript` - Web'e script inject
+
+**Farklar (Capacitor vs Expo):**
+
+| Özellik | Capacitor (Aktif) | Expo (Eski) |
+|---------|-------------------|-------------|
+| **WebView URL** | Local entry + Remote app | Remote (`https://alertachart.com`) |
+| **Build** | Local (Android Studio/Xcode) | EAS Build (cloud) |
+| **Deployment** | Manuel (Play Store/App Store) | EAS Submit |
+| **Development** | Native IDE | Expo Go / Dev Client |
+| **Hot Reload** | ❌ Yok | ✅ Var |
+| **Native Plugins** | Capacitor plugins | Expo plugins |
+| **OAuth** | Native plugins | In-app browser |
+| **Push Notifications** | Capacitor + FCM | Expo Notifications |
 
 ---
 
@@ -249,7 +277,16 @@ alertachart/
 │   ├── websocketService.ts
 │   └── ...
 │
-├── mobile/                # Expo mobil app (AKTİF) ✅
+├── android/               # Capacitor Android (AKTİF) ✅
+│   └── app/
+│       └── src/main/java/
+│           └── MainActivity.java
+│
+├── ios/                   # Capacitor iOS (AKTİF) ✅
+│   └── App/
+│       └── AppDelegate.swift
+│
+├── mobile/                # Expo mobil app (ESKİ) ⚠️
 │   ├── App.tsx            # Ana uygulama
 │   ├── src/
 │   │   ├── components/
@@ -258,15 +295,6 @@ alertachart/
 │   │   └── utils/
 │   ├── app.json           # Expo config
 │   └── package.json
-│
-├── android/               # Capacitor Android (ESKİ) ⚠️
-│   └── app/
-│       └── src/main/java/
-│           └── MainActivity.java
-│
-├── ios/                   # Capacitor iOS (ESKİ) ⚠️
-│   └── App/
-│       └── AppDelegate.swift
 │
 ├── public/                # Static files
 │   ├── index.html         # Capacitor entry point
@@ -281,7 +309,48 @@ alertachart/
 
 ## 🔌 Native Bridge Communication
 
-### Web → Native (Expo)
+### Web → Native (Capacitor)
+
+**Web Tarafı:**
+```javascript
+// Web'den Native'e mesaj gönder (Capacitor plugins)
+const { LocalNotifications } = window.Capacitor.Plugins;
+
+LocalNotifications.schedule({
+  notifications: [{
+    title: '💰 Fiyat Alarmı',
+    body: 'BTC fiyatı 100000 seviyesine ulaştı!',
+    id: Date.now(),
+    sound: 'default',
+  }]
+});
+```
+
+**Native Tarafı:**
+```java
+// android/app/src/main/java/com/kriptokirmizi/alerta/MainActivity.java
+// Capacitor plugins otomatik olarak handle edilir
+// Custom plugin'ler için @CapacitorPlugin annotation kullanılır
+```
+
+### Native → Web (Capacitor)
+
+**Native Tarafı:**
+```java
+// Capacitor plugins otomatik olarak web'e expose edilir
+// Custom plugin'ler için PluginCall kullanılır
+```
+
+**Web Tarafı:**
+```javascript
+// Web'de Capacitor plugins kullan
+const { Device } = window.Capacitor.Plugins;
+const deviceInfo = await Device.getInfo();
+console.log('Platform:', deviceInfo.platform);
+console.log('Device ID:', deviceInfo.uuid);
+```
+
+### Web → Native (Expo - ESKİ)
 
 **Web Tarafı:**
 ```javascript
@@ -297,7 +366,7 @@ window.ReactNativeWebView.postMessage(
 
 **Native Tarafı:**
 ```typescript
-// mobile/src/components/AppWebView.tsx
+// mobile/src/components/AppWebView.tsx (ESKİ)
 <WebView
   onMessage={(event) => {
     const message = parseWebMessage(event);
@@ -308,28 +377,6 @@ window.ReactNativeWebView.postMessage(
     }
   }}
 />
-```
-
-### Native → Web (Expo)
-
-**Native Tarafı:**
-```typescript
-// mobile/src/utils/bridge.ts
-sendMessageToWeb(webViewRef.current, {
-  type: 'PUSH_TOKEN',
-  token: pushToken,
-});
-```
-
-**Web Tarafı:**
-```javascript
-// Web'de dinle
-window.addEventListener('nativeMessage', (event) => {
-  const message = event.detail;
-  if (message.type === 'PUSH_TOKEN') {
-    // Handle push token
-  }
-});
 ```
 
 ---
@@ -354,7 +401,36 @@ window.addEventListener('nativeMessage', (event) => {
    - Vercel'e push → Otomatik deploy
    - URL: `https://alertachart.com`
 
-### Mobil App (Expo)
+### Mobil App (Capacitor) - AKTİF
+
+1. **Build:**
+   ```bash
+   npm run build          # Next.js build
+   npx cap sync          # Capacitor sync
+   ```
+
+2. **Android:**
+   ```bash
+   npx cap open android
+   # Android Studio'da:
+   # - Build → Build Bundle(s) / APK(s) → Build APK(s)
+   # - APK: android/app/build/outputs/apk/debug/app-debug.apk
+   # - AAB: android/app/build/outputs/bundle/release/app-release.aab
+   ```
+
+3. **iOS:**
+   ```bash
+   npx cap open ios
+   # Xcode'da:
+   # - Product → Archive
+   # - Distribute App → App Store Connect
+   ```
+
+4. **Deploy:**
+   - **Android:** Google Play Console → Upload AAB
+   - **iOS:** App Store Connect → Upload IPA
+
+### Mobil App (Expo) - ESKİ
 
 1. **Development:**
    ```bash
@@ -377,26 +453,6 @@ window.addEventListener('nativeMessage', (event) => {
    eas submit --platform ios      # App Store
    ```
 
-### Mobil App (Capacitor) - ESKİ
-
-1. **Build:**
-   ```bash
-   npm run build
-   npx cap sync
-   ```
-
-2. **Android:**
-   ```bash
-   npx cap open android
-   # Android Studio'da build & sign
-   ```
-
-3. **iOS:**
-   ```bash
-   npx cap open ios
-   # Xcode'da build & archive
-   ```
-
 ---
 
 ## 🔐 Authentication Flow
@@ -406,94 +462,101 @@ window.addEventListener('nativeMessage', (event) => {
 - Session cookie-based
 - Database'de user kaydı
 
-### Mobil App (Expo)
+### Mobil App (Capacitor) - AKTİF
+- **Native plugins** ile OAuth
+- `@capacitor-community/apple-sign-in`
+- `@codetrix-studio/capacitor-google-auth`
+- Token'lar backend'e gönderilir (`/api/auth/google-native`)
+- Session cookie set edilir (`/api/auth/set-capacitor-session`)
+- NextAuth session oluşturulur
+
+### Mobil App (Expo) - ESKİ
 - **In-app browser** ile OAuth (ASWebAuthenticationSession / Chrome Custom Tabs)
 - Cookie sharing (Safari/Chrome cookies)
 - Session WebView'a aktarılır
 - NextAuth session oluşturulur
 
-### Mobil App (Capacitor) - ESKİ
-- **Native plugins** ile OAuth
-- `@capacitor-community/apple-sign-in`
-- `@codetrix-studio/capacitor-google-auth`
-- Token'lar backend'e gönderilir
-- Session cookie set edilir
-
 ---
 
 ## 📱 Push Notifications
 
-### Expo (AKTİF)
+### Capacitor (AKTİF)
+- **Capacitor Push Notifications** plugin
+- **FCM** (Firebase Cloud Messaging)
+- **FCM Token** → Backend'e kaydedilir (`/api/devices/register-native`)
+- Backend → FCM → Device
+- **Local Notifications** (Capacitor Local Notifications) - uygulama açıkken
+
+### Expo (ESKİ)
 - **Expo Notifications** (`expo-notifications`)
 - **FCM** (Firebase Cloud Messaging) backend
 - **Expo Push Token** → Backend'e kaydedilir
 - Backend → Expo Push API → Device
 
-### Capacitor (ESKİ)
-- **Capacitor Push Notifications** plugin
-- **FCM** (Firebase Cloud Messaging)
-- **FCM Token** → Backend'e kaydedilir
-- Backend → FCM → Device
-
 ---
 
 ## 🎯 Özet
 
-### ✅ Aktif Sistem: Expo + React Native WebView
+### ✅ Aktif Sistem: Capacitor
 
-**Durum:** Production'da kullanılıyor
+**Durum:** Production'da kullanılıyor (Expo'dan geçiş yapıldı)
 
 **Özellikler:**
-- WebView içinde Next.js web uygulaması
-- Remote URL (`https://alertachart.com`)
-- Native bridge ile communication
-- Push notifications
-- OAuth (in-app browser)
-- EAS Build & Submit
+- Capacitor WebView içinde Next.js web uygulaması
+- Local entry point (`public/capacitor-index.html`)
+- Remote app (`https://alertachart.com`)
+- Native plugins ile communication
+- Push notifications (Capacitor + FCM)
+- Local notifications (Capacitor Local Notifications)
+- OAuth (Google/Apple native plugins)
+- Custom WebViewController plugin
 
 **Build & Deploy:**
 ```bash
-cd mobile
-eas build --platform all
-eas submit --platform all
+npm run build          # Next.js build
+npx cap sync          # Capacitor sync
+npx cap open android  # Android Studio'da build
+npx cap open ios      # Xcode'da build
 ```
 
-### ⚠️ Eski Sistem: Capacitor
+**Deployment:**
+- Android: Android Studio → Build APK/AAB → Google Play Console
+- iOS: Xcode → Archive → App Store Connect
 
-**Durum:** Yapılandırılmış ama kullanılmıyor
+### ⚠️ Eski Sistem: Expo
+
+**Durum:** Eski sistem, artık kullanılmıyor
 
 **Özellikler:**
-- Capacitor WebView
-- Local bundled files
-- Native plugins
-- Capacitor CLI build
+- React Native WebView
+- Remote URL (`https://alertachart.com`)
+- Expo Notifications
+- EAS Build & Submit
 
-**Not:** Bu yapı muhtemelen eski bir deneme veya alternatif. Production'da kullanılmıyor.
+**Not:** Expo'dan Capacitor'e geçiş yapıldı. `mobile/` klasörü eski Expo yapısını içeriyor.
 
 ---
 
 ## 🔧 Geliştirme Önerileri
 
-### 1. Capacitor Kodlarını Temizle (İsteğe Bağlı)
-Eğer sadece Expo kullanacaksanız:
-- `android/` klasörünü kaldırın (Capacitor Android)
-- `ios/App/` klasörünü kaldırın (Capacitor iOS)
-- `capacitor.config.ts` dosyasını kaldırın
-- `public/capacitor-index.html` dosyasını kaldırın
-- `services/pushNotificationService.ts` içindeki Capacitor kodlarını temizleyin
+### 1. Expo Kodlarını Temizle (İsteğe Bağlı)
+Eğer sadece Capacitor kullanacaksanız:
+- `mobile/` klasörünü kaldırın (Expo yapısı)
+- Expo ile ilgili dokümantasyonları güncelleyin
+- `services/alertService.ts` içindeki Expo bridge kodlarını kontrol edin
 
-### 2. Expo'da Devam Et (ÖNERİLEN) ✅
+### 2. Capacitor'da Devam Et (ÖNERİLEN) ✅
 - Mevcut yapı çalışıyor
-- EAS Build kolay deployment
-- Hot reload var
-- Native bridge çalışıyor
+- Native plugins ile güçlü özellikler
+- Local + Remote app hybrid yapı
+- Production'da aktif
 
-### 3. Capacitor'e Geç (Alternatif)
-Eğer Capacitor kullanmak isterseniz:
-- `mobile/` klasörünü kaldırın
-- Capacitor yapısını aktif edin
-- Tüm Expo kodlarını Capacitor'e port edin
-- Local build yapın
+### 3. Expo'ya Geri Dön (Alternatif)
+Eğer Expo kullanmak isterseniz:
+- `android/` ve `ios/` klasörlerini kaldırın
+- `mobile/` klasörünü aktif edin
+- Tüm Capacitor kodlarını Expo'ya port edin
+- EAS Build kullanın
 
 ---
 
@@ -502,19 +565,21 @@ Eğer Capacitor kullanmak isterseniz:
 **Soru:** "WebView uygulamayı Capacitor ile native app haline getirebildik mi?"
 
 **Cevap:** 
-- ✅ **Evet, native app haline getirildi**
-- ❌ **Ama Capacitor ile değil, Expo ile!**
-- ⚠️ **Capacitor yapısı var ama kullanılmıyor**
+- ✅ **Evet, Capacitor ile native app haline getirildi!**
+- ✅ **Expo'dan Capacitor'e geçiş yapıldı**
+- ✅ **Capacitor şu an aktif sistem**
 
 **Aktif Sistem:**
-- **Expo + React Native WebView** ✅
-- WebView içinde Next.js web uygulaması
-- Native özellikler bridge ile ekleniyor
+- **Capacitor** ✅
+- Capacitor WebView içinde Next.js web uygulaması
+- Local entry point + Remote app
+- Native plugins ile özellikler ekleniyor
 - Production'da çalışıyor
 
 **Eski Sistem:**
-- **Capacitor** ⚠️
-- Yapılandırılmış ama aktif değil
+- **Expo + React Native WebView** ⚠️
+- `mobile/` klasöründe eski yapı
+- Artık kullanılmıyor
 - Alternatif olarak tutulabilir veya temizlenebilir
 
 ---
