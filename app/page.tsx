@@ -1518,7 +1518,13 @@ export default function Home() {
                   {/* Capacitor'da login butonu gösterme (native login ekranı var) */}
                   {!isCapacitor && (
                 <button
-                  onClick={() => setShowAuthModal(true)}
+                  onClick={() => {
+                    if (isWeb) {
+                      setShowLoginScreen(true);
+                    } else {
+                      setShowAuthModal(true);
+                    }
+                  }}
                       className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
                   Giriş Yap / Kayıt Ol
