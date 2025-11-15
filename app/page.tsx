@@ -823,10 +823,11 @@ export default function Home() {
               <span>{loginLoading ? 'Loading...' : 'Continue with Apple'}</span>
             </button>
             
-            {/* Email Button */}
+            {/* Email Button - Opens AuthModal for email/password */}
             <button
               onClick={() => {
                 setShowLoginScreen(false);
+                // Email/password için AuthModal aç (sadece email/password formu var)
                 setShowAuthModal(true);
               }}
               className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]"
@@ -878,11 +879,8 @@ export default function Home() {
                   ) : (
                     <button
                       onClick={() => {
-                        if (isWeb) {
-                          setShowLoginScreen(true);
-                        } else {
-                          setShowAuthModal(true);
-                        }
+                        // Web'de her zaman native login screen göster
+                        setShowLoginScreen(true);
                       }}
                       className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition"
                     >
@@ -1460,11 +1458,8 @@ export default function Home() {
               <p className="text-gray-400 mb-6">Aggr trading dashboard'unu kullanmak için lütfen giriş yapın.</p>
               <button
                 onClick={() => {
-                  if (isWeb) {
-                    setShowLoginScreen(true);
-                  } else {
-                    setShowAuthModal(true);
-                  }
+                  // Web'de her zaman native login screen göster
+                  setShowLoginScreen(true);
                 }}
                 className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
               >
@@ -1580,11 +1575,8 @@ export default function Home() {
                   {!isCapacitor && (
                 <button
                   onClick={() => {
-                    if (isWeb) {
-                      setShowLoginScreen(true);
-                    } else {
-                      setShowAuthModal(true);
-                    }
+                    // Web'de her zaman native login screen göster
+                    setShowLoginScreen(true);
                   }}
                       className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
                 >
