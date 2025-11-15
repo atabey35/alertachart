@@ -63,6 +63,10 @@ export default function Home() {
   } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [fullUser, setFullUser] = useState<User | null>(null);
+  
+  // Simple premium access check - use userPlan.hasPremiumAccess (from API) or fallback to fullUser
+  // This ensures database changes are reflected immediately
+  const hasPremiumAccessValue = userPlan?.hasPremiumAccess ?? hasPremiumAccessValue ?? false;
 
   // Capacitor kontrolü
   useEffect(() => {
@@ -797,7 +801,7 @@ export default function Home() {
                 </button>
                 <button
                   onClick={() => {
-                    if (hasPremiumAccess(fullUser)) {
+                    if (hasPremiumAccessValue) {
                       setLayout(4);
                     } else {
                       setShowUpgradeModal(true);
@@ -805,8 +809,8 @@ export default function Home() {
                   }}
                   className={`p-1.5 rounded transition-colors relative ${
                     layout === 4 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                  } ${!hasPremiumAccess(fullUser) ? 'opacity-60' : ''}`}
-                  title={hasPremiumAccess(fullUser) ? '2x2 Grid' : '2x2 Grid (Premium)'}
+                  } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
+                  title={hasPremiumAccessValue ? '2x2 Grid' : '2x2 Grid (Premium)'}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <rect x="3" y="3" width="8" height="8" rx="1"/>
@@ -814,13 +818,13 @@ export default function Home() {
                     <rect x="3" y="13" width="8" height="8" rx="1"/>
                     <rect x="13" y="13" width="8" height="8" rx="1"/>
                   </svg>
-                  {!hasPremiumAccess(fullUser) && (
+                  {!hasPremiumAccessValue && (
                     <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
                   )}
                 </button>
                 <button
                   onClick={() => {
-                    if (hasPremiumAccess(fullUser)) {
+                    if (hasPremiumAccessValue) {
                       setLayout(9);
                     } else {
                       setShowUpgradeModal(true);
@@ -828,8 +832,8 @@ export default function Home() {
                   }}
                   className={`p-1.5 rounded transition-colors relative ${
                     layout === 9 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                  } ${!hasPremiumAccess(fullUser) ? 'opacity-60' : ''}`}
-                  title={hasPremiumAccess(fullUser) ? '3x3 Grid' : '3x3 Grid (Premium)'}
+                  } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
+                  title={hasPremiumAccessValue ? '3x3 Grid' : '3x3 Grid (Premium)'}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <rect x="2" y="2" width="5" height="5" rx="0.5"/>
@@ -842,7 +846,7 @@ export default function Home() {
                     <rect x="9" y="16" width="5" height="5" rx="0.5"/>
                     <rect x="16" y="16" width="5" height="5" rx="0.5"/>
                   </svg>
-                  {!hasPremiumAccess(fullUser) && (
+                  {!hasPremiumAccessValue && (
                     <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
                   )}
                 </button>
@@ -892,7 +896,7 @@ export default function Home() {
               
               {/* Premium timeframes */}
               {PREMIUM_TIMEFRAMES.map((tf) => {
-                const isPremium = hasPremiumAccess(fullUser);
+                const isPremium = hasPremiumAccessValue;
                 const isActive = activeChart.timeframe === tf;
                 
                 return (
@@ -1196,7 +1200,7 @@ export default function Home() {
         {/* MOBILE: Aggr Tab (full screen) */}
         <div className={`${mobileTab === 'aggr' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-hidden bg-gray-950`}>
           {user ? (
-            hasPremiumAccess(fullUser) ? (
+            hasPremiumAccessValue ? (
               <iframe
                 src="https://aggr.alertachart.com?embed=true"
                 className="w-full h-full border-0"
@@ -1286,7 +1290,7 @@ export default function Home() {
                               <span className="capitalize">{(user as any).provider}</span>
                             </span>
                           )}
-                          {hasPremiumAccess(fullUser) && (
+                          {hasPremiumAccessValue && (
                             <PremiumBadge size="sm" showText={true} />
                           )}
                           {userPlan?.isTrial && userPlan.trialRemainingDays > 0 && (
@@ -1306,7 +1310,7 @@ export default function Home() {
                   </div>
                   
                   {/* Premium Upgrade Button */}
-                  {!hasPremiumAccess(fullUser) && (
+                  {!hasPremiumAccessValue && (
                     <button
                       onClick={() => setShowUpgradeModal(true)}
                       className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
@@ -1375,7 +1379,7 @@ export default function Home() {
                   const isActive = layout === layoutOption;
                   const layoutLabel = layoutOption === 1 ? '1x1' : layoutOption === 2 ? '1x2' : layoutOption === 4 ? '2x2' : '3x3';
                   const isPremiumLayout = layoutOption === 4 || layoutOption === 9;
-                  const hasAccess = !isPremiumLayout || hasPremiumAccess(fullUser);
+                  const hasAccess = !isPremiumLayout || hasPremiumAccessValue;
                   
                   // Grid icon based on layout
                   const getGridIcon = () => {
@@ -1527,7 +1531,7 @@ export default function Home() {
         {user && (
           <button
             onClick={() => {
-              if (hasPremiumAccess(fullUser)) {
+              if (hasPremiumAccessValue) {
                 setMobileTab('aggr');
               } else {
                 setShowUpgradeModal(true);
@@ -1541,7 +1545,7 @@ export default function Home() {
               <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
               </svg>
-              {!hasPremiumAccess(fullUser) && (
+              {!hasPremiumAccessValue && (
                 <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
               )}
             </div>
