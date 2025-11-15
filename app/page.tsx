@@ -222,11 +222,53 @@ export default function Home() {
     
     // Sync NextAuth session with user state
     if (status === 'authenticated' && session?.user) {
-      setUser({
+      const newUser = {
         id: (session.user as any).id || 0,
         email: session.user.email || '',
         name: session.user.name || undefined,
-      });
+      };
+      setUser(newUser);
+      
+      // 🔥 CRITICAL: Force fetch user plan immediately after login
+      // This ensures premium status is loaded right after Google/Apple login
+      const fetchUserPlanImmediately = async () => {
+        try {
+          const response = await fetch(`/api/user/plan?t=${Date.now()}`, {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            console.log('[App] User plan fetched after login:', data);
+            setUserPlan({
+              plan: data.plan || 'free',
+              isTrial: data.isTrial || false,
+              trialRemainingDays: data.trialDaysRemaining || 0,
+              expiryDate: data.expiryDate || null,
+              hasPremiumAccess: data.hasPremiumAccess || false,
+            });
+            setFullUser({
+              id: newUser.id,
+              email: newUser.email,
+              name: newUser.name,
+              plan: data.plan || 'free',
+              expiry_date: data.expiryDate || null,
+              trial_started_at: data.trialStartedAt || null,
+              trial_ended_at: data.trialEndedAt || null,
+              subscription_started_at: data.subscriptionStartedAt || null,
+              subscription_platform: data.subscriptionPlatform || null,
+              subscription_id: null,
+            });
+          }
+        } catch (error) {
+          console.error('[App] Error fetching user plan after login:', error);
+        }
+      };
+      
+      // Fetch immediately and also after a short delay (in case session is still updating)
+      fetchUserPlanImmediately();
+      setTimeout(fetchUserPlanImmediately, 500);
+      setTimeout(fetchUserPlanImmediately, 1500);
     } else if (status === 'unauthenticated') {
       // Fall back to legacy auth
       setUser(authService.getUser());
