@@ -1018,7 +1018,9 @@ export default function Home() {
       </header>
 
       {/* Main Content - Charts + Alerts + Watchlist */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className={`flex flex-1 overflow-hidden relative ${
+        isCapacitor ? 'pb-[calc(56px+max(env(safe-area-inset-bottom,0px),var(--safe-area-inset-bottom,56px)))]' : ''
+      }`}>
         {/* MOBILE: Chart Tab (full screen) */}
         <div className={`${mobileTab === 'chart' ? 'flex' : 'hidden'} md:flex flex-1 overflow-hidden relative`}>
           {/* Drawing Toolbar Toggle Button (Always visible on Desktop) */}
@@ -1565,7 +1567,17 @@ export default function Home() {
       </div>
 
       {/* MOBILE: Bottom Tab Navigation */}
-      <nav className="md:hidden border-t border-gray-800 bg-black flex items-center justify-around" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px))' }}>
+      <nav 
+        className={`md:hidden border-t border-gray-800 bg-black flex items-center justify-around ${
+          isCapacitor ? 'fixed bottom-0 left-0 right-0 z-50' : ''
+        }`}
+        style={{ 
+          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px))',
+          ...(isCapacitor ? { 
+            height: 'calc(56px + max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px)))' 
+          } : {})
+        }}
+      >
         <button
           onClick={() => setMobileTab('chart')}
           className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors ${
