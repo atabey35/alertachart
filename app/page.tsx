@@ -305,21 +305,42 @@ export default function Home() {
     authService.checkAuth();
     
     // 🔥 CRITICAL: Try to restore session if missing but refresh token exists
+    // This runs on app startup to restore session from cookies
     if (status === 'unauthenticated' && isCapacitor) {
       const restoreSession = async () => {
         try {
-          console.log('[App] Session missing, attempting to restore from refresh token...');
+          console.log('[App] 🔄 Session missing, attempting to restore from refresh token...');
+          
+          // Check if we have user email in localStorage (indicates previous login)
+          const savedEmail = typeof window !== 'undefined' ? localStorage.getItem('user_email') : null;
+          if (!savedEmail) {
+            console.log('[App] ℹ️ No saved email found, skipping session restore');
+            return;
+          }
+          
+          console.log('[App] 📧 Saved email found:', savedEmail, '- attempting session restore...');
+          
           const response = await fetch('/api/auth/restore-session', {
             method: 'POST',
-            credentials: 'include',
+            credentials: 'include', // 🔥 CRITICAL: Include cookies
           });
           
           if (response.ok) {
-            console.log('[App] ✅ Session restored successfully');
+            const result = await response.json();
+            console.log('[App] ✅ Session restored successfully:', result);
+            
             // Force NextAuth to re-check session
-            window.location.reload();
+            // Use window.location.reload() to fully refresh the app state
+            setTimeout(() => {
+              window.location.reload();
+            }, 300);
           } else {
-            console.log('[App] ⚠️ Session restore failed, user needs to login');
+            const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+            console.log('[App] ⚠️ Session restore failed:', error);
+            // Clear saved email if restore failed
+            if (typeof window !== 'undefined') {
+              localStorage.removeItem('user_email');
+            }
           }
         } catch (error) {
           console.error('[App] ❌ Error restoring session:', error);
@@ -327,7 +348,8 @@ export default function Home() {
       };
       
       // Try to restore session after a short delay (wait for cookies to be available)
-      setTimeout(restoreSession, 500);
+      // Increased delay to ensure cookies are fully loaded
+      setTimeout(restoreSession, 1000);
     }
     
     // Sync NextAuth session with user state
@@ -1785,7 +1807,7 @@ export default function Home() {
                   <button
                     onClick={async () => {
                       if (status === 'authenticated') {
-                        await signOut({ callbackUrl: '/' });
+                        await signOut({ callbackUrl: '/login' });
                       } else {
                         await authService.logout();
                       }

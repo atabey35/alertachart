@@ -7,9 +7,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Register custom plugins
-        CAPBridgeViewController.registerPlugin(WebViewControllerPlugin.self)
-        // Override point for customization after application launch.
+        // Capacitor 7 uses automatic plugin discovery via packageClassList
+        // WebViewController is registered automatically if it's in capacitor.config.json
+        print("[AppDelegate] ✅ Application launching - plugins will be auto-discovered")
+        
+        // 🔥 CRITICAL: Configure cookie persistence for session restore
+        // This ensures cookies (including auth tokens) persist across app restarts
+        HTTPCookieStorage.shared.cookieAcceptPolicy = .always
+        print("[AppDelegate] ✅ Cookie persistence configured (HTTPCookieStorage)")
+        
         return true
     }
 

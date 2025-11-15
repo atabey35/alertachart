@@ -190,6 +190,15 @@ class AuthService {
       console.error('[AuthService] Failed to logout on server:', e);
     }
 
+    // Clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user_email');
+      localStorage.removeItem('native_device_id');
+      localStorage.removeItem('native_platform');
+      localStorage.removeItem('fcm_token');
+      console.log('[AuthService] ✅ LocalStorage cleared');
+    }
+
     this.user = null;
     this.notifyListeners();
 
@@ -200,6 +209,16 @@ class AuthService {
       }
     } catch (e) {
       console.error('[AuthService] Failed to send logout to native:', e);
+    }
+
+    // 🔥 CRITICAL: Redirect to login page in Capacitor app
+    if (typeof window !== 'undefined') {
+      const isCapacitor = (window as any).Capacitor?.isNativePlatform();
+      if (isCapacitor) {
+        console.log('[AuthService] 🔄 Redirecting to login page...');
+        // Use window.location.href to navigate to login page
+        window.location.href = '/login';
+      }
     }
   }
 
