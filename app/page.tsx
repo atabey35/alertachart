@@ -1569,12 +1569,14 @@ export default function Home() {
       {/* MOBILE: Bottom Tab Navigation */}
       <nav 
         className={`md:hidden border-t border-gray-800 bg-black flex items-center justify-around ${
-          isCapacitor ? 'fixed bottom-0 left-0 right-0 z-50' : ''
+          isCapacitor ? 'fixed left-0 right-0 z-50' : ''
         }`}
         style={{ 
           paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px))',
           ...(isCapacitor ? { 
-            height: 'calc(56px + max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px)))' 
+            bottom: 'env(safe-area-inset-bottom, 0px)',
+            height: 'calc(56px + max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px)))',
+            marginBottom: 'env(safe-area-inset-bottom, 0px)'
           } : {})
         }}
       >
