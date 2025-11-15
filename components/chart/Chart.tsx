@@ -1652,7 +1652,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    */
   useEffect(() => {
     if (currentPrice > 0) {
-      alertService.checkPrice(exchange, pair, currentPrice);
+      (async () => {
+        await alertService.checkPrice(exchange, pair, currentPrice);
+      })();
       
       // Notify parent (using ref to avoid dependency issues)
       onPriceUpdateRef.current?.(currentPrice);

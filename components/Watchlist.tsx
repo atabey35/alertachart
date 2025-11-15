@@ -183,9 +183,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     }
 
     // WebSocket callback for real-time price updates
-    const handlePriceUpdate = (wsPriceData: Map<string, { symbol: string; price: number; change24h: number; volume24h: number; high24h: number; low24h: number }>) => {
+    const handlePriceUpdate = async (wsPriceData: Map<string, { symbol: string; price: number; change24h: number; volume24h: number; high24h: number; low24h: number }>) => {
       const newPriceData = new Map<string, WatchlistItem>();
       const newPrevPrices = new Map<string, number>();
+      const checkPricePromises: Promise<void>[] = [];
       
       wsPriceData.forEach((ticker, symbol) => {
         const currentPrice = ticker.price;
@@ -211,11 +212,16 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         
         // Check price alerts for this symbol (works for all coins, not just active chart)
         const exchange = marketType === 'futures' ? 'BINANCE_FUTURES' : 'BINANCE';
-        alertService.checkPrice(exchange, symbol, currentPrice);
+        checkPricePromises.push(alertService.checkPrice(exchange, symbol, currentPrice));
       });
       
       setPriceData(newPriceData);
       prevPricesRef.current = newPrevPrices; // Update ref directly (no re-render)
+      
+      // Wait for all price checks to complete (fire-and-forget, don't block UI)
+      Promise.all(checkPricePromises).catch(err => {
+        console.error('[Watchlist] Error checking prices:', err);
+      });
       
       // Clear flash after animation (increased to 800ms for better visibility)
       setTimeout(() => {

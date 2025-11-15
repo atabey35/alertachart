@@ -545,7 +545,7 @@ class AlertService {
     console.log('[AlertService] Alert dismissed:', id);
   }
 
-  checkPrice(exchange: string, pair: string, currentPrice: number) {
+  async checkPrice(exchange: string, pair: string, currentPrice: number) {
     const key = `${exchange}:${pair}`;
     const prevPrice = this.lastPrices.get(key);
     this.lastPrices.set(key, currentPrice);
@@ -559,16 +559,16 @@ class AlertService {
       a => !a.isTriggered && a.exchange === exchange && a.pair === pair
     );
 
-    relevantAlerts.forEach(alert => {
+    for (const alert of relevantAlerts) {
       const crossedAbove = prevPrice < alert.price && currentPrice >= alert.price;
       const crossedBelow = prevPrice > alert.price && currentPrice <= alert.price;
       const shouldTrigger = (alert.direction === 'above' && crossedAbove) ||
                             (alert.direction === 'below' && crossedBelow);
 
       if (shouldTrigger) {
-        this.triggerAlert(alert.id);
+        await this.triggerAlert(alert.id);
       }
-    });
+    }
   }
 
   getAlerts(exchange?: string, pair?: string): PriceAlert[] {
