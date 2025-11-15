@@ -1574,9 +1574,9 @@ export default function Home() {
         style={{ 
           paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px))',
           ...(isCapacitor ? { 
-            bottom: 'env(safe-area-inset-bottom, 0px)',
+            bottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)',
             height: 'calc(56px + max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px)))',
-            marginBottom: 'env(safe-area-inset-bottom, 0px)'
+            marginBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)'
           } : {})
         }}
       >
