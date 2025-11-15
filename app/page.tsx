@@ -1019,7 +1019,7 @@ export default function Home() {
 
       {/* Main Content - Charts + Alerts + Watchlist */}
       <div className={`flex flex-1 overflow-hidden relative ${
-        isCapacitor ? 'pb-[104px]' : '' // 56px (tab bar) + 48px (Android nav bar)
+        isCapacitor ? 'pb-[104px]' : '' // 56px (tab bar) + 48px (Android nav bar padding)
       }`}>
         {/* MOBILE: Chart Tab (full screen) */}
         <div className={`${mobileTab === 'chart' ? 'flex' : 'hidden'} md:flex flex-1 overflow-hidden relative`}>
@@ -1569,14 +1569,15 @@ export default function Home() {
       {/* MOBILE: Bottom Tab Navigation */}
       <nav 
         className={`md:hidden border-t border-gray-800 bg-black flex items-center justify-around ${
-          isCapacitor ? 'fixed left-0 right-0 z-50' : ''
+          isCapacitor ? 'fixed bottom-0 left-0 right-0 z-50' : ''
         }`}
         style={{ 
-          paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px))',
           ...(isCapacitor ? { 
-            bottom: '48px', // Android navigation bar yüksekliği (geri, orta, menü butonları)
-            height: '56px'
-          } : {})
+            paddingBottom: '48px', // Android navigation bar yüksekliği (geri, orta, menü butonları)
+            height: 'calc(56px + 48px)' // Tab bar + Android nav bar
+          } : {
+            paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px))'
+          })
         }}
       >
         <button
