@@ -71,19 +71,10 @@ class AuthService {
         this.notifyListeners();
         console.log('[AuthService] User authenticated:', this.user);
         
-        // 🔥 If user is authenticated and in Capacitor, trigger push token re-registration
-        if (this.user && typeof window !== 'undefined' && (window as any).Capacitor) {
-          console.log('[AuthService] 🔔 User authenticated in Capacitor, triggering push token re-registration...');
-          // Import and call re-register (avoid circular dependency)
-          setTimeout(async () => {
-            try {
-              const { pushNotificationService } = await import('./pushNotificationService');
-              await pushNotificationService.reRegisterAfterLogin();
-            } catch (e) {
-              console.error('[AuthService] Failed to re-register push token:', e);
-            }
-          }, 1000);
-        }
+        // YENİ MİMARİ: Token yönetimi native'de yapılıyor
+        // Native app zaten /api/devices/register-native ile token'ı kaydediyor
+        // Login sonrası /api/devices/link ile cihaz kullanıcıya bağlanıyor
+        // Web tarafında token'a ihtiyaç yok
         
         return this.user;
       } else {

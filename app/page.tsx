@@ -76,46 +76,11 @@ export default function Home() {
     }
   }, [isCapacitor]);
 
-  // Re-register push token after login (to link device to user account)
-  useEffect(() => {
-    if (!isCapacitor) return;
-
-    // Wait for auth check to complete, then check if user is logged in
-    const checkAndReRegister = async () => {
-      try {
-        console.log('[App] Checking auth status for push token re-registration...');
-        const user = await authService.checkAuth();
-        
-        if (user) {
-          console.log('[App] ✅ User authenticated, re-registering push token...', user.email);
-          // Wait a bit for cookies to be fully set
-          setTimeout(() => {
-            pushNotificationService.reRegisterAfterLogin();
-          }, 2000);
-        } else {
-          console.log('[App] ⚠️ User not authenticated yet, will re-register on login');
-        }
-      } catch (error) {
-        console.error('[App] Error checking auth:', error);
-      }
-    };
-
-    // Check immediately
-    checkAndReRegister();
-
-    // Also listen for login changes
-    const unsubscribe = authService.subscribe((user) => {
-      if (user && isCapacitor) {
-        console.log('[App] User logged in (via subscribe), re-registering push token...', user.email);
-        // Wait a bit for cookies to be set
-        setTimeout(() => {
-          pushNotificationService.reRegisterAfterLogin();
-        }, 2000);
-      }
-    });
-
-    return () => unsubscribe();
-  }, [isCapacitor]);
+  // YENİ MİMARİ: Token yönetimi native'de yapılıyor
+  // Native app zaten /api/devices/register-native ile token'ı kaydediyor
+  // Login sonrası native app /api/devices/link ile cihazı kullanıcıya bağlıyor
+  // Web tarafında token'a ihtiyaç yok, sadece alarm tetiklendiğinde /api/alarms/notify çağrılıyor
+  // Backend user_id'den cihazları bulur ve push token ile bildirim gönderir
 
   // Load chart/watchlist from URL params (for sharing)
   useEffect(() => {
