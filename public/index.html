@@ -487,14 +487,28 @@
         // 🔥 LISTEN FOR REGISTRATION FIRST (before register() call)
         // Listen for registration
         console.error('[Login] 🔔 Adding registration listener...');
-        PushNotifications.addListener('registration', async (token) => {
-          console.error('[Login] ✅ FCM Token received:', token.value);
-          console.error('[Login] ✅ FCM Token length:', token.value ? token.value.length : 0);
+        PushNotifications.addListener('registration', async (tokenData) => {
+          // 🔥 Handle both token object and string formats
+          const tokenValue = tokenData?.value || tokenData || '';
+          console.error('[Login] ✅ FCM Token received!');
+          console.error('[Login] ✅ Token data type:', typeof tokenData);
+          console.error('[Login] ✅ Token data:', JSON.stringify(tokenData));
+          console.error('[Login] ✅ Token value:', tokenValue);
+          console.error('[Login] ✅ Token length:', tokenValue ? tokenValue.length : 0);
+          
+          if (!tokenValue) {
+            console.error('[Login] ❌ Token is empty!');
+            return;
+          }
           
           // 🔥 STORE TOKEN IN LOCALSTORAGE (for remote app to re-register after login)
-          localStorage.setItem('fcm_token', token.value);
+          localStorage.setItem('fcm_token', tokenValue);
           console.error('[Login] ✅ FCM Token saved to localStorage');
-          console.error('[Login] ✅ Verification - localStorage.getItem("fcm_token"):', localStorage.getItem('fcm_token') ? `${localStorage.getItem('fcm_token').substring(0, 30)}...` : 'null');
+          
+          // Verify it was saved
+          const savedToken = localStorage.getItem('fcm_token');
+          console.error('[Login] ✅ Verification - localStorage.getItem("fcm_token"):', savedToken ? `${savedToken.substring(0, 30)}...` : 'null');
+          console.error('[Login] ✅ Verification - Token matches:', savedToken === tokenValue);
           
           // Register token with backend
           try {
@@ -524,23 +538,23 @@
               } else {
                 console.warn('[Login] Device plugin not available');
                 // Fallback: generate unique deviceId based on token
-                deviceId = `fcm-${token.value.substring(0, 20)}`;
+                deviceId = `fcm-${tokenValue.substring(0, 20)}`;
                 localStorage.setItem('native_device_id', deviceId);
               }
             } catch (deviceError) {
               console.warn('[Login] Device plugin error, using fallback:', deviceError);
               // Fallback: generate unique deviceId based on token
-              deviceId = `fcm-${token.value.substring(0, 20)}`;
+              deviceId = `fcm-${tokenValue.substring(0, 20)}`;
               localStorage.setItem('native_device_id', deviceId);
             }
             
-            console.log('[Login] Registering token with backend...');
+            console.error('[Login] Registering token with backend...');
             const { CapacitorHttp } = window.Capacitor.Plugins;
             const httpResponse = await CapacitorHttp.post({
               url: 'https://alertachart-backend-production.up.railway.app/api/push/register',
               headers: { 'Content-Type': 'application/json' },
               data: {
-                token: token.value,
+                token: tokenValue,
                 platform: platform,
                 deviceId: deviceId,
                 model: model,
@@ -550,9 +564,9 @@
             });
             
             if (httpResponse.status === 200) {
-              console.log('[Login] ✅ Token registered with backend:', httpResponse.data);
+              console.error('[Login] ✅ Token registered with backend:', JSON.stringify(httpResponse.data));
             } else {
-              console.error('[Login] Failed to register token:', httpResponse.data);
+              console.error('[Login] ❌ Failed to register token:', JSON.stringify(httpResponse.data));
             }
           } catch (error) {
             console.error('[Login] Error registering token:', error);
