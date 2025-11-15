@@ -494,6 +494,7 @@ class AlertService {
                 },
                 // Backend user_id'den tüm cihazları bulacak, deviceId göndermeye gerek yok
               deviceId: finalDeviceId || undefined, // Optional: bu cihaza öncelik ver
+              isLocalAlarm: true, // 🔥 CRITICAL: Bu local alarm (mobil uygulamada kurulan), premium kontrolü yapılmayacak
             };
             
             console.log('[AlertService] 📤 Sending fetch request to /api/alarms/notify with body:', JSON.stringify(requestBody, null, 2));
