@@ -59,6 +59,7 @@ export default function Home() {
     isTrial: boolean;
     trialRemainingDays: number;
     expiryDate?: string | null;
+    hasPremiumAccess?: boolean;
   } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [fullUser, setFullUser] = useState<User | null>(null);
@@ -254,6 +255,7 @@ export default function Home() {
             isTrial: data.isTrial || false,
             trialRemainingDays: data.trialRemainingDays || 0,
             expiryDate: data.expiryDate || null,
+            hasPremiumAccess: data.hasPremiumAccess || false,
           });
 
           // Set full user object for premium utilities
@@ -263,10 +265,10 @@ export default function Home() {
             name: user.name,
             plan: data.plan || 'free',
             expiry_date: data.expiryDate || null,
-            trial_started_at: null, // Will be fetched if needed
-            trial_ended_at: null,
-            subscription_started_at: null,
-            subscription_platform: null,
+            trial_started_at: data.trialStartedAt || null,
+            trial_ended_at: data.trialEndedAt || null,
+            subscription_started_at: data.subscriptionStartedAt || null,
+            subscription_platform: data.subscriptionPlatform || null,
             subscription_id: null,
           });
         }
