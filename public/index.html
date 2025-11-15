@@ -914,6 +914,56 @@
     // Start push notifications on page load
     initPushNotifications();
 
+    // 🔥 CRITICAL: Try to restore session on app startup
+    // This runs when app opens and user_email exists in localStorage
+    async function tryRestoreSession() {
+      try {
+        // Check if we're in a Capacitor app
+        if (typeof window === 'undefined' || !window.Capacitor) {
+          console.log('[Login] Not a Capacitor app, skipping session restore');
+          return;
+        }
+
+        // Wait a bit for cookies to be available
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
+        console.log('[Login] 🔄 Checking for session restore...');
+
+        // Check if we have user email in localStorage (indicates previous login)
+        const savedEmail = localStorage.getItem('user_email');
+        if (!savedEmail) {
+          console.log('[Login] ℹ️ No saved email found, skipping session restore');
+          return;
+        }
+
+        console.log('[Login] 📧 Saved email found:', savedEmail, '- attempting session restore...');
+
+        const response = await fetch('/api/auth/restore-session', {
+          method: 'POST',
+          credentials: 'include', // 🔥 CRITICAL: Include cookies
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          console.log('[Login] ✅ Session restored successfully:', result);
+
+          // Redirect to home page - session will be active there
+          console.log('[Login] 🔄 Redirecting to home page...');
+          window.location.href = '/';
+        } else {
+          const error = await response.json().catch(() => ({ error: 'Unknown error' }));
+          console.log('[Login] ⚠️ Session restore failed:', error);
+          // Clear saved email if restore failed
+          localStorage.removeItem('user_email');
+        }
+      } catch (error) {
+        console.error('[Login] ❌ Error restoring session:', error);
+      }
+    }
+
+    // Try to restore session on page load
+    tryRestoreSession();
+
     console.log('[Login] App initialized');
   </script>
 </body>
