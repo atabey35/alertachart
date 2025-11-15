@@ -317,35 +317,24 @@ export default function Home() {
           
           console.log('[App] 🔄 Checking for session restore (status:', status, ')...');
           
-          // 🔥 CRITICAL: Check for refreshToken cookie first (more reliable than localStorage on iOS)
-          // Cookies persist better than localStorage on iOS WebView
-          function getCookie(name: string): string | null {
-            if (typeof document === 'undefined') return null;
-            const value = `; ${document.cookie}`;
-            const parts = value.split(`; ${name}=`);
-            if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
-            return null;
-          }
-
-          const refreshToken = getCookie('refreshToken');
+          // 🔥 CRITICAL: In iOS WebView, cookies are shared via WKWebsiteDataStore
+          // We can't read cookies from document.cookie in capacitor://localhost
+          // But cookies will be sent automatically with credentials: 'include'
+          // So we'll always try to restore - if cookie exists, it will work
+          
+          // Check localStorage as a hint (but don't rely on it exclusively)
           const savedEmail = typeof window !== 'undefined' ? localStorage.getItem('user_email') : null;
           
-          // If no cookie and no localStorage, skip restore
-          if (!refreshToken && !savedEmail) {
-            console.log('[App] ℹ️ No refresh token cookie or saved email found, skipping session restore');
-            return;
+          if (savedEmail) {
+            console.log('[App] 📧 Saved email found:', savedEmail, '- attempting session restore...');
+          } else {
+            console.log('[App] ℹ️ No saved email in localStorage, but attempting session restore anyway (cookies may exist)...');
           }
           
-          // Log what we found
-          if (refreshToken) {
-            console.log('[App] 🔑 Refresh token cookie found - attempting session restore...');
-          } else if (savedEmail) {
-            console.log('[App] 📧 Saved email found (no cookie):', savedEmail, '- attempting session restore...');
-          }
-          
+          // Always try to restore - cookies will be sent automatically if they exist
           const response = await fetch('/api/auth/restore-session', {
             method: 'POST',
-            credentials: 'include', // 🔥 CRITICAL: Include cookies
+            credentials: 'include', // 🔥 CRITICAL: Include cookies (will work if cookies exist in WKWebsiteDataStore)
           });
           
           if (response.ok) {
