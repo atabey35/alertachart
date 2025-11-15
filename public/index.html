@@ -227,6 +227,26 @@
           console.log('[Login] GoogleAuth already initialized');
         }
 
+        // 🔥 WAIT FOR FCM TOKEN (if not already available)
+        let fcmToken = localStorage.getItem('fcm_token');
+        if (!fcmToken) {
+          console.log('[Login] ⏳ FCM token not found, waiting for registration...');
+          // Wait up to 5 seconds for token
+          for (let i = 0; i < 50; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            fcmToken = localStorage.getItem('fcm_token');
+            if (fcmToken) {
+              console.log('[Login] ✅ FCM token received after waiting:', fcmToken.substring(0, 30) + '...');
+              break;
+            }
+          }
+          if (!fcmToken) {
+            console.warn('[Login] ⚠️ FCM token still not available after waiting');
+          }
+        } else {
+          console.log('[Login] ✅ FCM token already available:', fcmToken.substring(0, 30) + '...');
+        }
+
         // Sign in
         const result = await GoogleAuth.signIn();
         console.log('[Login] Google Sign-In success:', result);
@@ -259,10 +279,10 @@
         const WebViewController = window.Capacitor.Plugins.WebViewController;
         
         if (WebViewController) {
-          // Get device ID and FCM token from localStorage
+          // Get device ID and FCM token from localStorage (refresh token in case it was just received)
           const deviceId = localStorage.getItem('native_device_id') || 'unknown';
           const platform = localStorage.getItem('native_platform') || 'android';
-          const fcmToken = localStorage.getItem('fcm_token') || '';
+          fcmToken = localStorage.getItem('fcm_token') || fcmToken || ''; // Use refreshed token
           
           // Build URL with all necessary params
           const params = new URLSearchParams({
@@ -276,9 +296,9 @@
           // Add FCM token if available (may be long, but necessary for re-registration)
           if (fcmToken) {
             params.append('fcm_token', fcmToken);
-            console.log('[Login] FCM token will be passed to remote app');
+            console.log('[Login] ✅ FCM token will be passed to remote app (length:', fcmToken.length, ')');
           } else {
-            console.warn('[Login] ⚠️ No FCM token found in localStorage!');
+            console.error('[Login] ❌ No FCM token found in localStorage!');
           }
           
           const authUrl = `https://alertachart.com/capacitor-auth?${params.toString()}`;
@@ -310,6 +330,26 @@
         
         if (!SignInWithApple) {
           throw new Error('Apple Sign-In plugin not available');
+        }
+
+        // 🔥 WAIT FOR FCM TOKEN (if not already available)
+        let fcmToken = localStorage.getItem('fcm_token');
+        if (!fcmToken) {
+          console.log('[Login] ⏳ FCM token not found, waiting for registration...');
+          // Wait up to 5 seconds for token
+          for (let i = 0; i < 50; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            fcmToken = localStorage.getItem('fcm_token');
+            if (fcmToken) {
+              console.log('[Login] ✅ FCM token received after waiting:', fcmToken.substring(0, 30) + '...');
+              break;
+            }
+          }
+          if (!fcmToken) {
+            console.warn('[Login] ⚠️ FCM token still not available after waiting');
+          }
+        } else {
+          console.log('[Login] ✅ FCM token already available:', fcmToken.substring(0, 30) + '...');
         }
 
         const result = await SignInWithApple.authorize({
@@ -347,10 +387,10 @@
         const WebViewController = window.Capacitor.Plugins.WebViewController;
         
         if (WebViewController) {
-          // Get device ID and FCM token from localStorage
+          // Get device ID and FCM token from localStorage (refresh token in case it was just received)
           const deviceId = localStorage.getItem('native_device_id') || 'unknown';
           const platform = localStorage.getItem('native_platform') || 'android';
-          const fcmToken = localStorage.getItem('fcm_token') || '';
+          fcmToken = localStorage.getItem('fcm_token') || fcmToken || ''; // Use refreshed token
           
           // Build URL with all necessary params
           const params = new URLSearchParams({
@@ -364,9 +404,9 @@
           // Add FCM token if available (may be long, but necessary for re-registration)
           if (fcmToken) {
             params.append('fcm_token', fcmToken);
-            console.log('[Login] FCM token will be passed to remote app');
+            console.log('[Login] ✅ FCM token will be passed to remote app (length:', fcmToken.length, ')');
           } else {
-            console.warn('[Login] ⚠️ No FCM token found in localStorage!');
+            console.error('[Login] ❌ No FCM token found in localStorage!');
           }
           
           const authUrl = `https://alertachart.com/capacitor-auth?${params.toString()}`;
