@@ -347,22 +347,55 @@ class AlertService {
       // Notify trigger listeners (for modal)
       this.alertTriggerListeners.forEach(listener => listener(alert));
       
-      // Send message to React Native WebView (for mobile notifications)
-      if (typeof window !== 'undefined' && (window as any).ReactNativeWebView) {
+      // 🔥 CRITICAL: Show local notification using Capacitor LocalNotifications
+      // Bu, uygulama açıkken veya arka plandayken bildirim göstermek için
+      if (typeof window !== 'undefined' && (window as any).Capacitor) {
         try {
-          (window as any).ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'ALERT_TRIGGERED',
-            alert: {
-              id: alert.id,
-              exchange: alert.exchange,
-              pair: alert.pair,
-              price: alert.price,
-              direction: alert.direction,
-              triggeredAt: alert.triggeredAt,
-            }
-          }));
+          const formattedPrice = formatPrice(alert.price);
+          const upperSymbol = alert.pair.toUpperCase();
+          const directionText = alert.direction === 'above' ? 'ulaştı' : 'düştü';
+          
+          const { LocalNotifications } = (window as any).Capacitor.Plugins;
+          
+          if (LocalNotifications) {
+            // Request permission if not already granted
+            LocalNotifications.requestPermissions().then((result: any) => {
+              if (result.display === 'granted') {
+                // Schedule local notification
+                LocalNotifications.schedule({
+                  notifications: [
+                    {
+                      title: '💰 Fiyat Alarmı',
+                      body: `${upperSymbol} fiyatı ${formattedPrice} seviyesine ${directionText}!`,
+                      id: Date.now(), // Unique ID
+                      sound: 'default',
+                      attachments: undefined,
+                      actionTypeId: '',
+                      extra: {
+                        type: 'price_alert',
+                        alertId: alert.id,
+                        symbol: upperSymbol,
+                        price: alert.price,
+                        direction: alert.direction,
+                      },
+                    },
+                  ],
+                }).then(() => {
+                  console.log('[AlertService] ✅ Local notification scheduled via Capacitor');
+                }).catch((error: any) => {
+                  console.error('[AlertService] ❌ Failed to schedule local notification:', error);
+                });
+              } else {
+                console.warn('[AlertService] Local notification permission not granted');
+              }
+            }).catch((error: any) => {
+              console.error('[AlertService] ❌ Failed to request notification permission:', error);
+            });
+          } else {
+            console.warn('[AlertService] LocalNotifications plugin not available');
+          }
         } catch (e) {
-          console.debug('[AlertService] Failed to send message to React Native:', e);
+          console.error('[AlertService] ❌ Failed to show local notification:', e);
         }
       }
       

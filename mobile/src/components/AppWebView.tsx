@@ -4,6 +4,7 @@ import WebView from 'react-native-webview';
 import { WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
 import Constants from 'expo-constants';
 import * as WebBrowser from 'expo-web-browser';
+import * as Notifications from 'expo-notifications';
 import { INJECTED_JAVASCRIPT, parseWebMessage, sendMessageToWeb } from '../utils/bridge';
 
 // Production URL
@@ -187,6 +188,12 @@ export default function AppWebView({
         }
         break;
 
+      case 'ALERT_TRIGGERED':
+        // 🔥 CRITICAL: Alarm tetiklendiğinde local notification göster
+        // Bu, uygulama açıkken veya arka plandayken bildirim göstermek için
+        handleAlertTriggered(message);
+        break;
+
       case 'AUTH_TOKEN':
         // Web'den auth token geldi - native tarafa ilet
         if (message.payload?.token) {
@@ -210,6 +217,53 @@ export default function AppWebView({
         // Özel mesajlar için extension noktası
         console.log('[WebView] Custom message:', message.payload);
         break;
+    }
+  };
+
+  /**
+   * Alarm tetiklendiğinde local notification göster
+   * Bu, uygulama açıkken veya arka plandayken bildirim göstermek için
+   */
+  const handleAlertTriggered = async (message: any) => {
+    try {
+      console.log('[WebView] 🚨 ALERT_TRIGGERED received:', message);
+      
+      // Notification bilgilerini al
+      const notification = message.notification || {
+        title: '💰 Fiyat Alarmı',
+        body: message.alert 
+          ? `${message.alert.pair?.toUpperCase() || 'N/A'} fiyatı ${message.alert.price || 'N/A'} seviyesine ${message.alert.direction === 'above' ? 'ulaştı' : 'düştü'}!`
+          : 'Fiyat alarmı tetiklendi!',
+        data: {
+          type: 'price_alert',
+          alertId: message.alert?.id,
+          symbol: message.alert?.pair?.toUpperCase(),
+          price: message.alert?.price,
+          direction: message.alert?.direction,
+        }
+      };
+
+      console.log('[WebView] 📱 Showing local notification:', notification);
+
+      // Expo Notifications ile local notification göster
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: notification.title || '💰 Fiyat Alarmı',
+          body: notification.body || 'Fiyat alarmı tetiklendi!',
+          data: notification.data || {},
+          sound: true, // Ses çal
+          priority: Notifications.AndroidNotificationPriority.HIGH,
+          // Android için channel belirt (alarms-v2 channel'ı kullan)
+          ...(Platform.OS === 'android' && {
+            channelId: 'alarms-v2', // Yüksek öncelikli channel
+          }),
+        },
+        trigger: null, // Hemen göster (null = immediate)
+      });
+
+      console.log('[WebView] ✅ Local notification shown successfully');
+    } catch (error) {
+      console.error('[WebView] ❌ Failed to show local notification:', error);
     }
   };
 
