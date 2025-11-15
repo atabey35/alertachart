@@ -141,5 +141,20 @@ public class MainActivity extends BridgeActivity {
                 }
             });
         }
+        
+        @PluginMethod
+        public void reload(PluginCall call) {
+            // 🔥 CRITICAL: Reload WebView without opening external browser
+            getBridge().getActivity().runOnUiThread(() -> {
+                WebView webView = getBridge().getWebView();
+                if (webView != null) {
+                    webView.reload();
+                    android.util.Log.d("WebViewController", "✅ WebView reloaded");
+                    call.resolve();
+                } else {
+                    call.reject("WebView not available");
+                }
+            });
+        }
     }
 }

@@ -171,6 +171,55 @@ export default function RootLayout({
           src="https://cdn.jsdelivr.net/npm/@capacitor/core@7.4.4/dist/capacitor.js"
           strategy="beforeInteractive"
         />
+        
+        {/* 🔥 CRITICAL: Override window.location.reload() for Capacitor */}
+        <Script id="capacitor-reload-override" strategy="afterInteractive">
+          {`
+            (function() {
+              // Wait for Capacitor to be ready
+              if (typeof window !== 'undefined' && window.Capacitor) {
+                console.log('[Capacitor Reload Override] Initializing...');
+                
+                // Override window.location.reload() to prevent external browser opening
+                const originalReload = window.location.reload;
+                window.location.reload = function(forcedReload) {
+                  console.log('[Capacitor Reload Override] window.location.reload() intercepted');
+                  
+                  // Check if we're in Capacitor app
+                  if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.WebViewController) {
+                    console.log('[Capacitor Reload Override] Using WebViewController.reload()');
+                    window.Capacitor.Plugins.WebViewController.reload()
+                      .then(() => {
+                        console.log('[Capacitor Reload Override] ✅ WebView reloaded successfully');
+                      })
+                      .catch((error) => {
+                        console.error('[Capacitor Reload Override] ❌ Reload failed:', error);
+                        // Fallback to original reload
+                        originalReload.call(window.location, forcedReload);
+                      });
+                    return; // Prevent default reload behavior
+                  }
+                  
+                  // Web'de: Normal reload (fallback)
+                  console.log('[Capacitor Reload Override] Using original reload (web)');
+                  originalReload.call(window.location, forcedReload);
+                };
+                
+                console.log('[Capacitor Reload Override] ✅ window.location.reload() overridden');
+              } else {
+                // Capacitor not ready yet, try again after a delay
+                setTimeout(function() {
+                  if (window.Capacitor) {
+                    const script = document.getElementById('capacitor-reload-override');
+                    if (script) {
+                      script.innerHTML = script.innerHTML;
+                    }
+                  }
+                }, 1000);
+              }
+            })();
+          `}
+        </Script>
       </head>
       <body className="bg-[#0a0a0a] text-white">
         {/* Google Tag Manager (noscript) */}

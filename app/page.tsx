@@ -1167,20 +1167,34 @@ export default function Home() {
                     {/* Refresh Button - Next to Live indicator */}
                     <button
                       onClick={() => {
-                        // 🔥 MOBİL APP FIX: window.location.reload() harici tarayıcı açıyor
-                        // Çözüm: window.location.reload() WebView'da override edildi
-                        // Mobil app'te: Chart component'lerini reload et (key değiştirerek) - daha smooth
-                        // Web'de: window.location.reload() kullan (override edilmediği için normal çalışır)
-                        const isNativeApp = typeof window !== 'undefined' && (window as any).isNativeApp;
+                        // 🔥 CAPACITOR FIX: window.location.reload() harici tarayıcı açıyor
+                        // Çözüm 1: window.location.reload() Capacitor'de override edildi (app/layout.tsx)
+                        // Çözüm 2: Chart component'lerini reload et (key değiştirerek) - daha smooth
+                        // Hybrid approach: Hem override hem de chart reload (double protection)
                         
-                        if (isNativeApp) {
-                          // Mobil app: Chart component'lerini reload et (key değiştirerek)
-                          // Bu daha smooth ve state'i korur
-                          console.log('[App] Mobile app detected - Reloading charts...');
+                        const isCapacitor = typeof window !== 'undefined' && (window as any).Capacitor;
+                        const isExpo = typeof window !== 'undefined' && (window as any).isNativeApp;
+                        const isNativeApp = isCapacitor || isExpo;
+                        
+                        if (isCapacitor) {
+                          // Capacitor: Chart component'lerini reload et (smooth) + override zaten var
+                          console.log('[App] Capacitor app detected - Reloading charts...');
+                          setChartRefreshKey(prev => prev + 1);
+                          
+                          // Double protection: WebViewController.reload() çağır (eğer override çalışmazsa)
+                          if ((window as any).Capacitor?.Plugins?.WebViewController) {
+                            (window as any).Capacitor.Plugins.WebViewController.reload()
+                              .catch((error: any) => {
+                                console.error('[App] WebViewController.reload() failed:', error);
+                              });
+                          }
+                        } else if (isExpo) {
+                          // Expo: Chart component'lerini reload et (smooth)
+                          console.log('[App] Expo app detected - Reloading charts...');
                           setChartRefreshKey(prev => prev + 1);
                         } else {
                           // Web: Sayfayı reload et (backward compatibility)
-                          // window.location.reload() WebView'da override edilmediği için normal çalışır
+                          console.log('[App] Web detected - Full page reload');
                           window.location.reload();
                         }
                       }}
