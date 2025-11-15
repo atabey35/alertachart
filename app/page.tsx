@@ -317,14 +317,31 @@ export default function Home() {
           
           console.log('[App] 🔄 Checking for session restore (status:', status, ')...');
           
-          // Check if we have user email in localStorage (indicates previous login)
+          // 🔥 CRITICAL: Check for refreshToken cookie first (more reliable than localStorage on iOS)
+          // Cookies persist better than localStorage on iOS WebView
+          function getCookie(name: string): string | null {
+            if (typeof document === 'undefined') return null;
+            const value = `; ${document.cookie}`;
+            const parts = value.split(`; ${name}=`);
+            if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
+            return null;
+          }
+
+          const refreshToken = getCookie('refreshToken');
           const savedEmail = typeof window !== 'undefined' ? localStorage.getItem('user_email') : null;
-          if (!savedEmail) {
-            console.log('[App] ℹ️ No saved email found, skipping session restore');
+          
+          // If no cookie and no localStorage, skip restore
+          if (!refreshToken && !savedEmail) {
+            console.log('[App] ℹ️ No refresh token cookie or saved email found, skipping session restore');
             return;
           }
           
-          console.log('[App] 📧 Saved email found:', savedEmail, '- attempting session restore...');
+          // Log what we found
+          if (refreshToken) {
+            console.log('[App] 🔑 Refresh token cookie found - attempting session restore...');
+          } else if (savedEmail) {
+            console.log('[App] 📧 Saved email found (no cookie):', savedEmail, '- attempting session restore...');
+          }
           
           const response = await fetch('/api/auth/restore-session', {
             method: 'POST',
@@ -334,6 +351,12 @@ export default function Home() {
           if (response.ok) {
             const result = await response.json();
             console.log('[App] ✅ Session restored successfully:', result);
+            
+            // Save email to localStorage for future checks (if not already saved)
+            if (result.user?.email && typeof window !== 'undefined' && !savedEmail) {
+              localStorage.setItem('user_email', result.user.email);
+              console.log('[App] ✅ User email saved to localStorage for future checks');
+            }
             
             // Force NextAuth to re-check session
             // First try to update the session
@@ -359,7 +382,7 @@ export default function Home() {
             const error = await response.json().catch(() => ({ error: 'Unknown error' }));
             console.log('[App] ⚠️ Session restore failed:', error);
             // Clear saved email if restore failed
-            if (typeof window !== 'undefined') {
+            if (typeof window !== 'undefined' && savedEmail) {
               localStorage.removeItem('user_email');
             }
           }

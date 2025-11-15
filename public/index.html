@@ -915,7 +915,7 @@
     initPushNotifications();
 
     // 🔥 CRITICAL: Try to restore session on app startup
-    // This runs when app opens and user_email exists in localStorage
+    // This runs when app opens - checks cookies first (more reliable than localStorage on iOS)
     async function tryRestoreSession() {
       try {
         // Check if we're in a Capacitor app
@@ -929,14 +929,30 @@
 
         console.log('[Login] 🔄 Checking for session restore...');
 
-        // Check if we have user email in localStorage (indicates previous login)
+        // 🔥 CRITICAL: Check for refreshToken cookie first (more reliable than localStorage on iOS)
+        // Cookies persist better than localStorage on iOS WebView
+        function getCookie(name) {
+          const value = `; ${document.cookie}`;
+          const parts = value.split(`; ${name}=`);
+          if (parts.length === 2) return parts.pop().split(';').shift();
+          return null;
+        }
+
+        const refreshToken = getCookie('refreshToken');
         const savedEmail = localStorage.getItem('user_email');
-        if (!savedEmail) {
-          console.log('[Login] ℹ️ No saved email found, skipping session restore');
+
+        // If no cookie and no localStorage, skip restore
+        if (!refreshToken && !savedEmail) {
+          console.log('[Login] ℹ️ No refresh token cookie or saved email found, skipping session restore');
           return;
         }
 
-        console.log('[Login] 📧 Saved email found:', savedEmail, '- attempting session restore...');
+        // Log what we found
+        if (refreshToken) {
+          console.log('[Login] 🔑 Refresh token cookie found - attempting session restore...');
+        } else if (savedEmail) {
+          console.log('[Login] 📧 Saved email found (no cookie):', savedEmail, '- attempting session restore...');
+        }
 
         const response = await fetch('/api/auth/restore-session', {
           method: 'POST',
@@ -947,6 +963,12 @@
           const result = await response.json();
           console.log('[Login] ✅ Session restored successfully:', result);
 
+          // Save email to localStorage for future checks (if not already saved)
+          if (result.user?.email && !savedEmail) {
+            localStorage.setItem('user_email', result.user.email);
+            console.log('[Login] ✅ User email saved to localStorage for future checks');
+          }
+
           // Redirect to home page - session will be active there
           console.log('[Login] 🔄 Redirecting to home page...');
           window.location.href = '/';
@@ -954,7 +976,9 @@
           const error = await response.json().catch(() => ({ error: 'Unknown error' }));
           console.log('[Login] ⚠️ Session restore failed:', error);
           // Clear saved email if restore failed
-          localStorage.removeItem('user_email');
+          if (savedEmail) {
+            localStorage.removeItem('user_email');
+          }
         }
       } catch (error) {
         console.error('[Login] ❌ Error restoring session:', error);
