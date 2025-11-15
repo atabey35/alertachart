@@ -52,13 +52,20 @@ export default function Home() {
   const [triggeredAlert, setTriggeredAlert] = useState<PriceAlert | null>(null);
 
   // Auth state
-  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false); // Only for Capacitor email/password
   const [showLoginScreen, setShowLoginScreen] = useState(false); // Native login screen for web
+  const [showEmailForm, setShowEmailForm] = useState(false); // Email/password form in login screen
   const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
   const { data: session, status } = useSession();
   const [isCapacitor, setIsCapacitor] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  
+  // Email/password form state (for login screen)
+  const [emailFormEmail, setEmailFormEmail] = useState('');
+  const [emailFormPassword, setEmailFormPassword] = useState('');
+  const [emailFormName, setEmailFormName] = useState('');
+  const [emailFormIsLogin, setEmailFormIsLogin] = useState(true);
 
   // Premium state
   const [userPlan, setUserPlan] = useState<{
