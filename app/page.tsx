@@ -78,13 +78,24 @@ export default function Home() {
 
   // Re-register push token after login (to link device to user account)
   useEffect(() => {
-    const unsubscribe = authService.subscribe((currentUser) => {
-      if (currentUser && isCapacitor) {
+    // Check if user is already logged in on mount
+    const currentUser = authService.getUser();
+    if (currentUser && isCapacitor) {
+      console.log('[App] User already logged in on mount, re-registering push token...');
+      // Wait a bit for cookies to be set
+      setTimeout(() => {
+        pushNotificationService.reRegisterAfterLogin();
+      }, 2000);
+    }
+
+    // Also listen for login changes
+    const unsubscribe = authService.subscribe((user) => {
+      if (user && isCapacitor) {
         console.log('[App] User logged in, re-registering push token...');
         // Wait a bit for cookies to be set
         setTimeout(() => {
           pushNotificationService.reRegisterAfterLogin();
-        }, 1000);
+        }, 2000);
       }
     });
 

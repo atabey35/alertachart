@@ -47,6 +47,13 @@ class CapacitorPushNotificationService implements PushNotificationService {
       PushNotifications.addListener('registration', (token: any) => {
         console.log('[PushNotification] FCM Token:', token.value);
         this.fcmToken = token.value;
+        
+        // 🔥 STORE TOKEN IN LOCALSTORAGE (for re-registration after login)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('fcm_token', token.value);
+          console.log('[PushNotification] ✅ FCM Token saved to localStorage');
+        }
+        
         this.registerTokenWithBackend(token.value);
       });
 
@@ -181,15 +188,22 @@ class CapacitorPushNotificationService implements PushNotificationService {
    */
   async reRegisterAfterLogin(): Promise<void> {
     try {
-      // Get token from localStorage (set by public/index.html)
-      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('fcm_token') : null;
+      // Get token from multiple sources (priority: this.fcmToken > localStorage)
+      let token = this.fcmToken;
       
-      if (!storedToken) {
-        console.log('[PushNotification] No stored token found, skipping re-registration');
+      if (!token && typeof window !== 'undefined') {
+        token = localStorage.getItem('fcm_token');
+      }
+      
+      if (!token) {
+        console.log('[PushNotification] No token found (neither in memory nor localStorage), skipping re-registration');
+        console.log('[PushNotification] fcmToken:', this.fcmToken);
+        console.log('[PushNotification] localStorage fcm_token:', typeof window !== 'undefined' ? localStorage.getItem('fcm_token') : 'N/A');
         return;
       }
 
       console.log('[PushNotification] Re-registering token after login...');
+      console.log('[PushNotification] Token source:', this.fcmToken ? 'memory' : 'localStorage');
       
       // Get device info from localStorage (set by public/index.html)
       const deviceId = typeof window !== 'undefined' ? localStorage.getItem('native_device_id') : null;
@@ -208,7 +222,7 @@ class CapacitorPushNotificationService implements PushNotificationService {
         },
         credentials: 'include', // 🔥 CRITICAL: Send httpOnly cookies!
         body: JSON.stringify({
-          token: storedToken,
+          token: token,
           platform: platform,
           deviceId: deviceId,
           model: 'Unknown',
