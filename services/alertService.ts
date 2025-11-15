@@ -301,7 +301,7 @@ class AlertService {
     console.log('[AlertService] Alert removed:', id);
   }
 
-  triggerAlert(id: string) {
+  async triggerAlert(id: string) {
     // 🚨 CRITICAL DEBUG - Bu log MUTLAKA görünmeli!
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.error('[AlertService] 🚨 triggerAlert() CALLED! ID:', id);
