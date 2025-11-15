@@ -6,9 +6,15 @@ import { isPremium, isTrialActive, hasPremiumAccess, getTrialDaysRemaining } fro
 
 const sql = neon(process.env.DATABASE_URL!);
 
+// Force dynamic rendering - disable Next.js route cache
+// This ensures database changes are reflected immediately
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * GET /api/user/plan
  * Get current user's subscription plan and status
+ * Always fetches fresh data from database (no caching)
  */
 export async function GET(request: NextRequest) {
   try {

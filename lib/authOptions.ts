@@ -105,9 +105,10 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       if (session.user && token.sub) {
         try {
-          // Fetch user data from DB
+          // ALWAYS fetch fresh user data from DB (no cache)
+          // This ensures database changes (like plan updates) are reflected immediately
           const userData = await sql`
-            SELECT id, email, name, plan, expiry_date
+            SELECT id, email, name, plan, expiry_date, trial_started_at, trial_ended_at
             FROM users
             WHERE provider = ${token.provider as string}
             AND provider_user_id = ${token.sub}
@@ -117,9 +118,27 @@ export const authOptions: NextAuthOptions = {
             const user = userData[0];
             (session.user as any).id = user.id;
             (session.user as any).plan = user.plan;
-            (session.user as any).isPremium = 
-              user.plan === 'premium' && 
+            // Check premium status with expiry date
+            const isPremium = user.plan === 'premium' && 
               (!user.expiry_date || new Date(user.expiry_date) > new Date());
+            (session.user as any).isPremium = isPremium;
+            
+            // Also check trial status for hasPremiumAccess
+            let isTrial = false;
+            if (user.trial_started_at) {
+              const trialStart = new Date(user.trial_started_at);
+              const trialEnd = user.trial_ended_at ? new Date(user.trial_ended_at) : null;
+              if (!trialEnd) {
+                const calculatedEnd = new Date(trialStart);
+                calculatedEnd.setDate(calculatedEnd.getDate() + 3);
+                const now = new Date();
+                isTrial = now >= trialStart && now < calculatedEnd;
+              } else {
+                const now = new Date();
+                isTrial = now >= trialStart && now < trialEnd;
+              }
+            }
+            (session.user as any).hasPremiumAccess = isPremium || isTrial;
           }
         } catch (error) {
           console.error('Session error:', error);
