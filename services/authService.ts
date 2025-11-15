@@ -211,13 +211,32 @@ class AuthService {
       console.error('[AuthService] Failed to send logout to native:', e);
     }
 
-    // 🔥 CRITICAL: Redirect to login page in Capacitor app
+    // 🔥 CRITICAL: Redirect to native login page in Capacitor app
+    // Always redirect to /index.html if we're in a native app context
+    // (detected by checking if Capacitor exists, even if isNativePlatform() fails)
     if (typeof window !== 'undefined') {
-      const isCapacitor = (window as any).Capacitor?.isNativePlatform();
-      if (isCapacitor) {
-        console.log('[AuthService] 🔄 Redirecting to login page...');
-        // Use window.location.href to navigate to login page
-        window.location.href = '/login';
+      const Capacitor = (window as any).Capacitor;
+      const hasCapacitor = !!Capacitor;
+      const isCapacitor = Capacitor?.isNativePlatform?.() ?? false;
+      
+      console.log('[AuthService] 🔍 Capacitor check:', {
+        hasCapacitor,
+        isNativePlatform: isCapacitor,
+        platform: Capacitor?.getPlatform?.()
+      });
+      
+      // If Capacitor exists, we're in a native app - always redirect to /index.html
+      // This avoids the /login page which uses NextAuth signIn() that doesn't work in WebView
+      if (hasCapacitor) {
+        console.log('[AuthService] 🔄 Redirecting to native login page (/index.html)...');
+        // Use replace instead of href to prevent back button navigation
+        // Force immediate redirect - don't wait for any async operations
+        setTimeout(() => {
+          console.log('[AuthService] ✅ Executing redirect to /index.html');
+          window.location.replace('/index.html');
+        }, 50);
+      } else {
+        console.log('[AuthService] ⚠️ Capacitor not found, skipping redirect to /index.html');
       }
     }
   }

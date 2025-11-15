@@ -74,6 +74,9 @@ fi
 echo "✅ Pod install tamamlandı"
 echo ""
 
+# Proje root'una geri dön
+cd "$SCRIPT_DIR"
+
 echo "═══════════════════════════════════════════════════════"
 echo "  ✅ HAZIRLIK TAMAMLANDI!"
 echo "═══════════════════════════════════════════════════════"

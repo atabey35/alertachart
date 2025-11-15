@@ -27,21 +27,61 @@ export default function UpgradeModal({
 
   // Get device ID and platform
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    const getDeviceId = async () => {
+      if (typeof window === 'undefined') return;
+      
       // Check if Capacitor (mobile app)
       if ((window as any).Capacitor) {
-        const platform = (window as any).Capacitor.getPlatform();
-        setPlatform(platform === 'ios' ? 'ios' : 'android');
+        const detectedPlatform = (window as any).Capacitor.getPlatform();
+        setPlatform(detectedPlatform === 'ios' ? 'ios' : 'android');
         
-        // Get device ID from Capacitor
-        (window as any).Capacitor.Plugins.Device?.getId().then((device: any) => {
-          setDeviceId(device.identifier || 'unknown');
-        }).catch(() => {
-          setDeviceId('unknown');
-        });
+        let finalDeviceId: string | null = null;
+        
+        try {
+          // Try to get device ID from Capacitor Device plugin
+          const Device = (window as any).Capacitor.Plugins.Device;
+          if (Device) {
+            const deviceInfo = await Device.getId();
+            if (deviceInfo?.identifier) {
+              finalDeviceId = deviceInfo.identifier;
+              console.log('[UpgradeModal] ✅ Device ID from Capacitor:', finalDeviceId);
+            }
+          }
+        } catch (error) {
+          console.warn('[UpgradeModal] ⚠️ Device plugin error:', error);
+        }
+        
+        // Fallback 1: Check localStorage for native_device_id (set during login)
+        if (!finalDeviceId || finalDeviceId === 'unknown') {
+          const storedNativeId = localStorage.getItem('native_device_id');
+          if (storedNativeId && storedNativeId !== 'unknown') {
+            finalDeviceId = storedNativeId;
+            console.log('[UpgradeModal] ✅ Device ID from localStorage (native_device_id):', finalDeviceId);
+          }
+        }
+        
+        // Fallback 2: Check localStorage for device_id
+        if (!finalDeviceId || finalDeviceId === 'unknown') {
+          const storedDeviceId = localStorage.getItem('device_id');
+          if (storedDeviceId && storedDeviceId !== 'unknown') {
+            finalDeviceId = storedDeviceId;
+            console.log('[UpgradeModal] ✅ Device ID from localStorage (device_id):', finalDeviceId);
+          }
+        }
+        
+        // Fallback 3: Generate unique device ID based on platform
+        if (!finalDeviceId || finalDeviceId === 'unknown') {
+          const platformPrefix = detectedPlatform === 'ios' ? 'ios' : 'android';
+          finalDeviceId = `${platformPrefix}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+          console.log('[UpgradeModal] 🔧 Generated fallback device ID:', finalDeviceId);
+          // Save to localStorage for future use
+          localStorage.setItem('native_device_id', finalDeviceId);
+        }
+        
+        setDeviceId(finalDeviceId);
       } else {
         // Web - use localStorage device ID
-        let storedDeviceId = localStorage.getItem('device_id');
+        let storedDeviceId = localStorage.getItem('device_id') || localStorage.getItem('native_device_id');
         if (!storedDeviceId) {
           storedDeviceId = `web_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
           localStorage.setItem('device_id', storedDeviceId);
@@ -49,16 +89,26 @@ export default function UpgradeModal({
         setDeviceId(storedDeviceId);
         setPlatform('web');
       }
-    }
+    };
+    
+    getDeviceId();
   }, []);
 
   const handleStartTrial = async () => {
     if (loading) return;
     
+    // Check if device ID is available
+    if (!deviceId || deviceId === 'unknown' || deviceId === '') {
+      setError('Cihaz kimliği alınamadı. Lütfen sayfayı yenileyip tekrar deneyin.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
 
     try {
+      console.log('[UpgradeModal] 🚀 Starting trial with deviceId:', deviceId, 'platform:', platform);
+      
       const response = await fetch('/api/subscription/start-trial', {
         method: 'POST',
         headers: {
@@ -87,6 +137,7 @@ export default function UpgradeModal({
       }
 
       // Trial başarıyla başlatıldı
+      console.log('[UpgradeModal] ✅ Trial started successfully');
       onUpgrade();
       onClose();
     } catch (err: any) {

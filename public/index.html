@@ -191,6 +191,149 @@
   </div>
 
   <script>
+    // ============================================
+    // Platform Detection Helper Functions
+    // (Moved to top for early availability)
+    // ============================================
+    
+    /**
+     * Get the current platform using multiple detection methods
+     * Priority: 1. Capacitor.getPlatform() 2. Device.getInfo() 3. User-Agent
+     */
+    async function getPlatform() {
+      // Method 1: Capacitor platform detection (most reliable)
+      if (window.Capacitor?.getPlatform) {
+        try {
+          const capacitorPlatform = window.Capacitor.getPlatform();
+          console.log('[PlatformDetection] Capacitor.getPlatform():', capacitorPlatform);
+          
+          if (capacitorPlatform === 'ios' || capacitorPlatform === 'android') {
+            console.log('[PlatformDetection] ✅ Detected via Capacitor:', capacitorPlatform);
+            return capacitorPlatform;
+          }
+        } catch (error) {
+          console.warn('[PlatformDetection] Capacitor.getPlatform() error:', error);
+        }
+      } else {
+        console.log('[PlatformDetection] Capacitor.getPlatform() not available');
+      }
+      
+      // Method 2: Device plugin (fallback)
+      if (window.Capacitor?.Plugins?.Device) {
+        try {
+          const { Device } = window.Capacitor.Plugins;
+          const deviceInfo = await Device.getInfo();
+          const platform = deviceInfo.platform;
+          
+          console.log('[PlatformDetection] Device.getInfo().platform:', platform);
+          
+          if (platform === 'ios' || platform === 'android') {
+            console.log('[PlatformDetection] ✅ Detected via Device plugin:', platform);
+            return platform;
+          }
+        } catch (error) {
+          console.warn('[PlatformDetection] Device plugin error:', error);
+        }
+      } else {
+        console.log('[PlatformDetection] Device plugin not available');
+      }
+      
+      // Method 3: User-Agent detection (last resort)
+      if (navigator.userAgent) {
+        const userAgent = navigator.userAgent.toLowerCase();
+        console.log('[PlatformDetection] User-Agent:', userAgent);
+        
+        if (userAgent.includes('iphone') || userAgent.includes('ipad')) {
+          console.log('[PlatformDetection] ✅ Detected via User-Agent: ios');
+          return 'ios';
+        }
+        
+        if (userAgent.includes('android')) {
+          console.log('[PlatformDetection] ✅ Detected via User-Agent: android');
+          return 'android';
+        }
+      }
+      
+      // Default: web
+      console.warn('[PlatformDetection] ⚠️ Could not detect platform, defaulting to web');
+      return 'web';
+    }
+    
+    /**
+     * Get device ID using Capacitor Device plugin
+     */
+    async function getDeviceId() {
+      try {
+        const { Device } = window.Capacitor?.Plugins;
+        if (Device) {
+          console.log('[PlatformDetection] 🔍 Attempting to get device ID from Device plugin...');
+          try {
+            const deviceIdInfo = await Device.getId();
+            const deviceId = deviceIdInfo?.identifier;
+            
+            if (deviceId && deviceId !== 'unknown' && deviceId !== null && deviceId !== undefined) {
+              console.log('[PlatformDetection] ✅ Device ID retrieved from plugin:', deviceId);
+              // Save to localStorage for future use
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('native_device_id', deviceId);
+              }
+              return deviceId;
+            } else {
+              console.warn('[PlatformDetection] ⚠️ Device.getId() returned invalid value:', deviceId);
+            }
+          } catch (getIdError) {
+            console.error('[PlatformDetection] ❌ Device.getId() error:', getIdError);
+          }
+        } else {
+          console.warn('[PlatformDetection] ⚠️ Device plugin not available');
+        }
+      } catch (error) {
+        console.error('[PlatformDetection] ❌ Device plugin access error:', error);
+      }
+      
+      // Fallback: Try to get from localStorage (might have been set earlier)
+      if (typeof window !== 'undefined') {
+        const storedDeviceId = localStorage.getItem('native_device_id');
+        if (storedDeviceId && storedDeviceId !== 'unknown' && storedDeviceId !== 'null' && storedDeviceId !== 'undefined') {
+          console.log('[PlatformDetection] ✅ Using device ID from localStorage:', storedDeviceId);
+          return storedDeviceId;
+        }
+      }
+      
+      console.warn('[PlatformDetection] ⚠️ Could not retrieve device ID, returning null');
+      return null;
+    }
+    
+    /**
+     * Get full device information
+     */
+    async function getDeviceInfo() {
+      const platform = await getPlatform();
+      const deviceId = await getDeviceId();
+      
+      let model = 'Unknown';
+      let osVersion = 'Unknown';
+      
+      // Try to get device info from Device plugin
+      if (window.Capacitor?.Plugins?.Device) {
+        try {
+          const { Device } = window.Capacitor.Plugins;
+          const deviceInfo = await Device.getInfo();
+          model = deviceInfo.model || model;
+          osVersion = deviceInfo.osVersion || osVersion;
+        } catch (error) {
+          console.warn('[PlatformDetection] Device.getInfo() error:', error);
+        }
+      }
+      
+      return {
+        platform,
+        deviceId,
+        model,
+        osVersion,
+      };
+    }
+
     const errorDiv = document.getElementById('error');
     const googleBtn = document.getElementById('googleBtn');
     const appleBtn = document.getElementById('appleBtn');
@@ -214,15 +357,46 @@
       try {
         console.log('[Login] Starting Google Sign-In');
         
-        const GoogleAuth = window.Capacitor.Plugins.GoogleAuth;
+        // 🔥 CRITICAL: Wait for Capacitor to be fully loaded
+        if (!window.Capacitor) {
+          console.log('[Login] ⏳ Waiting for Capacitor to load...');
+          // Wait up to 3 seconds for Capacitor
+          for (let i = 0; i < 30; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (window.Capacitor) {
+              console.log('[Login] ✅ Capacitor loaded');
+              break;
+            }
+          }
+        }
+        
+        if (!window.Capacitor) {
+          throw new Error('Capacitor not available - please wait and try again');
+        }
+        
+        const GoogleAuth = window.Capacitor.Plugins?.GoogleAuth;
         
         if (!GoogleAuth) {
-          throw new Error('Google Auth plugin not available');
+          console.log('[Login] ⏳ Waiting for GoogleAuth plugin to load...');
+          // Wait up to 2 seconds for GoogleAuth plugin
+          for (let i = 0; i < 20; i++) {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            if (window.Capacitor.Plugins?.GoogleAuth) {
+              console.log('[Login] ✅ GoogleAuth plugin loaded');
+              break;
+            }
+          }
+        }
+        
+        const finalGoogleAuth = window.Capacitor.Plugins?.GoogleAuth;
+        
+        if (!finalGoogleAuth) {
+          throw new Error('Google Auth plugin not available - please rebuild the app');
         }
 
         // Initialize
         try {
-          await GoogleAuth.initialize();
+          await finalGoogleAuth.initialize();
         } catch (e) {
           console.log('[Login] GoogleAuth already initialized');
         }
@@ -248,7 +422,7 @@
         }
 
         // Sign in
-        const result = await GoogleAuth.signIn();
+        const result = await finalGoogleAuth.signIn();
         console.log('[Login] Google Sign-In success:', result);
 
         // Send to backend using CapacitorHttp
@@ -276,51 +450,128 @@
 
         // Load remote app with auth tokens + device ID + FCM token in URL
         console.log('[Login] Loading remote app with auth tokens...');
-        const WebViewController = window.Capacitor.Plugins.WebViewController;
         
-        if (WebViewController) {
-          // Get device ID and FCM token from localStorage (refresh token in case it was just received)
-          const deviceId = localStorage.getItem('native_device_id') || 'unknown';
-          const platform = localStorage.getItem('native_platform') || 'android';
-          
-          // 🔥 AGGRESSIVE: Try to get token from localStorage multiple times
-          fcmToken = localStorage.getItem('fcm_token') || fcmToken || '';
-          
-          // 🔥 DEBUG: Log all localStorage keys to see what's available
-          console.error('[Login] 🔍 DEBUG: All localStorage keys:', Object.keys(localStorage).join(', '));
-          console.error('[Login] 🔍 DEBUG: fcm_token from localStorage:', localStorage.getItem('fcm_token') ? `${localStorage.getItem('fcm_token').substring(0, 30)}...` : 'null');
-          console.error('[Login] 🔍 DEBUG: fcmToken variable:', fcmToken ? `${fcmToken.substring(0, 30)}...` : 'null');
-          
-          // Build URL with all necessary params
-          const params = new URLSearchParams({
-            capacitor_auth: 'true',
-            access_token: data.tokens.accessToken,
-            refresh_token: data.tokens.refreshToken,
-            device_id: deviceId,
-            platform: platform,
+        // 🔥 PHASE 1: Use getPlatform() helper for accurate platform detection
+        console.log('[Login] 🔍 Starting platform and device detection...');
+        let detectedPlatform = 'web';
+        let detectedDeviceInfo = { platform: 'web', deviceId: null, model: 'Unknown', osVersion: 'Unknown' };
+        
+        try {
+          detectedPlatform = await getPlatform();
+          detectedDeviceInfo = await getDeviceInfo();
+          console.log('[Login] 📊 Detection results:', {
+            platform: detectedPlatform,
+            deviceId: detectedDeviceInfo.deviceId,
+            model: detectedDeviceInfo.model,
+            osVersion: detectedDeviceInfo.osVersion,
           });
+        } catch (error) {
+          console.error('[Login] ❌ Platform detection error:', error);
+          console.log('[Login] ⚠️ Using fallback detection...');
+        }
+        
+        // Use detected platform, fallback to localStorage if detection fails
+        const platform = detectedPlatform !== 'web' ? detectedPlatform : (localStorage.getItem('native_platform') || 'ios');
+        
+        // For device ID: try detected first, then localStorage, then generate unique ID
+        let deviceId = detectedDeviceInfo.deviceId;
+        console.log('[Login] 🔍 Device ID detection step 1 (from getDeviceInfo):', deviceId);
+        
+        // Check if deviceId is valid (not null, undefined, 'unknown', empty string)
+        const isValidDeviceId = deviceId && 
+                                deviceId !== 'unknown' && 
+                                deviceId !== 'null' && 
+                                deviceId !== 'undefined' && 
+                                typeof deviceId === 'string' &&
+                                deviceId.trim() !== '';
+        
+        if (!isValidDeviceId) {
+          deviceId = localStorage.getItem('native_device_id');
+          console.log('[Login] 🔍 Device ID detection step 2 (from localStorage):', deviceId);
           
-          // Add FCM token if available (may be long, but necessary for re-registration)
-          if (fcmToken) {
-            params.append('fcm_token', fcmToken);
-            console.error('[Login] ✅ FCM token will be passed to remote app (length:', fcmToken.length, ')');
-            console.error('[Login] ✅ FCM token preview:', fcmToken.substring(0, 50) + '...');
-          } else {
-            console.error('[Login] ❌ No FCM token found in localStorage!');
-            console.error('[Login] ❌ localStorage.getItem("fcm_token"):', localStorage.getItem('fcm_token'));
-            console.error('[Login] ❌ fcmToken variable:', fcmToken);
+          // Check if localStorage value is also invalid
+          const isStoredValid = deviceId && 
+                                deviceId !== 'unknown' && 
+                                deviceId !== 'null' && 
+                                deviceId !== 'undefined' && 
+                                typeof deviceId === 'string' &&
+                                deviceId.trim() !== '';
+          
+          if (!isStoredValid) {
+            // Generate unique device ID based on platform and timestamp
+            const platformPrefix = platform === 'ios' ? 'ios' : 'android';
+            deviceId = `${platformPrefix}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+            console.log('[Login] 🔧 Generated fallback device ID:', deviceId);
+            // Immediately save to localStorage
+            localStorage.setItem('native_device_id', deviceId);
+            console.log('[Login] ✅ Generated device ID saved to localStorage');
           }
-          
-          const authUrl = `https://alertachart.com/capacitor-auth?${params.toString()}`;
-          console.error('[Login] 🔍 Auth URL length:', authUrl.length);
-          console.error('[Login] 🔍 Auth URL contains fcm_token:', authUrl.includes('fcm_token'));
-          console.error('[Login] 🔍 Device ID being passed:', deviceId);
-          console.error('[Login] 🔍 FCM token length:', fcmToken ? fcmToken.length : 0);
-          await WebViewController.loadUrl({ url: authUrl });
-          console.error('[Login] ✅ Remote app loaded with auth!');
-        } else {
-          console.error('[Login] WebViewController plugin not found!');
-          showError('Failed to load app');
+        }
+        
+        console.log('[Login] ✅ Final device ID:', deviceId);
+        
+        // Store detected platform in localStorage for future use
+        if (detectedPlatform !== 'web') {
+          localStorage.setItem('native_platform', detectedPlatform);
+          console.log('[Login] ✅ Platform detected and saved:', detectedPlatform);
+        }
+        
+        // Always save valid device ID to localStorage (if not already saved)
+        if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined' && typeof deviceId === 'string') {
+          const currentStored = localStorage.getItem('native_device_id');
+          if (currentStored !== deviceId) {
+            localStorage.setItem('native_device_id', deviceId);
+            console.log('[Login] ✅ Device ID saved to localStorage:', deviceId);
+          }
+        }
+        
+        fcmToken = localStorage.getItem('fcm_token') || fcmToken || '';
+        
+        // Build URL with all necessary params
+        const params = new URLSearchParams({
+          capacitor_auth: 'true',
+          access_token: data.tokens.accessToken,
+          refresh_token: data.tokens.refreshToken,
+          device_id: deviceId,
+          platform: platform,
+        });
+        
+        // Add FCM token if available
+        if (fcmToken) {
+          params.append('fcm_token', fcmToken);
+          console.log('[Login] ✅ FCM token will be passed to remote app');
+        }
+        
+        const authUrl = `https://alertachart.com/capacitor-auth?${params.toString()}`;
+        console.log('[Login] 🔍 Loading remote app:', authUrl.substring(0, 100) + '...');
+        
+        // Try WebViewController plugin first
+        const WebViewController = window.Capacitor?.Plugins?.WebViewController;
+        
+        if (WebViewController && typeof WebViewController.loadUrl === 'function') {
+          try {
+            console.log('[Login] ✅ Using WebViewController plugin');
+            await WebViewController.loadUrl({ url: authUrl });
+            console.log('[Login] ✅ Remote app loaded successfully!');
+            return;
+          } catch (error) {
+            console.error('[Login] ❌ WebViewController failed:', error);
+          }
+        }
+        
+        // Fallback: Use window.location (CustomBridgeViewController will prevent Safari)
+        console.warn('[Login] ⚠️ WebViewController plugin not found, using window.location fallback');
+        console.log('[Login] Available plugins:', Object.keys(window.Capacitor?.Plugins || {}));
+        
+        // Use window.location - CustomBridgeViewController navigation delegate will keep it in WebView
+        try {
+          console.log('[Login] 🔄 Using window.location fallback');
+          window.location.href = authUrl;
+          console.log('[Login] ✅ Navigation initiated via window.location');
+          return;
+        } catch (error) {
+          console.error('[Login] ❌ window.location failed:', error);
+          showError('Failed to load remote app. Please try again.');
           disableButtons(false);
         }
         
@@ -395,51 +646,128 @@
 
         // Load remote app with auth tokens + device ID + FCM token in URL
         console.log('[Login] Loading remote app with auth tokens...');
-        const WebViewController = window.Capacitor.Plugins.WebViewController;
         
-        if (WebViewController) {
-          // Get device ID and FCM token from localStorage (refresh token in case it was just received)
-          const deviceId = localStorage.getItem('native_device_id') || 'unknown';
-          const platform = localStorage.getItem('native_platform') || 'android';
-          
-          // 🔥 AGGRESSIVE: Try to get token from localStorage multiple times
-          fcmToken = localStorage.getItem('fcm_token') || fcmToken || '';
-          
-          // 🔥 DEBUG: Log all localStorage keys to see what's available
-          console.error('[Login] 🔍 DEBUG: All localStorage keys:', Object.keys(localStorage).join(', '));
-          console.error('[Login] 🔍 DEBUG: fcm_token from localStorage:', localStorage.getItem('fcm_token') ? `${localStorage.getItem('fcm_token').substring(0, 30)}...` : 'null');
-          console.error('[Login] 🔍 DEBUG: fcmToken variable:', fcmToken ? `${fcmToken.substring(0, 30)}...` : 'null');
-          
-          // Build URL with all necessary params
-          const params = new URLSearchParams({
-            capacitor_auth: 'true',
-            access_token: data.tokens.accessToken,
-            refresh_token: data.tokens.refreshToken,
-            device_id: deviceId,
-            platform: platform,
+        // 🔥 PHASE 1: Use getPlatform() helper for accurate platform detection
+        console.log('[Login] 🔍 Starting platform and device detection...');
+        let detectedPlatform = 'web';
+        let detectedDeviceInfo = { platform: 'web', deviceId: null, model: 'Unknown', osVersion: 'Unknown' };
+        
+        try {
+          detectedPlatform = await getPlatform();
+          detectedDeviceInfo = await getDeviceInfo();
+          console.log('[Login] 📊 Detection results:', {
+            platform: detectedPlatform,
+            deviceId: detectedDeviceInfo.deviceId,
+            model: detectedDeviceInfo.model,
+            osVersion: detectedDeviceInfo.osVersion,
           });
+        } catch (error) {
+          console.error('[Login] ❌ Platform detection error:', error);
+          console.log('[Login] ⚠️ Using fallback detection...');
+        }
+        
+        // Use detected platform, fallback to localStorage if detection fails
+        const platform = detectedPlatform !== 'web' ? detectedPlatform : (localStorage.getItem('native_platform') || 'ios');
+        
+        // For device ID: try detected first, then localStorage, then generate unique ID
+        let deviceId = detectedDeviceInfo.deviceId;
+        console.log('[Login] 🔍 Device ID detection step 1 (from getDeviceInfo):', deviceId);
+        
+        // Check if deviceId is valid (not null, undefined, 'unknown', empty string)
+        const isValidDeviceId = deviceId && 
+                                deviceId !== 'unknown' && 
+                                deviceId !== 'null' && 
+                                deviceId !== 'undefined' && 
+                                typeof deviceId === 'string' &&
+                                deviceId.trim() !== '';
+        
+        if (!isValidDeviceId) {
+          deviceId = localStorage.getItem('native_device_id');
+          console.log('[Login] 🔍 Device ID detection step 2 (from localStorage):', deviceId);
           
-          // Add FCM token if available (may be long, but necessary for re-registration)
-          if (fcmToken) {
-            params.append('fcm_token', fcmToken);
-            console.error('[Login] ✅ FCM token will be passed to remote app (length:', fcmToken.length, ')');
-            console.error('[Login] ✅ FCM token preview:', fcmToken.substring(0, 50) + '...');
-          } else {
-            console.error('[Login] ❌ No FCM token found in localStorage!');
-            console.error('[Login] ❌ localStorage.getItem("fcm_token"):', localStorage.getItem('fcm_token'));
-            console.error('[Login] ❌ fcmToken variable:', fcmToken);
+          // Check if localStorage value is also invalid
+          const isStoredValid = deviceId && 
+                                deviceId !== 'unknown' && 
+                                deviceId !== 'null' && 
+                                deviceId !== 'undefined' && 
+                                typeof deviceId === 'string' &&
+                                deviceId.trim() !== '';
+          
+          if (!isStoredValid) {
+            // Generate unique device ID based on platform and timestamp
+            const platformPrefix = platform === 'ios' ? 'ios' : 'android';
+            deviceId = `${platformPrefix}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+            console.log('[Login] 🔧 Generated fallback device ID:', deviceId);
+            // Immediately save to localStorage
+            localStorage.setItem('native_device_id', deviceId);
+            console.log('[Login] ✅ Generated device ID saved to localStorage');
           }
-          
-          const authUrl = `https://alertachart.com/capacitor-auth?${params.toString()}`;
-          console.error('[Login] 🔍 Auth URL length:', authUrl.length);
-          console.error('[Login] 🔍 Auth URL contains fcm_token:', authUrl.includes('fcm_token'));
-          console.error('[Login] 🔍 Device ID being passed:', deviceId);
-          console.error('[Login] 🔍 FCM token length:', fcmToken ? fcmToken.length : 0);
-          await WebViewController.loadUrl({ url: authUrl });
-          console.error('[Login] ✅ Remote app loaded with auth!');
-        } else {
-          console.error('[Login] WebViewController plugin not found!');
-          showError('Failed to load app');
+        }
+        
+        console.log('[Login] ✅ Final device ID:', deviceId);
+        
+        // Store detected platform in localStorage for future use
+        if (detectedPlatform !== 'web') {
+          localStorage.setItem('native_platform', detectedPlatform);
+          console.log('[Login] ✅ Platform detected and saved:', detectedPlatform);
+        }
+        
+        // Always save valid device ID to localStorage (if not already saved)
+        if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined' && typeof deviceId === 'string') {
+          const currentStored = localStorage.getItem('native_device_id');
+          if (currentStored !== deviceId) {
+            localStorage.setItem('native_device_id', deviceId);
+            console.log('[Login] ✅ Device ID saved to localStorage:', deviceId);
+          }
+        }
+        
+        fcmToken = localStorage.getItem('fcm_token') || fcmToken || '';
+        
+        // Build URL with all necessary params
+        const params = new URLSearchParams({
+          capacitor_auth: 'true',
+          access_token: data.tokens.accessToken,
+          refresh_token: data.tokens.refreshToken,
+          device_id: deviceId,
+          platform: platform,
+        });
+        
+        // Add FCM token if available
+        if (fcmToken) {
+          params.append('fcm_token', fcmToken);
+          console.log('[Login] ✅ FCM token will be passed to remote app');
+        }
+        
+        const authUrl = `https://alertachart.com/capacitor-auth?${params.toString()}`;
+        console.log('[Login] 🔍 Loading remote app:', authUrl.substring(0, 100) + '...');
+        
+        // Try WebViewController plugin first
+        const WebViewController = window.Capacitor?.Plugins?.WebViewController;
+        
+        if (WebViewController && typeof WebViewController.loadUrl === 'function') {
+          try {
+            console.log('[Login] ✅ Using WebViewController plugin');
+            await WebViewController.loadUrl({ url: authUrl });
+            console.log('[Login] ✅ Remote app loaded successfully!');
+            return;
+          } catch (error) {
+            console.error('[Login] ❌ WebViewController failed:', error);
+          }
+        }
+        
+        // Fallback: Use window.location (CustomBridgeViewController will prevent Safari)
+        console.warn('[Login] ⚠️ WebViewController plugin not found, using window.location fallback');
+        console.log('[Login] Available plugins:', Object.keys(window.Capacitor?.Plugins || {}));
+        
+        // Use window.location - CustomBridgeViewController navigation delegate will keep it in WebView
+        try {
+          console.log('[Login] 🔄 Using window.location fallback');
+          window.location.href = authUrl;
+          console.log('[Login] ✅ Navigation initiated via window.location');
+          return;
+        } catch (error) {
+          console.error('[Login] ❌ window.location failed:', error);
+          showError('Failed to load remote app. Please try again.');
           disableButtons(false);
         }
         
@@ -453,15 +781,22 @@
     async function handleEmailLogin() {
       // Load remote app for email/password auth
       console.log('[Login] Loading remote app for email auth...');
-      const WebViewController = window.Capacitor.Plugins.WebViewController;
       
-      if (WebViewController) {
-        await WebViewController.loadUrl({ url: 'https://alertachart.com' });
-        console.log('[Login] Remote app loaded!');
-      } else {
-        console.error('[Login] WebViewController plugin not found!');
-        showError('Failed to load app');
+      const WebViewController = window.Capacitor?.Plugins?.WebViewController;
+      
+      if (WebViewController && typeof WebViewController.loadUrl === 'function') {
+        try {
+          await WebViewController.loadUrl({ url: 'https://alertachart.com' });
+          console.log('[Login] Remote app loaded!');
+          return;
+        } catch (error) {
+          console.warn('[Login] ⚠️ WebViewController failed:', error);
+        }
       }
+      
+      // Fallback: Show error
+      console.error('[Login] ❌ WebViewController plugin not available');
+      showError('WebViewController plugin not available. Please rebuild the app.');
     }
 
     googleBtn.addEventListener('click', handleGoogleLogin);
@@ -512,41 +847,28 @@
           
           // Register token with backend
           try {
-            // Get device info (should work in local context)
-            let platform = 'android';
-            let deviceId = 'unknown-device';
-            let model = 'Unknown';
-            let osVersion = 'Unknown';
+            // 🔥 PHASE 1: Use getDeviceInfo() helper for accurate platform detection
+            console.log('[Login] Getting device info using platform detection helper...');
+            const deviceInfo = await getDeviceInfo();
             
-            try {
-              const { Device } = window.Capacitor.Plugins;
-              if (Device) {
-                console.log('[Login] Getting device info...');
-                const deviceInfo = await Device.getInfo();
-                const deviceIdInfo = await Device.getId();
-                platform = deviceInfo.platform || 'android';
-                deviceId = deviceIdInfo.identifier || `device-${Date.now()}`;
-                model = deviceInfo.model || 'Unknown';
-                osVersion = deviceInfo.osVersion || 'Unknown';
-                
-                console.log('[Login] Device info retrieved:', { platform, deviceId, model, osVersion });
-                
-                // 🔥 STORE DEVICE ID IN LOCALSTORAGE (for remote app to use)
-                localStorage.setItem('native_device_id', deviceId);
-                localStorage.setItem('native_platform', platform);
-                console.log('[Login] ✅ Device ID saved to localStorage:', deviceId);
-              } else {
-                console.warn('[Login] Device plugin not available');
-                // Fallback: generate unique deviceId based on token
-                deviceId = `fcm-${tokenValue.substring(0, 20)}`;
-                localStorage.setItem('native_device_id', deviceId);
-              }
-            } catch (deviceError) {
-              console.warn('[Login] Device plugin error, using fallback:', deviceError);
-              // Fallback: generate unique deviceId based on token
-              deviceId = `fcm-${tokenValue.substring(0, 20)}`;
-              localStorage.setItem('native_device_id', deviceId);
+            const platform = deviceInfo.platform !== 'web' ? deviceInfo.platform : 'android';
+            const deviceId = deviceInfo.deviceId || `device-${Date.now()}`;
+            const model = deviceInfo.model;
+            const osVersion = deviceInfo.osVersion;
+            
+            console.log('[Login] Device info retrieved:', { platform, deviceId, model, osVersion });
+            
+            // 🔥 STORE DEVICE ID IN LOCALSTORAGE (for remote app to use)
+            if (deviceInfo.deviceId) {
+              localStorage.setItem('native_device_id', deviceInfo.deviceId);
             }
+            if (deviceInfo.platform !== 'web') {
+              localStorage.setItem('native_platform', deviceInfo.platform);
+            }
+            console.log('[Login] ✅ Device info saved to localStorage:', { 
+              deviceId: deviceInfo.deviceId, 
+              platform: deviceInfo.platform 
+            });
             
             console.error('[Login] Registering token with backend...');
             const { CapacitorHttp } = window.Capacitor.Plugins;

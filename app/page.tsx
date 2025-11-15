@@ -404,6 +404,16 @@ export default function Home() {
     } else if (status === 'unauthenticated') {
       // Fall back to legacy auth
       setUser(authService.getUser());
+      
+      // 🔥 CRITICAL: Redirect to native login page in Capacitor app if unauthenticated
+      // This handles logout scenario - redirect to index.html which has native auth
+      if (isCapacitor && !user && !authService.getUser()) {
+        console.log('[App] 🔄 Unauthenticated in Capacitor app - redirecting to native login...');
+        // Small delay to ensure state is updated
+        setTimeout(() => {
+          window.location.href = '/index.html';
+        }, 100);
+      }
     }
     
     // Close login screen if user is authenticated
@@ -1118,10 +1128,31 @@ export default function Home() {
                       <span className="text-gray-300 text-xs">{user.email}</span>
                       <button
                         onClick={async () => {
-                          if (status === 'authenticated') {
-                            await signOut({ callbackUrl: '/' });
+                          // 🔥 CRITICAL: In Capacitor app, use authService.logout() which redirects to /index.html
+                          console.log('[Logout] Button clicked, isCapacitor:', isCapacitor, 'status:', status);
+                          
+                          if (isCapacitor) {
+                            console.log('[Logout] Capacitor app detected - using authService.logout()');
+                            // Clear NextAuth session first (without redirect)
+                            if (status === 'authenticated') {
+                              console.log('[Logout] Clearing NextAuth session...');
+                              await signOut({ redirect: false });
+                              // Wait a bit for session to clear
+                              await new Promise(resolve => setTimeout(resolve, 200));
+                            }
+                            // Then use authService.logout() which redirects to /index.html
+                            console.log('[Logout] Calling authService.logout()...');
+                            // Don't await - let it redirect immediately
+                            authService.logout().catch(err => {
+                              console.error('[Logout] Error during logout:', err);
+                            });
                           } else {
-                            await authService.logout();
+                            // Web: use NextAuth signOut
+                            if (status === 'authenticated') {
+                              await signOut({ callbackUrl: '/' });
+                            } else {
+                              await authService.logout();
+                            }
                           }
                         }}
                         className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition"
@@ -1806,10 +1837,32 @@ export default function Home() {
                   {/* Logout Button */}
                   <button
                     onClick={async () => {
-                      if (status === 'authenticated') {
-                        await signOut({ callbackUrl: '/login' });
+                      // 🔥 CRITICAL: In Capacitor app, use authService.logout() which redirects to /index.html
+                      // In web, use NextAuth signOut
+                      console.log('[Logout] Button clicked, isCapacitor:', isCapacitor, 'status:', status);
+                      
+                      if (isCapacitor) {
+                        console.log('[Logout] Capacitor app detected - using authService.logout()');
+                        // Clear NextAuth session first (without redirect)
+                        if (status === 'authenticated') {
+                          console.log('[Logout] Clearing NextAuth session...');
+                          await signOut({ redirect: false });
+                          // Wait a bit for session to clear
+                          await new Promise(resolve => setTimeout(resolve, 200));
+                        }
+                        // Then use authService.logout() which redirects to /index.html
+                        console.log('[Logout] Calling authService.logout()...');
+                        // Don't await - let it redirect immediately
+                        authService.logout().catch(err => {
+                          console.error('[Logout] Error during logout:', err);
+                        });
                       } else {
-                        await authService.logout();
+                        // Web: use NextAuth signOut
+                        if (status === 'authenticated') {
+                          await signOut({ callbackUrl: '/' });
+                        } else {
+                          await authService.logout();
+                        }
                       }
                     }}
                     className="w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"

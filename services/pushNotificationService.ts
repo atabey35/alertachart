@@ -3,6 +3,8 @@
  * Handles FCM token registration and notification listeners
  */
 
+import { getDeviceInfo } from '@/utils/platformDetection';
+
 interface PushNotificationService {
   initialize: () => Promise<void>;
   getToken: () => Promise<string | null>;
@@ -90,25 +92,15 @@ class CapacitorPushNotificationService implements PushNotificationService {
       console.log('[PushNotification] Registering FCM token with backend...');
       console.log('[PushNotification] Token:', token.substring(0, 30) + '...');
       
-      // Try to get device info, fallback to defaults if Device plugin not available
-      let platform = 'android';
-      let deviceId = 'unknown-device';
-      let model = 'Unknown';
-      let osVersion = 'Unknown';
+      // 🔥 PHASE 1: Use getDeviceInfo() helper for accurate platform detection
+      console.log('[PushNotification] Getting device info using platform detection helper...');
+      const deviceInfo = await getDeviceInfo();
       
-      try {
-        const { Device } = (window as any).Capacitor.Plugins;
-        if (Device) {
-          const deviceInfo = await Device.getInfo();
-          const deviceIdInfo = await Device.getId();
-          platform = deviceInfo.platform || 'android';
-          deviceId = deviceIdInfo.identifier || deviceId;
-          model = deviceInfo.model || model;
-          osVersion = deviceInfo.osVersion || osVersion;
-        }
-      } catch (deviceError) {
-        console.warn('[PushNotification] Device plugin not available, using fallbacks');
-      }
+      // Use detected platform, fallback to 'android' only if detection completely fails
+      const platform = deviceInfo.platform !== 'web' ? deviceInfo.platform : 'android';
+      const deviceId = deviceInfo.deviceId || 'unknown-device';
+      const model = deviceInfo.model;
+      const osVersion = deviceInfo.osVersion;
 
       console.log('[PushNotification] Device info:', {
         platform: platform,
@@ -208,12 +200,25 @@ class CapacitorPushNotificationService implements PushNotificationService {
       console.log('[PushNotification] Token length:', token ? token.length : 0);
       console.log('[PushNotification] Token preview:', token ? `${token.substring(0, 30)}...` : 'null');
       
-      // Get device info from localStorage (set by public/index.html)
-      const deviceId = typeof window !== 'undefined' ? localStorage.getItem('native_device_id') : null;
-      const platform = typeof window !== 'undefined' ? localStorage.getItem('native_platform') || 'android' : 'android';
+      // 🔥 PHASE 1: Use getDeviceInfo() helper for accurate platform detection
+      console.log('[PushNotification] Getting device info using platform detection helper...');
+      const deviceInfo = await getDeviceInfo();
+      
+      // Use detected platform and device ID, fallback to localStorage if needed
+      const platform = deviceInfo.platform !== 'web' ? deviceInfo.platform : (typeof window !== 'undefined' ? localStorage.getItem('native_platform') || 'android' : 'android');
+      const deviceId = deviceInfo.deviceId || (typeof window !== 'undefined' ? localStorage.getItem('native_device_id') : null);
+      
+      // Store detected platform in localStorage for future use
+      if (deviceInfo.platform !== 'web' && typeof window !== 'undefined') {
+        localStorage.setItem('native_platform', deviceInfo.platform);
+      }
+      if (deviceInfo.deviceId && typeof window !== 'undefined') {
+        localStorage.setItem('native_device_id', deviceInfo.deviceId);
+      }
       
       console.log('[PushNotification] Device ID:', deviceId);
       console.log('[PushNotification] Platform:', platform);
+      console.log('[PushNotification] Detected device info:', deviceInfo);
       
       if (!deviceId) {
         console.warn('[PushNotification] ❌ No device ID found, skipping re-registration');
@@ -234,8 +239,8 @@ class CapacitorPushNotificationService implements PushNotificationService {
           token: token,
           platform: platform,
           deviceId: deviceId,
-          model: 'Unknown',
-          osVersion: 'Unknown',
+          model: deviceInfo.model || 'Unknown',
+          osVersion: deviceInfo.osVersion || 'Unknown',
           appVersion: '1.0.0',
         }),
       });

@@ -30,9 +30,10 @@ public class WebViewController: CAPPlugin {
         
         DispatchQueue.main.async {
             if let webView = self.bridge?.webView {
+                // Direct load - navigation delegate will handle keeping it in WebView
                 let request = URLRequest(url: url)
                 webView.load(request)
-                print("[WebViewController] ✅ URL opened:", urlString)
+                print("[WebViewController] ✅ URL opened (navigation delegate will handle):", urlString)
                 call.resolve(["success": true])
             } else {
                 print("[WebViewController] ❌ WebView not available")
@@ -55,9 +56,10 @@ public class WebViewController: CAPPlugin {
         
         DispatchQueue.main.async {
             if let webView = self.bridge?.webView {
+                // Direct load - navigation delegate will handle keeping it in WebView
                 let request = URLRequest(url: url)
                 webView.load(request)
-                print("[WebViewController] ✅ URL loaded:", urlString)
+                print("[WebViewController] ✅ URL loaded (navigation delegate will handle):", urlString)
                 call.resolve()
             } else {
                 print("[WebViewController] ❌ WebView not available")
