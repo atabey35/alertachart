@@ -94,11 +94,24 @@ response.cookies.set('next-auth.session-token', nextAuthToken, {
 });
 ```
 
-## 🎯 En İyi Çözüm: Android CookieManager + Session Restore
+## 🎯 En İyi Çözüm: Android CookieManager + iOS WKWebView Cookie Persistence
 
-1. **Android WebView'da cookie persistence ayarlarını ekle**
-2. **Uygulama açılışında session restore mekanizması ekle**
-3. **Cookie'ler kaybolursa, refresh token ile session'ı yeniden oluştur**
+1. **Android WebView'da cookie persistence ayarlarını ekle** ✅ (YAPILDI)
+2. **iOS WKWebView'da cookie persistence ayarlarını ekle** (Gerekirse)
+3. **Uygulama açılışında session restore mekanizması ekle**
+4. **Cookie'ler kaybolursa, refresh token ile session'ı yeniden oluştur**
+
+## ✅ Yapılan Düzeltmeler
+
+### Android: CookieManager Ayarı Eklendi
+
+**Dosya:** `android/app/src/main/java/com/kriptokirmizi/alerta/MainActivity.java`
+
+- `CookieManager` import edildi
+- `onCreate()` içinde cookie persistence ayarları eklendi:
+  - `setAcceptCookie(true)` - Cookie'leri kabul et
+  - `setAcceptThirdPartyCookies(true)` - Üçüncü taraf cookie'leri kabul et (OAuth için)
+  - `flush()` - Cookie'leri hemen persist et
 
 ## 📝 Test Senaryoları
 

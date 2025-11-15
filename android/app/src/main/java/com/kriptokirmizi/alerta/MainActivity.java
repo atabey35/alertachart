@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.webkit.CookieManager;
+import android.webkit.WebSettings;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
@@ -35,6 +36,19 @@ public class MainActivity extends BridgeActivity {
             WebView webView = getBridge().getWebView();
             if (webView != null) {
                 cookieManager.setAcceptThirdPartyCookies(webView, true);
+                
+                // 🔥 CRITICAL: Configure WebView settings for cookie persistence
+                WebSettings webSettings = webView.getSettings();
+                webSettings.setDomStorageEnabled(true); // Enable DOM storage (localStorage)
+                webSettings.setDatabaseEnabled(true); // Enable database storage
+                
+                // Set cache mode to LOAD_DEFAULT (uses cache when available)
+                webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+                
+                // Enable JavaScript (required for cookies)
+                webSettings.setJavaScriptEnabled(true);
+                
+                android.util.Log.d("MainActivity", "✅ WebView settings configured for cookie persistence");
             }
             
             // Flush cookies to ensure they are persisted

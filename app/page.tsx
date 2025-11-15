@@ -304,6 +304,32 @@ export default function Home() {
     // Check legacy auth on mount (for cookie-based auth)
     authService.checkAuth();
     
+    // 🔥 CRITICAL: Try to restore session if missing but refresh token exists
+    if (status === 'unauthenticated' && isCapacitor) {
+      const restoreSession = async () => {
+        try {
+          console.log('[App] Session missing, attempting to restore from refresh token...');
+          const response = await fetch('/api/auth/restore-session', {
+            method: 'POST',
+            credentials: 'include',
+          });
+          
+          if (response.ok) {
+            console.log('[App] ✅ Session restored successfully');
+            // Force NextAuth to re-check session
+            window.location.reload();
+          } else {
+            console.log('[App] ⚠️ Session restore failed, user needs to login');
+          }
+        } catch (error) {
+          console.error('[App] ❌ Error restoring session:', error);
+        }
+      };
+      
+      // Try to restore session after a short delay (wait for cookies to be available)
+      setTimeout(restoreSession, 500);
+    }
+    
     // Sync NextAuth session with user state
     if (status === 'authenticated' && session?.user) {
       const newUser = {

@@ -72,6 +72,12 @@ function CapacitorAuthContent() {
             await authService.checkAuth();
             console.log('[CapacitorAuth] Auth state updated');
             
+            // 🔥 CRITICAL: Save user email to localStorage for session restore
+            if (userData?.email && typeof window !== 'undefined') {
+              localStorage.setItem('user_email', userData.email);
+              console.log('[CapacitorAuth] ✅ User email saved to localStorage for session restore');
+            }
+            
             // 🔥 CRITICAL: Link device to user after login (for premium notifications)
             if (deviceId) {
               console.log('[CapacitorAuth] Linking device to user...', deviceId);
