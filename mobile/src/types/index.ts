@@ -1,7 +1,9 @@
 export interface WebToNativeMessage {
-  type: 'REQUEST_PUSH_TOKEN' | 'NAVIGATION' | 'SHARE' | 'AUTH_TOKEN' | 'CUSTOM';
+  type: 'REQUEST_PUSH_TOKEN' | 'NAVIGATION' | 'SHARE' | 'AUTH_TOKEN' | 'ALERT_TRIGGERED' | 'CUSTOM';
   payload?: any;
   token?: string; // For AUTH_TOKEN type
+  alert?: any; // For ALERT_TRIGGERED type
+  notification?: any; // For ALERT_TRIGGERED type
 }
 
 export interface NativeToWebMessage {
