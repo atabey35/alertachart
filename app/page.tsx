@@ -43,6 +43,9 @@ export default function Home() {
   // Shared drawing tool state for all layouts
   const [sharedActiveTool, setSharedActiveTool] = useState<DrawingTool>('none');
   const [showDrawingToolbar, setShowDrawingToolbar] = useState(true);
+  
+  // Chart refresh trigger for mobile app (prevents external browser opening)
+  const [chartRefreshKey, setChartRefreshKey] = useState(0);
 
   // Alert modal state
   const [triggeredAlert, setTriggeredAlert] = useState<PriceAlert | null>(null);
@@ -1164,7 +1167,18 @@ export default function Home() {
                     {/* Refresh Button - Next to Live indicator */}
                     <button
                       onClick={() => {
-                        window.location.reload();
+                        // 🔥 MOBİL APP FIX: window.location.reload() harici tarayıcı açıyor
+                        // Mobil app'te chart component'lerini reload et, web'de sayfayı reload et
+                        const isNativeApp = typeof window !== 'undefined' && (window as any).isNativeApp;
+                        
+                        if (isNativeApp) {
+                          // Mobil app: Chart component'lerini reload et (key değiştirerek)
+                          console.log('[App] Mobile app detected - Reloading charts...');
+                          setChartRefreshKey(prev => prev + 1);
+                        } else {
+                          // Web: Sayfayı reload et (backward compatibility)
+                          window.location.reload();
+                        }
                       }}
                       className="bg-gray-800/50 hover:bg-blue-600/50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 group pointer-events-auto p-1.5"
                       title="Refresh Chart"
@@ -1176,7 +1190,7 @@ export default function Home() {
                   </div>
                   
                   <Chart
-                    key={`${chart.id}-${chart.pair}-${chart.timeframe}-${layout}-${marketType}`}
+                    key={`${chart.id}-${chart.pair}-${chart.timeframe}-${layout}-${marketType}-${chartRefreshKey}`}
                     exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : chart.exchange}
                     pair={chart.pair}
                     timeframe={chart.timeframe}
