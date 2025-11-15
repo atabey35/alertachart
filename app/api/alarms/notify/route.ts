@@ -9,8 +9,8 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    // Get authorization header from request
-    const authHeader = request.headers.get('authorization');
+    // 🔥 Forward cookies from request to backend (httpOnly cookies)
+    const cookies = request.headers.get('cookie') || '';
     
     // Log to both console and stderr (for better visibility)
     const logMessage = `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -19,7 +19,8 @@ export async function POST(request: NextRequest) {
   - symbol: ${body.symbol}
   - deviceId: ${body.deviceId || 'none'}
   - pushToken: ${body.pushToken ? `${body.pushToken.substring(0, 30)}...` : 'none'}
-  - hasAuth: ${authHeader ? 'yes' : 'no'}
+  - hasCookies: ${cookies ? 'yes' : 'no'}
+  - cookies: ${cookies ? `${cookies.substring(0, 50)}...` : 'none'}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
     
     console.log(logMessage);
@@ -30,10 +31,13 @@ export async function POST(request: NextRequest) {
     
     console.log(`[Next.js API] Forwarding to backend: ${backendUrl}/api/alarms/notify`);
     
-    // Prepare headers with auth token if available
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (authHeader) {
-      headers['Authorization'] = authHeader;
+    // 🔥 Forward cookies to backend (backend authenticateToken middleware reads cookies)
+    const headers: Record<string, string> = { 
+      'Content-Type': 'application/json',
+    };
+    
+    if (cookies) {
+      headers['Cookie'] = cookies; // 🔥 CRITICAL: Forward httpOnly cookies!
     }
     
     const response = await fetch(`${backendUrl}/api/alarms/notify`, {
