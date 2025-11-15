@@ -5,6 +5,7 @@ import android.app.NotificationManager;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
+import android.webkit.CookieManager;
 import android.webkit.WebView;
 import com.getcapacitor.BridgeActivity;
 import com.getcapacitor.Plugin;
@@ -23,6 +24,28 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(WebViewController.class);
         
         super.onCreate(savedInstanceState);
+        
+        // 🔥 CRITICAL: Enable cookie persistence for WebView
+        // This ensures httpOnly cookies (session tokens) are preserved when app is closed
+        try {
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.setAcceptCookie(true);
+            
+            // Enable third-party cookies (for OAuth redirects)
+            WebView webView = getBridge().getWebView();
+            if (webView != null) {
+                cookieManager.setAcceptThirdPartyCookies(webView, true);
+            }
+            
+            // Flush cookies to ensure they are persisted
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                cookieManager.flush();
+            }
+            
+            android.util.Log.d("MainActivity", "✅ Cookie persistence enabled");
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "❌ Failed to enable cookie persistence: " + e.getMessage());
+        }
         
         // Create notification channels (like Expo did)
         createNotificationChannels();
