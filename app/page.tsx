@@ -1601,7 +1601,7 @@ export default function Home() {
         onUpgrade={() => {
           // Refresh user plan after upgrade
           if (user) {
-            fetch('/api/user/plan')
+            fetch(`/api/user/plan?t=${Date.now()}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
               .then(res => res.json())
               .then(data => {
                 setUserPlan({
