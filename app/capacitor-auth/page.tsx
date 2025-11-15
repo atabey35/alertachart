@@ -66,6 +66,9 @@ function CapacitorAuthContent() {
       })
         .then(async (response) => {
           if (response.ok) {
+            const result = await response.json();
+            const userData = result.user;
+            
             console.log('[CapacitorAuth] Session set successfully!');
             
             // ✅ Trigger authService to check auth and update user state
