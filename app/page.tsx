@@ -332,7 +332,8 @@ export default function Home() {
           }
           
           // Always try to restore - cookies will be sent automatically if they exist
-          const response = await fetch('/api/auth/restore-session', {
+          // Use full URL to ensure it works in both web and Capacitor contexts
+          const response = await fetch('https://alertachart.com/api/auth/restore-session', {
             method: 'POST',
             credentials: 'include', // 🔥 CRITICAL: Include cookies (will work if cookies exist in WKWebsiteDataStore)
           });

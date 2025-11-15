@@ -944,7 +944,8 @@
         }
 
         // Always try to restore - cookies will be sent automatically if they exist
-        const response = await fetch('/api/auth/restore-session', {
+        // Use full URL since we're in capacitor://localhost
+        const response = await fetch('https://alertachart.com/api/auth/restore-session', {
           method: 'POST',
           credentials: 'include', // 🔥 CRITICAL: Include cookies (will work if cookies exist in WKWebsiteDataStore)
         });
@@ -972,6 +973,11 @@
         }
       } catch (error) {
         console.error('[Login] ❌ Error restoring session:', error);
+        console.error('[Login] Error details:', {
+          message: error?.message,
+          stack: error?.stack,
+          name: error?.name
+        });
       }
     }
 
