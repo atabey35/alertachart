@@ -278,6 +278,11 @@ export default function Home() {
       setUser(authService.getUser());
     }
     
+    // Close login screen if user is authenticated
+    if (status === 'authenticated' && showLoginScreen) {
+      setShowLoginScreen(false);
+    }
+    
     const unsubscribe = authService.subscribe((currentUser) => {
       if (status !== 'authenticated') {
         setUser(currentUser);
@@ -702,14 +707,14 @@ export default function Home() {
     updateActiveChart({ pair: symbol });
   };
 
-  // WEB: Show mobile login screen if not logged in (first visit)
+  // WEB: Show mobile login screen if not logged in (first visit) OR if user clicks login button
   const isWeb = typeof window !== 'undefined' && !isCapacitor;
-  const shouldShowLoginScreen = isWeb && !user && status !== 'loading' && status === 'unauthenticated';
+  const shouldShowLoginScreen = (isWeb && !user && status !== 'loading' && status === 'unauthenticated') || showLoginScreen;
 
   // If web and not logged in, show mobile login screen
-  if (shouldShowLoginScreen) {
+  if (shouldShowLoginScreen && !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4 fixed inset-0 z-50">
         <div className="max-w-md w-full text-center">
           {/* Logo */}
           <div className="w-20 h-20 mx-auto mb-5 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 rounded-2xl flex items-center justify-center text-white font-bold text-4xl shadow-2xl shadow-blue-500/30">
@@ -728,7 +733,10 @@ export default function Home() {
           <div className="space-y-3">
             {/* Google Button */}
             <button
-              onClick={() => signIn('google', { callbackUrl: '/' })}
+              onClick={() => {
+                signIn('google', { callbackUrl: '/' });
+                setShowLoginScreen(false);
+              }}
               className="w-full py-4 px-6 bg-white hover:bg-gray-50 text-gray-900 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]"
             >
               <svg width="20" height="20" viewBox="0 0 24 24">
@@ -742,7 +750,10 @@ export default function Home() {
             
             {/* Apple Button */}
             <button
-              onClick={() => signIn('apple', { callbackUrl: '/' })}
+              onClick={() => {
+                signIn('apple', { callbackUrl: '/' });
+                setShowLoginScreen(false);
+              }}
               className="w-full py-4 px-6 bg-black hover:bg-gray-900 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-gray-700 shadow-lg hover:shadow-xl active:scale-[0.98]"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
@@ -753,7 +764,10 @@ export default function Home() {
             
             {/* Email Button */}
             <button
-              onClick={() => setShowAuthModal(true)}
+              onClick={() => {
+                setShowLoginScreen(false);
+                setShowAuthModal(true);
+              }}
               className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]"
             >
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
