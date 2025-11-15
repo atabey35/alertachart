@@ -1954,14 +1954,18 @@ export default function Home() {
         marketType={marketType}
       />
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => setShowAuthModal(false)}
-        onSuccess={() => {
-          console.log('[App] Auth successful');
-        }}
-      />
+      {/* Auth Modal - Only for Capacitor (web uses native login screen) */}
+      {isCapacitor && (
+        <AuthModal
+          isOpen={showAuthModal}
+          onClose={() => setShowAuthModal(false)}
+          onSuccess={() => {
+            console.log('[App] Auth successful');
+            setShowAuthModal(false);
+            window.location.reload();
+          }}
+        />
+      )}
 
       {/* Upgrade Modal */}
       <UpgradeModal
