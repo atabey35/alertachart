@@ -901,6 +901,8 @@ export default function Home() {
           </div>
 
           {/* Second row: Market Type + Timeframe selector + Pair Selector */}
+          {/* MOBİL: Sadece grafik sekmesinde göster, WEB: Her zaman göster */}
+          {(mobileTab === 'chart' || typeof window === 'undefined' || window.innerWidth >= 768) && (
           <div className="flex items-center gap-2 mt-3 overflow-x-auto scrollbar-hide">
             {/* Market Type Toggle (Spot/Futures) - Hidden on mobile (available in settings) */}
             <div className="hidden md:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1 mr-2">
@@ -1014,6 +1016,7 @@ export default function Home() {
               </div>
             )}
           </div>
+          )}
         </div>
       </header>
 
