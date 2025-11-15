@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { signIn } from 'next-auth/react';
 import { authService } from '@/services/authService';
-import { handleGoogleWebLogin, handleAppleWebLogin } from '@/utils/webAuth';
+import { handleGoogleWebLogin } from '@/utils/webAuth';
 
 // Capacitor Native Plugins (dinamik import - web'de hata vermez)
 declare global {
