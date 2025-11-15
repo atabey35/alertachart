@@ -103,15 +103,35 @@ response.cookies.set('next-auth.session-token', nextAuthToken, {
 
 ## ✅ Yapılan Düzeltmeler
 
-### Android: CookieManager Ayarı Eklendi
+### 1. Android: CookieManager + WebSettings Ayarı Eklendi
 
 **Dosya:** `android/app/src/main/java/com/kriptokirmizi/alerta/MainActivity.java`
 
-- `CookieManager` import edildi
+- `CookieManager` ve `WebSettings` import edildi
 - `onCreate()` içinde cookie persistence ayarları eklendi:
   - `setAcceptCookie(true)` - Cookie'leri kabul et
   - `setAcceptThirdPartyCookies(true)` - Üçüncü taraf cookie'leri kabul et (OAuth için)
+  - `setDomStorageEnabled(true)` - DOM storage (localStorage) etkinleştir
+  - `setDatabaseEnabled(true)` - Database storage etkinleştir
+  - `setCacheMode(LOAD_DEFAULT)` - Cache kullan
   - `flush()` - Cookie'leri hemen persist et
+
+### 2. Session Restore Mekanizması Eklendi
+
+**Yeni Dosya:** `app/api/auth/restore-session/route.ts`
+
+- Refresh token cookie'sinden session restore eden endpoint
+- Eğer access token geçersizse, refresh token ile yeni access token alır
+- NextAuth session cookie'sini yeniden oluşturur
+
+**Dosya:** `app/page.tsx`
+
+- Uygulama açıldığında, eğer session yoksa ama refresh token varsa, otomatik olarak session restore eder
+- Sadece Capacitor app'te çalışır (`isCapacitor` kontrolü)
+
+**Dosya:** `app/capacitor-auth/page.tsx`
+
+- Login sonrası user email'i localStorage'a kaydedilir (session restore için)
 
 ## 📝 Test Senaryoları
 
