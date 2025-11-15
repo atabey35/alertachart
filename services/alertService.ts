@@ -314,7 +314,7 @@ class AlertService {
       // 🔥 HER ZAMAN deviceId'yi yeniden yükle (localStorage'dan güncel değeri al)
       console.error('[AlertService] 🔄 Reloading device ID from localStorage...');
       console.log('[AlertService] 🔄 Reloading device ID from localStorage before triggering alarm...');
-      this.loadDeviceId();
+        this.loadDeviceId();
       console.error('[AlertService] 📱 Device ID after reload:', this.nativeDeviceId);
       console.log('[AlertService] 📱 Device ID after reload:', this.nativeDeviceId);
       
@@ -412,8 +412,9 @@ class AlertService {
       console.error('  hasAuthToken:', hasAuthToken);
       console.error('  willSendPush:', debugInfo.willSendPush);
       
-      // Push notification gönder: deviceId VE isNativeApp VE authToken olmalı
-      if (typeof window !== 'undefined' && finalDeviceId && isNativeApp && hasAuthToken) {
+      // 🔥 Push notification gönder: Sadece auth token kontrolü yap, backend user_id'den cihazları bulur!
+      if (typeof window !== 'undefined' && hasAuthToken) {
+        console.error('[AlertService] ✅ Conditions MET! Sending push notification...');
         try {
           const formattedPrice = formatPrice(alert.price);
           const upperSymbol = alert.pair.toUpperCase();
@@ -423,12 +424,7 @@ class AlertService {
               this.nativePushToken = pushToken;
             }
             
-            // Sadece deviceId varsa push notification gönder
-            if (!finalDeviceId) {
-              console.debug('[AlertService] Skipping push notification - no deviceId (web browser alarm)');
-              return;
-            }
-            
+            console.error('[AlertService] 📤 SENDING PUSH NOTIFICATION REQUEST NOW!');
             console.log('[AlertService] 📤 Sending push notification request to /api/alarms/notify:', {
               alarmKey: alert.id,
               symbol: upperSymbol,
@@ -449,8 +445,8 @@ class AlertService {
                   direction: alert.direction,
                   triggeredAt: alert.triggeredAt,
                 },
-                pushToken, // Include push token for device-specific delivery
-              deviceId: finalDeviceId, // Sadece bu cihaza bildirim gönder
+                // Backend user_id'den tüm cihazları bulacak, deviceId göndermeye gerek yok
+              deviceId: finalDeviceId || undefined, // Optional: bu cihaza öncelik ver
             };
             
             console.log('[AlertService] 📤 Sending fetch request to /api/alarms/notify with body:', JSON.stringify(requestBody, null, 2));
@@ -523,32 +519,9 @@ class AlertService {
           console.debug('[AlertService] Failed to call push notification API:', e);
         }
       } else {
-        // Push notification gönderilmedi - neden?
-        const debugInfo = {
-          hasWindow: typeof window !== 'undefined',
-          finalDeviceId,
-          isNativeApp,
-          hasReactNativeWebView: typeof window !== 'undefined' ? typeof (window as any).ReactNativeWebView !== 'undefined' : false,
-          windowIsNativeApp: typeof window !== 'undefined' ? (window as any).isNativeApp : undefined,
-        };
-        
-        console.warn('[AlertService] ⚠️ Push notification NOT sent!');
-        console.warn('[AlertService] Debug info:', debugInfo);
-        console.error('[AlertService] ⚠️ Push notification NOT sent!', debugInfo); // Also log to console.error
-        
-        if (!finalDeviceId) {
-          console.warn('[AlertService] ⚠️ Reason: no deviceId');
-          console.error('[AlertService] ⚠️ Reason: no deviceId');
-        } else if (!isNativeApp) {
-          console.warn('[AlertService] ⚠️ Reason: not in native app (isNativeApp: false)');
-          console.error('[AlertService] ⚠️ Reason: not in native app (isNativeApp: false)');
-        } else if (!hasAuthToken) {
-          console.warn('[AlertService] ⚠️ Reason: no auth token (user not logged in)');
-          console.error('[AlertService] ⚠️ Reason: no auth token (user not logged in)');
-        } else {
-          console.warn('[AlertService] ⚠️ Reason: unknown');
-          console.error('[AlertService] ⚠️ Reason: unknown');
-        }
+        // Push notification gönderilmedi - SADECE auth token eksikse buraya girer
+        console.error('[AlertService] ❌ PUSH NOTIFICATION SKIPPED - User NOT logged in!');
+        console.error('[AlertService] ❌ hasAuthToken:', hasAuthToken);
       }
       
       console.log('[AlertService] Alert triggered:', alert);
