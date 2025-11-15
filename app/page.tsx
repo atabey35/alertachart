@@ -247,9 +247,16 @@ export default function Home() {
 
     const fetchUserPlan = async () => {
       try {
-        const response = await fetch('/api/user/plan');
+        // Add cache-busting timestamp to ensure fresh data from database
+        const response = await fetch(`/api/user/plan?t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          },
+        });
         if (response.ok) {
           const data = await response.json();
+          console.log('[App] User plan fetched:', data);
           setUserPlan({
             plan: data.plan || 'free',
             isTrial: data.isTrial || false,
@@ -278,6 +285,16 @@ export default function Home() {
     };
 
     fetchUserPlan();
+    
+    // Refresh user plan when window gains focus (user comes back to app)
+    const handleFocus = () => {
+      fetchUserPlan();
+    };
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [user]);
 
   // Save active chart ID whenever it changes

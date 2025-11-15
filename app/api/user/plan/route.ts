@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     const hasAccess = hasPremiumAccess(user);
     const trialDaysRemaining = getTrialDaysRemaining(user);
     
-    return NextResponse.json({
+    const response = NextResponse.json({
       plan: user.plan,
       isPremium: premium,
       isTrial: trial,
@@ -68,6 +68,13 @@ export async function GET(request: NextRequest) {
       subscriptionStartedAt: user.subscription_started_at,
       subscriptionPlatform: user.subscription_platform,
     });
+    
+    // Disable caching - always fetch fresh data from database
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    response.headers.set('Pragma', 'no-cache');
+    response.headers.set('Expires', '0');
+    
+    return response;
   } catch (error: any) {
     console.error('[User Plan API] Error:', error);
     return NextResponse.json(
