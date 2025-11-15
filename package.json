@@ -8,7 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "worker:build": "tsc workers/aggregator.ts --outDir public/workers --lib es2020,webworker --target es2020",
-    "dev:all": "concurrently \"npm run dev\" \"npm run worker:build -- --watch\""
+    "dev:all": "concurrently \"npm run dev\" \"npm run worker:build -- --watch\"",
+    "migrate:premium": "node scripts/run-migration.js",
+    "test:api": "bash tests/api-test-suite.sh",
+    "test:premium": "echo 'Premium utility tests - Run manually with test framework'"
   },
   "dependencies": {
     "@capacitor-community/apple-sign-in": "^7.1.0",
@@ -26,6 +29,7 @@
     "jsonwebtoken": "^9.0.2",
     "lightweight-charts": "^4.2.0",
     "lodash.merge": "^4.6.2",
+    "lucide-react": "^0.553.0",
     "next": "^15.0.0",
     "next-auth": "^4.24.5",
     "react": "^19.0.0",

@@ -12,14 +12,18 @@ import Watchlist from '@/components/Watchlist';
 import AlertModal from '@/components/AlertModal';
 import SymbolSearchModal from '@/components/SymbolSearchModal';
 import AuthModal from '@/components/AuthModal';
+import UpgradeModal from '@/components/UpgradeModal';
+import PremiumBadge from '@/components/PremiumBadge';
+import TrialIndicator from '@/components/TrialIndicator';
 import DrawingToolbar, { DrawingTool } from '@/components/chart/DrawingToolbar';
 import alertService from '@/services/alertService';
 import { authService } from '@/services/authService';
 import { pushNotificationService } from '@/services/pushNotificationService';
 import { PriceAlert } from '@/types/alert';
-import { TIMEFRAMES } from '@/utils/constants';
+import { TIMEFRAMES, FREE_TIMEFRAMES, PREMIUM_TIMEFRAMES } from '@/utils/constants';
 import { getTimeframeForHuman } from '@/utils/helpers';
 import { initSafeAreaListener } from '@/utils/safeArea';
+import { hasPremiumAccess, isTrialActive, getTrialDaysRemaining, User } from '@/utils/premium';
 
 interface ChartState {
   id: number;
@@ -48,6 +52,16 @@ export default function Home() {
   const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
   const { data: session, status } = useSession();
   const [isCapacitor, setIsCapacitor] = useState(false);
+
+  // Premium state
+  const [userPlan, setUserPlan] = useState<{
+    plan: 'free' | 'premium';
+    isTrial: boolean;
+    trialRemainingDays: number;
+    expiryDate?: string | null;
+  } | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [fullUser, setFullUser] = useState<User | null>(null);
 
   // Capacitor kontrolü
   useEffect(() => {
@@ -221,6 +235,48 @@ export default function Home() {
 
     return () => unsubscribe();
   }, [session, status]);
+
+  // Fetch user plan when user changes
+  useEffect(() => {
+    if (!user) {
+      setUserPlan(null);
+      setFullUser(null);
+      return;
+    }
+
+    const fetchUserPlan = async () => {
+      try {
+        const response = await fetch('/api/user/plan');
+        if (response.ok) {
+          const data = await response.json();
+          setUserPlan({
+            plan: data.plan || 'free',
+            isTrial: data.isTrial || false,
+            trialRemainingDays: data.trialRemainingDays || 0,
+            expiryDate: data.expiryDate || null,
+          });
+
+          // Set full user object for premium utilities
+          setFullUser({
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            plan: data.plan || 'free',
+            expiry_date: data.expiryDate || null,
+            trial_started_at: null, // Will be fetched if needed
+            trial_ended_at: null,
+            subscription_started_at: null,
+            subscription_platform: null,
+            subscription_id: null,
+          });
+        }
+      } catch (error) {
+        console.error('[App] Error fetching user plan:', error);
+      }
+    };
+
+    fetchUserPlan();
+  }, [user]);
 
   // Save active chart ID whenever it changes
   useEffect(() => {
@@ -721,11 +777,17 @@ export default function Home() {
                   </svg>
                 </button>
                 <button
-                  onClick={() => setLayout(4)}
-                  className={`p-1.5 rounded transition-colors ${
+                  onClick={() => {
+                    if (hasPremiumAccess(fullUser)) {
+                      setLayout(4);
+                    } else {
+                      setShowUpgradeModal(true);
+                    }
+                  }}
+                  className={`p-1.5 rounded transition-colors relative ${
                     layout === 4 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                  title="2x2 Grid"
+                  } ${!hasPremiumAccess(fullUser) ? 'opacity-60' : ''}`}
+                  title={hasPremiumAccess(fullUser) ? '2x2 Grid' : '2x2 Grid (Premium)'}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <rect x="3" y="3" width="8" height="8" rx="1"/>
@@ -733,13 +795,22 @@ export default function Home() {
                     <rect x="3" y="13" width="8" height="8" rx="1"/>
                     <rect x="13" y="13" width="8" height="8" rx="1"/>
                   </svg>
+                  {!hasPremiumAccess(fullUser) && (
+                    <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                  )}
                 </button>
                 <button
-                  onClick={() => setLayout(9)}
-                  className={`p-1.5 rounded transition-colors ${
+                  onClick={() => {
+                    if (hasPremiumAccess(fullUser)) {
+                      setLayout(9);
+                    } else {
+                      setShowUpgradeModal(true);
+                    }
+                  }}
+                  className={`p-1.5 rounded transition-colors relative ${
                     layout === 9 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                  title="3x3 Grid"
+                  } ${!hasPremiumAccess(fullUser) ? 'opacity-60' : ''}`}
+                  title={hasPremiumAccess(fullUser) ? '3x3 Grid' : '3x3 Grid (Premium)'}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <rect x="2" y="2" width="5" height="5" rx="0.5"/>
@@ -752,6 +823,9 @@ export default function Home() {
                     <rect x="9" y="16" width="5" height="5" rx="0.5"/>
                     <rect x="16" y="16" width="5" height="5" rx="0.5"/>
                   </svg>
+                  {!hasPremiumAccess(fullUser) && (
+                    <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                  )}
                 </button>
               </div>
 
@@ -782,7 +856,8 @@ export default function Home() {
 
             {/* Timeframe buttons */}
             <div className="flex gap-1 items-center">
-              {TIMEFRAMES.map((tf) => (
+              {/* Free timeframes */}
+              {FREE_TIMEFRAMES.map((tf) => (
                 <button
                   key={tf}
                   onClick={() => updateActiveChart({ timeframe: tf })}
@@ -796,6 +871,37 @@ export default function Home() {
                 </button>
               ))}
               
+              {/* Premium timeframes */}
+              {PREMIUM_TIMEFRAMES.map((tf) => {
+                const isPremium = hasPremiumAccess(fullUser);
+                const isActive = activeChart.timeframe === tf;
+                
+                return (
+                  <button
+                    key={tf}
+                    onClick={() => {
+                      if (isPremium) {
+                        updateActiveChart({ timeframe: tf });
+                      } else {
+                        setShowUpgradeModal(true);
+                      }
+                    }}
+                    className={`px-2 py-1 md:px-3 md:py-2 text-[10px] md:text-sm rounded whitespace-nowrap flex-shrink-0 relative ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : isPremium
+                        ? 'bg-gray-900 text-gray-400 hover:bg-gray-800'
+                        : 'bg-gray-900/50 text-gray-500 opacity-60'
+                    }`}
+                    title={isPremium ? getTimeframeForHuman(tf) : `${getTimeframeForHuman(tf)} (Premium)`}
+                  >
+                    {getTimeframeForHuman(tf)}
+                    {!isPremium && (
+                      <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
 
             {/* Symbol Search Button */}
@@ -1071,12 +1177,30 @@ export default function Home() {
         {/* MOBILE: Aggr Tab (full screen) */}
         <div className={`${mobileTab === 'aggr' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-hidden bg-gray-950`}>
           {user ? (
-            <iframe
-              src="https://aggr.alertachart.com?embed=true"
-              className="w-full h-full border-0"
-              title="Aggr Trading Dashboard"
-              allow="clipboard-write; clipboard-read"
-            />
+            hasPremiumAccess(fullUser) ? (
+              <iframe
+                src="https://aggr.alertachart.com?embed=true"
+                className="w-full h-full border-0"
+                title="Aggr Trading Dashboard"
+                allow="clipboard-write; clipboard-read"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4">
+                  <span className="text-3xl">💎</span>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Pro Üye Gerekli</h3>
+                <p className="text-gray-400 mb-6 text-center">
+                  AGGR trading dashboard'una erişmek için premium üyelik gereklidir.
+                </p>
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-blue-500/25"
+                >
+                  Premium'a Geç
+                </button>
+              </div>
+            )
           ) : (
             <div className="flex flex-col items-center justify-center h-full p-8 text-center">
               <svg className="w-16 h-16 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1143,19 +1267,14 @@ export default function Home() {
                               <span className="capitalize">{(user as any).provider}</span>
                             </span>
                           )}
-                          {(user as any).plan && (
-                            <span className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold rounded-full uppercase ${
-                              (user as any).plan === 'premium' 
-                                ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' 
-                                : 'bg-gray-500/20 text-gray-300 border border-gray-500/30'
-                            }`}>
-                              {(user as any).plan === 'premium' && (
-                                <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                  <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                </svg>
-                              )}
-                              {(user as any).plan}
-                            </span>
+                          {hasPremiumAccess(fullUser) && (
+                            <PremiumBadge size="sm" showText={true} />
+                          )}
+                          {userPlan?.isTrial && userPlan.trialRemainingDays > 0 && (
+                            <TrialIndicator
+                              remainingDays={userPlan.trialRemainingDays}
+                              size="sm"
+                            />
                           )}
                         </div>
                         
@@ -1167,6 +1286,19 @@ export default function Home() {
                     </div>
                   </div>
                   
+                  {/* Premium Upgrade Button */}
+                  {!hasPremiumAccess(fullUser) && (
+                    <button
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <span className="text-xl">💎</span>
+                        <span>Premium'a Geç</span>
+                      </div>
+                    </button>
+                  )}
+
                   {/* Logout Button */}
                   <button
                     onClick={async () => {
@@ -1223,12 +1355,14 @@ export default function Home() {
                 {[1, 2, 4, 9].map((layoutOption) => {
                   const isActive = layout === layoutOption;
                   const layoutLabel = layoutOption === 1 ? '1x1' : layoutOption === 2 ? '1x2' : layoutOption === 4 ? '2x2' : '3x3';
+                  const isPremiumLayout = layoutOption === 4 || layoutOption === 9;
+                  const hasAccess = !isPremiumLayout || hasPremiumAccess(fullUser);
                   
                   // Grid icon based on layout
                   const getGridIcon = () => {
                     const size = 24;
                     const strokeWidth = 1.5;
-                    const color = isActive ? '#60A5FA' : '#9CA3AF';
+                    const color = isActive ? '#60A5FA' : hasAccess ? '#9CA3AF' : '#6B7280';
                     
                     if (layoutOption === 1) {
                       // 1x1 - Single square
@@ -1276,16 +1410,27 @@ export default function Home() {
                   return (
                     <button
                       key={layoutOption}
-                      onClick={() => setLayout(layoutOption as 1 | 2 | 4 | 9)}
-                      className={`flex flex-col items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                      onClick={() => {
+                        if (hasAccess) {
+                          setLayout(layoutOption as 1 | 2 | 4 | 9);
+                        } else {
+                          setShowUpgradeModal(true);
+                        }
+                      }}
+                      className={`flex flex-col items-center justify-center gap-2 p-3 rounded-lg border-2 transition-all relative ${
                         isActive
                           ? 'border-blue-500 bg-blue-900/20 text-white'
-                          : 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600'
+                          : hasAccess
+                          ? 'border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600'
+                          : 'border-gray-700/50 bg-gray-800/50 text-gray-500 opacity-60'
                       }`}
-                      title={layoutLabel}
+                      title={!hasAccess ? `${layoutLabel} (Premium)` : layoutLabel}
                     >
                       {getGridIcon()}
                       <span className="text-xs font-medium">{layoutLabel}</span>
+                      {!hasAccess && (
+                        <span className="absolute top-1 right-1 text-[8px]">🔒</span>
+                      )}
                     </button>
                   );
                 })}
@@ -1362,14 +1507,25 @@ export default function Home() {
 
         {user && (
           <button
-            onClick={() => setMobileTab('aggr')}
-            className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors ${
+            onClick={() => {
+              if (hasPremiumAccess(fullUser)) {
+                setMobileTab('aggr');
+              } else {
+                setShowUpgradeModal(true);
+              }
+            }}
+            className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative ${
               mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'
             }`}
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-            </svg>
+            <div className="relative">
+              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+              </svg>
+              {!hasPremiumAccess(fullUser) && (
+                <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
+              )}
+            </div>
             <span className="text-[10px] mt-1">Aggr</span>
           </button>
         )}
@@ -1417,6 +1573,30 @@ export default function Home() {
         onSuccess={() => {
           console.log('[App] Auth successful');
         }}
+      />
+
+      {/* Upgrade Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onUpgrade={() => {
+          // Refresh user plan after upgrade
+          if (user) {
+            fetch('/api/user/plan')
+              .then(res => res.json())
+              .then(data => {
+                setUserPlan({
+                  plan: data.plan || 'free',
+                  isTrial: data.isTrial || false,
+                  trialRemainingDays: data.trialRemainingDays || 0,
+                  expiryDate: data.expiryDate || null,
+                });
+              });
+          }
+        }}
+        currentPlan={userPlan?.plan || 'free'}
+        isTrial={userPlan?.isTrial || false}
+        trialRemainingDays={userPlan?.trialRemainingDays || 0}
       />
 
 

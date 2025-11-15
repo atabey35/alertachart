@@ -1,0 +1,50 @@
+-- Premium System Migration Script
+-- Run this script to add premium/trial support to existing database
+
+-- 1. Create trial_attempts table
+CREATE TABLE IF NOT EXISTS trial_attempts (
+  id SERIAL PRIMARY KEY,
+  device_id VARCHAR(255) UNIQUE NOT NULL,
+  user_id INTEGER NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  ip_address VARCHAR(45),
+  platform VARCHAR(20),
+  started_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  ended_at TIMESTAMP,
+  converted_to_premium BOOLEAN DEFAULT false,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- 2. Add indexes
+CREATE INDEX IF NOT EXISTS idx_trial_attempts_device_id ON trial_attempts(device_id);
+CREATE INDEX IF NOT EXISTS idx_trial_attempts_user_id ON trial_attempts(user_id);
+CREATE INDEX IF NOT EXISTS idx_trial_attempts_email ON trial_attempts(email);
+CREATE INDEX IF NOT EXISTS idx_trial_attempts_ip ON trial_attempts(ip_address);
+CREATE INDEX IF NOT EXISTS idx_trial_attempts_started_at ON trial_attempts(started_at);
+
+-- 3. Add trial fields to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_started_at TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS trial_ended_at TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS subscription_started_at TIMESTAMP;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_subscription_check TIMESTAMP;
+
+-- 4. Add indexes for subscription checks
+CREATE INDEX IF NOT EXISTS idx_users_trial_started ON users(trial_started_at) WHERE trial_started_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_users_trial_ended ON users(trial_ended_at) WHERE trial_ended_at IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_users_subscription_check ON users(last_subscription_check) WHERE plan = 'premium';
+
+-- 5. Add comments
+COMMENT ON TABLE trial_attempts IS 'Tracks trial attempts to prevent fraud (device_id, email, IP)';
+COMMENT ON COLUMN trial_attempts.device_id IS 'Unique device identifier - prevents multiple trials from same device';
+COMMENT ON COLUMN trial_attempts.ip_address IS 'IP address for fraud prevention - same IP can only start 1 trial';
+COMMENT ON COLUMN trial_attempts.email IS 'User email - same email can only start 1 trial';
+COMMENT ON COLUMN trial_attempts.converted_to_premium IS 'Whether trial converted to premium after payment';
+
+-- Success message
+DO $$
+BEGIN
+  RAISE NOTICE 'Premium system migration completed successfully!';
+END $$;
+

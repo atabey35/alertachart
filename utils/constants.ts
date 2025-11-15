@@ -6,10 +6,8 @@
 export const MAX_BARS_PER_CHUNKS = 10000;
 export const CHUNK_DURATION = 1000 * 60 * 60 * 24; // 24 hours in ms
 
-// Supported timeframes (in seconds)
-export const TIMEFRAMES = [
-  10,        // 10s
-  30,        // 30s
+// Free timeframes (in seconds)
+export const FREE_TIMEFRAMES = [
   60,        // 1m
   300,       // 5m
   900,       // 15m
@@ -17,6 +15,15 @@ export const TIMEFRAMES = [
   14400,     // 4h
   86400,     // 1d
 ];
+
+// Premium-only timeframes (in seconds)
+export const PREMIUM_TIMEFRAMES = [
+  10,        // 10s
+  30,        // 30s
+];
+
+// All timeframes (for premium users)
+export const TIMEFRAMES = [...FREE_TIMEFRAMES, ...PREMIUM_TIMEFRAMES];
 
 // Default timeframe
 export const DEFAULT_TIMEFRAME = 900; // 15m
