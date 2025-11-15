@@ -52,6 +52,7 @@ export default function Home() {
 
   // Auth state
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showLoginScreen, setShowLoginScreen] = useState(false); // Native login screen for web
   const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
   const { data: session, status } = useSession();
   const [isCapacitor, setIsCapacitor] = useState(false);
@@ -801,7 +802,13 @@ export default function Home() {
                     </div>
                   ) : (
                     <button
-                      onClick={() => setShowAuthModal(true)}
+                      onClick={() => {
+                        if (isWeb) {
+                          setShowLoginScreen(true);
+                        } else {
+                          setShowAuthModal(true);
+                        }
+                      }}
                       className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition"
                     >
                       Giriş Yap
@@ -1377,7 +1384,13 @@ export default function Home() {
               <h3 className="text-xl font-bold text-white mb-2">Giriş Yapmanız Gerekiyor</h3>
               <p className="text-gray-400 mb-6">Aggr trading dashboard'unu kullanmak için lütfen giriş yapın.</p>
               <button
-                onClick={() => setShowAuthModal(true)}
+                onClick={() => {
+                  if (isWeb) {
+                    setShowLoginScreen(true);
+                  } else {
+                    setShowAuthModal(true);
+                  }
+                }}
                 className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
               >
                 Giriş Yap
