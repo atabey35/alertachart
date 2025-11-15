@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           if (userResponse2.ok) {
             const result = await userResponse2.json();
             userData = result.user;
-            userEmail = result.user?.email;
+            userEmail = userData?.email;
             console.log('[restore-session] User data fetched after token refresh:', userEmail);
           }
         }
