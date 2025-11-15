@@ -282,7 +282,14 @@
           // Get device ID and FCM token from localStorage (refresh token in case it was just received)
           const deviceId = localStorage.getItem('native_device_id') || 'unknown';
           const platform = localStorage.getItem('native_platform') || 'android';
-          fcmToken = localStorage.getItem('fcm_token') || fcmToken || ''; // Use refreshed token
+          
+          // 🔥 AGGRESSIVE: Try to get token from localStorage multiple times
+          fcmToken = localStorage.getItem('fcm_token') || fcmToken || '';
+          
+          // 🔥 DEBUG: Log all localStorage keys to see what's available
+          console.error('[Login] 🔍 DEBUG: All localStorage keys:', Object.keys(localStorage).join(', '));
+          console.error('[Login] 🔍 DEBUG: fcm_token from localStorage:', localStorage.getItem('fcm_token') ? `${localStorage.getItem('fcm_token').substring(0, 30)}...` : 'null');
+          console.error('[Login] 🔍 DEBUG: fcmToken variable:', fcmToken ? `${fcmToken.substring(0, 30)}...` : 'null');
           
           // Build URL with all necessary params
           const params = new URLSearchParams({
@@ -296,17 +303,21 @@
           // Add FCM token if available (may be long, but necessary for re-registration)
           if (fcmToken) {
             params.append('fcm_token', fcmToken);
-            console.log('[Login] ✅ FCM token will be passed to remote app (length:', fcmToken.length, ')');
+            console.error('[Login] ✅ FCM token will be passed to remote app (length:', fcmToken.length, ')');
+            console.error('[Login] ✅ FCM token preview:', fcmToken.substring(0, 50) + '...');
           } else {
             console.error('[Login] ❌ No FCM token found in localStorage!');
+            console.error('[Login] ❌ localStorage.getItem("fcm_token"):', localStorage.getItem('fcm_token'));
+            console.error('[Login] ❌ fcmToken variable:', fcmToken);
           }
           
           const authUrl = `https://alertachart.com/capacitor-auth?${params.toString()}`;
-          console.log('[Login] Auth URL with device ID and FCM token');
-          console.log('[Login] Device ID being passed:', deviceId);
-          console.log('[Login] FCM token length:', fcmToken ? fcmToken.length : 0);
+          console.error('[Login] 🔍 Auth URL length:', authUrl.length);
+          console.error('[Login] 🔍 Auth URL contains fcm_token:', authUrl.includes('fcm_token'));
+          console.error('[Login] 🔍 Device ID being passed:', deviceId);
+          console.error('[Login] 🔍 FCM token length:', fcmToken ? fcmToken.length : 0);
           await WebViewController.loadUrl({ url: authUrl });
-          console.log('[Login] Remote app loaded with auth!');
+          console.error('[Login] ✅ Remote app loaded with auth!');
         } else {
           console.error('[Login] WebViewController plugin not found!');
           showError('Failed to load app');
@@ -390,7 +401,14 @@
           // Get device ID and FCM token from localStorage (refresh token in case it was just received)
           const deviceId = localStorage.getItem('native_device_id') || 'unknown';
           const platform = localStorage.getItem('native_platform') || 'android';
-          fcmToken = localStorage.getItem('fcm_token') || fcmToken || ''; // Use refreshed token
+          
+          // 🔥 AGGRESSIVE: Try to get token from localStorage multiple times
+          fcmToken = localStorage.getItem('fcm_token') || fcmToken || '';
+          
+          // 🔥 DEBUG: Log all localStorage keys to see what's available
+          console.error('[Login] 🔍 DEBUG: All localStorage keys:', Object.keys(localStorage).join(', '));
+          console.error('[Login] 🔍 DEBUG: fcm_token from localStorage:', localStorage.getItem('fcm_token') ? `${localStorage.getItem('fcm_token').substring(0, 30)}...` : 'null');
+          console.error('[Login] 🔍 DEBUG: fcmToken variable:', fcmToken ? `${fcmToken.substring(0, 30)}...` : 'null');
           
           // Build URL with all necessary params
           const params = new URLSearchParams({
@@ -404,17 +422,21 @@
           // Add FCM token if available (may be long, but necessary for re-registration)
           if (fcmToken) {
             params.append('fcm_token', fcmToken);
-            console.log('[Login] ✅ FCM token will be passed to remote app (length:', fcmToken.length, ')');
+            console.error('[Login] ✅ FCM token will be passed to remote app (length:', fcmToken.length, ')');
+            console.error('[Login] ✅ FCM token preview:', fcmToken.substring(0, 50) + '...');
           } else {
             console.error('[Login] ❌ No FCM token found in localStorage!');
+            console.error('[Login] ❌ localStorage.getItem("fcm_token"):', localStorage.getItem('fcm_token'));
+            console.error('[Login] ❌ fcmToken variable:', fcmToken);
           }
           
           const authUrl = `https://alertachart.com/capacitor-auth?${params.toString()}`;
-          console.log('[Login] Auth URL with device ID and FCM token');
-          console.log('[Login] Device ID being passed:', deviceId);
-          console.log('[Login] FCM token length:', fcmToken ? fcmToken.length : 0);
+          console.error('[Login] 🔍 Auth URL length:', authUrl.length);
+          console.error('[Login] 🔍 Auth URL contains fcm_token:', authUrl.includes('fcm_token'));
+          console.error('[Login] 🔍 Device ID being passed:', deviceId);
+          console.error('[Login] 🔍 FCM token length:', fcmToken ? fcmToken.length : 0);
           await WebViewController.loadUrl({ url: authUrl });
-          console.log('[Login] Remote app loaded with auth!');
+          console.error('[Login] ✅ Remote app loaded with auth!');
         } else {
           console.error('[Login] WebViewController plugin not found!');
           showError('Failed to load app');
