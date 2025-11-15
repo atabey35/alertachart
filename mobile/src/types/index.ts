@@ -1,5 +1,5 @@
 export interface WebToNativeMessage {
-  type: 'REQUEST_PUSH_TOKEN' | 'NAVIGATION' | 'SHARE' | 'AUTH_TOKEN' | 'ALERT_TRIGGERED' | 'CUSTOM';
+  type: 'REQUEST_PUSH_TOKEN' | 'NAVIGATION' | 'SHARE' | 'AUTH_TOKEN' | 'ALERT_TRIGGERED' | 'RELOAD' | 'CUSTOM';
   payload?: any;
   token?: string; // For AUTH_TOKEN type
   alert?: any; // For ALERT_TRIGGERED type

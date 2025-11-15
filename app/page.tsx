@@ -1168,15 +1168,19 @@ export default function Home() {
                     <button
                       onClick={() => {
                         // 🔥 MOBİL APP FIX: window.location.reload() harici tarayıcı açıyor
-                        // Mobil app'te chart component'lerini reload et, web'de sayfayı reload et
+                        // Çözüm: window.location.reload() WebView'da override edildi
+                        // Mobil app'te: Chart component'lerini reload et (key değiştirerek) - daha smooth
+                        // Web'de: window.location.reload() kullan (override edilmediği için normal çalışır)
                         const isNativeApp = typeof window !== 'undefined' && (window as any).isNativeApp;
                         
                         if (isNativeApp) {
                           // Mobil app: Chart component'lerini reload et (key değiştirerek)
+                          // Bu daha smooth ve state'i korur
                           console.log('[App] Mobile app detected - Reloading charts...');
                           setChartRefreshKey(prev => prev + 1);
                         } else {
                           // Web: Sayfayı reload et (backward compatibility)
+                          // window.location.reload() WebView'da override edilmediği için normal çalışır
                           window.location.reload();
                         }
                       }}

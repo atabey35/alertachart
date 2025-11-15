@@ -213,6 +213,15 @@ export default function AppWebView({
         }
         break;
 
+      case 'RELOAD':
+        // 🔥 CRITICAL: window.location.reload() çağrıldığında WebView'ı reload et
+        // Bu, harici tarayıcı açılmasını engeller
+        console.log('[WebView] Reload requested from web');
+        if (webViewRef.current) {
+          webViewRef.current.reload();
+        }
+        break;
+
       case 'CUSTOM':
         // Özel mesajlar için extension noktası
         console.log('[WebView] Custom message:', message.payload);
@@ -388,6 +397,22 @@ export default function AppWebView({
               // Set isNativeApp flag
               window.isNativeApp = true;
               console.log('[Native Bridge] Set isNativeApp = true');
+              
+              // 🔥 CRITICAL: Override window.location.reload() to prevent external browser opening
+              const originalReload = window.location.reload;
+              window.location.reload = function(forcedReload) {
+                console.log('[Native Bridge] window.location.reload() intercepted');
+                // Mobil app'te: WebView'ı reload et (harici tarayıcı açılmasını engelle)
+                if (window.ReactNativeWebView) {
+                  console.log('[Native Bridge] Sending RELOAD message to native');
+                  window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'RELOAD' }));
+                  return; // Prevent default reload behavior
+                }
+                // Web'de: Normal reload (fallback)
+                console.log('[Native Bridge] Using original reload (web)');
+                originalReload.call(window.location, forcedReload);
+              };
+              console.log('[Native Bridge] window.location.reload() overridden');
               
               // Set deviceId if available
               const deviceId = ${deviceId ? JSON.stringify(deviceId) : 'null'};
