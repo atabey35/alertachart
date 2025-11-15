@@ -70,8 +70,34 @@ function CapacitorAuthContent() {
             
             // ✅ Trigger authService to check auth and update user state
             await authService.checkAuth();
-            console.log('[CapacitorAuth] Auth state updated, redirecting...');
+            console.log('[CapacitorAuth] Auth state updated');
             
+            // 🔥 CRITICAL: Link device to user after login (for premium notifications)
+            if (deviceId) {
+              console.log('[CapacitorAuth] Linking device to user...', deviceId);
+              try {
+                const linkResponse = await fetch('/api/devices/link', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ deviceId }),
+                });
+                
+                if (linkResponse.ok) {
+                  const linkData = await linkResponse.json();
+                  console.log('[CapacitorAuth] ✅ Device linked to user:', linkData);
+                } else {
+                  const linkError = await linkResponse.json();
+                  console.warn('[CapacitorAuth] ⚠️ Failed to link device:', linkError);
+                }
+              } catch (linkError) {
+                console.error('[CapacitorAuth] ❌ Error linking device:', linkError);
+              }
+            } else {
+              console.warn('[CapacitorAuth] ⚠️ No deviceId provided, skipping device link');
+            }
+            
+            console.log('[CapacitorAuth] Redirecting to home...');
             // Redirect to home
             router.replace('/');
           } else {
