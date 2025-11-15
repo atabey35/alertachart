@@ -11,7 +11,7 @@ import {
   setupNotificationListeners,
   checkNotificationPermissions
 } from './src/services/notifications';
-import { registerPushToken } from './src/services/api';
+import { registerPushToken, registerNativeDevice, linkDevice } from './src/services/api';
 import { getOrCreateDeviceId } from './src/utils/deviceId';
 import { saveAuthToken, getAuthToken, clearAuthTokens } from './src/utils/auth';
 
@@ -105,20 +105,34 @@ export default function App() {
         console.log(tokenLog);
         addDebugLog(tokenLog);
 
-        // 4. Token'ı backend'e kaydet (auth token ile birlikte)
-        const registered = await registerPushToken({
-          deviceId: devId,
-          expoPushToken: token,
-          platform: Platform.OS as 'ios' | 'android',
-          appVersion: APP_VERSION,
-        }, savedAuthToken);
+        // 4. 🔥 YENİ MİMARİ: Native cihaz kaydı - AUTH GEREKTİRMEZ
+        // Login olmadan cihaz kaydı yap, login sonrası /api/devices/link ile kullanıcıya bağlanır
+        const registered = await registerNativeDevice(
+          devId,
+          token,
+          Platform.OS as 'ios' | 'android',
+          APP_VERSION
+        );
 
         if (registered) {
-          const successLog = '✅ Push token registered with backend';
+          const successLog = '✅ Native device registered (no auth required)';
           console.log(successLog);
           addDebugLog(successLog);
+          
+          // Eğer zaten auth token varsa, cihazı hemen kullanıcıya bağla
+          if (savedAuthToken) {
+            console.log('[App] Auth token exists, linking device to user...');
+            const linked = await linkDevice(devId);
+            if (linked) {
+              console.log('[App] ✅ Device linked to user');
+              addDebugLog('Device linked to user');
+            } else {
+              console.warn('[App] ⚠️ Failed to link device to user');
+              addDebugLog('Failed to link device');
+            }
+          }
         } else {
-          const errorLog = '❌ Failed to register push token with backend';
+          const errorLog = '❌ Failed to register native device';
           console.warn(errorLog);
           addDebugLog(errorLog);
         }
@@ -251,15 +265,17 @@ export default function App() {
           setAuthToken(token);
           addDebugLog('Auth token saved');
           
-          // Auth token geldiğinde push token'ı yeniden kaydet (user_id ile bağlamak için)
-          if (pushToken && deviceId) {
-            console.log('[App] Re-registering push token with auth token');
-            await registerPushToken({
-              deviceId,
-              expoPushToken: pushToken,
-              platform: Platform.OS as 'ios' | 'android',
-              appVersion: APP_VERSION,
-            }, token);
+          // 🔥 YENİ MİMARİ: Login sonrası cihazı kullanıcıya bağla
+          if (deviceId) {
+            console.log('[App] Linking device to user after login...');
+            const linked = await linkDevice(deviceId);
+            if (linked) {
+              console.log('[App] ✅ Device linked to user');
+              addDebugLog('Device linked to user');
+            } else {
+              console.warn('[App] ⚠️ Failed to link device to user');
+              addDebugLog('Failed to link device');
+            }
           }
         }}
         onNavigationStateChange={(navState) => {

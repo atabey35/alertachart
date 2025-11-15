@@ -379,14 +379,23 @@ class AlertService {
       const finalDeviceId = alert.deviceId || this.nativeDeviceId;
       
       // 🔥 Auth kontrolü: httpOnly cookies kullanıyoruz, localStorage değil!
-      // authService.isAuthenticated() kullan - cookie'ler otomatik gönderilir
+      // ÖNCE checkAuth() çağır ki cookie'ler kontrol edilsin ve user güncellensin
       let isAuthenticated = false;
       if (typeof window !== 'undefined') {
         try {
-          isAuthenticated = authService.isAuthenticated();
-          console.error('[AlertService] 🔐 Auth check via authService.isAuthenticated():', isAuthenticated);
+          // 🔥 CRITICAL: checkAuth() çağır - cookie'leri kontrol eder ve this.user'ı günceller
+          const user = await authService.checkAuth();
+          isAuthenticated = user !== null;
+          console.error('[AlertService] 🔐 Auth check via authService.checkAuth():', isAuthenticated, user ? `user: ${user.id}` : 'no user');
         } catch (e) {
           console.error('[AlertService] ❌ Failed to check auth:', e);
+          // Fallback: isAuthenticated() kullan
+          try {
+            isAuthenticated = authService.isAuthenticated();
+            console.error('[AlertService] 🔐 Fallback: authService.isAuthenticated():', isAuthenticated);
+          } catch (e2) {
+            console.error('[AlertService] ❌ Fallback auth check also failed:', e2);
+          }
         }
       }
       
