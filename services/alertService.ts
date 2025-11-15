@@ -417,6 +417,18 @@ class AlertService {
       // 🔥 Push notification gönder: Sadece auth kontrolü yap, backend user_id'den cihazları bulur!
       if (typeof window !== 'undefined' && isAuthenticated) {
         console.error('[AlertService] ✅ Conditions MET! Sending push notification...');
+        
+        // 🔥 AGGRESSIVE: Try to re-register token before sending notification (in case it's missing)
+        if (typeof window !== 'undefined' && (window as any).Capacitor) {
+          try {
+            const { pushNotificationService } = await import('./pushNotificationService');
+            console.error('[AlertService] 🔄 Attempting to re-register push token before sending notification...');
+            await pushNotificationService.reRegisterAfterLogin();
+          } catch (e) {
+            console.error('[AlertService] Failed to re-register token:', e);
+          }
+        }
+        
         try {
           const formattedPrice = formatPrice(alert.price);
           const upperSymbol = alert.pair.toUpperCase();

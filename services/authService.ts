@@ -70,6 +70,21 @@ class AuthService {
         this.user = data.user;
         this.notifyListeners();
         console.log('[AuthService] User authenticated:', this.user);
+        
+        // 🔥 If user is authenticated and in Capacitor, trigger push token re-registration
+        if (this.user && typeof window !== 'undefined' && (window as any).Capacitor) {
+          console.log('[AuthService] 🔔 User authenticated in Capacitor, triggering push token re-registration...');
+          // Import and call re-register (avoid circular dependency)
+          setTimeout(async () => {
+            try {
+              const { pushNotificationService } = await import('./pushNotificationService');
+              await pushNotificationService.reRegisterAfterLogin();
+            } catch (e) {
+              console.error('[AuthService] Failed to re-register push token:', e);
+            }
+          }, 1000);
+        }
+        
         return this.user;
       } else {
         this.user = null;

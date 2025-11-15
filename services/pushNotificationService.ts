@@ -196,9 +196,10 @@ class CapacitorPushNotificationService implements PushNotificationService {
       }
       
       if (!token) {
-        console.log('[PushNotification] No token found (neither in memory nor localStorage), skipping re-registration');
-        console.log('[PushNotification] fcmToken:', this.fcmToken);
-        console.log('[PushNotification] localStorage fcm_token:', typeof window !== 'undefined' ? localStorage.getItem('fcm_token') : 'N/A');
+        console.error('[PushNotification] ❌ No token found (neither in memory nor localStorage), skipping re-registration');
+        console.error('[PushNotification] fcmToken:', this.fcmToken);
+        console.error('[PushNotification] localStorage fcm_token:', typeof window !== 'undefined' ? localStorage.getItem('fcm_token') : 'N/A');
+        console.error('[PushNotification] All localStorage keys:', typeof window !== 'undefined' ? Object.keys(localStorage).join(', ') : 'N/A');
         return;
       }
 
@@ -241,10 +242,13 @@ class CapacitorPushNotificationService implements PushNotificationService {
 
       if (response.ok) {
         const result = await response.json();
-        console.log('[PushNotification] ✅ Token re-registered after login:', result);
+        console.error('[PushNotification] ✅ Token re-registered after login:', result);
+        console.error('[PushNotification] ✅ Device userId:', result.device?.userId);
+        console.error('[PushNotification] ✅ Device deviceId:', result.device?.deviceId);
       } else {
         const error = await response.json();
-        console.error('[PushNotification] Failed to re-register token:', error);
+        console.error('[PushNotification] ❌ Failed to re-register token:', error);
+        console.error('[PushNotification] ❌ Response status:', response.status);
       }
     } catch (error) {
       console.error('[PushNotification] Error re-registering token:', error);
