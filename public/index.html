@@ -471,13 +471,13 @@
     // Initialize push notifications
     async function initPushNotifications() {
       try {
-        console.log('[Login] Initializing push notifications...');
+        console.error('[Login] 🚀 Initializing push notifications...');
         const { PushNotifications, Device } = window.Capacitor.Plugins;
         
         // Request permission
-        console.log('[Login] Requesting push notification permission...');
+        console.error('[Login] 🔔 Requesting push notification permission...');
         const permResult = await PushNotifications.requestPermissions();
-        console.log('[Login] Permission result:', permResult);
+        console.error('[Login] 🔔 Permission result:', JSON.stringify(permResult));
         
         if (permResult.receive !== 'granted') {
           console.warn('[Login] Push notification permission not granted');
@@ -486,13 +486,15 @@
         
         // 🔥 LISTEN FOR REGISTRATION FIRST (before register() call)
         // Listen for registration
-        console.log('[Login] 🔔 Adding registration listener...');
+        console.error('[Login] 🔔 Adding registration listener...');
         PushNotifications.addListener('registration', async (token) => {
-          console.log('[Login] ✅ FCM Token received:', token.value);
+          console.error('[Login] ✅ FCM Token received:', token.value);
+          console.error('[Login] ✅ FCM Token length:', token.value ? token.value.length : 0);
           
           // 🔥 STORE TOKEN IN LOCALSTORAGE (for remote app to re-register after login)
           localStorage.setItem('fcm_token', token.value);
-          console.log('[Login] ✅ FCM Token saved to localStorage');
+          console.error('[Login] ✅ FCM Token saved to localStorage');
+          console.error('[Login] ✅ Verification - localStorage.getItem("fcm_token"):', localStorage.getItem('fcm_token') ? `${localStorage.getItem('fcm_token').substring(0, 30)}...` : 'null');
           
           // Register token with backend
           try {
@@ -563,11 +565,11 @@
         });
         
         // 🔥 REGISTER WITH FCM (after listeners are set up)
-        console.log('[Login] Registering with FCM...');
+        console.error('[Login] 📤 Registering with FCM...');
         await PushNotifications.register();
-        console.log('[Login] ✅ FCM registration call completed');
+        console.error('[Login] ✅ FCM registration call completed');
         
-        console.log('[Login] ✅ Push notifications initialized');
+        console.error('[Login] ✅ Push notifications initialized');
       } catch (error) {
         console.error('[Login] Push notification error:', error);
       }
