@@ -392,6 +392,10 @@
         PushNotifications.addListener('registration', async (token) => {
           console.log('[Login] ✅ FCM Token received:', token.value);
           
+          // 🔥 STORE TOKEN IN LOCALSTORAGE (for remote app to re-register after login)
+          localStorage.setItem('fcm_token', token.value);
+          console.log('[Login] ✅ FCM Token saved to localStorage');
+          
           // Register token with backend
           try {
             // Get device info (should work in local context)

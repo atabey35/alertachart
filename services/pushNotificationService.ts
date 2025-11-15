@@ -7,6 +7,7 @@ interface PushNotificationService {
   initialize: () => Promise<void>;
   getToken: () => Promise<string | null>;
   onNotificationReceived: (callback: (notification: any) => void) => void;
+  reRegisterAfterLogin: () => Promise<void>; // 🔥 Re-register token after login (with cookies)
 }
 
 class CapacitorPushNotificationService implements PushNotificationService {
@@ -109,33 +110,29 @@ class CapacitorPushNotificationService implements PushNotificationService {
         osVersion: osVersion,
       });
 
-      // Register device with backend API using CapacitorHttp (bypasses CORS)
-      const { CapacitorHttp } = (window as any).Capacitor.Plugins;
-      if (!CapacitorHttp) {
-        console.warn('[PushNotification] CapacitorHttp not available, cannot register token');
-        return;
-      }
-
-      const backendUrl = 'https://alertachart-backend-production.up.railway.app';
-      const httpResponse = await CapacitorHttp.post({
-        url: `${backendUrl}/api/push/register`,
+      // Register device with backend via Next.js API route (forwards cookies)
+      const response = await fetch('/api/push/register', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        data: {
+        credentials: 'include', // 🔥 CRITICAL: Send httpOnly cookies!
+        body: JSON.stringify({
           token: token,
           platform: platform,
           deviceId: deviceId,
           model: model,
           osVersion: osVersion,
           appVersion: '1.0.0',
-        },
+        }),
       });
 
-      if (httpResponse.status === 200) {
-        console.log('[PushNotification] ✅ Token registered successfully:', httpResponse.data);
+      if (response.ok) {
+        const result = await response.json();
+        console.log('[PushNotification] ✅ Token registered successfully:', result);
       } else {
-        console.error('[PushNotification] Failed to register token:', httpResponse.data);
+        const error = await response.json();
+        console.error('[PushNotification] Failed to register token:', error);
       }
     } catch (error) {
       console.error('[PushNotification] Error registering token:', error);
@@ -175,6 +172,60 @@ class CapacitorPushNotificationService implements PushNotificationService {
       window.addEventListener('pushNotificationReceived', (event: any) => {
         callback(event.detail);
       });
+    }
+  }
+
+  /**
+   * Re-register push token after login (with cookies for user_id)
+   * This is called after user logs in to link device to user account
+   */
+  async reRegisterAfterLogin(): Promise<void> {
+    try {
+      // Get token from localStorage (set by public/index.html)
+      const storedToken = typeof window !== 'undefined' ? localStorage.getItem('fcm_token') : null;
+      
+      if (!storedToken) {
+        console.log('[PushNotification] No stored token found, skipping re-registration');
+        return;
+      }
+
+      console.log('[PushNotification] Re-registering token after login...');
+      
+      // Get device info from localStorage (set by public/index.html)
+      const deviceId = typeof window !== 'undefined' ? localStorage.getItem('native_device_id') : null;
+      const platform = typeof window !== 'undefined' ? localStorage.getItem('native_platform') || 'android' : 'android';
+      
+      if (!deviceId) {
+        console.warn('[PushNotification] No device ID found, skipping re-registration');
+        return;
+      }
+
+      // Re-register with backend (now with cookies for user_id)
+      const response = await fetch('/api/push/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // 🔥 CRITICAL: Send httpOnly cookies!
+        body: JSON.stringify({
+          token: storedToken,
+          platform: platform,
+          deviceId: deviceId,
+          model: 'Unknown',
+          osVersion: 'Unknown',
+          appVersion: '1.0.0',
+        }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        console.log('[PushNotification] ✅ Token re-registered after login:', result);
+      } else {
+        const error = await response.json();
+        console.error('[PushNotification] Failed to re-register token:', error);
+      }
+    } catch (error) {
+      console.error('[PushNotification] Error re-registering token:', error);
     }
   }
 }

@@ -76,6 +76,21 @@ export default function Home() {
     }
   }, [isCapacitor]);
 
+  // Re-register push token after login (to link device to user account)
+  useEffect(() => {
+    const unsubscribe = authService.subscribe((currentUser) => {
+      if (currentUser && isCapacitor) {
+        console.log('[App] User logged in, re-registering push token...');
+        // Wait a bit for cookies to be set
+        setTimeout(() => {
+          pushNotificationService.reRegisterAfterLogin();
+        }, 1000);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isCapacitor]);
+
   // Load chart/watchlist from URL params (for sharing)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -1104,7 +1119,7 @@ export default function Home() {
                       {/* User Avatar - Larger for mobile */}
                       <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg ring-4 ring-blue-500/20">
                         {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
-                      </div>
+                  </div>
                       
                       {/* User Details */}
                       <div className="flex-1 min-w-0 space-y-1">
@@ -1184,12 +1199,12 @@ export default function Home() {
                 <>
                   {/* Capacitor'da login butonu gösterme (native login ekranı var) */}
                   {!isCapacitor && (
-                    <button
-                      onClick={() => setShowAuthModal(true)}
+                <button
+                  onClick={() => setShowAuthModal(true)}
                       className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
-                    >
-                      Giriş Yap / Kayıt Ol
-                    </button>
+                >
+                  Giriş Yap / Kayıt Ol
+                </button>
                   )}
                   
                   {/* Capacitor'da user null ise uyarı göster */}
