@@ -6,7 +6,7 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://api.alertachart.com';
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
     
     const response = await fetch(`${backendUrl}/api/auth/google-native`, {
       method: 'POST',
