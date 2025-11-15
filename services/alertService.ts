@@ -4,6 +4,7 @@
  */
 
 import { PriceAlert } from '@/types/alert';
+import { authService } from './authService';
 
 /**
  * Format price for notifications
@@ -377,14 +378,15 @@ class AlertService {
       // deviceId'yi tekrar kontrol et (güncelleme sonrası)
       const finalDeviceId = alert.deviceId || this.nativeDeviceId;
       
-      // Auth token kontrolü - kullanıcı giriş yapmış mı?
-      let hasAuthToken = false;
+      // 🔥 Auth kontrolü: httpOnly cookies kullanıyoruz, localStorage değil!
+      // authService.isAuthenticated() kullan - cookie'ler otomatik gönderilir
+      let isAuthenticated = false;
       if (typeof window !== 'undefined') {
         try {
-          const storedToken = localStorage.getItem('auth_access_token');
-          hasAuthToken = !!storedToken;
+          isAuthenticated = authService.isAuthenticated();
+          console.error('[AlertService] 🔐 Auth check via authService.isAuthenticated():', isAuthenticated);
         } catch (e) {
-          // localStorage erişilemiyor
+          console.error('[AlertService] ❌ Failed to check auth:', e);
         }
       }
       
@@ -399,21 +401,21 @@ class AlertService {
         isNativeApp,
         hasCapacitor: typeof window !== 'undefined' ? (window as any).Capacitor !== undefined : false,
         hasReactNativeWebView: typeof window !== 'undefined' ? typeof (window as any).ReactNativeWebView !== 'undefined' : false,
-        willSendPush: typeof window !== 'undefined' && finalDeviceId && isNativeApp && hasAuthToken,
+        willSendPush: typeof window !== 'undefined' && isAuthenticated,
         windowExists: typeof window !== 'undefined',
         windowIsNativeApp: typeof window !== 'undefined' ? (window as any).isNativeApp : undefined,
-        hasAuthToken,
+        isAuthenticated,
       };
       
       console.log('[AlertService] 🔔 Triggering alert:', JSON.stringify(debugInfo, null, 2));
       console.error('[AlertService] 🔔 DEBUG INFO:');
       console.error('  finalDeviceId:', finalDeviceId || 'NULL');
       console.error('  isNativeApp:', isNativeApp);
-      console.error('  hasAuthToken:', hasAuthToken);
+      console.error('  isAuthenticated:', isAuthenticated);
       console.error('  willSendPush:', debugInfo.willSendPush);
       
-      // 🔥 Push notification gönder: Sadece auth token kontrolü yap, backend user_id'den cihazları bulur!
-      if (typeof window !== 'undefined' && hasAuthToken) {
+      // 🔥 Push notification gönder: Sadece auth kontrolü yap, backend user_id'den cihazları bulur!
+      if (typeof window !== 'undefined' && isAuthenticated) {
         console.error('[AlertService] ✅ Conditions MET! Sending push notification...');
         try {
           const formattedPrice = formatPrice(alert.price);
@@ -451,24 +453,13 @@ class AlertService {
             
             console.log('[AlertService] 📤 Sending fetch request to /api/alarms/notify with body:', JSON.stringify(requestBody, null, 2));
             
-            // Get auth token for authenticated request
-            const { authService } = await import('./authService');
-            const authHeader = await authService.getAuthHeader();
-            
-            if (!authHeader.Authorization) {
-              console.error('[AlertService] ❌ No auth token available - user must be logged in to send push notifications');
-              console.error('[AlertService] ❌ Push notification will fail with 403 Forbidden');
-              return;
-            }
-            
-            console.log('[AlertService] 📤 Sending push notification with auth token:', authHeader.Authorization.substring(0, 30) + '...');
-            
+            // 🔥 httpOnly cookies kullanıyoruz - credentials: 'include' ile otomatik gönderilir!
             fetch('/api/alarms/notify', {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                ...authHeader, // Include Authorization header if user is authenticated
               },
+              credentials: 'include', // 🔥 CRITICAL: Send httpOnly cookies!
               body: JSON.stringify(requestBody),
             })
             .then(response => {
@@ -519,9 +510,9 @@ class AlertService {
           console.debug('[AlertService] Failed to call push notification API:', e);
         }
       } else {
-        // Push notification gönderilmedi - SADECE auth token eksikse buraya girer
+        // Push notification gönderilmedi - SADECE auth eksikse buraya girer
         console.error('[AlertService] ❌ PUSH NOTIFICATION SKIPPED - User NOT logged in!');
-        console.error('[AlertService] ❌ hasAuthToken:', hasAuthToken);
+        console.error('[AlertService] ❌ isAuthenticated:', isAuthenticated);
       }
       
       console.log('[AlertService] Alert triggered:', alert);
