@@ -462,11 +462,9 @@
           return;
         }
         
-        // Register with FCM
-        console.log('[Login] Registering with FCM...');
-        await PushNotifications.register();
-        
+        // 🔥 LISTEN FOR REGISTRATION FIRST (before register() call)
         // Listen for registration
+        console.log('[Login] 🔔 Adding registration listener...');
         PushNotifications.addListener('registration', async (token) => {
           console.log('[Login] ✅ FCM Token received:', token.value);
           
@@ -541,6 +539,11 @@
         PushNotifications.addListener('registrationError', (error) => {
           console.error('[Login] FCM registration error:', error);
         });
+        
+        // 🔥 REGISTER WITH FCM (after listeners are set up)
+        console.log('[Login] Registering with FCM...');
+        await PushNotifications.register();
+        console.log('[Login] ✅ FCM registration call completed');
         
         console.log('[Login] ✅ Push notifications initialized');
       } catch (error) {
