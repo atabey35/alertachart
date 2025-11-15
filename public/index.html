@@ -254,18 +254,37 @@
         console.log('[Login] Backend auth successful!');
         const data = httpResponse.data;
 
-        // Load remote app with auth tokens + device ID in URL
+        // Load remote app with auth tokens + device ID + FCM token in URL
         console.log('[Login] Loading remote app with auth tokens...');
         const WebViewController = window.Capacitor.Plugins.WebViewController;
         
         if (WebViewController) {
-          // Get device ID from localStorage
+          // Get device ID and FCM token from localStorage
           const deviceId = localStorage.getItem('native_device_id') || 'unknown';
           const platform = localStorage.getItem('native_platform') || 'android';
+          const fcmToken = localStorage.getItem('fcm_token') || '';
           
-          const authUrl = `https://alertachart.com/capacitor-auth?capacitor_auth=true&access_token=${encodeURIComponent(data.tokens.accessToken)}&refresh_token=${encodeURIComponent(data.tokens.refreshToken)}&device_id=${encodeURIComponent(deviceId)}&platform=${encodeURIComponent(platform)}`;
-          console.log('[Login] Auth URL with device ID:', authUrl);
+          // Build URL with all necessary params
+          const params = new URLSearchParams({
+            capacitor_auth: 'true',
+            access_token: data.tokens.accessToken,
+            refresh_token: data.tokens.refreshToken,
+            device_id: deviceId,
+            platform: platform,
+          });
+          
+          // Add FCM token if available (may be long, but necessary for re-registration)
+          if (fcmToken) {
+            params.append('fcm_token', fcmToken);
+            console.log('[Login] FCM token will be passed to remote app');
+          } else {
+            console.warn('[Login] ⚠️ No FCM token found in localStorage!');
+          }
+          
+          const authUrl = `https://alertachart.com/capacitor-auth?${params.toString()}`;
+          console.log('[Login] Auth URL with device ID and FCM token');
           console.log('[Login] Device ID being passed:', deviceId);
+          console.log('[Login] FCM token length:', fcmToken ? fcmToken.length : 0);
           await WebViewController.loadUrl({ url: authUrl });
           console.log('[Login] Remote app loaded with auth!');
         } else {
@@ -323,18 +342,37 @@
         console.log('[Login] Backend auth successful!');
         const data = httpResponse.data;
 
-        // Load remote app with auth tokens + device ID in URL
+        // Load remote app with auth tokens + device ID + FCM token in URL
         console.log('[Login] Loading remote app with auth tokens...');
         const WebViewController = window.Capacitor.Plugins.WebViewController;
         
         if (WebViewController) {
-          // Get device ID from localStorage
+          // Get device ID and FCM token from localStorage
           const deviceId = localStorage.getItem('native_device_id') || 'unknown';
           const platform = localStorage.getItem('native_platform') || 'android';
+          const fcmToken = localStorage.getItem('fcm_token') || '';
           
-          const authUrl = `https://alertachart.com/capacitor-auth?capacitor_auth=true&access_token=${encodeURIComponent(data.tokens.accessToken)}&refresh_token=${encodeURIComponent(data.tokens.refreshToken)}&device_id=${encodeURIComponent(deviceId)}&platform=${encodeURIComponent(platform)}`;
-          console.log('[Login] Auth URL with device ID:', authUrl);
+          // Build URL with all necessary params
+          const params = new URLSearchParams({
+            capacitor_auth: 'true',
+            access_token: data.tokens.accessToken,
+            refresh_token: data.tokens.refreshToken,
+            device_id: deviceId,
+            platform: platform,
+          });
+          
+          // Add FCM token if available (may be long, but necessary for re-registration)
+          if (fcmToken) {
+            params.append('fcm_token', fcmToken);
+            console.log('[Login] FCM token will be passed to remote app');
+          } else {
+            console.warn('[Login] ⚠️ No FCM token found in localStorage!');
+          }
+          
+          const authUrl = `https://alertachart.com/capacitor-auth?${params.toString()}`;
+          console.log('[Login] Auth URL with device ID and FCM token');
           console.log('[Login] Device ID being passed:', deviceId);
+          console.log('[Login] FCM token length:', fcmToken ? fcmToken.length : 0);
           await WebViewController.loadUrl({ url: authUrl });
           console.log('[Login] Remote app loaded with auth!');
         } else {

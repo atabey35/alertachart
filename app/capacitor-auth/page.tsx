@@ -15,13 +15,16 @@ function CapacitorAuthContent() {
     const refreshToken = searchParams.get('refresh_token');
     const deviceId = searchParams.get('device_id');
     const platform = searchParams.get('platform');
+    const fcmToken = searchParams.get('fcm_token'); // 🔥 FCM token from public/index.html
 
     console.log('[CapacitorAuth] Params:', { 
       isCapacitorAuth, 
       hasAccessToken: !!accessToken, 
       hasRefreshToken: !!refreshToken,
       deviceId,
-      platform
+      platform,
+      hasFcmToken: !!fcmToken,
+      fcmTokenLength: fcmToken ? fcmToken.length : 0,
     });
 
     if (isCapacitorAuth === 'true' && accessToken && refreshToken) {
@@ -39,6 +42,19 @@ function CapacitorAuthContent() {
         console.log('[CapacitorAuth] 🔍 Verification:', savedDeviceId === deviceId ? 'SUCCESS' : 'FAILED');
       } else {
         console.warn('[CapacitorAuth] ⚠️ Device ID not provided in URL params!');
+      }
+      
+      // 🔥 SAVE FCM TOKEN TO LOCALSTORAGE (for push notification re-registration)
+      if (fcmToken && typeof window !== 'undefined') {
+        console.log('[CapacitorAuth] 💾 Saving FCM token to localStorage...', fcmToken.substring(0, 30) + '...');
+        localStorage.setItem('fcm_token', fcmToken);
+        
+        // Verify it was saved
+        const savedFcmToken = localStorage.getItem('fcm_token');
+        console.log('[CapacitorAuth] ✅ FCM token saved to localStorage:', savedFcmToken ? `${savedFcmToken.substring(0, 30)}...` : 'null');
+        console.log('[CapacitorAuth] 🔍 Verification:', savedFcmToken === fcmToken ? 'SUCCESS' : 'FAILED');
+      } else {
+        console.warn('[CapacitorAuth] ⚠️ FCM token not provided in URL params!');
       }
       
       // Set cookies via Next.js API endpoint (server-side, httpOnly)

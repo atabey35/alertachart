@@ -202,17 +202,25 @@ class CapacitorPushNotificationService implements PushNotificationService {
         return;
       }
 
-      console.log('[PushNotification] Re-registering token after login...');
+      console.log('[PushNotification] 🔄 Re-registering token after login...');
       console.log('[PushNotification] Token source:', this.fcmToken ? 'memory' : 'localStorage');
+      console.log('[PushNotification] Token length:', token ? token.length : 0);
+      console.log('[PushNotification] Token preview:', token ? `${token.substring(0, 30)}...` : 'null');
       
       // Get device info from localStorage (set by public/index.html)
       const deviceId = typeof window !== 'undefined' ? localStorage.getItem('native_device_id') : null;
       const platform = typeof window !== 'undefined' ? localStorage.getItem('native_platform') || 'android' : 'android';
       
+      console.log('[PushNotification] Device ID:', deviceId);
+      console.log('[PushNotification] Platform:', platform);
+      
       if (!deviceId) {
-        console.warn('[PushNotification] No device ID found, skipping re-registration');
+        console.warn('[PushNotification] ❌ No device ID found, skipping re-registration');
+        console.warn('[PushNotification] Available localStorage keys:', typeof window !== 'undefined' ? Object.keys(localStorage) : 'N/A');
         return;
       }
+      
+      console.log('[PushNotification] 📤 Sending re-registration request to /api/push/register...');
 
       // Re-register with backend (now with cookies for user_id)
       const response = await fetch('/api/push/register', {

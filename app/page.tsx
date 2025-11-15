@@ -78,20 +78,35 @@ export default function Home() {
 
   // Re-register push token after login (to link device to user account)
   useEffect(() => {
-    // Check if user is already logged in on mount
-    const currentUser = authService.getUser();
-    if (currentUser && isCapacitor) {
-      console.log('[App] User already logged in on mount, re-registering push token...');
-      // Wait a bit for cookies to be set
-      setTimeout(() => {
-        pushNotificationService.reRegisterAfterLogin();
-      }, 2000);
-    }
+    if (!isCapacitor) return;
+
+    // Wait for auth check to complete, then check if user is logged in
+    const checkAndReRegister = async () => {
+      try {
+        console.log('[App] Checking auth status for push token re-registration...');
+        const user = await authService.checkAuth();
+        
+        if (user) {
+          console.log('[App] ✅ User authenticated, re-registering push token...', user.email);
+          // Wait a bit for cookies to be fully set
+          setTimeout(() => {
+            pushNotificationService.reRegisterAfterLogin();
+          }, 2000);
+        } else {
+          console.log('[App] ⚠️ User not authenticated yet, will re-register on login');
+        }
+      } catch (error) {
+        console.error('[App] Error checking auth:', error);
+      }
+    };
+
+    // Check immediately
+    checkAndReRegister();
 
     // Also listen for login changes
     const unsubscribe = authService.subscribe((user) => {
       if (user && isCapacitor) {
-        console.log('[App] User logged in, re-registering push token...');
+        console.log('[App] User logged in (via subscribe), re-registering push token...', user.email);
         // Wait a bit for cookies to be set
         setTimeout(() => {
           pushNotificationService.reRegisterAfterLogin();
