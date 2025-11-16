@@ -89,29 +89,8 @@ extension CustomBridgeViewController: WKNavigationDelegate {
             print("[CustomBridgeViewController] 🔍 Navigation decision for: \(urlString)")
             print("[CustomBridgeViewController] 🔍 Navigation type: \(navigationAction.navigationType.rawValue)")
             
-            // 🔥 CRITICAL: Add X-Platform: ios header to all requests
-            // Only modify requests to our domain (not external URLs like OAuth)
-            if let url = url, url.host?.contains("alertachart.com") == true {
-                var request = navigationAction.request as? NSMutableURLRequest ?? NSMutableURLRequest(url: url)
-                
-                // Copy all existing headers
-                if let headers = navigationAction.request.allHTTPHeaderFields {
-                    for (key, value) in headers {
-                        request.setValue(value, forHTTPHeaderField: key)
-                    }
-                }
-                
-                // Add X-Platform header
-                request.setValue("ios", forHTTPHeaderField: "X-Platform")
-                
-                // Create new navigation action with modified request
-                let modifiedRequest = request as URLRequest
-                webView.load(modifiedRequest)
-                
-                print("[CustomBridgeViewController] ✅ Added X-Platform: ios header to request")
-                decisionHandler(.cancel) // Cancel original request, we'll load modified one
-                return
-            }
+            // Removed header injection - it was breaking WebView rendering
+            // Platform detection now uses User-Agent in Next.js
             
             // Always allow navigation in WebView - never open Safari
             // This is critical for WebViewController plugin to work correctly

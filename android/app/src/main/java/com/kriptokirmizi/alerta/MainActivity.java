@@ -70,49 +70,8 @@ public class MainActivity extends BridgeActivity {
                         return true; // We handled the URL loading
                     }
                     
-                    @Override
-                    public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                        // Add X-Platform: android header to all requests to our domain
-                        String urlString = request.getUrl().toString();
-                        if (urlString != null && urlString.contains("alertachart.com")) {
-                            try {
-                                java.net.URL url = request.getUrl();
-                                java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
-                                
-                                // Copy all existing headers from original request
-                                if (request.getRequestHeaders() != null) {
-                                    for (java.util.Map.Entry<String, String> header : request.getRequestHeaders().entrySet()) {
-                                        connection.setRequestProperty(header.getKey(), header.getValue());
-                                    }
-                                }
-                                
-                                // Add X-Platform header
-                                connection.setRequestProperty("X-Platform", "android");
-                                
-                                // Get response
-                                int responseCode = connection.getResponseCode();
-                                String contentType = connection.getContentType();
-                                java.io.InputStream inputStream = responseCode >= 200 && responseCode < 300 
-                                    ? connection.getInputStream() 
-                                    : connection.getErrorStream();
-                                
-                                return new android.webkit.WebResourceResponse(
-                                    contentType,
-                                    connection.getContentEncoding(),
-                                    responseCode,
-                                    connection.getResponseMessage(),
-                                    connection.getHeaderFields(),
-                                    inputStream
-                                );
-                            } catch (Exception e) {
-                                android.util.Log.e("MainActivity", "Error adding X-Platform header: " + e.getMessage());
-                                return super.shouldInterceptRequest(view, request);
-                            }
-                        }
-                        
-                        // For non-alertachart.com URLs, use default behavior
-                        return super.shouldInterceptRequest(view, request);
-                    }
+                    // Removed shouldInterceptRequest - it was breaking WebView rendering
+                    // Header will be added via User-Agent detection in Next.js instead
                 });
                 
                 android.util.Log.d("MainActivity", "✅ WebView settings configured for cookie persistence");
@@ -227,49 +186,8 @@ public class MainActivity extends BridgeActivity {
                     return true; // We handled the URL loading
                 }
                 
-                @Override
-                public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
-                    // Add X-Platform: android header to all requests to our domain
-                    String urlString = request.getUrl().toString();
-                    if (urlString != null && urlString.contains("alertachart.com")) {
-                        try {
-                            java.net.URL url = request.getUrl();
-                            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
-                            
-                            // Copy all existing headers from original request
-                            if (request.getRequestHeaders() != null) {
-                                for (java.util.Map.Entry<String, String> header : request.getRequestHeaders().entrySet()) {
-                                    connection.setRequestProperty(header.getKey(), header.getValue());
-                                }
-                            }
-                            
-                            // Add X-Platform header
-                            connection.setRequestProperty("X-Platform", "android");
-                            
-                            // Get response
-                            int responseCode = connection.getResponseCode();
-                            String contentType = connection.getContentType();
-                            java.io.InputStream inputStream = responseCode >= 200 && responseCode < 300 
-                                ? connection.getInputStream() 
-                                : connection.getErrorStream();
-                            
-                            return new android.webkit.WebResourceResponse(
-                                contentType,
-                                connection.getContentEncoding(),
-                                responseCode,
-                                connection.getResponseMessage(),
-                                connection.getHeaderFields(),
-                                inputStream
-                            );
-                        } catch (Exception e) {
-                            android.util.Log.e("MainActivity", "Error adding X-Platform header: " + e.getMessage());
-                            return super.shouldInterceptRequest(view, request);
-                        }
-                    }
-                    
-                    // For non-alertachart.com URLs, use default behavior
-                    return super.shouldInterceptRequest(view, request);
-                }
+                // Removed shouldInterceptRequest - it was breaking WebView rendering
+                // Header will be added via User-Agent detection in Next.js instead
             });
             android.util.Log.d("MainActivity", "✅ WebViewClient set in onStart");
         }
@@ -279,24 +197,8 @@ public class MainActivity extends BridgeActivity {
     public void onResume() {
         super.onResume();
         
-        // Only reset on first start (app opened fresh), not on resume from background
-        if (isFirstStart) {
-            isFirstStart = false;
-            
-            WebView webView = getBridge().getWebView();
-            if (webView != null) {
-                String currentUrl = webView.getUrl();
-                android.util.Log.d("MainActivity", "Current URL on start: " + currentUrl);
-                
-                // If currently on remote URL, reset to local index.html
-                if (currentUrl != null && (currentUrl.startsWith("https://alertachart.com") || currentUrl.startsWith("http://alertachart.com"))) {
-                    runOnUiThread(() -> {
-                        webView.loadUrl("http://localhost/index.html");
-                        android.util.Log.d("MainActivity", "✅ Reset to local index.html from remote URL");
-                    });
-                }
-            }
-        }
+        // No reset needed - Capacitor handles URL loading via server.url config
+        // App will load https://alertachart.com directly
     }
     
     // Custom plugin to control WebView URL

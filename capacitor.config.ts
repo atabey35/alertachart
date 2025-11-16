@@ -4,8 +4,10 @@ const config: CapacitorConfig = {
   appId: 'com.kriptokirmizi.alerta',
   appName: 'Alerta Chart',
   webDir: 'public', // Local login screen
-  // No server.url - load local files first (public/index.html)
-  // After login, WebViewController.loadUrl() redirects to https://alertachart.com
+  server: {
+    url: 'https://alertachart.com',
+    cleartext: true, // Allow HTTP if needed
+  },
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],
