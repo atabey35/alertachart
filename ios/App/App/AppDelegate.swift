@@ -2,9 +2,10 @@ import UIKit
 import Capacitor
 import FirebaseCore
 import FirebaseMessaging
+import UserNotifications
 
 @UIApplicationMain
-class AppDelegate: UIResponder, UIApplicationDelegate {
+class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
 
     var window: UIWindow?
 
@@ -23,7 +24,40 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         HTTPCookieStorage.shared.cookieAcceptPolicy = .always
         print("[AppDelegate] ✅ Cookie persistence configured (HTTPCookieStorage)")
         
+        // 🔥 CRITICAL: Setup push notifications
+        setupPushNotifications(application: application)
+        
         return true
+    }
+    
+    // MARK: - Push Notifications Setup
+    private func setupPushNotifications(application: UIApplication) {
+        print("[AppDelegate] 🔔 Setting up push notifications...")
+        
+        // Set UNUserNotificationCenter delegate
+        UNUserNotificationCenter.current().delegate = self
+        
+        // Set Firebase Messaging delegate
+        Messaging.messaging().delegate = self
+        
+        // Request notification permissions
+        UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .badge, .sound]) { granted, error in
+            if let error = error {
+                print("[AppDelegate] ❌ Notification permission error: \(error.localizedDescription)")
+                return
+            }
+            
+            if granted {
+                print("[AppDelegate] ✅ Notification permission granted")
+                DispatchQueue.main.async {
+                    application.registerForRemoteNotifications()
+                }
+            } else {
+                print("[AppDelegate] ⚠️ Notification permission denied")
+            }
+        }
+        
+        print("[AppDelegate] ✅ Push notifications setup complete")
     }
 
     func applicationWillResignActive(_ application: UIApplication) {
@@ -63,6 +97,114 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Feel free to add additional processing here, but if you want the App API to support
         // tracking app url opens, make sure to keep this call
         return ApplicationDelegateProxy.shared.application(application, continue: userActivity, restorationHandler: restorationHandler)
+    }
+    
+    // MARK: - Remote Notifications (APNs)
+    
+    /// Called when APNs successfully assigns a device token
+    func application(_ application: UIApplication, didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data) {
+        print("[AppDelegate] ✅ APNs device token received")
+        
+        // Convert device token to string for logging
+        let tokenParts = deviceToken.map { data in String(format: "%02.2hhx", data) }
+        let token = tokenParts.joined()
+        print("[AppDelegate] 📱 APNs Token: \(token)")
+        
+        // 🔥 CRITICAL: Pass APNs token to Firebase Messaging
+        // Firebase will use this to generate FCM token
+        Messaging.messaging().apnsToken = deviceToken
+        print("[AppDelegate] ✅ APNs token set to Firebase Messaging")
+    }
+    
+    /// Called when APNs fails to register device token
+    func application(_ application: UIApplication, didFailToRegisterForRemoteNotificationsWithError error: Error) {
+        print("[AppDelegate] ❌ Failed to register for remote notifications: \(error.localizedDescription)")
+        
+        // Check if it's the aps-environment error (development build without proper provisioning)
+        if error.localizedDescription.contains("aps-environment") {
+            print("[AppDelegate] ⚠️ aps-environment error: This is normal for development builds without proper provisioning profile")
+            print("[AppDelegate] ℹ️ For production, ensure Push Notifications capability is enabled in Xcode")
+        }
+    }
+    
+    /// Called when a remote notification is received while app is in foreground
+    func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+        print("[AppDelegate] 📬 Remote notification received (foreground/background)")
+        print("[AppDelegate] Notification data: \(userInfo)")
+        
+        // Pass notification to Firebase Messaging
+        Messaging.messaging().appDidReceiveMessage(userInfo)
+        
+        completionHandler(.newData)
+    }
+    
+    // MARK: - UNUserNotificationCenterDelegate
+    
+    /// Called when notification is received while app is in foreground
+    func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification, withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void) {
+        let userInfo = notification.request.content.userInfo
+        print("[AppDelegate] 📬 Notification received in foreground: \(userInfo)")
+        
+        // Show notification even when app is in foreground (like Android)
+        if #available(iOS 14.0, *) {
+            completionHandler([.banner, .sound, .badge])
+        } else {
+            completionHandler([.alert, .sound, .badge])
+        }
+    }
+    
+    /// Called when user taps on notification
+    func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse, withCompletionHandler completionHandler: @escaping () -> Void) {
+        let userInfo = response.notification.request.content.userInfo
+        print("[AppDelegate] 👆 Notification tapped: \(userInfo)")
+        
+        // Handle notification tap (navigate to specific screen, etc.)
+        if let notificationData = userInfo as? [String: Any] {
+            handleNotificationTap(data: notificationData)
+        }
+        
+        completionHandler()
+    }
+    
+    // MARK: - Firebase Messaging Delegate
+    
+    /// Called when FCM token is received/refreshed
+    func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
+        print("[AppDelegate] 🔔 FCM Registration token received")
+        
+        guard let fcmToken = fcmToken else {
+            print("[AppDelegate] ❌ FCM token is nil")
+            return
+        }
+        
+        print("[AppDelegate] ✅ FCM Token: \(fcmToken)")
+        
+        // Token is automatically handled by Capacitor PushNotifications plugin
+        // This is just for logging/debugging
+        let dataDict: [String: String] = ["token": fcmToken]
+        NotificationCenter.default.post(name: Notification.Name("FCMToken"), object: nil, userInfo: dataDict)
+    }
+    
+    // MARK: - Notification Handling
+    
+    private func handleNotificationTap(data: [String: Any]) {
+        // Handle different notification types (like Android MainActivity)
+        if let type = data["type"] as? String {
+            print("[AppDelegate] 📱 Handling notification type: \(type)")
+            
+            switch type {
+            case "price_alert":
+                if let symbol = data["symbol"] as? String {
+                    print("[AppDelegate] 📈 Price alert for symbol: \(symbol)")
+                    // Navigate to chart with symbol (handled by Capacitor plugin)
+                }
+            case "alarm":
+                print("[AppDelegate] ⏰ Alarm notification")
+                // Navigate to alarms (handled by Capacitor plugin)
+            default:
+                print("[AppDelegate] ℹ️ Unknown notification type: \(type)")
+            }
+        }
     }
 
 }
