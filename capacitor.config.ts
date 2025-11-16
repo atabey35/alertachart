@@ -11,9 +11,10 @@ const config: CapacitorConfig = {
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],
+      // 🔥 CRITICAL: Android'de Web client ID kullanılmalı (hem serverClientId hem de clientId)
       serverClientId: '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com',
-      // iOS için iOS OAuth client ID (Google Cloud Console'dan oluşturuldu)
-      clientId: '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com',
+      // Android için de Web client ID kullan (Android client ID değil)
+      clientId: '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com',
       forceCodeForRefreshToken: true,
     },
     WebViewController: {},
