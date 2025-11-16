@@ -205,29 +205,48 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
             (function() {
                 try {
                     console.log('[AppDelegate] 🔔 Attempting to send FCM token to JavaScript...');
+                    console.log('[AppDelegate] Token length: \(token.count)');
+                    
+                    var token = '\(escapedToken)';
                     
                     // Store token in window for later retrieval (fallback)
-                    window.__fcmTokenFromAppDelegate = '\(escapedToken)';
-                    
-                    // Dispatch custom event that Settings page can listen to
-                    const event = new CustomEvent('fcmTokenReceived', {
-                        detail: { token: '\(escapedToken)' }
-                    });
-                    window.dispatchEvent(event);
-                    console.log('[AppDelegate] ✅ CustomEvent dispatched: fcmTokenReceived');
-                    
-                    // Also store in localStorage as fallback
-                    try {
-                        localStorage.setItem('fcm_token_from_appdelegate', '\(escapedToken)');
-                        console.log('[AppDelegate] ✅ Token stored in localStorage as fallback');
-                    } catch (e) {
-                        console.warn('[AppDelegate] ⚠️ Could not store token in localStorage:', e);
+                    if (typeof window !== 'undefined') {
+                        window.__fcmTokenFromAppDelegate = token;
+                        console.log('[AppDelegate] ✅ Token stored in window.__fcmTokenFromAppDelegate');
                     }
                     
-                    return true;
+                    // Dispatch custom event that Settings page can listen to
+                    if (typeof window !== 'undefined' && typeof CustomEvent !== 'undefined') {
+                        try {
+                            const event = new CustomEvent('fcmTokenReceived', {
+                                detail: { token: token }
+                            });
+                            window.dispatchEvent(event);
+                            console.log('[AppDelegate] ✅ CustomEvent dispatched: fcmTokenReceived');
+                        } catch (e) {
+                            console.error('[AppDelegate] ❌ Error dispatching event:', e);
+                        }
+                    } else {
+                        console.warn('[AppDelegate] ⚠️ window or CustomEvent not available');
+                    }
+                    
+                    // Also store in localStorage as fallback
+                    if (typeof localStorage !== 'undefined') {
+                        try {
+                            localStorage.setItem('fcm_token_from_appdelegate', token);
+                            console.log('[AppDelegate] ✅ Token stored in localStorage as fallback');
+                            console.log('[AppDelegate] ✅ localStorage.getItem check:', localStorage.getItem('fcm_token_from_appdelegate') ? 'found' : 'not found');
+                        } catch (e) {
+                            console.warn('[AppDelegate] ⚠️ Could not store token in localStorage:', e);
+                        }
+                    } else {
+                        console.warn('[AppDelegate] ⚠️ localStorage not available');
+                    }
+                    
+                    return { success: true, tokenLength: token.length };
                 } catch (error) {
                     console.error('[AppDelegate] ❌ Error sending FCM token to JavaScript:', error);
-                    return false;
+                    return { success: false, error: error.message };
                 }
             })();
         """

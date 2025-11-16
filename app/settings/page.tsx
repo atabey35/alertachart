@@ -424,8 +424,16 @@ export default function SettingsPage() {
         // AppDelegate stores token in localStorage and window as fallback
         const checkForStoredToken = async () => {
           try {
+            console.log('[Settings] 🔍 Checking for stored FCM token (fallback)...');
+            
             // Check localStorage first
             const storedToken = localStorage.getItem('fcm_token_from_appdelegate');
+            console.log('[Settings] 🔍 localStorage check:', {
+              hasToken: !!storedToken,
+              tokenLength: storedToken?.length || 0,
+              tokenPreview: storedToken ? storedToken.substring(0, 30) + '...' : 'null',
+            });
+            
             if (storedToken && storedToken.length > 50 && !storedToken.toLowerCase().startsWith('placeholder')) {
               console.log('[Settings] 🔔 FCM Token found in localStorage (fallback):', storedToken.substring(0, 50) + '...');
               await registerTokenWithBackend(storedToken);
@@ -436,6 +444,13 @@ export default function SettingsPage() {
             
             // Check window object
             const windowToken = (window as any).__fcmTokenFromAppDelegate;
+            console.log('[Settings] 🔍 window check:', {
+              hasToken: !!windowToken,
+              tokenType: typeof windowToken,
+              tokenLength: windowToken?.length || 0,
+              tokenPreview: windowToken ? windowToken.substring(0, 30) + '...' : 'null',
+            });
+            
             if (windowToken && typeof windowToken === 'string' && windowToken.length > 50 && !windowToken.toLowerCase().startsWith('placeholder')) {
               console.log('[Settings] 🔔 FCM Token found in window (fallback):', windowToken.substring(0, 50) + '...');
               await registerTokenWithBackend(windowToken);
@@ -443,26 +458,50 @@ export default function SettingsPage() {
               delete (window as any).__fcmTokenFromAppDelegate;
               return;
             }
+            
+            console.log('[Settings] 🔍 No stored token found in fallback locations');
           } catch (error) {
             console.error('[Settings] Error checking for stored token:', error);
           }
         };
         
-        // Check immediately and also after a delay
+        // Check immediately and also after delays (aggressive fallback)
         checkForStoredToken();
-        setTimeout(checkForStoredToken, 2000); // Check again after 2 seconds
+        setTimeout(checkForStoredToken, 1000); // Check after 1 second
+        setTimeout(checkForStoredToken, 2000); // Check after 2 seconds
+        setTimeout(checkForStoredToken, 3000); // Check after 3 seconds
+        setTimeout(checkForStoredToken, 5000); // Check after 5 seconds
         
         // Register with FCM
         console.log('[Settings] 📤 Registering with FCM...');
         await PushNotifications.register();
         console.log('[Settings] ✅ Push notifications initialized');
         
-        // 🔥 CRITICAL: Wait for token with timeout
+        // 🔥 CRITICAL: Wait for token with timeout and check fallback
         // If APNs registration failed, token might not come
         // Set a timeout to detect this issue
         setTimeout(() => {
           const savedToken = localStorage.getItem('fcm_token');
-          if (!savedToken || savedToken.startsWith('placeholder')) {
+          const fallbackToken = localStorage.getItem('fcm_token_from_appdelegate');
+          const windowToken = (window as any).__fcmTokenFromAppDelegate;
+          
+          console.log('[Settings] 🔍 Token check after 5 seconds:', {
+            hasSavedToken: !!savedToken,
+            savedTokenLength: savedToken?.length || 0,
+            hasFallbackToken: !!fallbackToken,
+            fallbackTokenLength: fallbackToken?.length || 0,
+            hasWindowToken: !!windowToken,
+            windowTokenLength: windowToken?.length || 0,
+          });
+          
+          // Try fallback one more time
+          if (fallbackToken || windowToken) {
+            console.log('[Settings] 🔔 Found token in fallback storage, registering now...');
+            const tokenToUse = fallbackToken || windowToken;
+            if (tokenToUse && tokenToUse.length > 50 && !tokenToUse.toLowerCase().startsWith('placeholder')) {
+              registerTokenWithBackend(tokenToUse);
+            }
+          } else if (!savedToken || savedToken.startsWith('placeholder')) {
             console.warn('[Settings] ⚠️ FCM token not received after 5 seconds');
             console.warn('[Settings] ⚠️ This usually means APNs registration failed');
             console.warn('[Settings] ⚠️ Check Xcode: Signing & Capabilities > Push Notifications must be enabled');
