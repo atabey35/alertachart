@@ -38,6 +38,12 @@ body {
     padding-bottom: max(env(safe-area-inset-bottom, 0px), 20px);
   }
   
+  /* Touch manipulation for better mobile performance */
+  .touch-manipulation {
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  
   /* Hide scrollbar for Chrome, Safari and Opera */
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
