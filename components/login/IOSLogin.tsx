@@ -3,6 +3,7 @@
 import { signIn } from 'next-auth/react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { generateState, generateNonce, getAppleServiceId, getAppleRedirectURI } from '@/utils/appleAuth';
 
 export default function IOSLogin() {
   const [loading, setLoading] = useState(false);
@@ -198,18 +199,142 @@ export default function IOSLogin() {
     setError('');
     
     try {
-      // Use native Apple auth for iOS
-      await signIn('apple', { callbackUrl: '/' });
+      if (isCapacitor) {
+        // Native app: Use Capacitor Apple Sign-In plugin
+        console.log('[IOSLogin] 🔵 Native app detected - using Capacitor Apple Sign-In');
+        
+        try {
+          const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
+          
+          // 🔥 CRITICAL: Generate random state and nonce for security
+          const state = generateState();
+          const nonce = generateNonce();
+          
+          // 🔥 CRITICAL: Use Service ID, not Bundle ID
+          // Service ID: com.kriptokirmizi.alerta.signin (from Apple Developer Console)
+          const serviceId = getAppleServiceId();
+          const redirectURI = getAppleRedirectURI();
+          
+          console.log('[IOSLogin] Apple Sign-In config:', {
+            serviceId,
+            redirectURI,
+            hasState: !!state,
+            hasNonce: !!nonce,
+          });
+          
+          // Native Apple Sign-In
+          const result = await SignInWithApple.authorize({
+            clientId: serviceId, // Service ID, not Bundle ID
+            redirectURI: redirectURI,
+            scopes: 'email name',
+            state: state,
+            nonce: nonce,
+          });
+          
+          console.log('[IOSLogin] ✅ Apple Sign-In success:', {
+            hasResponse: !!result?.response,
+            hasIdentityToken: !!result?.response?.identityToken,
+            hasAuthorizationCode: !!result?.response?.authorizationCode,
+          });
+          
+          if (result && result.response) {
+            const { identityToken, authorizationCode, user } = result.response;
+            
+            if (!identityToken) {
+              throw new Error('Missing identityToken from Apple Sign-In');
+            }
+            
+            // Type guard: user can be string or object
+            const userEmail = typeof user === 'object' && user !== null ? (user as any).email : undefined;
+            const userGivenName = typeof user === 'object' && user !== null ? (user as any).givenName : undefined;
+            const userFamilyName = typeof user === 'object' && user !== null ? (user as any).familyName : undefined;
+            
+            console.log('[IOSLogin] Sending Apple tokens to backend...');
+            
+            // Backend'e gönder
+            const response = await fetch('/api/auth/apple-native', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                identityToken,
+                authorizationCode,
+                email: userEmail,
+                givenName: userGivenName,
+                familyName: userFamilyName,
+              }),
+            });
+
+            if (!response.ok) {
+              const error = await response.json();
+              console.error('[IOSLogin] ❌ Backend authentication failed:', error);
+              throw new Error(error.error || 'Backend authentication failed');
+            }
+
+            const data = await response.json();
+            console.log('[IOSLogin] ✅ Backend auth successful, has tokens:', !!(data.tokens?.accessToken && data.tokens?.refreshToken));
+            
+            // Session set et
+            if (data.tokens?.accessToken && data.tokens?.refreshToken) {
+              console.log('[IOSLogin] Setting session...');
+              const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  accessToken: data.tokens.accessToken,
+                  refreshToken: data.tokens.refreshToken,
+                }),
+              });
+              
+              if (!sessionResponse.ok) {
+                const sessionError = await sessionResponse.json();
+                console.error('[IOSLogin] ❌ Failed to set session:', sessionError);
+                throw new Error(`Failed to set session: ${sessionError.error || 'Unknown error'}`);
+              }
+              
+              console.log('[IOSLogin] ✅ Session set successfully, redirecting...');
+              // Redirect to home
+              router.push('/');
+              window.location.reload();
+            } else {
+              throw new Error('No tokens received from backend');
+            }
+          } else {
+            throw new Error('No authentication data received from Apple');
+          }
+        } catch (importError: any) {
+          console.error('[IOSLogin] ❌ Apple Sign-In error:', importError);
+          console.error('[IOSLogin] Error details:', {
+            message: importError.message,
+            code: importError.code,
+            stack: importError.stack,
+            name: importError.name,
+          });
+          
+          // Handle specific Apple Sign-In errors
+          if (importError.code === 1000 || importError.message?.includes('1000')) {
+            throw new Error('Apple Sign-In configuration error. Please check Service ID and Redirect URI in Apple Developer Console.');
+          }
+          
+          throw new Error(`Apple Sign-In error: ${importError.message || 'Plugin not available'}`);
+        }
+      } else {
+        // Web: Use NextAuth signIn
+        console.log('[IOSLogin] 🌐 Web detected - using NextAuth signIn');
+        await signIn('apple', { callbackUrl: '/' });
+      }
     } catch (err: any) {
+      console.error('[IOSLogin] ❌ Apple login error:', err);
+      console.error('[IOSLogin] Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+      });
       showError(err.message || 'Apple sign-in failed');
       setLoading(false);
     }
   };
 
-  const handleEmailLogin = () => {
-    // Redirect to main app for email/password auth
-    router.push('/');
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4">
@@ -277,21 +402,6 @@ export default function IOSLogin() {
             )}
           </button>
           
-          {/* Email Button */}
-          <button
-            onClick={handleEmailLogin}
-            disabled={loading}
-            className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 disabled:from-blue-800 disabled:to-blue-900 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
-            </svg>
-            <span>Continue with Email</span>
-            {loading && (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            )}
-          </button>
         </div>
       </div>
     </div>

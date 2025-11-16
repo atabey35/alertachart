@@ -45,17 +45,27 @@ export default function DefaultLogin() {
     setError('');
     
     try {
+      console.log('[DefaultLogin] 🌐 Web detected - using NextAuth signIn for Apple');
       await signIn('apple', { callbackUrl: '/' });
     } catch (err: any) {
-      showError(err.message || 'Apple sign-in failed');
+      console.error('[DefaultLogin] ❌ Apple login error:', err);
+      console.error('[DefaultLogin] Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+      });
+      
+      // Handle specific Apple Sign-In errors
+      let errorMessage = err.message || 'Apple sign-in failed';
+      if (err.message?.includes('1000') || err.code === 1000) {
+        errorMessage = 'Apple Sign-In configuration error. Please check Service ID and Redirect URI in Apple Developer Console.';
+      }
+      
+      showError(errorMessage);
       setLoading(false);
     }
   };
 
-  const handleEmailLogin = () => {
-    // Redirect to main app for email/password auth
-    router.push('/');
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4">
@@ -115,21 +125,6 @@ export default function DefaultLogin() {
             )}
           </button>
           
-          {/* Email Button */}
-          <button
-            onClick={handleEmailLogin}
-            disabled={loading}
-            className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 disabled:from-blue-800 disabled:to-blue-900 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
-            </svg>
-            <span>Continue with Email</span>
-            {loading && (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            )}
-          </button>
         </div>
       </div>
     </div>

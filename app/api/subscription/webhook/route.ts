@@ -7,7 +7,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { authService } from '@/services/authService';
 
-const sql = neon(process.env.DATABASE_URL!);
+// Lazy initialization to avoid build-time errors
+const getSql = () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set');
+  }
+  return neon(process.env.DATABASE_URL);
+};
 
 /**
  * POST /api/subscription/webhook
@@ -68,6 +74,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by subscription_id or user_id
+    const sql = getSql();
     let userRecord;
     
     if (subscription_id) {

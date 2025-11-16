@@ -3,7 +3,13 @@ import { neon } from '@neondatabase/serverless';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 
-const sql = neon(process.env.DATABASE_URL!);
+// Lazy initialization to avoid build-time errors
+const getSql = () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set');
+  }
+  return neon(process.env.DATABASE_URL);
+};
 
 /**
  * GET /api/subscription/trial-status?deviceId=xxx
@@ -22,6 +28,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Check if device already used trial
+    const sql = getSql();
     const trialAttempt = await sql`
       SELECT 
         id,

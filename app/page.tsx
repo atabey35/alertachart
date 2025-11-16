@@ -54,18 +54,11 @@ export default function Home() {
   // Auth state
   const [showAuthModal, setShowAuthModal] = useState(false); // Only for Capacitor email/password
   const [showLoginScreen, setShowLoginScreen] = useState(false); // Native login screen for web
-  const [showEmailForm, setShowEmailForm] = useState(false); // Email/password form in login screen
   const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
   const { data: session, status, update } = useSession();
   const [isCapacitor, setIsCapacitor] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
-  
-  // Email/password form state (for login screen)
-  const [emailFormEmail, setEmailFormEmail] = useState('');
-  const [emailFormPassword, setEmailFormPassword] = useState('');
-  const [emailFormName, setEmailFormName] = useState('');
-  const [emailFormIsLogin, setEmailFormIsLogin] = useState(true);
 
   // Premium state
   const [userPlan, setUserPlan] = useState<{
@@ -1011,137 +1004,7 @@ export default function Home() {
               <span>{loginLoading ? 'Loading...' : 'Continue with Apple'}</span>
             </button>
             
-            {/* Email Button - Shows email/password form */}
-            <button
-              onClick={() => {
-                setShowEmailForm(true);
-              }}
-              className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]"
-            >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
-              <span>Continue with Email</span>
-            </button>
           </div>
-          
-          {/* Email/Password Form */}
-          {showEmailForm && (
-            <div className="mt-6 pt-6 border-t border-gray-700">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-white">
-                  {emailFormIsLogin ? 'Giriş Yap' : 'Kayıt Ol'}
-                </h3>
-                <button
-                  onClick={() => {
-                    setShowEmailForm(false);
-                    setEmailFormEmail('');
-                    setEmailFormPassword('');
-                    setEmailFormName('');
-                    setLoginError('');
-                  }}
-                  className="text-gray-400 hover:text-white text-sm"
-                >
-                  ✕
-                </button>
-              </div>
-              
-              {loginError && (
-                <div className="mb-4 p-3 bg-red-900/20 border border-red-500/50 rounded-lg text-red-300 text-sm">
-                  {loginError}
-                </div>
-              )}
-              
-              <form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  setLoginLoading(true);
-                  setLoginError('');
-                  
-                  try {
-                    if (emailFormIsLogin) {
-                      await authService.login(emailFormEmail, emailFormPassword);
-                    } else {
-                      await authService.register(emailFormEmail, emailFormPassword, emailFormName || undefined);
-                    }
-                    setShowLoginScreen(false);
-                    setShowEmailForm(false);
-                    window.location.reload();
-                  } catch (err: any) {
-                    setLoginError(err.message || 'Bir hata oluştu');
-                  } finally {
-                    setLoginLoading(false);
-                  }
-                }}
-                className="space-y-4"
-              >
-                {!emailFormIsLogin && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-1">
-                      İsim (Opsiyonel)
-                    </label>
-                    <input
-                      type="text"
-                      value={emailFormName}
-                      onChange={(e) => setEmailFormName(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
-                      placeholder="İsminiz"
-                    />
-                  </div>
-                )}
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    E-posta
-                  </label>
-                  <input
-                    type="email"
-                    value={emailFormEmail}
-                    onChange={(e) => setEmailFormEmail(e.target.value)}
-                    required
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
-                    placeholder="ornek@email.com"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-300 mb-1">
-                    Şifre
-                  </label>
-                  <input
-                    type="password"
-                    value={emailFormPassword}
-                    onChange={(e) => setEmailFormPassword(e.target.value)}
-                    required
-                    minLength={6}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-700 rounded text-white focus:outline-none focus:border-blue-500"
-                    placeholder="••••••••"
-                  />
-                </div>
-                
-                <button
-                  type="submit"
-                  disabled={loginLoading}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 disabled:cursor-not-allowed text-white font-medium rounded transition"
-                >
-                  {loginLoading ? 'İşleniyor...' : emailFormIsLogin ? 'Giriş Yap' : 'Kayıt Ol'}
-                </button>
-              </form>
-              
-              <div className="mt-4 text-center">
-                <button
-                  onClick={() => {
-                    setEmailFormIsLogin(!emailFormIsLogin);
-                    setLoginError('');
-                  }}
-                  className="text-sm text-blue-400 hover:text-blue-300"
-                >
-                  {emailFormIsLogin ? 'Hesabınız yok mu? Kayıt olun' : 'Zaten hesabınız var mı? Giriş yapın'}
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     );

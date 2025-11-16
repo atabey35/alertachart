@@ -3,7 +3,13 @@ import { neon } from '@neondatabase/serverless';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 
-const sql = neon(process.env.DATABASE_URL!);
+// Lazy initialization to avoid build-time errors
+const getSql = () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set');
+  }
+  return neon(process.env.DATABASE_URL);
+};
 
 /**
  * POST /api/subscription/start-trial
@@ -29,6 +35,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Get user from database
+    const sql = getSql();
     const users = await sql`
       SELECT id, email, plan FROM users 
       WHERE email = ${session.user.email}

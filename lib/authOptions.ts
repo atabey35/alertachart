@@ -3,7 +3,13 @@ import AppleProvider from "next-auth/providers/apple";
 import GoogleProvider from "next-auth/providers/google";
 import { neon } from "@neondatabase/serverless";
 
-const sql = neon(process.env.DATABASE_URL!);
+// Lazy initialization to avoid build-time errors
+const getSql = () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set');
+  }
+  return neon(process.env.DATABASE_URL);
+};
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -51,6 +57,7 @@ export const authOptions: NextAuthOptions = {
       }
 
       try {
+        const sql = getSql();
         // Check if user exists
         const existingUser = await sql`
           SELECT * FROM users 
@@ -107,6 +114,7 @@ export const authOptions: NextAuthOptions = {
         try {
           // ALWAYS fetch fresh user data from DB (no cache)
           // This ensures database changes (like plan updates) are reflected immediately
+          const sql = getSql();
           const userData = await sql`
             SELECT id, email, name, plan, expiry_date, trial_started_at, trial_ended_at
             FROM users

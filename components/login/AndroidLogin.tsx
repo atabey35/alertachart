@@ -194,99 +194,7 @@ export default function AndroidLogin() {
     }
   };
 
-  const handleAppleLogin = async () => {
-    setLoading(true);
-    setError('');
-    
-    try {
-      if (isCapacitor) {
-        // Native app: Use Capacitor Apple Sign-In plugin
-        console.log('[AndroidLogin] 🔵 Native app detected - using Capacitor Apple Sign-In');
-        
-        try {
-          const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
-          
-          // Native Apple Sign-In
-          const result = await SignInWithApple.authorize({
-            clientId: 'com.kriptokirmizi.alerta',
-            redirectURI: 'https://alertachart.com/auth/mobile-callback',
-            scopes: 'email name',
-            state: 'state',
-            nonce: 'nonce',
-          });
-          
-          if (result && result.response) {
-            const { identityToken, authorizationCode, user } = result.response;
-            
-            // Type guard: user can be string or object
-            const userEmail = typeof user === 'object' && user !== null ? (user as any).email : undefined;
-            const userGivenName = typeof user === 'object' && user !== null ? (user as any).givenName : undefined;
-            const userFamilyName = typeof user === 'object' && user !== null ? (user as any).familyName : undefined;
-            
-            // Backend'e gönder
-            const response = await fetch('/api/auth/apple-native', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                identityToken,
-                authorizationCode,
-                email: userEmail,
-                givenName: userGivenName,
-                familyName: userFamilyName,
-              }),
-            });
 
-            if (!response.ok) {
-              const error = await response.json();
-              throw new Error(error.error || 'Backend authentication failed');
-            }
-
-            const data = await response.json();
-            
-            // Session set et
-            if (data.tokens?.accessToken && data.tokens?.refreshToken) {
-              const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                  accessToken: data.tokens.accessToken,
-                  refreshToken: data.tokens.refreshToken,
-                }),
-              });
-              
-              if (!sessionResponse.ok) {
-                throw new Error('Failed to set session');
-              }
-              
-              // Redirect to home
-              router.push('/');
-              window.location.reload();
-            } else {
-              throw new Error('No tokens received from backend');
-            }
-          } else {
-            throw new Error('No authentication data received from Apple');
-          }
-        } catch (importError: any) {
-          console.error('[AndroidLogin] ❌ Apple Sign-In error:', importError);
-          throw new Error(`Apple Sign-In error: ${importError.message || 'Plugin not available'}`);
-        }
-      } else {
-        // Web: Use NextAuth signIn
-        await signIn('apple', { callbackUrl: '/' });
-      }
-    } catch (err: any) {
-      console.error('[AndroidLogin] ❌ Apple login error:', err);
-      showError(err.message || 'Apple sign-in failed');
-      setLoading(false);
-    }
-  };
-
-  const handleEmailLogin = () => {
-    // Redirect to main app for email/password auth
-    router.push('/');
-  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4">
@@ -339,36 +247,7 @@ export default function AndroidLogin() {
             )}
           </button>
           
-          {/* Apple Button */}
-          <button
-            onClick={handleAppleLogin}
-            disabled={loading}
-            className="w-full py-4 px-6 bg-black hover:bg-gray-900 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-gray-700 shadow-lg hover:shadow-xl active:scale-[0.98]"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-            </svg>
-            <span>Continue with Apple</span>
-            {loading && (
-              <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-            )}
-          </button>
           
-          {/* Email Button */}
-          <button
-            onClick={handleEmailLogin}
-            disabled={loading}
-            className="w-full py-4 px-6 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 disabled:from-green-800 disabled:to-green-900 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]"
-          >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-              <polyline points="22,6 12,13 2,6"/>
-            </svg>
-            <span>Continue with Email</span>
-            {loading && (
-              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-            )}
-          </button>
         </div>
       </div>
     </div>

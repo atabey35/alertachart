@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { encode } from 'next-auth/jwt';
 
-const sql = neon(process.env.DATABASE_URL!);
+// Lazy initialization to avoid build-time errors
+const getSql = () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set');
+  }
+  return neon(process.env.DATABASE_URL);
+};
 
 /**
  * POST /api/auth/restore-session
@@ -101,6 +107,7 @@ export async function POST(request: NextRequest) {
     let nextAuthToken = null;
     try {
       // Find user in database by email
+      const sql = getSql();
       const users = await sql`
         SELECT id, email, name, provider, provider_user_id, plan, expiry_date
         FROM users
