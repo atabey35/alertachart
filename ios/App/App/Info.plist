@@ -21,8 +21,19 @@
 	<key>CFBundleURLTypes</key>
 	<array>
 		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.kriptokirmizi.alerta</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
+				<string>com.kriptokirmizi.alerta</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>GoogleAuth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.googleusercontent.apps.776781271347-ergb3kc3djjen47loq61icptau51rk4m</string>
 				<string>com.googleusercontent.apps.776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i</string>
 			</array>
 		</dict>
