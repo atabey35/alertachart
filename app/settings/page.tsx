@@ -403,8 +403,9 @@ export default function SettingsPage() {
         
         // 🔥 CRITICAL: Listen for FCM token from AppDelegate (iOS fallback)
         // AppDelegate sends FCM token via custom event when Capacitor plugin doesn't fire
-        const handleFCMTokenFromAppDelegate = async (event: CustomEvent) => {
-          const token = event.detail?.token;
+        const handleFCMTokenFromAppDelegate = async (event: Event) => {
+          const customEvent = event as CustomEvent<{ token: string }>;
+          const token = customEvent.detail?.token;
           if (!token) {
             console.warn('[Settings] ⚠️ FCM token event received but token is missing');
             return;
@@ -416,7 +417,7 @@ export default function SettingsPage() {
           await registerTokenWithBackend(token);
         };
         
-        window.addEventListener('fcmTokenReceived', handleFCMTokenFromAppDelegate as EventListener);
+        window.addEventListener('fcmTokenReceived', handleFCMTokenFromAppDelegate);
         console.log('[Settings] ✅ Added listener for AppDelegate FCM token event');
         
         // Register with FCM
