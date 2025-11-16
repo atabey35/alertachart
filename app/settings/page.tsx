@@ -433,6 +433,20 @@ export default function SettingsPage() {
             throw new Error('Google Auth plugin is not available. Please ensure the app is properly configured.');
           }
           
+          // 🔥 CRITICAL: Initialize plugin before signIn
+          // Plugin must be initialized with clientId and scopes before signIn can be called
+          console.log('[Settings] 🔧 Initializing GoogleAuth plugin...');
+          try {
+            await GoogleAuth.initialize({
+              clientId: '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com',
+              scopes: ['profile', 'email'],
+            });
+            console.log('[Settings] ✅ GoogleAuth plugin initialized successfully');
+          } catch (initError: any) {
+            console.error('[Settings] ❌ GoogleAuth.initialize() error:', initError);
+            throw new Error('Failed to initialize Google Auth. Please check your configuration.');
+          }
+          
           // Native Google Sign-In
           console.log('[Settings] Calling GoogleAuth.signIn()...');
           let result;
