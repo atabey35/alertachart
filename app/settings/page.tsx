@@ -239,6 +239,109 @@ export default function SettingsPage() {
       return null;
     };
 
+    // Register token with backend (shared function)
+    const registerTokenWithBackend = async (tokenValue: string) => {
+      // 🔥 CRITICAL: Token validation - FCM token'lar genellikle uzun ve alfanumerik karakterler içerir
+      if (!tokenValue || tokenValue.length < 50) {
+        console.error('[Settings] ❌ Token is invalid (too short or empty):', {
+          tokenLength: tokenValue?.length || 0,
+          tokenPreview: tokenValue?.substring(0, 50) || 'null',
+        });
+        return;
+      }
+      
+      // 🔥 CRITICAL: "placeholder" ile başlayan token'ları reddet
+      if (tokenValue.toLowerCase().startsWith('placeholder')) {
+        console.error('[Settings] ❌ Token is placeholder, waiting for real token...');
+        return;
+      }
+      
+      console.log('[Settings] ✅ Valid FCM Token received!');
+      console.log('[Settings] ✅ Token length:', tokenValue.length);
+      console.log('[Settings] ✅ Token preview:', tokenValue.substring(0, 50) + '...');
+      
+      // Store token in localStorage
+      localStorage.setItem('fcm_token', tokenValue);
+      console.log('[Settings] ✅ FCM Token saved to localStorage');
+      
+      // Register token with backend via Next.js API route (forwards cookies)
+      try {
+        const platform = await getPlatform();
+        const deviceId = await getDeviceId() || `device-${Date.now()}`;
+        
+        // Get device info for model and OS version
+        const { Device } = (window as any).Capacitor.Plugins;
+        let model = 'Unknown';
+        let osVersion = 'Unknown';
+        
+        if (Device) {
+          try {
+            const deviceInfo = await Device.getInfo();
+            model = deviceInfo.model || model;
+            osVersion = deviceInfo.osVersion || osVersion;
+          } catch (e) {
+            console.warn('[Settings] Could not get device info:', e);
+          }
+        }
+        
+        console.log('[Settings] 📤 Registering token with backend...');
+        console.log('[Settings] Platform:', platform);
+        console.log('[Settings] Device ID:', deviceId);
+        console.log('[Settings] Model:', model);
+        console.log('[Settings] OS Version:', osVersion);
+        console.log('[Settings] Token (first 50 chars):', tokenValue.substring(0, 50) + '...');
+        
+        // 🔥 CRITICAL: Use Next.js API route to forward cookies (for user_id)
+        // This ensures the device is linked to the user account
+        const requestBody = {
+          token: tokenValue,
+          platform: platform,
+          deviceId: deviceId,
+          model: model,
+          osVersion: osVersion,
+          appVersion: '1.0.0',
+        };
+        
+        console.log('[Settings] 📤 Request body (token hidden):', {
+          ...requestBody,
+          token: tokenValue.substring(0, 30) + '... (length: ' + tokenValue.length + ')',
+        });
+        
+        const response = await fetch('/api/push/register', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          credentials: 'include', // 🔥 CRITICAL: Send httpOnly cookies!
+          body: JSON.stringify(requestBody),
+        });
+        
+        const responseText = await response.text();
+        console.log('[Settings] 📡 Raw response:', responseText);
+        
+        if (response.ok) {
+          try {
+            const result = JSON.parse(responseText);
+            console.log('[Settings] ✅ Token registered with backend:', result);
+          } catch (e) {
+            console.error('[Settings] ⚠️ Response is not JSON:', responseText);
+          }
+        } else {
+          try {
+            const error = JSON.parse(responseText);
+            console.error('[Settings] ❌ Failed to register token:', error);
+            console.error('[Settings] Response status:', response.status);
+          } catch (e) {
+            console.error('[Settings] ❌ Failed to register token (non-JSON):', responseText);
+            console.error('[Settings] Response status:', response.status);
+          }
+        }
+      } catch (error) {
+        console.error('[Settings] Error registering token:', error);
+        console.error('[Settings] Error details:', JSON.stringify(error));
+      }
+    };
+
     // Initialize push notifications
     const initPushNotifications = async () => {
       try {
@@ -287,107 +390,8 @@ export default function SettingsPage() {
             console.warn('[Settings] ⚠️ Token format unexpected, using full object:', tokenValue.substring(0, 100));
           }
           
-          // 🔥 CRITICAL: Token validation - FCM token'lar genellikle uzun ve alfanumerik karakterler içerir
-          if (!tokenValue || tokenValue.length < 50) {
-            console.error('[Settings] ❌ Token is invalid (too short or empty):', {
-              tokenLength: tokenValue?.length || 0,
-              tokenPreview: tokenValue?.substring(0, 50) || 'null',
-              tokenData: JSON.stringify(tokenData),
-            });
-            return;
-          }
-          
-          // 🔥 CRITICAL: "placeholder" ile başlayan token'ları reddet
-          if (tokenValue.toLowerCase().startsWith('placeholder')) {
-            console.error('[Settings] ❌ Token is placeholder, waiting for real token...');
-            console.error('[Settings] ❌ TokenData:', JSON.stringify(tokenData));
-            return;
-          }
-          
-          console.log('[Settings] ✅ Valid FCM Token received!');
-          console.log('[Settings] ✅ Token length:', tokenValue.length);
-          console.log('[Settings] ✅ Token preview:', tokenValue.substring(0, 50) + '...');
-          
-          // Store token in localStorage
-          localStorage.setItem('fcm_token', tokenValue);
-          console.log('[Settings] ✅ FCM Token saved to localStorage');
-          
-          // Register token with backend via Next.js API route (forwards cookies)
-          try {
-            const platform = await getPlatform();
-            const deviceId = await getDeviceId() || `device-${Date.now()}`;
-            
-            // Get device info for model and OS version
-            const { Device } = (window as any).Capacitor.Plugins;
-            let model = 'Unknown';
-            let osVersion = 'Unknown';
-            
-            if (Device) {
-              try {
-                const deviceInfo = await Device.getInfo();
-                model = deviceInfo.model || model;
-                osVersion = deviceInfo.osVersion || osVersion;
-              } catch (e) {
-                console.warn('[Settings] Could not get device info:', e);
-              }
-            }
-            
-            console.log('[Settings] 📤 Registering token with backend...');
-            console.log('[Settings] Platform:', platform);
-            console.log('[Settings] Device ID:', deviceId);
-            console.log('[Settings] Model:', model);
-            console.log('[Settings] OS Version:', osVersion);
-            console.log('[Settings] Token (first 50 chars):', tokenValue.substring(0, 50) + '...');
-            
-            // 🔥 CRITICAL: Use Next.js API route to forward cookies (for user_id)
-            // This ensures the device is linked to the user account
-            const requestBody = {
-              token: tokenValue,
-              platform: platform,
-              deviceId: deviceId,
-              model: model,
-              osVersion: osVersion,
-              appVersion: '1.0.0',
-            };
-            
-            console.log('[Settings] 📤 Request body (token hidden):', {
-              ...requestBody,
-              token: tokenValue.substring(0, 30) + '... (length: ' + tokenValue.length + ')',
-            });
-            
-            const response = await fetch('/api/push/register', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              credentials: 'include', // 🔥 CRITICAL: Send httpOnly cookies!
-              body: JSON.stringify(requestBody),
-            });
-            
-            const responseText = await response.text();
-            console.log('[Settings] 📡 Raw response:', responseText);
-            
-            if (response.ok) {
-              try {
-                const result = JSON.parse(responseText);
-                console.log('[Settings] ✅ Token registered with backend:', result);
-              } catch (e) {
-                console.error('[Settings] ⚠️ Response is not JSON:', responseText);
-              }
-            } else {
-              try {
-                const error = JSON.parse(responseText);
-                console.error('[Settings] ❌ Failed to register token:', error);
-                console.error('[Settings] Response status:', response.status);
-              } catch (e) {
-                console.error('[Settings] ❌ Failed to register token (non-JSON):', responseText);
-                console.error('[Settings] Response status:', response.status);
-              }
-            }
-          } catch (error) {
-            console.error('[Settings] Error registering token:', error);
-            console.error('[Settings] Error details:', JSON.stringify(error));
-          }
+          // Register token with backend
+          await registerTokenWithBackend(tokenValue);
         });
         
         // Listen for registration errors
@@ -396,6 +400,24 @@ export default function SettingsPage() {
           console.error('[Settings] ⚠️ This usually means APNs registration failed');
           console.error('[Settings] ⚠️ Check Xcode: Signing & Capabilities > Push Notifications must be enabled');
         });
+        
+        // 🔥 CRITICAL: Listen for FCM token from AppDelegate (iOS fallback)
+        // AppDelegate sends FCM token via custom event when Capacitor plugin doesn't fire
+        const handleFCMTokenFromAppDelegate = async (event: CustomEvent) => {
+          const token = event.detail?.token;
+          if (!token) {
+            console.warn('[Settings] ⚠️ FCM token event received but token is missing');
+            return;
+          }
+          
+          console.log('[Settings] 🔔 FCM Token received from AppDelegate:', token.substring(0, 50) + '...');
+          
+          // Use the same registration logic as the Capacitor listener
+          await registerTokenWithBackend(token);
+        };
+        
+        window.addEventListener('fcmTokenReceived', handleFCMTokenFromAppDelegate as EventListener);
+        console.log('[Settings] ✅ Added listener for AppDelegate FCM token event');
         
         // Register with FCM
         console.log('[Settings] 📤 Registering with FCM...');

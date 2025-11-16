@@ -3,6 +3,7 @@ import Capacitor
 import FirebaseCore
 import FirebaseMessaging
 import UserNotifications
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterDelegate, MessagingDelegate {
@@ -179,10 +180,102 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         
         print("[AppDelegate] ✅ FCM Token: \(fcmToken)")
         
+        // 🔥 CRITICAL: Send FCM token to JavaScript via Capacitor Bridge
+        // This ensures the token is received by the Settings page even if Capacitor PushNotifications plugin doesn't fire
+        sendFCMTokenToJavaScript(token: fcmToken)
+        
         // Token is automatically handled by Capacitor PushNotifications plugin
         // This is just for logging/debugging
         let dataDict: [String: String] = ["token": fcmToken]
         NotificationCenter.default.post(name: Notification.Name("FCMToken"), object: nil, userInfo: dataDict)
+    }
+    
+    /// Send FCM token to JavaScript via Capacitor Bridge
+    private func sendFCMTokenToJavaScript(token: String) {
+        // Escape token for JavaScript (handle quotes and special characters)
+        let escapedToken = token.replacingOccurrences(of: "\\", with: "\\\\")
+            .replacingOccurrences(of: "'", with: "\\'")
+            .replacingOccurrences(of: "\"", with: "\\\"")
+            .replacingOccurrences(of: "\n", with: "\\n")
+            .replacingOccurrences(of: "\r", with: "\\r")
+        
+        // JavaScript code to dispatch a custom event with the FCM token
+        // This will be caught by the Settings page listener
+        let jsCode = """
+            (function() {
+                try {
+                    // Dispatch custom event that Settings page can listen to
+                    const event = new CustomEvent('fcmTokenReceived', {
+                        detail: { token: '\(escapedToken)' }
+                    });
+                    window.dispatchEvent(event);
+                    
+                    // Also try to trigger Capacitor PushNotifications registration event
+                    // This ensures compatibility with existing code
+                    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
+                        // Manually trigger registration event
+                        const registrationData = { value: '\(escapedToken)' };
+                        console.log('[AppDelegate] ✅ FCM Token sent to JavaScript');
+                    }
+                    
+                    return true;
+                } catch (error) {
+                    console.error('[AppDelegate] ❌ Error sending FCM token to JavaScript:', error);
+                    return false;
+                }
+            })();
+        """
+        
+        // Get the main window and find the Capacitor bridge
+        DispatchQueue.main.async {
+            guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? UIApplication.shared.windows.first else {
+                print("[AppDelegate] ⚠️ No window available to send FCM token")
+                return
+            }
+            
+            // Try to find the WebView through the view hierarchy
+            if let bridgeViewController = window.rootViewController as? CAPBridgeViewController {
+                if let webView = bridgeViewController.webView {
+                    webView.evaluateJavaScript(jsCode) { (result, error) in
+                        if let error = error {
+                            print("[AppDelegate] ❌ Error executing JavaScript for FCM token: \(error.localizedDescription)")
+                        } else {
+                            print("[AppDelegate] ✅ FCM Token sent to JavaScript successfully")
+                        }
+                    }
+                } else {
+                    print("[AppDelegate] ⚠️ WebView not available in bridge view controller")
+                }
+            } else {
+                // Try alternative: find WebView in view hierarchy
+                if let webView = self.findWebView(in: window) {
+                    webView.evaluateJavaScript(jsCode) { (result, error) in
+                        if let error = error {
+                            print("[AppDelegate] ❌ Error executing JavaScript for FCM token: \(error.localizedDescription)")
+                        } else {
+                            print("[AppDelegate] ✅ FCM Token sent to JavaScript successfully")
+                        }
+                    }
+                } else {
+                    print("[AppDelegate] ⚠️ Could not find WebView to send FCM token")
+                }
+            }
+        }
+    }
+    
+    /// Find WebView in view hierarchy
+    private func findWebView(in view: UIView) -> WKWebView? {
+        if let webView = view as? WKWebView {
+            return webView
+        }
+        
+        for subview in view.subviews {
+            if let webView = findWebView(in: subview) {
+                return webView
+            }
+        }
+        
+        return nil
     }
     
     // MARK: - Notification Handling
