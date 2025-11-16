@@ -7,13 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { authService } from '@/services/authService';
 
-// Lazy initialization - only create connection when needed (not during build)
-function getSql() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-  return neon(process.env.DATABASE_URL);
-}
+const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * POST /api/subscription/webhook
@@ -33,7 +27,6 @@ function getSql() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const sql = getSql();
     const body = await request.json();
     
     console.log('[Subscription Webhook] Received event:', {

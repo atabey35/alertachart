@@ -9,14 +9,13 @@ import { authService } from '@/services/authService';
 import PremiumBadge from '@/components/PremiumBadge';
 import TrialIndicator from '@/components/TrialIndicator';
 import UpgradeModal from '@/components/UpgradeModal';
-import AuthModal from '@/components/AuthModal';
 import { hasPremiumAccess, User } from '@/utils/premium';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isCapacitor, setIsCapacitor] = useState(false);
-  const { data: session, status, update } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   // User state
@@ -30,7 +29,6 @@ export default function SettingsPage() {
   } | null>(null);
   const [fullUser, setFullUser] = useState<User | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
 
   // Layout and market type state (synced with localStorage)
   const [layout, setLayout] = useState<1 | 2 | 4 | 9>(1);
@@ -599,37 +597,276 @@ export default function SettingsPage() {
     setTimeout(() => setError(''), 5000);
   };
 
-  const handleGoogleLogin = () => {
-    console.log('[Settings] handleGoogleLogin called');
+  const handleGoogleLogin = async () => {
+    setLoading(true);
+    setError('');
+    
+    console.log('[Settings] Google login button clicked');
     console.log('[Settings] isCapacitor:', isCapacitor);
-    const platform = typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown';
-    console.log('[Settings] Platform:', platform);
+    console.log('[Settings] Platform:', typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown');
     
-    // Check if Android - always use modal for Android
-    if (platform === 'android') {
-      console.log('[Settings] 🤖 Android detected - opening AuthModal');
-      setShowAuthModal(true);
-      return;
-    }
-    
-    // For iOS and other native platforms, use modal
-    if (isCapacitor) {
-      console.log('[Settings] 🔵 Native app detected - opening AuthModal');
-      setShowAuthModal(true);
-    } else {
-      // Web: Use NextAuth signIn
-      console.log('[Settings] 🌐 Web detected - using NextAuth signIn');
-      signIn('google', { callbackUrl: window.location.origin + '/' });
+    try {
+      if (isCapacitor) {
+        // Native app: Use Capacitor Google Auth plugin (dynamic import)
+        console.log('[Settings] 🔵 Native app detected - using Capacitor Google Auth');
+        
+        try {
+          // Dinamik import (web'de hata vermemesi için)
+          console.log('[Settings] Importing @codetrix-studio/capacitor-google-auth...');
+          const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+          console.log('[Settings] ✅ GoogleAuth imported successfully');
+          
+          // Initialize plugin if needed (check if it's available)
+          try {
+            // Try to check if plugin is available
+            if (typeof GoogleAuth === 'undefined' || !GoogleAuth.signIn) {
+              throw new Error('GoogleAuth plugin is not properly initialized');
+            }
+            console.log('[Settings] ✅ GoogleAuth plugin is available');
+          } catch (initError: any) {
+            console.error('[Settings] ❌ GoogleAuth initialization error:', initError);
+            throw new Error('Google Auth plugin is not available. Please ensure the app is properly configured.');
+          }
+          
+          // 🔥 CRITICAL: Initialize plugin before signIn
+          // Plugin must be initialized with clientId and scopes before signIn can be called
+          console.log('[Settings] 🔧 Initializing GoogleAuth plugin...');
+          try {
+            await GoogleAuth.initialize({
+              clientId: '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com',
+              scopes: ['profile', 'email'],
+            });
+            console.log('[Settings] ✅ GoogleAuth plugin initialized successfully');
+          } catch (initError: any) {
+            console.error('[Settings] ❌ GoogleAuth.initialize() error:', initError);
+            throw new Error('Failed to initialize Google Auth. Please check your configuration.');
+          }
+          
+          // Native Google Sign-In
+          console.log('[Settings] Calling GoogleAuth.signIn()...');
+          let result;
+          try {
+            result = await GoogleAuth.signIn();
+          } catch (signInError: any) {
+            console.error('[Settings] ❌ GoogleAuth.signIn() error:', signInError);
+            // Check if it's a configuration error
+            if (signInError.message?.includes('nil') || signInError.message?.includes('Optional')) {
+              throw new Error('Google Auth is not properly configured. Please check GoogleService-Info.plist and capacitor.config.ts');
+            }
+            throw signInError;
+          }
+          
+          console.log('[Settings] ✅ Google Sign-In success:', {
+            hasAuthentication: !!result?.authentication,
+            hasIdToken: !!result?.authentication?.idToken,
+            hasAccessToken: !!result?.authentication?.accessToken,
+          });
+          
+          if (result && result.authentication) {
+            const { idToken, accessToken } = result.authentication;
+            
+            console.log('[Settings] Sending tokens to backend...');
+            // Backend'e gönder
+            const response = await fetch('/api/auth/google-native', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                idToken,
+                accessToken,
+              }),
+            });
+
+            console.log('[Settings] Backend response status:', response.status);
+
+            if (!response.ok) {
+              const error = await response.json();
+              console.error('[Settings] ❌ Backend authentication failed:', error);
+              throw new Error(error.error || 'Backend authentication failed');
+            }
+
+            const data = await response.json();
+            console.log('[Settings] ✅ Backend auth successful, has tokens:', !!(data.tokens?.accessToken && data.tokens?.refreshToken));
+            
+            // Session set et
+            if (data.tokens?.accessToken && data.tokens?.refreshToken) {
+              console.log('[Settings] Setting session...');
+              const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  accessToken: data.tokens.accessToken,
+                  refreshToken: data.tokens.refreshToken,
+                }),
+              });
+              
+              if (!sessionResponse.ok) {
+                console.error('[Settings] ❌ Failed to set session');
+                throw new Error('Failed to set session');
+              }
+              
+              console.log('[Settings] ✅ Session set successfully, redirecting...');
+              // Redirect to home
+              router.push('/');
+              window.location.reload();
+            } else {
+              throw new Error('No tokens received from backend');
+            }
+          } else {
+            throw new Error('No authentication data received from Google');
+          }
+        } catch (importError: any) {
+          console.error('[Settings] ❌ Google Auth import/execution error:', importError);
+          console.error('[Settings] Error details:', {
+            message: importError.message,
+            stack: importError.stack,
+            name: importError.name,
+          });
+          throw new Error(`Google Auth error: ${importError.message || 'Plugin not available'}`);
+        }
+      } else {
+        // Web: Use NextAuth signIn (simplest and most reliable)
+        console.log('[Settings] 🌐 Web detected - using NextAuth signIn');
+        try {
+          // NextAuth signIn will redirect to Google OAuth, then back to callbackUrl
+          console.log('[Settings] Calling signIn("google")...');
+          const result = await signIn('google', { callbackUrl: window.location.origin + '/' });
+          console.log('[Settings] signIn result:', result);
+          // Note: signIn redirects, so code below won't execute
+          // But we set loading to false in case redirect fails
+          setLoading(false);
+        } catch (signInError: any) {
+          console.error('[Settings] ❌ NextAuth signIn error:', signInError);
+          showError(`Google sign-in failed: ${signInError.message || 'Unknown error'}`);
+          setLoading(false);
+        }
+      }
+    } catch (err: any) {
+      console.error('[Settings] ❌ Google login error:', err);
+      showError(err.message || 'Google sign-in failed');
+      setLoading(false);
     }
   };
 
-  const handleAppleLogin = () => {
-    // Open AuthModal for native login (iOS and Android)
-    if (isCapacitor) {
-      setShowAuthModal(true);
-    } else {
-      // Web: Use NextAuth signIn
-      signIn('apple', { callbackUrl: window.location.origin + '/' });
+  const handleAppleLogin = async () => {
+    setLoading(true);
+    setError('');
+    
+    try {
+      if (isCapacitor) {
+        // Native app: Use Capacitor Apple Sign In plugin
+        const SignInWithApple = (window as any).Capacitor?.Plugins?.SignInWithApple;
+        
+        if (!SignInWithApple) {
+          // Try to import dynamically
+          try {
+            const { SignInWithApple: AppleSignIn } = await import('@capacitor-community/apple-sign-in');
+            const result = await AppleSignIn.authorize({
+              clientId: 'com.kriptokirmizi.alerta',
+              redirectURI: 'https://alertachart.com',
+              scopes: 'email name',
+              state: 'state',
+              nonce: 'nonce',
+            });
+            
+            if (result && result.response) {
+              const { identityToken, authorizationCode, user } = result.response;
+              
+              // Backend'e gönder
+              const response = await fetch('/api/auth/apple-native', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  identityToken,
+                  authorizationCode,
+                  email: user,
+                }),
+              });
+
+              if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.error || 'Backend authentication failed');
+              }
+
+              const data = await response.json();
+              
+              // Session set et
+              if (data.tokens?.accessToken && data.tokens?.refreshToken) {
+                await fetch('/api/auth/set-capacitor-session', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({
+                    accessToken: data.tokens.accessToken,
+                    refreshToken: data.tokens.refreshToken,
+                  }),
+                });
+                
+                // Redirect to home
+                router.push('/');
+                window.location.reload();
+              }
+            }
+            setLoading(false);
+            return;
+          } catch (importError) {
+            throw new Error('Apple Sign In plugin not available');
+          }
+        }
+
+        const result = await SignInWithApple.authorize({
+          clientId: 'com.kriptokirmizi.alerta',
+          redirectURI: 'https://alertachart.com',
+          scopes: 'email name',
+          state: 'state',
+          nonce: 'nonce',
+        });
+        
+        if (result && result.response) {
+          const { identityToken, authorizationCode, user } = result.response;
+          
+          // Backend'e gönder
+          const response = await fetch('/api/auth/apple-native', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              identityToken,
+              authorizationCode,
+              email: user,
+            }),
+          });
+
+          if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.error || 'Backend authentication failed');
+          }
+
+          const data = await response.json();
+          
+          // Session set et
+          if (data.tokens?.accessToken && data.tokens?.refreshToken) {
+            await fetch('/api/auth/set-capacitor-session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              credentials: 'include',
+              body: JSON.stringify({
+                accessToken: data.tokens.accessToken,
+                refreshToken: data.tokens.refreshToken,
+              }),
+            });
+            
+            // Redirect to home
+            router.push('/');
+            window.location.reload();
+          }
+        }
+      } else {
+        // Web: Use Apple OAuth
+        throw new Error('Apple Sign In is only available in the mobile app');
+      }
+    } catch (err: any) {
+      showError(err.message || 'Apple sign-in failed');
+      setLoading(false);
     }
   };
 
@@ -1021,52 +1258,6 @@ export default function SettingsPage() {
         isTrial={userPlan?.isTrial || false}
         trialRemainingDays={userPlan?.trialRemainingDays || 0}
       />
-
-      {/* Auth Modal - For native login (iOS and Android) */}
-      {(isCapacitor || (typeof window !== 'undefined' && (window as any).Capacitor?.getPlatform?.() === 'android')) && (
-        <AuthModal
-          isOpen={showAuthModal}
-          onClose={() => setShowAuthModal(false)}
-          onSuccess={async () => {
-            const platform = typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown';
-            console.log('[Settings] ✅ Login successful, platform:', platform);
-            
-            // Close modal first
-            setShowAuthModal(false);
-            
-            // Android: Wait for session to be set, then update and reload
-            if (platform === 'android') {
-              console.log('[Settings] 🤖 Android detected - updating session after login...');
-              
-              // Wait a bit for cookies to be set
-              await new Promise(resolve => setTimeout(resolve, 800));
-              
-              // Update NextAuth session
-              try {
-                await update();
-                console.log('[Settings] ✅ NextAuth session updated');
-                
-                // Wait a bit more for session to propagate
-                await new Promise(resolve => setTimeout(resolve, 500));
-                
-                // Reload to ensure everything is synced
-                console.log('[Settings] 🔄 Reloading page to sync session state...');
-                window.location.reload();
-              } catch (updateError) {
-                console.warn('[Settings] ⚠️ Failed to update NextAuth session:', updateError);
-                // Still reload even if update fails
-                setTimeout(() => {
-                  console.log('[Settings] 🔄 Reloading page after login...');
-                  window.location.reload();
-                }, 1000);
-              }
-            } else {
-              // iOS: Let AuthModal handle reload (existing behavior)
-              console.log('[Settings] 🍎 iOS detected - AuthModal will handle reload');
-            }
-          }}
-        />
-      )}
     </div>
   );
 }

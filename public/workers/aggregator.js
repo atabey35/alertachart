@@ -15,6 +15,7 @@ class Aggregator {
         this.timeframe = 300; // 5 minutes default
         this.activePairs = new Set();
         this.tickInterval = null; // Interval for periodic ticks
+        console.log('[Aggregator] Worker initialized');
         this.initializeExchanges();
         this.startTickInterval();
     }
@@ -42,6 +43,8 @@ class Aggregator {
         if (this.tickInterval !== null) {
             clearInterval(this.tickInterval);
         }
+        console.log('[Aggregator] Starting tick interval (1s)');
+        
         // Emit tick every second if we have an active bar
         this.tickInterval = setInterval(() => {
             if (this.activeBar) {
@@ -49,10 +52,13 @@ class Aggregator {
                 const currentBarTime = floorTimestampToTimeframe(now, this.timeframe);
                 // Check if we need to create a new bar (time window changed)
                 if (this.activeBar.time !== currentBarTime) {
+                    console.log('[Aggregator] New candle window:', new Date(currentBarTime).toISOString());
                     // Save the previous close price before emitting
                     const previousClose = this.activeBar.close;
+                    
                     // Time window changed - emit old bar as completed
                     this.emit('bar', cloneBar(this.activeBar));
+                    
                     // Create new bar with previous close as starting price
                     this.activeBar = createBar(currentBarTime, this.timeframe);
                     this.activeBar.open = previousClose;
@@ -90,6 +96,8 @@ class Aggregator {
             this.emit('error', { message: `Exchange ${data.exchange} not found` });
             return;
         }
+        console.log(`[Aggregator] Connecting to ${data.exchange}:${data.pair}`);
+        
         // Connect if not connected
         if (exchange.apis.length === 0) {
             await exchange.connect();
@@ -98,6 +106,8 @@ class Aggregator {
         const api = exchange.apis[0];
         await exchange.subscribe(api, data.pair);
         this.activePairs.add(`${data.exchange}:${data.pair}`);
+        
+        console.log(`[Aggregator] Connected, emitting 'connected' event`);
         this.emit('connected', { exchange: data.exchange, pair: data.pair });
     }
     async disconnect(data) {
@@ -122,10 +132,13 @@ class Aggregator {
      */
     initActiveBar(bar) {
         if (bar) {
+            console.log('[Aggregator] Initializing active bar:', new Date(bar.time).toISOString(), 'close:', bar.close);
             this.activeBar = { ...bar }; // Clone the bar
+            
             // Emit initial tick so chart starts updating immediately
             // This prevents waiting for first trade
-            this.emit('tick', cloneBar(this.activeBar));
+            this.emit('tick', { ...this.activeBar });
+            console.log('[Aggregator] Initial tick emitted, interval will continue from here');
         }
         else {
             this.activeBar = null;

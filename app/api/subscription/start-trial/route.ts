@@ -3,13 +3,7 @@ import { neon } from '@neondatabase/serverless';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 
-// Lazy initialization - only create connection when needed (not during build)
-function getSql() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-  return neon(process.env.DATABASE_URL);
-}
+const sql = neon(process.env.DATABASE_URL!);
 
 /**
  * POST /api/subscription/start-trial
@@ -18,7 +12,6 @@ function getSql() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const sql = getSql();
     const session = await getServerSession(authOptions);
     
     if (!session?.user?.email) {

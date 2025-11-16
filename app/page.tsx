@@ -447,24 +447,6 @@ export default function Home() {
       // Fetch immediately and also after a short delay (in case session is still updating)
       fetchUserPlanImmediately();
       setTimeout(fetchUserPlanImmediately, 500);
-      
-      // 🔥 CRITICAL: Re-register FCM token after login (to link device to user account)
-      // This ensures push notifications work even if app was reinstalled
-      if (isCapacitor) {
-        const reRegisterToken = async () => {
-          try {
-            // Wait a bit for session cookies to be available
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            console.log('[App] 🔄 Re-registering FCM token after login...');
-            await pushNotificationService.reRegisterAfterLogin();
-          } catch (error) {
-            console.error('[App] ❌ Error re-registering token after login:', error);
-          }
-        };
-        
-        // Re-register token after login (with delay to ensure cookies are available)
-        reRegisterToken();
-      }
       setTimeout(fetchUserPlanImmediately, 1500);
     } else if (status === 'unauthenticated') {
       // Fall back to legacy auth

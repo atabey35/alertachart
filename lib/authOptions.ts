@@ -3,13 +3,7 @@ import AppleProvider from "next-auth/providers/apple";
 import GoogleProvider from "next-auth/providers/google";
 import { neon } from "@neondatabase/serverless";
 
-// Lazy initialization - only create connection when needed (not during build)
-function getSql() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL environment variable is not set');
-  }
-  return neon(process.env.DATABASE_URL);
-}
+const sql = neon(process.env.DATABASE_URL!);
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -58,7 +52,6 @@ export const authOptions: NextAuthOptions = {
 
       try {
         // Check if user exists
-        const sql = getSql();
         const existingUser = await sql`
           SELECT * FROM users 
           WHERE provider = ${account.provider} 
@@ -75,8 +68,7 @@ export const authOptions: NextAuthOptions = {
             provider: account.provider,
           });
 
-          const sql2 = getSql();
-          await sql2`
+          await sql`
             INSERT INTO users (
               email, 
               name, 
@@ -95,8 +87,7 @@ export const authOptions: NextAuthOptions = {
           console.log('[NextAuth] User created successfully');
         } else {
           // Update last login
-          const sql3 = getSql();
-          await sql3`
+          await sql`
             UPDATE users 
             SET last_login_at = NOW()
             WHERE provider = ${account.provider}
@@ -116,7 +107,6 @@ export const authOptions: NextAuthOptions = {
         try {
           // ALWAYS fetch fresh user data from DB (no cache)
           // This ensures database changes (like plan updates) are reflected immediately
-          const sql = getSql();
           const userData = await sql`
             SELECT id, email, name, plan, expiry_date, trial_started_at, trial_ended_at
             FROM users

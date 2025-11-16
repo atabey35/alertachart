@@ -33,25 +33,14 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   // Capacitor kontrolü - Native plugin kullan
   useEffect(() => {
     if (typeof window !== 'undefined' && window.Capacitor) {
-      const platform = (window as any).Capacitor?.getPlatform?.();
-      console.log('[AuthModal] Capacitor detected, platform:', platform);
-      
-      // Android veya iOS ise native plugin kullan
-      if (platform === 'android' || platform === 'ios') {
-        console.log('[AuthModal] Native platform detected - using native auth plugins');
-        setIsCapacitor(true);
-      } else {
-        console.log('[AuthModal] Web platform - using web auth');
-        setIsCapacitor(false);
-      }
+      console.log('[AuthModal] Capacitor detected - using native auth plugins');
+      setIsCapacitor(true);
     }
   }, []);
 
   // Google Identity Services (GIS) initialization for web
   useEffect(() => {
-    const platform = typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown';
-    // 🔥 CRITICAL: Only initialize web login if NOT on Android/iOS
-    if (typeof window !== 'undefined' && !isCapacitor && platform !== 'android' && platform !== 'ios' && isOpen && googleButtonRef.current) {
+    if (typeof window !== 'undefined' && !isCapacitor && isOpen && googleButtonRef.current) {
       // Clear previous button
       if (googleButtonRef.current) {
         googleButtonRef.current.innerHTML = '';
@@ -140,16 +129,6 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
   // Google Native Sign-In (Capacitor only)
   const handleGoogleNativeSignIn = async () => {
-    // 🔥 CRITICAL: Check platform again to ensure we're on native
-    const platform = typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown';
-    console.log('[AuthModal] handleGoogleNativeSignIn called, platform:', platform, 'isCapacitor:', isCapacitor);
-    
-    // If not Android/iOS, throw error
-    if (platform !== 'android' && platform !== 'ios') {
-      console.error('[AuthModal] ❌ NOT on native platform! Platform:', platform);
-      setError('Bu özellik sadece native uygulamada çalışır');
-      return;
-    }
     setLoading(true);
     setError('');
     
@@ -158,75 +137,31 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
       
       // Dinamik import (web'de hata vermemesi için)
       const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
-      console.log('[AuthModal] ✅ GoogleAuth imported successfully');
-      
-      // 🔥 CRITICAL: Initialize plugin before signIn
-      // Plugin must be initialized with clientId and scopes before signIn can be called
-      console.log('[AuthModal] 🔧 Initializing GoogleAuth plugin...');
-      try {
-        // Get platform to use correct clientId
-        const platform = typeof window !== 'undefined' && (window as any).Capacitor?.getPlatform?.();
-        const clientId = platform === 'android' 
-          ? '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com' // Android client ID
-          : '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com'; // iOS client ID
-        
-        await GoogleAuth.initialize({
-          clientId: clientId,
-          scopes: ['profile', 'email'],
-        });
-        console.log('[AuthModal] ✅ GoogleAuth plugin initialized successfully');
-      } catch (initError: any) {
-        console.error('[AuthModal] ❌ GoogleAuth.initialize() error:', initError);
-        throw new Error('Failed to initialize Google Auth. Please check your configuration.');
-      }
       
       // Native Google Sign-In
-      console.log('[AuthModal] Calling GoogleAuth.signIn()...');
-      let result;
-      try {
-        result = await GoogleAuth.signIn();
-      } catch (signInError: any) {
-        console.error('[AuthModal] ❌ GoogleAuth.signIn() error:', signInError);
-        // Check if it's a configuration error
-        if (signInError.message?.includes('nil') || signInError.message?.includes('Optional')) {
-          throw new Error('Google Auth is not properly configured. Please check GoogleService-Info.plist and capacitor.config.ts');
-        }
-        throw signInError;
-      }
+      const result = await GoogleAuth.signIn();
+      console.log('[AuthModal] Google Sign-In success:', result);
       
-      console.log('[AuthModal] ✅ Google Sign-In success:', result);
-      
-      if (!result || !result.authentication) {
-        throw new Error('No authentication data received from Google');
-      }
-      
-      const { idToken, accessToken } = result.authentication;
-      
-      console.log('[AuthModal] Sending tokens to backend...');
       // Backend'e token gönder
       const response = await fetch('/api/auth/google-native', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          idToken,
-          accessToken,
+          idToken: result.authentication?.idToken || '',
+          email: result.email || '',
+          name: result.name || result.givenName || '',
+          imageUrl: result.imageUrl || '',
         }),
       });
       
-      console.log('[AuthModal] Backend response status:', response.status);
-
       if (!response.ok) {
-        const error = await response.json();
-        console.error('[AuthModal] ❌ Backend authentication failed:', error);
-        throw new Error(error.error || 'Backend authentication failed');
+        throw new Error('Backend authentication failed');
       }
 
       const data = await response.json();
-      console.log('[AuthModal] ✅ Backend auth successful, has tokens:', !!(data.tokens?.accessToken && data.tokens?.refreshToken));
       
       // Token'ları cookie'lere set et ve NextAuth session oluştur
       if (data.tokens?.accessToken && data.tokens?.refreshToken) {
-        console.log('[AuthModal] Setting session...');
         const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -237,25 +172,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
           }),
         });
 
-        if (!sessionResponse.ok) {
-          console.error('[AuthModal] ❌ Failed to set session');
-          throw new Error('Failed to set session');
-        }
-        
-        console.log('[AuthModal] ✅ Session set successfully');
-        
-        // Get platform to determine behavior
-        const platform = typeof window !== 'undefined' && (window as any).Capacitor?.getPlatform?.();
-        
-        if (platform === 'android') {
-          // Android: Call onSuccess callback (Settings page will handle session update and reload)
-          onSuccess();
-          onClose();
-        } else {
-          // iOS: Reload immediately (existing behavior)
+        if (sessionResponse.ok) {
+          console.log('[AuthModal] Backend auth successful');
           onSuccess();
           onClose();
           window.location.reload();
+        } else {
+          throw new Error('Failed to set session');
         }
       } else {
         throw new Error('No tokens received from backend');
@@ -379,26 +302,13 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
         )}
 
         {/* OAuth Buttons - Only for Capacitor (web uses native login screen) */}
-        {(isCapacitor || (typeof window !== 'undefined' && ((window as any).Capacitor?.getPlatform?.() === 'android' || (window as any).Capacitor?.getPlatform?.() === 'ios'))) && (
+        {isCapacitor && (
           <>
             <div className="space-y-3 mb-6">
               {/* Google Button - Capacitor only */}
               <button
                 type="button"
-                onClick={() => {
-                  const platform = typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown';
-                  console.log('[AuthModal] Google button clicked, platform:', platform, 'isCapacitor:', isCapacitor);
-                  
-                  // Android veya iOS ise kesinlikle native login yap
-                  if (platform === 'android' || platform === 'ios' || isCapacitor) {
-                    console.log('[AuthModal] Using native Google Sign-In');
-                    handleGoogleNativeSignIn();
-                  } else {
-                    console.error('[AuthModal] ❌ Platform not detected as native, but modal is open! This should not happen.');
-                    // Fallback: Try native anyway
-                    handleGoogleNativeSignIn();
-                  }
-                }}
+                onClick={handleGoogleNativeSignIn}
                 disabled={loading}
                 className="w-full py-3 px-4 bg-white hover:bg-gray-100 disabled:bg-gray-200 disabled:cursor-not-allowed text-gray-900 font-medium rounded-lg transition flex items-center justify-center gap-3 border border-gray-300"
               >

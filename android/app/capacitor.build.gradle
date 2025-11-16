@@ -10,9 +10,7 @@ android {
 apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
 dependencies {
     implementation project(':capacitor-community-apple-sign-in')
-    implementation project(':capacitor-device')
     implementation project(':capacitor-local-notifications')
-    implementation project(':capacitor-preferences')
     implementation project(':capacitor-push-notifications')
     implementation project(':codetrix-studio-capacitor-google-auth')
 
