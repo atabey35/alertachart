@@ -630,10 +630,15 @@ export default function SettingsPage() {
           
           // 🔥 CRITICAL: Initialize plugin before signIn
           // Plugin must be initialized with clientId and scopes before signIn can be called
+          // 🔥 CRITICAL: Android'de Web client ID kullanılmalı (Android client ID değil)
+          const webClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 
+            '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com';
+          
           console.log('[Settings] 🔧 Initializing GoogleAuth plugin...');
+          console.log('[Settings] Using Web Client ID:', webClientId);
           try {
             await GoogleAuth.initialize({
-              clientId: '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com',
+              clientId: webClientId,
               scopes: ['profile', 'email'],
             });
             console.log('[Settings] ✅ GoogleAuth plugin initialized successfully');
