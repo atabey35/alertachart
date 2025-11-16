@@ -393,12 +393,27 @@ export default function SettingsPage() {
         // Listen for registration errors
         PushNotifications.addListener('registrationError', (error: any) => {
           console.error('[Settings] FCM registration error:', error);
+          console.error('[Settings] ⚠️ This usually means APNs registration failed');
+          console.error('[Settings] ⚠️ Check Xcode: Signing & Capabilities > Push Notifications must be enabled');
         });
         
         // Register with FCM
         console.log('[Settings] 📤 Registering with FCM...');
         await PushNotifications.register();
         console.log('[Settings] ✅ Push notifications initialized');
+        
+        // 🔥 CRITICAL: Wait for token with timeout
+        // If APNs registration failed, token might not come
+        // Set a timeout to detect this issue
+        setTimeout(() => {
+          const savedToken = localStorage.getItem('fcm_token');
+          if (!savedToken || savedToken.startsWith('placeholder')) {
+            console.warn('[Settings] ⚠️ FCM token not received after 5 seconds');
+            console.warn('[Settings] ⚠️ This usually means APNs registration failed');
+            console.warn('[Settings] ⚠️ Check Xcode: Signing & Capabilities > Push Notifications must be enabled');
+            console.warn('[Settings] ⚠️ Also ensure you have a valid provisioning profile with Push Notifications enabled');
+          }
+        }, 5000);
       } catch (error) {
         console.error('[Settings] Push notification error:', error);
       }
