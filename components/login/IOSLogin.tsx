@@ -8,8 +8,27 @@ export default function IOSLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const [isCapacitor, setIsCapacitor] = useState(false);
 
   useEffect(() => {
+    // Check if Capacitor is available
+    if (typeof window !== 'undefined') {
+      const capacitor = (window as any).Capacitor;
+      const platform = capacitor?.getPlatform?.();
+      console.log('[IOSLogin] Capacitor check:', {
+        hasCapacitor: !!capacitor,
+        platform: platform,
+        isNative: capacitor?.isNativePlatform?.() || false,
+      });
+      
+      if (capacitor && (platform === 'android' || platform === 'ios')) {
+        setIsCapacitor(true);
+        console.log('[IOSLogin] ✅ Native platform detected:', platform);
+      } else {
+        console.log('[IOSLogin] ⚠️ Web platform detected');
+      }
+    }
+
     // Check if already logged in
     fetch('/api/auth/session')
       .then(res => res.json())
@@ -32,10 +51,143 @@ export default function IOSLogin() {
     setLoading(true);
     setError('');
     
+    console.log('[IOSLogin] Google login button clicked');
+    console.log('[IOSLogin] isCapacitor:', isCapacitor);
+    console.log('[IOSLogin] Platform:', typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown');
+    
     try {
-      // Use native Google auth for iOS
-      await signIn('google', { callbackUrl: '/' });
+      if (isCapacitor) {
+        // Native app: Use Capacitor Google Auth plugin
+        console.log('[IOSLogin] 🔵 Native app detected - using Capacitor Google Auth');
+        
+        try {
+          // Dynamic import
+          console.log('[IOSLogin] Importing @codetrix-studio/capacitor-google-auth...');
+          const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+          console.log('[IOSLogin] ✅ GoogleAuth imported successfully');
+          
+          // Check if plugin is available
+          if (typeof GoogleAuth === 'undefined' || !GoogleAuth.signIn) {
+            throw new Error('GoogleAuth plugin is not properly initialized');
+          }
+          console.log('[IOSLogin] ✅ GoogleAuth plugin is available');
+          
+          // Initialize plugin
+          // 🔥 CRITICAL: iOS'ta iOS client ID kullanılmalı (Web client ID custom scheme URI'leri desteklemez)
+          const iosClientId = '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com';
+          
+          console.log('[IOSLogin] 🔧 Initializing GoogleAuth plugin...');
+          console.log('[IOSLogin] Using iOS Client ID:', iosClientId);
+          try {
+            await GoogleAuth.initialize({
+              clientId: iosClientId,
+              scopes: ['profile', 'email'],
+            });
+            console.log('[IOSLogin] ✅ GoogleAuth plugin initialized successfully');
+          } catch (initError: any) {
+            console.error('[IOSLogin] ❌ GoogleAuth.initialize() error:', initError);
+            throw new Error(`Failed to initialize Google Auth: ${initError.message || 'Unknown error'}`);
+          }
+          
+          // Native Google Sign-In
+          console.log('[IOSLogin] Calling GoogleAuth.signIn()...');
+          let result;
+          try {
+            result = await GoogleAuth.signIn();
+            console.log('[IOSLogin] ✅ Google Sign-In success:', {
+              hasAuthentication: !!result?.authentication,
+              hasIdToken: !!result?.authentication?.idToken,
+              hasAccessToken: !!result?.authentication?.accessToken,
+            });
+          } catch (signInError: any) {
+            console.error('[IOSLogin] ❌ GoogleAuth.signIn() error:', signInError);
+            console.error('[IOSLogin] Error details:', {
+              message: signInError.message,
+              stack: signInError.stack,
+              name: signInError.name,
+            });
+            throw new Error(`Google Sign-In failed: ${signInError.message || 'Unknown error'}`);
+          }
+          
+          if (result && result.authentication) {
+            const { idToken, accessToken } = result.authentication;
+            
+            if (!idToken || !accessToken) {
+              throw new Error('Missing idToken or accessToken from Google');
+            }
+            
+            console.log('[IOSLogin] Sending tokens to backend...');
+            // Backend'e gönder
+            const response = await fetch('/api/auth/google-native', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                idToken,
+                accessToken,
+              }),
+            });
+
+            console.log('[IOSLogin] Backend response status:', response.status);
+
+            if (!response.ok) {
+              const error = await response.json();
+              console.error('[IOSLogin] ❌ Backend authentication failed:', error);
+              throw new Error(error.error || 'Backend authentication failed');
+            }
+
+            const data = await response.json();
+            console.log('[IOSLogin] ✅ Backend auth successful, has tokens:', !!(data.tokens?.accessToken && data.tokens?.refreshToken));
+            
+            // Session set et
+            if (data.tokens?.accessToken && data.tokens?.refreshToken) {
+              console.log('[IOSLogin] Setting session...');
+              const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  accessToken: data.tokens.accessToken,
+                  refreshToken: data.tokens.refreshToken,
+                }),
+              });
+              
+              if (!sessionResponse.ok) {
+                const sessionError = await sessionResponse.json();
+                console.error('[IOSLogin] ❌ Failed to set session:', sessionError);
+                throw new Error(`Failed to set session: ${sessionError.error || 'Unknown error'}`);
+              }
+              
+              console.log('[IOSLogin] ✅ Session set successfully, redirecting...');
+              // Redirect to home
+              router.push('/');
+              window.location.reload();
+            } else {
+              throw new Error('No tokens received from backend');
+            }
+          } else {
+            throw new Error('No authentication data received from Google');
+          }
+        } catch (importError: any) {
+          console.error('[IOSLogin] ❌ Google Auth import/execution error:', importError);
+          console.error('[IOSLogin] Error details:', {
+            message: importError.message,
+            stack: importError.stack,
+            name: importError.name,
+          });
+          throw new Error(`Google Auth error: ${importError.message || 'Plugin not available'}`);
+        }
+      } else {
+        // Web: Use NextAuth signIn
+        console.log('[IOSLogin] 🌐 Web detected - using NextAuth signIn');
+        await signIn('google', { callbackUrl: '/' });
+      }
     } catch (err: any) {
+      console.error('[IOSLogin] ❌ Google login error:', err);
+      console.error('[IOSLogin] Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+      });
       showError(err.message || 'Google sign-in failed');
       setLoading(false);
     }
