@@ -917,15 +917,19 @@
     // 🔥 CRITICAL: Try to restore session on app startup
     // This runs when app opens - checks cookies first (more reliable than localStorage on iOS)
     async function tryRestoreSession() {
+      console.log('[Login] 🚀 tryRestoreSession() called');
+      
       try {
         // Check if we're in a Capacitor app
         if (typeof window === 'undefined' || !window.Capacitor) {
-          console.log('[Login] Not a Capacitor app, skipping session restore');
+          console.log('[Login] ⚠️ Not a Capacitor app, skipping session restore');
           return;
         }
 
+        console.log('[Login] ⏳ Waiting 1 second for cookies to be available...');
         // Wait a bit for cookies to be available
         await new Promise(resolve => setTimeout(resolve, 1000));
+        console.log('[Login] ✅ Wait complete, proceeding with session restore...');
 
         console.log('[Login] 🔄 Checking for session restore...');
 
@@ -945,6 +949,7 @@
 
         // Always try to restore - use CapacitorHttp since fetch doesn't work from capacitor://localhost
         // CapacitorHttp automatically includes cookies from WKWebsiteDataStore
+        console.log('[Login] 🔍 Checking for CapacitorHttp plugin...');
         const CapacitorHttp = window.Capacitor?.Plugins?.CapacitorHttp;
         
         if (!CapacitorHttp) {
@@ -952,6 +957,7 @@
           return;
         }
 
+        console.log('[Login] ✅ CapacitorHttp found, calling restore-session API...');
         try {
           const httpResponse = await CapacitorHttp.post({
             url: 'https://alertachart.com/api/auth/restore-session',
@@ -959,6 +965,12 @@
               'Content-Type': 'application/json',
             },
             data: {},
+          });
+
+          console.log('[Login] 📡 Restore-session API response:', {
+            status: httpResponse.status,
+            hasData: !!httpResponse.data,
+            dataKeys: httpResponse.data ? Object.keys(httpResponse.data) : []
           });
 
           if (httpResponse.status === 200) {
@@ -973,7 +985,28 @@
 
             // Redirect to home page - session will be active there
             console.log('[Login] 🔄 Redirecting to home page...');
-            window.location.href = 'https://alertachart.com/';
+            
+            // Use WebViewController if available, otherwise use window.location
+            const WebViewController = window.Capacitor?.Plugins?.WebViewController;
+            if (WebViewController && typeof WebViewController.loadUrl === 'function') {
+              try {
+                console.log('[Login] ✅ Using WebViewController to redirect to home...');
+                await WebViewController.loadUrl({ url: 'https://alertachart.com/' });
+                console.log('[Login] ✅ Redirect successful via WebViewController');
+                return;
+              } catch (error) {
+                console.error('[Login] ❌ WebViewController redirect failed:', error);
+              }
+            }
+            
+            // Fallback: Use window.location
+            console.log('[Login] ⚠️ WebViewController not available, using window.location fallback...');
+            try {
+              window.location.href = 'https://alertachart.com/';
+              console.log('[Login] ✅ Redirect initiated via window.location');
+            } catch (error) {
+              console.error('[Login] ❌ window.location redirect failed:', error);
+            }
           } else {
             const error = httpResponse.data || { error: 'Unknown error' };
             console.log('[Login] ⚠️ Session restore failed:', error);
@@ -1000,9 +1033,12 @@
     }
 
     // Try to restore session on page load
-    tryRestoreSession();
+    console.log('[Login] 📄 Page loaded, calling tryRestoreSession()...');
+    tryRestoreSession().catch(error => {
+      console.error('[Login] ❌ tryRestoreSession() threw an error:', error);
+    });
 
-    console.log('[Login] App initialized');
+    console.log('[Login] ✅ App initialized - tryRestoreSession() called');
   </script>
 </body>
 </html>
