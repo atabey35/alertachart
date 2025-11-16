@@ -139,15 +139,64 @@ extension CustomBridgeViewController: WKNavigationDelegate {
                         // Parse result (it's a dictionary from JavaScript)
                         if let resultDict = result as? [String: Any],
                            let hasToken = resultDict["hasToken"] as? Bool,
-                           hasToken == true {
-                            print("[CustomBridgeViewController] ✅ RefreshToken found in Preferences - redirecting to dashboard...")
+                           hasToken == true,
+                           let token = resultDict["token"] as? String {
+                            print("[CustomBridgeViewController] ✅ RefreshToken found in Preferences - restoring session...")
                             
-                            // Redirect to dashboard directly (skip login screen)
-                            DispatchQueue.main.async {
-                                let dashboardURL = URL(string: "https://alertachart.com/")!
-                                let request = URLRequest(url: dashboardURL)
-                                webView.load(request)
-                                print("[CustomBridgeViewController] ✅ Redirected to dashboard")
+                            // 🔥 CRITICAL: First restore session via API to set cookies, then redirect to dashboard
+                            // We need to call restore-session API with the token to set cookies properly
+                            // Use CapacitorHttp since fetch doesn't work from capacitor://localhost
+                            let restoreSessionScript = """
+                                (async function() {
+                                    try {
+                                        const CapacitorHttp = window.Capacitor?.Plugins?.CapacitorHttp;
+                                        if (!CapacitorHttp) {
+                                            return { success: false, error: 'CapacitorHttp not available' };
+                                        }
+                                        
+                                        // Call restore-session API with token in body
+                                        const response = await CapacitorHttp.post({
+                                            url: 'https://alertachart.com/api/auth/restore-session',
+                                            headers: {
+                                                'Content-Type': 'application/json',
+                                            },
+                                            data: {
+                                                refreshToken: '\(token)'
+                                            }
+                                        });
+                                        
+                                        if (response.status === 200) {
+                                            return { success: true };
+                                        } else {
+                                            return { success: false, error: 'Restore session failed', status: response.status };
+                                        }
+                                    } catch (error) {
+                                        return { success: false, error: error.message || 'Unknown error' };
+                                    }
+                                })();
+                            """
+                            
+                            webView.evaluateJavaScript(restoreSessionScript) { (restoreResult, restoreError) in
+                                if let restoreError = restoreError {
+                                    print("[CustomBridgeViewController] ❌ Error restoring session:", restoreError)
+                                    return
+                                }
+                                
+                                if let restoreDict = restoreResult as? [String: Any],
+                                   let success = restoreDict["success"] as? Bool,
+                                   success == true {
+                                    print("[CustomBridgeViewController] ✅ Session restored - redirecting to dashboard...")
+                                    
+                                    // Wait a bit for cookies to be set, then redirect
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                                        let dashboardURL = URL(string: "https://alertachart.com/")!
+                                        let request = URLRequest(url: dashboardURL)
+                                        webView.load(request)
+                                        print("[CustomBridgeViewController] ✅ Redirected to dashboard")
+                                    }
+                                } else {
+                                    print("[CustomBridgeViewController] ⚠️ Session restore failed - showing login screen")
+                                }
                             }
                         } else {
                             print("[CustomBridgeViewController] ℹ️ No refreshToken found - showing login screen")

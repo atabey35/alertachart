@@ -11,8 +11,18 @@ const sql = neon(process.env.DATABASE_URL!);
  */
 export async function POST(request: NextRequest) {
   try {
-    // Get refresh token from cookies
-    const refreshToken = request.cookies.get('refreshToken')?.value;
+    // Get refresh token from cookies OR request body (for Preferences-based restore)
+    let refreshToken = request.cookies.get('refreshToken')?.value;
+    
+    // If not in cookies, try to get from request body (for Capacitor Preferences restore)
+    if (!refreshToken) {
+      try {
+        const body = await request.json();
+        refreshToken = body.refreshToken;
+      } catch (e) {
+        // Body might be empty or not JSON, that's okay
+      }
+    }
     
     if (!refreshToken) {
       return NextResponse.json(
@@ -151,6 +161,19 @@ export async function POST(request: NextRequest) {
         path: '/',
         maxAge: 900, // 15 minutes
       });
+    }
+    
+    // 🔥 CRITICAL: Set refreshToken cookie if it came from request body (Preferences restore)
+    // This ensures cookie is set even if it wasn't in cookies initially
+    if (refreshToken && !request.cookies.get('refreshToken')?.value) {
+      response.cookies.set('refreshToken', refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: 604800, // 7 days
+      });
+      console.log('[restore-session] RefreshToken cookie set from request body');
     }
     
     // Set NextAuth session token cookie
