@@ -12,8 +12,21 @@ export default function AndroidLogin() {
 
   useEffect(() => {
     // Check if Capacitor is available
-    if (typeof window !== 'undefined' && (window as any).Capacitor) {
-      setIsCapacitor(true);
+    if (typeof window !== 'undefined') {
+      const capacitor = (window as any).Capacitor;
+      const platform = capacitor?.getPlatform?.();
+      console.log('[AndroidLogin] Capacitor check:', {
+        hasCapacitor: !!capacitor,
+        platform: platform,
+        isNative: capacitor?.isNativePlatform?.() || false,
+      });
+      
+      if (capacitor && (platform === 'android' || platform === 'ios')) {
+        setIsCapacitor(true);
+        console.log('[AndroidLogin] ✅ Native platform detected:', platform);
+      } else {
+        console.log('[AndroidLogin] ⚠️ Web platform detected');
+      }
     }
 
     // Check if already logged in
@@ -38,26 +51,68 @@ export default function AndroidLogin() {
     setLoading(true);
     setError('');
     
+    console.log('[AndroidLogin] Google login button clicked');
+    console.log('[AndroidLogin] isCapacitor:', isCapacitor);
+    console.log('[AndroidLogin] Platform:', typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown');
+    
     try {
       if (isCapacitor) {
         // Native app: Use Capacitor Google Auth plugin
         console.log('[AndroidLogin] 🔵 Native app detected - using Capacitor Google Auth');
         
         try {
+          // Dynamic import
+          console.log('[AndroidLogin] Importing @codetrix-studio/capacitor-google-auth...');
           const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+          console.log('[AndroidLogin] ✅ GoogleAuth imported successfully');
+          
+          // Check if plugin is available
+          if (typeof GoogleAuth === 'undefined' || !GoogleAuth.signIn) {
+            throw new Error('GoogleAuth plugin is not properly initialized');
+          }
+          console.log('[AndroidLogin] ✅ GoogleAuth plugin is available');
           
           // Initialize plugin
-          await GoogleAuth.initialize({
-            clientId: '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com',
-            scopes: ['profile', 'email'],
-          });
+          console.log('[AndroidLogin] 🔧 Initializing GoogleAuth plugin...');
+          try {
+            await GoogleAuth.initialize({
+              clientId: '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com',
+              scopes: ['profile', 'email'],
+            });
+            console.log('[AndroidLogin] ✅ GoogleAuth plugin initialized successfully');
+          } catch (initError: any) {
+            console.error('[AndroidLogin] ❌ GoogleAuth.initialize() error:', initError);
+            throw new Error(`Failed to initialize Google Auth: ${initError.message || 'Unknown error'}`);
+          }
           
           // Native Google Sign-In
-          const result = await GoogleAuth.signIn();
+          console.log('[AndroidLogin] Calling GoogleAuth.signIn()...');
+          let result;
+          try {
+            result = await GoogleAuth.signIn();
+            console.log('[AndroidLogin] ✅ Google Sign-In success:', {
+              hasAuthentication: !!result?.authentication,
+              hasIdToken: !!result?.authentication?.idToken,
+              hasAccessToken: !!result?.authentication?.accessToken,
+            });
+          } catch (signInError: any) {
+            console.error('[AndroidLogin] ❌ GoogleAuth.signIn() error:', signInError);
+            console.error('[AndroidLogin] Error details:', {
+              message: signInError.message,
+              stack: signInError.stack,
+              name: signInError.name,
+            });
+            throw new Error(`Google Sign-In failed: ${signInError.message || 'Unknown error'}`);
+          }
           
           if (result && result.authentication) {
             const { idToken, accessToken } = result.authentication;
             
+            if (!idToken || !accessToken) {
+              throw new Error('Missing idToken or accessToken from Google');
+            }
+            
+            console.log('[AndroidLogin] Sending tokens to backend...');
             // Backend'e gönder
             const response = await fetch('/api/auth/google-native', {
               method: 'POST',
@@ -68,15 +123,20 @@ export default function AndroidLogin() {
               }),
             });
 
+            console.log('[AndroidLogin] Backend response status:', response.status);
+
             if (!response.ok) {
               const error = await response.json();
+              console.error('[AndroidLogin] ❌ Backend authentication failed:', error);
               throw new Error(error.error || 'Backend authentication failed');
             }
 
             const data = await response.json();
+            console.log('[AndroidLogin] ✅ Backend auth successful, has tokens:', !!(data.tokens?.accessToken && data.tokens?.refreshToken));
             
             // Session set et
             if (data.tokens?.accessToken && data.tokens?.refreshToken) {
+              console.log('[AndroidLogin] Setting session...');
               const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -88,9 +148,12 @@ export default function AndroidLogin() {
               });
               
               if (!sessionResponse.ok) {
-                throw new Error('Failed to set session');
+                const sessionError = await sessionResponse.json();
+                console.error('[AndroidLogin] ❌ Failed to set session:', sessionError);
+                throw new Error(`Failed to set session: ${sessionError.error || 'Unknown error'}`);
               }
               
+              console.log('[AndroidLogin] ✅ Session set successfully, redirecting...');
               // Redirect to home
               router.push('/');
               window.location.reload();
@@ -101,15 +164,26 @@ export default function AndroidLogin() {
             throw new Error('No authentication data received from Google');
           }
         } catch (importError: any) {
-          console.error('[AndroidLogin] ❌ Google Auth error:', importError);
+          console.error('[AndroidLogin] ❌ Google Auth import/execution error:', importError);
+          console.error('[AndroidLogin] Error details:', {
+            message: importError.message,
+            stack: importError.stack,
+            name: importError.name,
+          });
           throw new Error(`Google Auth error: ${importError.message || 'Plugin not available'}`);
         }
       } else {
         // Web: Use NextAuth signIn
+        console.log('[AndroidLogin] 🌐 Web detected - using NextAuth signIn');
         await signIn('google', { callbackUrl: '/' });
       }
     } catch (err: any) {
       console.error('[AndroidLogin] ❌ Google login error:', err);
+      console.error('[AndroidLogin] Error details:', {
+        message: err.message,
+        stack: err.stack,
+        name: err.name,
+      });
       showError(err.message || 'Google sign-in failed');
       setLoading(false);
     }
