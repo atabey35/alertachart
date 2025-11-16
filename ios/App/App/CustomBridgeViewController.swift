@@ -143,6 +143,16 @@ extension CustomBridgeViewController: WKNavigationDelegate {
                            let token = resultDict["token"] as? String {
                             print("[CustomBridgeViewController] ✅ RefreshToken found in Preferences - restoring session...")
                             
+                            // 🔥 CRITICAL: Escape token for JavaScript string to prevent syntax errors
+                            // Token may contain quotes, backslashes, or other special characters
+                            let escapedToken = token
+                                .replacingOccurrences(of: "\\", with: "\\\\")  // Escape backslashes first
+                                .replacingOccurrences(of: "'", with: "\\'")    // Escape single quotes
+                                .replacingOccurrences(of: "\"", with: "\\\"")   // Escape double quotes
+                                .replacingOccurrences(of: "\n", with: "\\n")   // Escape newlines
+                                .replacingOccurrences(of: "\r", with: "\\r")   // Escape carriage returns
+                                .replacingOccurrences(of: "\t", with: "\\t")   // Escape tabs
+                            
                             // 🔥 CRITICAL: First restore session via API to set cookies, then redirect to dashboard
                             // We need to call restore-session API with the token to set cookies properly
                             // Use CapacitorHttp since fetch doesn't work from capacitor://localhost
@@ -155,13 +165,14 @@ extension CustomBridgeViewController: WKNavigationDelegate {
                                         }
                                         
                                         // Call restore-session API with token in body
+                                        // Token is properly escaped to prevent JavaScript syntax errors
                                         const response = await CapacitorHttp.post({
                                             url: 'https://alertachart.com/api/auth/restore-session',
                                             headers: {
                                                 'Content-Type': 'application/json',
                                             },
                                             data: {
-                                                refreshToken: '\(token)'
+                                                refreshToken: '\(escapedToken)'
                                             }
                                         });
                                         
