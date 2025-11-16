@@ -16,7 +16,16 @@ export async function POST(request: NextRequest) {
       deviceId: body.deviceId,
       platform: body.platform,
       hasCookies: !!cookies,
+      tokenLength: body.token?.length || 0,
+      model: body.model,
+      osVersion: body.osVersion,
     });
+    
+    // 🔥 CRITICAL: Validate platform value
+    if (body.platform && body.platform !== 'ios' && body.platform !== 'android') {
+      console.error('[Next.js API] ⚠️ Invalid platform value:', body.platform);
+      console.error('[Next.js API] ⚠️ This may cause backend to not recognize the device');
+    }
     
     // Backend'e ilet
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:3002';

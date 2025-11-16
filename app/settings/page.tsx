@@ -276,28 +276,57 @@ export default function SettingsPage() {
           localStorage.setItem('fcm_token', tokenValue);
           console.log('[Settings] ✅ FCM Token saved to localStorage');
           
-          // Register token with backend
+          // Register token with backend via Next.js API route (forwards cookies)
           try {
             const platform = await getPlatform();
             const deviceId = await getDeviceId() || `device-${Date.now()}`;
             
-            console.log('[Settings] Registering token with backend...');
-            const { CapacitorHttp } = (window as any).Capacitor.Plugins;
-            const httpResponse = await CapacitorHttp.post({
-              url: 'https://alertachart-backend-production.up.railway.app/api/push/register',
-              headers: { 'Content-Type': 'application/json' },
-              data: {
+            // Get device info for model and OS version
+            const { Device } = (window as any).Capacitor.Plugins;
+            let model = 'Unknown';
+            let osVersion = 'Unknown';
+            
+            if (Device) {
+              try {
+                const deviceInfo = await Device.getInfo();
+                model = deviceInfo.model || model;
+                osVersion = deviceInfo.osVersion || osVersion;
+              } catch (e) {
+                console.warn('[Settings] Could not get device info:', e);
+              }
+            }
+            
+            console.log('[Settings] 📤 Registering token with backend...');
+            console.log('[Settings] Platform:', platform);
+            console.log('[Settings] Device ID:', deviceId);
+            console.log('[Settings] Model:', model);
+            console.log('[Settings] OS Version:', osVersion);
+            
+            // 🔥 CRITICAL: Use Next.js API route to forward cookies (for user_id)
+            // This ensures the device is linked to the user account
+            const response = await fetch('/api/push/register', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              credentials: 'include', // 🔥 CRITICAL: Send httpOnly cookies!
+              body: JSON.stringify({
                 token: tokenValue,
                 platform: platform,
                 deviceId: deviceId,
+                model: model,
+                osVersion: osVersion,
                 appVersion: '1.0.0',
-              },
+              }),
             });
             
-            if (httpResponse.status === 200) {
-              console.log('[Settings] ✅ Token registered with backend');
+            if (response.ok) {
+              const result = await response.json();
+              console.log('[Settings] ✅ Token registered with backend:', result);
             } else {
-              console.error('[Settings] ❌ Failed to register token');
+              const error = await response.json();
+              console.error('[Settings] ❌ Failed to register token:', error);
+              console.error('[Settings] Response status:', response.status);
             }
           } catch (error) {
             console.error('[Settings] Error registering token:', error);

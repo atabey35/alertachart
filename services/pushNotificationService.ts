@@ -96,17 +96,45 @@ class CapacitorPushNotificationService implements PushNotificationService {
       console.log('[PushNotification] Getting device info using platform detection helper...');
       const deviceInfo = await getDeviceInfo();
       
-      // Use detected platform, fallback to 'android' only if detection completely fails
-      const platform = deviceInfo.platform !== 'web' ? deviceInfo.platform : 'android';
+      // 🔥 CRITICAL: Better platform detection with multiple fallbacks
+      let platform = deviceInfo.platform;
+      
+      // If platform is 'web', try to detect from User-Agent or Capacitor
+      if (platform === 'web') {
+        if (typeof window !== 'undefined') {
+          // Try Capacitor platform detection
+          const capacitorPlatform = (window as any).Capacitor?.getPlatform?.();
+          if (capacitorPlatform === 'ios' || capacitorPlatform === 'android') {
+            platform = capacitorPlatform;
+            console.log('[PushNotification] ✅ Platform detected via Capacitor fallback:', platform);
+          } else {
+            // Try User-Agent as last resort
+            const userAgent = navigator.userAgent.toLowerCase();
+            if (userAgent.includes('iphone') || userAgent.includes('ipad')) {
+              platform = 'ios';
+              console.log('[PushNotification] ✅ Platform detected via User-Agent: ios');
+            } else if (userAgent.includes('android')) {
+              platform = 'android';
+              console.log('[PushNotification] ✅ Platform detected via User-Agent: android');
+            } else {
+              // Default fallback - but this should rarely happen in native app
+              console.warn('[PushNotification] ⚠️ Could not detect platform, defaulting to android');
+              platform = 'android';
+            }
+          }
+        }
+      }
+      
       const deviceId = deviceInfo.deviceId || 'unknown-device';
       const model = deviceInfo.model;
       const osVersion = deviceInfo.osVersion;
 
-      console.log('[PushNotification] Device info:', {
+      console.log('[PushNotification] 📱 Final device info:', {
         platform: platform,
         deviceId: deviceId,
         model: model,
         osVersion: osVersion,
+        originalPlatform: deviceInfo.platform,
       });
 
       // Register device with backend via Next.js API route (forwards cookies)
@@ -204,8 +232,42 @@ class CapacitorPushNotificationService implements PushNotificationService {
       console.log('[PushNotification] Getting device info using platform detection helper...');
       const deviceInfo = await getDeviceInfo();
       
-      // Use detected platform and device ID, fallback to localStorage if needed
-      const platform = deviceInfo.platform !== 'web' ? deviceInfo.platform : (typeof window !== 'undefined' ? localStorage.getItem('native_platform') || 'android' : 'android');
+      // 🔥 CRITICAL: Better platform detection with multiple fallbacks (same as registerTokenWithBackend)
+      let platform = deviceInfo.platform;
+      
+      // If platform is 'web', try to detect from User-Agent, Capacitor, or localStorage
+      if (platform === 'web') {
+        if (typeof window !== 'undefined') {
+          // Try Capacitor platform detection
+          const capacitorPlatform = (window as any).Capacitor?.getPlatform?.();
+          if (capacitorPlatform === 'ios' || capacitorPlatform === 'android') {
+            platform = capacitorPlatform;
+            console.log('[PushNotification] ✅ Platform detected via Capacitor fallback:', platform);
+          } else {
+            // Try localStorage (saved from previous detection)
+            const savedPlatform = localStorage.getItem('native_platform');
+            if (savedPlatform === 'ios' || savedPlatform === 'android') {
+              platform = savedPlatform;
+              console.log('[PushNotification] ✅ Platform detected via localStorage:', platform);
+            } else {
+              // Try User-Agent as last resort
+              const userAgent = navigator.userAgent.toLowerCase();
+              if (userAgent.includes('iphone') || userAgent.includes('ipad')) {
+                platform = 'ios';
+                console.log('[PushNotification] ✅ Platform detected via User-Agent: ios');
+              } else if (userAgent.includes('android')) {
+                platform = 'android';
+                console.log('[PushNotification] ✅ Platform detected via User-Agent: android');
+              } else {
+                // Default fallback - but this should rarely happen in native app
+                console.warn('[PushNotification] ⚠️ Could not detect platform, defaulting to android');
+                platform = 'android';
+              }
+            }
+          }
+        }
+      }
+      
       const deviceId = deviceInfo.deviceId || (typeof window !== 'undefined' ? localStorage.getItem('native_device_id') : null);
       
       // Store detected platform in localStorage for future use
