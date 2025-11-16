@@ -218,6 +218,11 @@ export default function AndroidLogin() {
           if (result && result.response) {
             const { identityToken, authorizationCode, user } = result.response;
             
+            // Type guard: user can be string or object
+            const userEmail = typeof user === 'object' && user !== null ? (user as any).email : undefined;
+            const userGivenName = typeof user === 'object' && user !== null ? (user as any).givenName : undefined;
+            const userFamilyName = typeof user === 'object' && user !== null ? (user as any).familyName : undefined;
+            
             // Backend'e gönder
             const response = await fetch('/api/auth/apple-native', {
               method: 'POST',
@@ -225,9 +230,9 @@ export default function AndroidLogin() {
               body: JSON.stringify({
                 identityToken,
                 authorizationCode,
-                email: user?.email,
-                givenName: user?.givenName,
-                familyName: user?.familyName,
+                email: userEmail,
+                givenName: userGivenName,
+                familyName: userFamilyName,
               }),
             });
 
