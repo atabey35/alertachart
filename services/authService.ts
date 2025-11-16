@@ -77,12 +77,20 @@ class AuthService {
         // Web tarafında token'a ihtiyaç yok
         
         return this.user;
+      } else if (response.status === 401) {
+        // 401 is normal when user is not logged in - don't log as error
+        this.user = null;
+        this.notifyListeners();
+        return null;
       } else {
+        // Other errors (500, etc.) - log as warning
+        console.warn('[AuthService] Auth check failed with status:', response.status);
         this.user = null;
         this.notifyListeners();
         return null;
       }
     } catch (e) {
+      // Network errors - log as warning, not error
       console.warn('[AuthService] Failed to check auth:', e);
       this.user = null;
       this.notifyListeners();

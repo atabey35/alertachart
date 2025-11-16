@@ -28,26 +28,57 @@ export async function POST(request: NextRequest) {
     }
 
     // Backend'e ilet - development için local, production için Railway
-    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3002';
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
     
-    const response = await fetch(`${backendUrl}/api/admin/broadcast`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title, message }),
+    console.log('[Next.js API] Broadcasting notification to backend:', {
+      backendUrl: `${backendUrl}/api/admin/broadcast`,
+      title: title.substring(0, 50),
+      messageLength: message.length,
     });
     
-    const result = await response.json();
+    let response: Response;
+    let result: any;
+    
+    try {
+      response = await fetch(`${backendUrl}/api/admin/broadcast`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, message }),
+      });
+      
+      // Read response as text first (can be parsed as JSON or used as text)
+      const responseText = await response.text();
+      
+      // Try to parse as JSON
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        // If JSON parsing fails, use text as error message
+        console.error('[Next.js API] Backend returned non-JSON response:', responseText);
+        result = { error: responseText || 'Backend returned invalid response' };
+      }
+    } catch (fetchError: any) {
+      console.error('[Next.js API] Error fetching from backend:', fetchError);
+      return NextResponse.json(
+        { error: `Backend connection failed: ${fetchError.message || 'Unknown error'}` },
+        { status: 500 }
+      );
+    }
     
     if (response.ok) {
       return NextResponse.json(result);
     } else {
+      console.error('[Next.js API] Backend returned error:', {
+        status: response.status,
+        error: result.error || 'Unknown error',
+      });
       return NextResponse.json(
         { error: result.error || 'Bildirim gönderilemedi' },
         { status: response.status }
       );
     }
   } catch (error: any) {
-    console.error('Error broadcasting notification:', error);
+    console.error('[Next.js API] Error broadcasting notification:', error);
     return NextResponse.json(
       { error: error.message || 'Sunucu hatası' },
       { status: 500 }
