@@ -248,6 +248,7 @@ extension CustomBridgeViewController: WKNavigationDelegate {
             
             if let isReady = result as? Bool, isReady {
                 // Document is ready, inject CSS
+                // Escape CSS for JavaScript string to prevent syntax errors
                 let disableSelectionCSS = """
                     * {
                         -webkit-user-select: none !important;
@@ -256,12 +257,19 @@ extension CustomBridgeViewController: WKNavigationDelegate {
                     }
                 """
                 
+                // Escape CSS for JavaScript string (escape backslashes and single quotes)
+                let escapedCSS = disableSelectionCSS
+                    .replacingOccurrences(of: "\\", with: "\\\\")  // Escape backslashes first
+                    .replacingOccurrences(of: "'", with: "\\'")    // Escape single quotes
+                    .replacingOccurrences(of: "\n", with: "\\n")   // Escape newlines
+                    .replacingOccurrences(of: "\r", with: "\\r")   // Escape carriage returns
+                
                 let script = """
                     (function() {
                         try {
                             if (document.head) {
                                 var style = document.createElement('style');
-                                style.innerHTML = '\(disableSelectionCSS)';
+                                style.innerHTML = '\(escapedCSS)';
                                 style.id = 'native-app-disable-selection';
                                 if (!document.getElementById('native-app-disable-selection')) {
                                     document.head.appendChild(style);

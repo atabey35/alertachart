@@ -289,17 +289,44 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                         
                         if isReady {
                             // WebView is ready, send token
-                            webView.evaluateJavaScript(jsCode) { (result, error) in
-                                if let error = error {
-                                    print("[AppDelegate] ❌ Error executing JavaScript for FCM token: \(error.localizedDescription)")
+                            // Also check if window and document are available
+                            let checkWindowCode = "typeof window !== 'undefined' && typeof document !== 'undefined' && typeof CustomEvent !== 'undefined'"
+                            webView.evaluateJavaScript(checkWindowCode) { (windowResult, windowError) in
+                                let hasWindow = (windowResult as? Bool) ?? false
+                                
+                                if hasWindow {
+                                    // Window is available, send token
+                                    webView.evaluateJavaScript(jsCode) { (result, error) in
+                                        if let error = error {
+                                            print("[AppDelegate] ❌ Error executing JavaScript for FCM token: \(error.localizedDescription)")
+                                            if retryCount < maxRetries {
+                                                retryCount += 1
+                                                DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
+                                                    attemptSend()
+                                                }
+                                            }
+                                        } else {
+                                            print("[AppDelegate] ✅ FCM Token sent to JavaScript successfully")
+                                            // Verify token was stored
+                                            let verifyCode = "localStorage.getItem('fcm_token_from_appdelegate') || window.__fcmTokenFromAppDelegate || 'not found'"
+                                            webView.evaluateJavaScript(verifyCode) { (verifyResult, _) in
+                                                if let verifyStr = verifyResult as? String, verifyStr != "not found" {
+                                                    print("[AppDelegate] ✅ FCM Token verified in storage: \(verifyStr.prefix(50))...")
+                                                } else {
+                                                    print("[AppDelegate] ⚠️ FCM Token not found in storage after sending")
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // Window not available, retry
                                     if retryCount < maxRetries {
                                         retryCount += 1
+                                        print("[AppDelegate] ⚠️ Window not available, retrying in \(retryDelay)s (attempt \(retryCount)/\(maxRetries))")
                                         DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
                                             attemptSend()
                                         }
                                     }
-                                } else {
-                                    print("[AppDelegate] ✅ FCM Token sent to JavaScript successfully")
                                 }
                             }
                         } else {
