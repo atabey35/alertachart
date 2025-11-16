@@ -31,3 +31,18 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Capacitor / Mobile build artifacts
+/android/app/build/
+/android/build/
+/ios/App/Pods/
+/ios/App/App.xcworkspace/xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+
+# Logs
+*.log
+alert_logs.txt
+
+# Test files
+test-pine-script*.txt

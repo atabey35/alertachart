@@ -332,8 +332,8 @@ export default function Home() {
           }
           
           // Always try to restore - cookies will be sent automatically if they exist
-          // Use full URL to ensure it works in both web and Capacitor contexts
-          const response = await fetch('https://alertachart.com/api/auth/restore-session', {
+          // Use relative URL to work in both localhost and production
+          const response = await fetch('/api/auth/restore-session', {
             method: 'POST',
             credentials: 'include', // 🔥 CRITICAL: Include cookies (will work if cookies exist in WKWebsiteDataStore)
           });
@@ -444,15 +444,8 @@ export default function Home() {
       // Fall back to legacy auth
       setUser(authService.getUser());
       
-      // 🔥 CRITICAL: Redirect to native login page in Capacitor app if unauthenticated
-      // This handles logout scenario - redirect to index.html which has native auth
-      if (isCapacitor && !user && !authService.getUser()) {
-        console.log('[App] 🔄 Unauthenticated in Capacitor app - redirecting to native login...');
-        // Small delay to ensure state is updated
-        setTimeout(() => {
-          window.location.href = '/index.html';
-        }, 100);
-      }
+      // 🔥 REMOVED: No longer redirecting to login page in mobile app
+      // Users can access the app without login, and login is available in Settings
     }
     
     // Close login screen if user is authenticated
@@ -884,12 +877,12 @@ export default function Home() {
     updateActiveChart({ pair: symbol });
   };
 
-  // WEB: Show mobile login screen if not logged in (first visit) OR if user clicks login button
+  // WEB: Show login screen only if user explicitly clicks login button
   const isWeb = typeof window !== 'undefined' && !isCapacitor;
-  const shouldShowLoginScreen = (isWeb && !user && status !== 'loading' && status === 'unauthenticated') || showLoginScreen;
+  const shouldShowLoginScreen = isWeb && showLoginScreen && !user;
 
-  // If web and not logged in, show mobile login screen
-  if (shouldShowLoginScreen && !user) {
+  // If web and user clicked login button, show login screen
+  if (shouldShowLoginScreen) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4 fixed inset-0 z-50">
         <div className="max-w-md w-full text-center">
@@ -1916,33 +1909,29 @@ export default function Home() {
                 </div>
               ) : (
                 <>
-                  {/* Capacitor'da login butonu gösterme (native login ekranı var) */}
-                  {!isCapacitor && (
-                <button
-                  onClick={() => {
-                    // Web'de her zaman native login screen göster
-                    setShowLoginScreen(true);
-                  }}
-                      className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-lg font-medium transition-all duration-200 shadow-lg hover:shadow-xl"
-                >
-                  Giriş Yap / Kayıt Ol
-                </button>
-                  )}
-                  
-                  {/* Capacitor'da user null ise uyarı göster */}
-                  {isCapacitor && (
-                    <div className="p-4 rounded-xl border border-yellow-700 bg-yellow-900/20">
-                      <div className="flex items-center gap-3">
-                        <svg className="w-6 h-6 text-yellow-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                  {/* Login Buttons - Show in both web and mobile */}
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-400 mb-4">
+                      Sign in to access premium features and sync your data
+                    </p>
+                    
+                    {/* Navigate to Settings page button */}
+                    <button
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          window.location.href = '/settings';
+                        }
+                      }}
+                      className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white rounded-xl font-semibold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                    >
+                      <div className="flex items-center justify-center gap-2">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                         </svg>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium text-yellow-300">Session expired</p>
-                          <p className="text-xs text-yellow-400/80 mt-1">Please restart the app to login again.</p>
-                        </div>
+                        <span>Giriş Yap / Kayıt Ol</span>
                       </div>
-                    </div>
-                  )}
+                    </button>
+                  </div>
                 </>
               )}
             </div>
@@ -2142,7 +2131,12 @@ export default function Home() {
         )}
 
         <button
-          onClick={() => setMobileTab('settings')}
+          onClick={() => {
+            // Navigate to Settings page
+            if (typeof window !== 'undefined') {
+              window.location.href = '/settings';
+            }
+          }}
           className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors ${
             mobileTab === 'settings' ? 'text-blue-400' : 'text-gray-500'
           }`}

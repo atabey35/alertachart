@@ -6,7 +6,7 @@ import { NextRequest, NextResponse } from 'next/server';
  */
 export async function GET(request: NextRequest) {
   try {
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3002';
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
     
     // Forward cookies from request
     const cookies = request.headers.get('cookie') || '';
@@ -18,6 +18,11 @@ export async function GET(request: NextRequest) {
     });
     
     const result = await response.json();
+    
+    // 401 is normal when user is not logged in - don't log as error
+    if (response.status === 401) {
+      return NextResponse.json(result, { status: 401 });
+    }
     
     // Create response with CORS headers
     const origin = request.headers.get('origin') || '';
