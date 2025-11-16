@@ -159,7 +159,26 @@ function CapacitorAuthContent() {
                 await authService.checkAuth();
                 console.log('[CapacitorAuth] Auth state updated');
                 
-                // 🔥 CRITICAL: Save user email to localStorage for session restore
+                // 🔥 CRITICAL: Save refreshToken to Capacitor Preferences for native session restore
+                // This is more reliable than cookies/localStorage on iOS
+                if (typeof window !== 'undefined' && (window as any).Capacitor) {
+                  const Preferences = (window as any).Capacitor?.Plugins?.Preferences;
+                  if (Preferences && typeof Preferences.set === 'function') {
+                    try {
+                      await Preferences.set({
+                        key: 'refreshToken',
+                        value: refreshToken,
+                      });
+                      console.log('[CapacitorAuth] ✅ RefreshToken saved to Capacitor Preferences');
+                    } catch (error) {
+                      console.error('[CapacitorAuth] ❌ Failed to save refreshToken to Preferences:', error);
+                    }
+                  } else {
+                    console.warn('[CapacitorAuth] ⚠️ Preferences plugin not available');
+                  }
+                }
+                
+                // 🔥 CRITICAL: Save user email to localStorage for session restore (fallback)
                 if (userData?.email && typeof window !== 'undefined') {
                   localStorage.setItem('user_email', userData.email);
                   console.log('[CapacitorAuth] ✅ User email saved to localStorage for session restore');

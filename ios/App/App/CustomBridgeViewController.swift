@@ -109,22 +109,48 @@ extension CustomBridgeViewController: WKNavigationDelegate {
             
             // Check if index.html loaded
             if url.absoluteString.contains("capacitor://localhost") || url.absoluteString.contains("index.html") {
-                print("[CustomBridgeViewController] ✅ index.html loaded - checking if JavaScript is running...")
+                print("[CustomBridgeViewController] ✅ index.html loaded - checking for saved session...")
                 
-                // Wait a bit for JavaScript to execute, then check
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                    webView.evaluateJavaScript("""
-                        (function() {
-                            if (typeof window !== 'undefined' && window.Capacitor) {
-                                return 'Capacitor found - JavaScript is running';
+                // Wait a bit for Capacitor bridge to be ready, then check Preferences
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                    // Check Preferences for refreshToken
+                    let checkTokenScript = """
+                        (async function() {
+                            try {
+                                if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Preferences) {
+                                    const result = await window.Capacitor.Plugins.Preferences.get({ key: 'refreshToken' });
+                                    if (result && result.value) {
+                                        return { hasToken: true, token: result.value };
+                                    }
+                                }
+                                return { hasToken: false };
+                            } catch (error) {
+                                return { hasToken: false, error: error.message };
                             }
-                            return 'Capacitor not found - JavaScript may not be running';
                         })();
-                    """) { (result, error) in
+                    """
+                    
+                    webView.evaluateJavaScript(checkTokenScript) { (result, error) in
                         if let error = error {
-                            print("[CustomBridgeViewController] ❌ JavaScript check failed: \(error)")
+                            print("[CustomBridgeViewController] ❌ Error checking Preferences:", error)
+                            return
+                        }
+                        
+                        // Parse result (it's a dictionary from JavaScript)
+                        if let resultDict = result as? [String: Any],
+                           let hasToken = resultDict["hasToken"] as? Bool,
+                           hasToken == true {
+                            print("[CustomBridgeViewController] ✅ RefreshToken found in Preferences - redirecting to dashboard...")
+                            
+                            // Redirect to dashboard directly (skip login screen)
+                            DispatchQueue.main.async {
+                                let dashboardURL = URL(string: "https://alertachart.com/")!
+                                let request = URLRequest(url: dashboardURL)
+                                webView.load(request)
+                                print("[CustomBridgeViewController] ✅ Redirected to dashboard")
+                            }
                         } else {
-                            print("[CustomBridgeViewController] 🔍 JavaScript check result: \(result ?? "nil")")
+                            print("[CustomBridgeViewController] ℹ️ No refreshToken found - showing login screen")
                         }
                     }
                 }

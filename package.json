@@ -21,6 +21,7 @@
     "@capacitor/device": "^7.0.2",
     "@capacitor/ios": "^7.4.4",
     "@capacitor/local-notifications": "^7.0.3",
+    "@capacitor/preferences": "^7.0.2",
     "@capacitor/push-notifications": "^7.0.3",
     "@codetrix-studio/capacitor-google-auth": "^3.4.0-rc.4",
     "@neondatabase/serverless": "^0.9.0",

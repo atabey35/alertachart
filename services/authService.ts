@@ -197,6 +197,17 @@ class AuthService {
       localStorage.removeItem('native_platform');
       localStorage.removeItem('fcm_token');
       console.log('[AuthService] ✅ LocalStorage cleared');
+      
+      // 🔥 CRITICAL: Clear refreshToken from Capacitor Preferences
+      const Capacitor = (window as any).Capacitor;
+      if (Capacitor?.Plugins?.Preferences) {
+        try {
+          Capacitor.Plugins.Preferences.remove({ key: 'refreshToken' });
+          console.log('[AuthService] ✅ RefreshToken removed from Preferences');
+        } catch (e) {
+          console.error('[AuthService] Failed to remove refreshToken from Preferences:', e);
+        }
+      }
     }
 
     this.user = null;
