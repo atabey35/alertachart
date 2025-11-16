@@ -411,7 +411,7 @@ export default function SettingsPage() {
             return;
           }
           
-          console.log('[Settings] 🔔 FCM Token received from AppDelegate:', token.substring(0, 50) + '...');
+          console.log('[Settings] 🔔 FCM Token received from AppDelegate (event):', token.substring(0, 50) + '...');
           
           // Use the same registration logic as the Capacitor listener
           await registerTokenWithBackend(token);
@@ -419,6 +419,38 @@ export default function SettingsPage() {
         
         window.addEventListener('fcmTokenReceived', handleFCMTokenFromAppDelegate);
         console.log('[Settings] ✅ Added listener for AppDelegate FCM token event');
+        
+        // 🔥 CRITICAL: Fallback - Check for token in localStorage or window (in case event was missed)
+        // AppDelegate stores token in localStorage and window as fallback
+        const checkForStoredToken = async () => {
+          try {
+            // Check localStorage first
+            const storedToken = localStorage.getItem('fcm_token_from_appdelegate');
+            if (storedToken && storedToken.length > 50 && !storedToken.toLowerCase().startsWith('placeholder')) {
+              console.log('[Settings] 🔔 FCM Token found in localStorage (fallback):', storedToken.substring(0, 50) + '...');
+              await registerTokenWithBackend(storedToken);
+              // Remove from localStorage after using it
+              localStorage.removeItem('fcm_token_from_appdelegate');
+              return;
+            }
+            
+            // Check window object
+            const windowToken = (window as any).__fcmTokenFromAppDelegate;
+            if (windowToken && typeof windowToken === 'string' && windowToken.length > 50 && !windowToken.toLowerCase().startsWith('placeholder')) {
+              console.log('[Settings] 🔔 FCM Token found in window (fallback):', windowToken.substring(0, 50) + '...');
+              await registerTokenWithBackend(windowToken);
+              // Remove from window after using it
+              delete (window as any).__fcmTokenFromAppDelegate;
+              return;
+            }
+          } catch (error) {
+            console.error('[Settings] Error checking for stored token:', error);
+          }
+        };
+        
+        // Check immediately and also after a delay
+        checkForStoredToken();
+        setTimeout(checkForStoredToken, 2000); // Check again after 2 seconds
         
         // Register with FCM
         console.log('[Settings] 📤 Registering with FCM...');

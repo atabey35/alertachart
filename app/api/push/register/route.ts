@@ -17,10 +17,14 @@ export async function POST(request: NextRequest) {
     const tokenLength = token.length;
     const isPlaceholder = token.toLowerCase().startsWith('placeholder');
     
+    // Log cookie details for debugging
+    const cookieNames = cookies ? cookies.split(';').map(c => c.split('=')[0].trim()).filter(Boolean) : [];
     console.log('[Next.js API] Push registration request received:', {
       deviceId: body.deviceId,
       platform: body.platform,
       hasCookies: !!cookies,
+      cookieCount: cookieNames.length,
+      cookieNames: cookieNames,
       tokenLength: tokenLength,
       tokenPreview: token ? token.substring(0, 50) + '...' : 'null',
       isPlaceholder: isPlaceholder,

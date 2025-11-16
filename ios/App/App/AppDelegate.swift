@@ -204,18 +204,24 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         let jsCode = """
             (function() {
                 try {
+                    console.log('[AppDelegate] 🔔 Attempting to send FCM token to JavaScript...');
+                    
+                    // Store token in window for later retrieval (fallback)
+                    window.__fcmTokenFromAppDelegate = '\(escapedToken)';
+                    
                     // Dispatch custom event that Settings page can listen to
                     const event = new CustomEvent('fcmTokenReceived', {
                         detail: { token: '\(escapedToken)' }
                     });
                     window.dispatchEvent(event);
+                    console.log('[AppDelegate] ✅ CustomEvent dispatched: fcmTokenReceived');
                     
-                    // Also try to trigger Capacitor PushNotifications registration event
-                    // This ensures compatibility with existing code
-                    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications) {
-                        // Manually trigger registration event
-                        const registrationData = { value: '\(escapedToken)' };
-                        console.log('[AppDelegate] ✅ FCM Token sent to JavaScript');
+                    // Also store in localStorage as fallback
+                    try {
+                        localStorage.setItem('fcm_token_from_appdelegate', '\(escapedToken)');
+                        console.log('[AppDelegate] ✅ Token stored in localStorage as fallback');
+                    } catch (e) {
+                        console.warn('[AppDelegate] ⚠️ Could not store token in localStorage:', e);
                     }
                     
                     return true;
@@ -227,40 +233,93 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         """
         
         // Get the main window and find the Capacitor bridge
-        DispatchQueue.main.async {
-            guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? UIApplication.shared.windows.first else {
-                print("[AppDelegate] ⚠️ No window available to send FCM token")
-                return
-            }
-            
-            // Try to find the WebView through the view hierarchy
-            if let bridgeViewController = window.rootViewController as? CAPBridgeViewController {
-                if let webView = bridgeViewController.webView {
-                    webView.evaluateJavaScript(jsCode) { (result, error) in
-                        if let error = error {
-                            print("[AppDelegate] ❌ Error executing JavaScript for FCM token: \(error.localizedDescription)")
-                        } else {
-                            print("[AppDelegate] ✅ FCM Token sent to JavaScript successfully")
+        // Retry mechanism: Try multiple times with delays
+        var retryCount = 0
+        let maxRetries = 5
+        let retryDelay: TimeInterval = 1.0
+        
+        func attemptSend() {
+            DispatchQueue.main.async {
+                guard let window = UIApplication.shared.windows.first(where: { $0.isKeyWindow }) ?? UIApplication.shared.windows.first else {
+                    if retryCount < maxRetries {
+                        retryCount += 1
+                        print("[AppDelegate] ⚠️ No window available, retrying in \(retryDelay)s (attempt \(retryCount)/\(maxRetries))")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
+                            attemptSend()
                         }
+                    } else {
+                        print("[AppDelegate] ❌ Failed to send FCM token after \(maxRetries) attempts")
                     }
-                } else {
-                    print("[AppDelegate] ⚠️ WebView not available in bridge view controller")
+                    return
                 }
-            } else {
-                // Try alternative: find WebView in view hierarchy
-                if let webView = self.findWebView(in: window) {
-                    webView.evaluateJavaScript(jsCode) { (result, error) in
-                        if let error = error {
-                            print("[AppDelegate] ❌ Error executing JavaScript for FCM token: \(error.localizedDescription)")
+                
+                // Try to find the WebView through the view hierarchy
+                var webView: WKWebView? = nil
+                
+                if let bridgeViewController = window.rootViewController as? CAPBridgeViewController {
+                    webView = bridgeViewController.webView
+                } else {
+                    webView = self.findWebView(in: window)
+                }
+                
+                if let webView = webView {
+                    // Check if WebView is ready
+                    let checkReadyCode = "document.readyState === 'complete' || document.readyState === 'interactive'"
+                    webView.evaluateJavaScript(checkReadyCode) { (result, error) in
+                        let isReady = (result as? Bool) ?? false
+                        
+                        if isReady {
+                            // WebView is ready, send token
+                            webView.evaluateJavaScript(jsCode) { (result, error) in
+                                if let error = error {
+                                    print("[AppDelegate] ❌ Error executing JavaScript for FCM token: \(error.localizedDescription)")
+                                    if retryCount < maxRetries {
+                                        retryCount += 1
+                                        DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
+                                            attemptSend()
+                                        }
+                                    }
+                                } else {
+                                    print("[AppDelegate] ✅ FCM Token sent to JavaScript successfully")
+                                }
+                            }
                         } else {
-                            print("[AppDelegate] ✅ FCM Token sent to JavaScript successfully")
+                            // WebView not ready, retry
+                            if retryCount < maxRetries {
+                                retryCount += 1
+                                print("[AppDelegate] ⚠️ WebView not ready, retrying in \(retryDelay)s (attempt \(retryCount)/\(maxRetries))")
+                                DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
+                                    attemptSend()
+                                }
+                            } else {
+                                print("[AppDelegate] ❌ WebView not ready after \(maxRetries) attempts, sending anyway...")
+                                webView.evaluateJavaScript(jsCode) { (result, error) in
+                                    if let error = error {
+                                        print("[AppDelegate] ❌ Error executing JavaScript for FCM token: \(error.localizedDescription)")
+                                    } else {
+                                        print("[AppDelegate] ✅ FCM Token sent to JavaScript successfully (WebView not ready but sent anyway)")
+                                    }
+                                }
+                            }
                         }
                     }
                 } else {
-                    print("[AppDelegate] ⚠️ Could not find WebView to send FCM token")
+                    // WebView not found, retry
+                    if retryCount < maxRetries {
+                        retryCount += 1
+                        print("[AppDelegate] ⚠️ WebView not found, retrying in \(retryDelay)s (attempt \(retryCount)/\(maxRetries))")
+                        DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) {
+                            attemptSend()
+                        }
+                    } else {
+                        print("[AppDelegate] ❌ Could not find WebView after \(maxRetries) attempts")
+                    }
                 }
             }
         }
+        
+        // Start first attempt
+        attemptSend()
     }
     
     /// Find WebView in view hierarchy
