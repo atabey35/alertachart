@@ -206,35 +206,77 @@ extension CustomBridgeViewController: WKNavigationDelegate {
             }
         }
         
-        // Inject CSS to disable text selection (fallback method)
-        injectDisableSelectionCSS(webView: webView)
+        // Inject CSS to disable text selection (wait for DOM to be ready)
+        // Use a delay to ensure page is fully loaded
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            self.injectDisableSelectionCSS(webView: webView)
+        }
     }
     
     private func injectDisableSelectionCSS(webView: WKWebView) {
-        let disableSelectionCSS = """
-            * {
-                -webkit-user-select: none !important;
-                -webkit-touch-callout: none !important;
-                user-select: none !important;
-            }
-        """
-        
-        let script = """
+        // Check if document is ready before injecting CSS
+        let checkReadyScript = """
             (function() {
-                var style = document.createElement('style');
-                style.innerHTML = '\(disableSelectionCSS)';
-                style.id = 'native-app-disable-selection';
-                if (!document.getElementById('native-app-disable-selection')) {
-                    document.head.appendChild(style);
+                if (document.readyState === 'loading') {
+                    return false;
                 }
+                return document.head !== null;
             })();
         """
         
-        webView.evaluateJavaScript(script) { (result, error) in
+        webView.evaluateJavaScript(checkReadyScript) { [weak self] (result, error) in
+            guard let self = self else { return }
+            
             if let error = error {
-                print("[CustomBridgeViewController] ❌ Failed to inject CSS: \(error)")
+                // Page might not be ready yet, try again after a delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.injectDisableSelectionCSS(webView: webView)
+                }
+                return
+            }
+            
+            if let isReady = result as? Bool, isReady {
+                // Document is ready, inject CSS
+                let disableSelectionCSS = """
+                    * {
+                        -webkit-user-select: none !important;
+                        -webkit-touch-callout: none !important;
+                        user-select: none !important;
+                    }
+                """
+                
+                let script = """
+                    (function() {
+                        try {
+                            if (document.head) {
+                                var style = document.createElement('style');
+                                style.innerHTML = '\(disableSelectionCSS)';
+                                style.id = 'native-app-disable-selection';
+                                if (!document.getElementById('native-app-disable-selection')) {
+                                    document.head.appendChild(style);
+                                }
+                                return true;
+                            }
+                            return false;
+                        } catch (e) {
+                            return false;
+                        }
+                    })();
+                """
+                
+                webView.evaluateJavaScript(script) { (result, error) in
+                    if let error = error {
+                        // Silently fail - this is not critical
+                        print("[CustomBridgeViewController] ⚠️ CSS injection skipped (page not ready): \(error.localizedDescription)")
+                    } else {
+                        print("[CustomBridgeViewController] ✅ CSS injected to disable text selection")
+                    }
+                }
             } else {
-                print("[CustomBridgeViewController] ✅ CSS injected to disable text selection")
+                // Document not ready, retry after delay
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.injectDisableSelectionCSS(webView: webView)
+                }
             }
         }
     }

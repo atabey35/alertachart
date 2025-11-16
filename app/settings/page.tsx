@@ -421,9 +421,32 @@ export default function SettingsPage() {
           const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
           console.log('[Settings] ✅ GoogleAuth imported successfully');
           
+          // Initialize plugin if needed (check if it's available)
+          try {
+            // Try to check if plugin is available
+            if (typeof GoogleAuth === 'undefined' || !GoogleAuth.signIn) {
+              throw new Error('GoogleAuth plugin is not properly initialized');
+            }
+            console.log('[Settings] ✅ GoogleAuth plugin is available');
+          } catch (initError: any) {
+            console.error('[Settings] ❌ GoogleAuth initialization error:', initError);
+            throw new Error('Google Auth plugin is not available. Please ensure the app is properly configured.');
+          }
+          
           // Native Google Sign-In
           console.log('[Settings] Calling GoogleAuth.signIn()...');
-          const result = await GoogleAuth.signIn();
+          let result;
+          try {
+            result = await GoogleAuth.signIn();
+          } catch (signInError: any) {
+            console.error('[Settings] ❌ GoogleAuth.signIn() error:', signInError);
+            // Check if it's a configuration error
+            if (signInError.message?.includes('nil') || signInError.message?.includes('Optional')) {
+              throw new Error('Google Auth is not properly configured. Please check GoogleService-Info.plist and capacitor.config.ts');
+            }
+            throw signInError;
+          }
+          
           console.log('[Settings] ✅ Google Sign-In success:', {
             hasAuthentication: !!result?.authentication,
             hasIdToken: !!result?.authentication?.idToken,
