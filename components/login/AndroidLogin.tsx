@@ -8,8 +8,14 @@ export default function AndroidLogin() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const router = useRouter();
+  const [isCapacitor, setIsCapacitor] = useState(false);
 
   useEffect(() => {
+    // Check if Capacitor is available
+    if (typeof window !== 'undefined' && (window as any).Capacitor) {
+      setIsCapacitor(true);
+    }
+
     // Check if already logged in
     fetch('/api/auth/session')
       .then(res => res.json())
@@ -33,9 +39,77 @@ export default function AndroidLogin() {
     setError('');
     
     try {
-      // Use native Google auth for Android
-      await signIn('google', { callbackUrl: '/' });
+      if (isCapacitor) {
+        // Native app: Use Capacitor Google Auth plugin
+        console.log('[AndroidLogin] 🔵 Native app detected - using Capacitor Google Auth');
+        
+        try {
+          const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
+          
+          // Initialize plugin
+          await GoogleAuth.initialize({
+            clientId: '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com',
+            scopes: ['profile', 'email'],
+          });
+          
+          // Native Google Sign-In
+          const result = await GoogleAuth.signIn();
+          
+          if (result && result.authentication) {
+            const { idToken, accessToken } = result.authentication;
+            
+            // Backend'e gönder
+            const response = await fetch('/api/auth/google-native', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                idToken,
+                accessToken,
+              }),
+            });
+
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.error || 'Backend authentication failed');
+            }
+
+            const data = await response.json();
+            
+            // Session set et
+            if (data.tokens?.accessToken && data.tokens?.refreshToken) {
+              const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  accessToken: data.tokens.accessToken,
+                  refreshToken: data.tokens.refreshToken,
+                }),
+              });
+              
+              if (!sessionResponse.ok) {
+                throw new Error('Failed to set session');
+              }
+              
+              // Redirect to home
+              router.push('/');
+              window.location.reload();
+            } else {
+              throw new Error('No tokens received from backend');
+            }
+          } else {
+            throw new Error('No authentication data received from Google');
+          }
+        } catch (importError: any) {
+          console.error('[AndroidLogin] ❌ Google Auth error:', importError);
+          throw new Error(`Google Auth error: ${importError.message || 'Plugin not available'}`);
+        }
+      } else {
+        // Web: Use NextAuth signIn
+        await signIn('google', { callbackUrl: '/' });
+      }
     } catch (err: any) {
+      console.error('[AndroidLogin] ❌ Google login error:', err);
       showError(err.message || 'Google sign-in failed');
       setLoading(false);
     }
@@ -46,9 +120,80 @@ export default function AndroidLogin() {
     setError('');
     
     try {
-      // Use native Apple auth for Android
-      await signIn('apple', { callbackUrl: '/' });
+      if (isCapacitor) {
+        // Native app: Use Capacitor Apple Sign-In plugin
+        console.log('[AndroidLogin] 🔵 Native app detected - using Capacitor Apple Sign-In');
+        
+        try {
+          const { SignInWithApple } = await import('@capacitor-community/apple-sign-in');
+          
+          // Native Apple Sign-In
+          const result = await SignInWithApple.authorize({
+            clientId: 'com.kriptokirmizi.alerta',
+            redirectURI: 'https://alertachart.com/auth/mobile-callback',
+            scopes: 'email name',
+            state: 'state',
+            nonce: 'nonce',
+          });
+          
+          if (result && result.response) {
+            const { identityToken, authorizationCode, user } = result.response;
+            
+            // Backend'e gönder
+            const response = await fetch('/api/auth/apple-native', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                identityToken,
+                authorizationCode,
+                email: user?.email,
+                givenName: user?.givenName,
+                familyName: user?.familyName,
+              }),
+            });
+
+            if (!response.ok) {
+              const error = await response.json();
+              throw new Error(error.error || 'Backend authentication failed');
+            }
+
+            const data = await response.json();
+            
+            // Session set et
+            if (data.tokens?.accessToken && data.tokens?.refreshToken) {
+              const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                  accessToken: data.tokens.accessToken,
+                  refreshToken: data.tokens.refreshToken,
+                }),
+              });
+              
+              if (!sessionResponse.ok) {
+                throw new Error('Failed to set session');
+              }
+              
+              // Redirect to home
+              router.push('/');
+              window.location.reload();
+            } else {
+              throw new Error('No tokens received from backend');
+            }
+          } else {
+            throw new Error('No authentication data received from Apple');
+          }
+        } catch (importError: any) {
+          console.error('[AndroidLogin] ❌ Apple Sign-In error:', importError);
+          throw new Error(`Apple Sign-In error: ${importError.message || 'Plugin not available'}`);
+        }
+      } else {
+        // Web: Use NextAuth signIn
+        await signIn('apple', { callbackUrl: '/' });
+      }
     } catch (err: any) {
+      console.error('[AndroidLogin] ❌ Apple login error:', err);
       showError(err.message || 'Apple sign-in failed');
       setLoading(false);
     }
