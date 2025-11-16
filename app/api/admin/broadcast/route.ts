@@ -28,9 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Backend'e ilet - development için local, production için Railway
-    const backendUrl = process.env.NODE_ENV === 'development'
-      ? 'http://localhost:3002'
-      : (process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app');
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3002';
     
     const response = await fetch(`${backendUrl}/api/admin/broadcast`, {
       method: 'POST',

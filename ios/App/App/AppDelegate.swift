@@ -1,5 +1,7 @@
 import UIKit
 import Capacitor
+import FirebaseCore
+import FirebaseMessaging
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
@@ -10,6 +12,11 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         // Capacitor 7 uses automatic plugin discovery via packageClassList
         // WebViewController is registered automatically if it's in capacitor.config.json
         print("[AppDelegate] ✅ Application launching - plugins will be auto-discovered")
+        
+        // 🔥 Firebase initialization for push notifications
+        // GoogleService-Info.plist must be added to the project
+        FirebaseApp.configure()
+        print("[AppDelegate] ✅ Firebase initialized")
         
         // 🔥 CRITICAL: Configure cookie persistence for session restore
         // This ensures cookies (including auth tokens) persist across app restarts
