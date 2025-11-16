@@ -77,8 +77,10 @@ export default function Home() {
 
   // Capacitor kontrolü
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).Capacitor) {
-      setIsCapacitor(true);
+    if (typeof window !== 'undefined') {
+      const hasCapacitor = !!(window as any).Capacitor;
+      setIsCapacitor(hasCapacitor);
+      console.log('[App] Capacitor detected:', hasCapacitor);
     }
   }, []);
 
@@ -138,8 +140,13 @@ export default function Home() {
               }
             );
             console.log('[Web Auth] Google button rendered successfully');
-          } catch (error) {
-            console.error('[Web Auth] Failed to render Google button:', error);
+          } catch (error: any) {
+            // Suppress origin not allowed errors
+            if (error?.message?.includes('origin is not allowed')) {
+              console.warn('[Web Auth] Google Sign-In not configured for this origin');
+            } else {
+              console.error('[Web Auth] Failed to render Google button:', error);
+            }
           }
         } else {
           // Retry after a short delay
@@ -879,13 +886,27 @@ export default function Home() {
   };
 
   // WEB: Show login screen only if user explicitly clicks login button
-  const isWeb = typeof window !== 'undefined' && !isCapacitor;
-  const shouldShowLoginScreen = isWeb && showLoginScreen && !user;
+  // More reliable web detection: check if Capacitor exists AND if platform is actually web
+  const isWeb = typeof window !== 'undefined' && (
+    !(window as any).Capacitor || 
+    ((window as any).Capacitor && (window as any).Capacitor.getPlatform?.() === 'web')
+  );
+  const shouldShowLoginScreen = isWeb && showLoginScreen && !user && status !== 'authenticated';
+
+  // Debug logging
+  if (showLoginScreen) {
+    console.log('[Login Screen] showLoginScreen:', showLoginScreen);
+    console.log('[Login Screen] isWeb:', isWeb);
+    console.log('[Login Screen] user:', user);
+    console.log('[Login Screen] status:', status);
+    console.log('[Login Screen] shouldShowLoginScreen:', shouldShowLoginScreen);
+  }
 
   // If web and user clicked login button, show login screen
   if (shouldShowLoginScreen) {
+    console.log('[Login Screen] Rendering login screen');
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4 fixed inset-0 z-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4 fixed inset-0 z-[9999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
         <div className="max-w-md w-full text-center">
           {/* Logo */}
           <div className="w-20 h-20 mx-auto mb-5 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 rounded-2xl flex items-center justify-center text-white font-bold text-4xl shadow-2xl shadow-blue-500/30">
@@ -923,43 +944,65 @@ export default function Home() {
                     
                     // Initialize if not already done
                     if (!(window as any).google.accounts.id._clientId) {
-                      (window as any).google.accounts.id.initialize({
-                        client_id: googleClientId,
-                        callback: async (response: any) => {
-                          console.log('[Web Auth] Google Sign-In response:', response);
-                          setLoginLoading(true);
-                          setLoginError('');
-                          
-                          try {
-                            const result = await handleGoogleWebLogin(response.credential);
-                            if (result.success) {
-                              setShowLoginScreen(false);
-                              window.location.reload();
-                            } else {
-                              setLoginError(result.error || 'Google login failed');
+                      try {
+                        (window as any).google.accounts.id.initialize({
+                          client_id: googleClientId,
+                          callback: async (response: any) => {
+                            console.log('[Web Auth] Google Sign-In response:', response);
+                            setLoginLoading(true);
+                            setLoginError('');
+                            
+                            try {
+                              const result = await handleGoogleWebLogin(response.credential);
+                              if (result.success) {
+                                setShowLoginScreen(false);
+                                window.location.reload();
+                              } else {
+                                setLoginError(result.error || 'Google login failed');
+                              }
+                            } catch (error: any) {
+                              setLoginError(error.message || 'Google login failed');
+                            } finally {
+                              setLoginLoading(false);
                             }
-                          } catch (error: any) {
-                            setLoginError(error.message || 'Google login failed');
-                          } finally {
-                            setLoginLoading(false);
-                          }
-                        },
-                      });
+                          },
+                        });
+                      } catch (initError: any) {
+                        console.error('[Google Sign-In] Initialize failed:', initError);
+                        if (initError.message?.includes('origin is not allowed')) {
+                          setLoginError('Google Sign-In yapılandırması eksik. Lütfen daha sonra tekrar deneyin.');
+                        }
+                      }
                     }
                     
                     // Try to prompt one-tap
-                    (window as any).google.accounts.id.prompt();
+                    try {
+                      (window as any).google.accounts.id.prompt();
+                    } catch (promptError: any) {
+                      // If prompt fails (e.g., origin not authorized), show manual button
+                      console.warn('[Google Sign-In] Prompt failed, using manual button:', promptError);
+                      // Don't set error, just use the manual button below
+                    }
                   } else {
                     setLoginError('Google Sign-In is loading. Please wait a moment and try again.');
                     // Wait a bit and retry
                     setTimeout(() => {
                       if ((window as any).google && (window as any).google.accounts) {
-                        (window as any).google.accounts.id.prompt();
+                        try {
+                          (window as any).google.accounts.id.prompt();
+                        } catch (e) {
+                          console.warn('[Google Sign-In] Retry prompt failed:', e);
+                        }
                       }
                     }, 2000);
                   }
                 } catch (error: any) {
-                  setLoginError(error.message || 'Google login failed');
+                  // Handle specific Google Sign-In errors
+                  if (error.message?.includes('origin is not allowed')) {
+                    setLoginError('Google Sign-In yapılandırması eksik. Lütfen daha sonra tekrar deneyin veya Apple ile giriş yapın.');
+                  } else {
+                    setLoginError(error.message || 'Google login failed');
+                  }
                 } finally {
                   setLoginLoading(false);
                 }
@@ -1066,8 +1109,16 @@ export default function Home() {
                   ) : (
                     <button
                       onClick={() => {
+                        console.log('[Header] Giriş Yap butonuna tıklandı');
+                        const hasCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+                        const platform = hasCapacitor ? (window as any).Capacitor.getPlatform?.() : 'web';
+                        console.log('[Header] hasCapacitor:', hasCapacitor);
+                        console.log('[Header] platform:', platform);
+                        console.log('[Header] user:', user);
+                        console.log('[Header] status:', status);
                         // Web'de her zaman native login screen göster
                         setShowLoginScreen(true);
+                        console.log('[Header] showLoginScreen set to true');
                       }}
                       className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition"
                     >
