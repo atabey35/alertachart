@@ -1,0 +1,11 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appID": "P6NB9T5SQ9.com.kriptokirmizi.alerta",
+        "paths": ["/app/*"]
+      }
+    ]
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "expo": {
+    "extra": {
+      "eas": {
+        "projectId": "f4eb3196-3d5b-4aa0-9d0f-6075466f4f12"
+      }
+    },
+    "ios": {
+      "bundleIdentifier": "com.kriptokirmizi.alerta",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    }
+  }
+}

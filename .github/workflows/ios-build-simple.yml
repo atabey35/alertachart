@@ -1,0 +1,99 @@
+name: iOS Build (Simple - No Secrets Required)
+
+on:
+  workflow_dispatch:  # Manuel tetikleme
+    inputs:
+      apple_team_id:
+        description: 'Apple Developer Team ID (örn: ABC123DEF4)'
+        required: true
+        type: string
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Capacitor Sync
+        run: npx cap sync ios
+      
+      - name: Setup CocoaPods
+        run: |
+          sudo gem install cocoapods
+          pod --version
+      
+      - name: Install Pods
+        working-directory: ios/App
+        run: pod install
+      
+      - name: Build iOS (Archive)
+        working-directory: ios/App
+        env:
+          APPLE_TEAM_ID: ${{ inputs.apple_team_id }}
+        run: |
+          echo "Building with Team ID: $APPLE_TEAM_ID"
+          # Automatic signing ile build
+          xcodebuild -workspace App.xcworkspace \
+            -scheme App \
+            -configuration Release \
+            -archivePath build/App.xcarchive \
+            -allowProvisioningUpdates \
+            CODE_SIGN_IDENTITY="Apple Development" \
+            DEVELOPMENT_TEAM="$APPLE_TEAM_ID" \
+            archive || echo "Archive failed - check Team ID"
+      
+      - name: Export IPA (Development)
+        working-directory: ios/App
+        env:
+          APPLE_TEAM_ID: ${{ inputs.apple_team_id }}
+        run: |
+          # Development IPA export (automatic signing)
+          xcodebuild -exportArchive \
+            -archivePath build/App.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist <(cat <<EOF
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>development</string>
+              <key>teamID</key>
+              <string>$APPLE_TEAM_ID</string>
+              <key>signingStyle</key>
+              <string>automatic</string>
+          </dict>
+          </plist>
+          EOF
+          ) \
+            -allowProvisioningUpdates || echo "Export failed - check Team ID and signing"
+      
+      - name: Upload IPA artifact
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-app
+          path: ios/App/build/export/*.ipa
+          retention-days: 30
+      
+      - name: Build Summary
+        if: always()
+        run: |
+          echo "## Build Sonucu" >> $GITHUB_STEP_SUMMARY
+          if [ -f "ios/App/build/export/*.ipa" ]; then
+            echo "✅ Build başarılı! IPA dosyası Artifacts bölümünden indirilebilir." >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ Build başarısız. Logları kontrol edin." >> $GITHUB_STEP_SUMMARY
+          fi
+

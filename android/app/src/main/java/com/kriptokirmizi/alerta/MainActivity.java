@@ -1,0 +1,340 @@
+package com.kriptokirmizi.alerta;
+
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.content.Intent;
+import android.os.Build;
+import android.os.Bundle;
+import android.webkit.CookieManager;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import com.getcapacitor.BridgeActivity;
+import com.getcapacitor.Plugin;
+import com.getcapacitor.PluginCall;
+import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
+import com.google.firebase.messaging.FirebaseMessaging;
+import com.google.firebase.messaging.RemoteMessage;
+
+public class MainActivity extends BridgeActivity {
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        // Register plugins BEFORE super.onCreate()
+        registerPlugin(com.codetrixstudio.capacitor.GoogleAuth.GoogleAuth.class);
+        registerPlugin(com.getcapacitor.community.applesignin.SignInWithApple.class);
+        registerPlugin(WebViewController.class);
+        
+        super.onCreate(savedInstanceState);
+        
+        // 🔥 CRITICAL: Enable cookie persistence for WebView
+        // This ensures httpOnly cookies (session tokens) are preserved when app is closed
+        try {
+            CookieManager cookieManager = CookieManager.getInstance();
+            cookieManager.setAcceptCookie(true);
+            
+            // Enable third-party cookies (for OAuth redirects)
+            WebView webView = getBridge().getWebView();
+            if (webView != null) {
+                cookieManager.setAcceptThirdPartyCookies(webView, true);
+                
+                // 🔥 CRITICAL: Configure WebView settings for cookie persistence
+                WebSettings webSettings = webView.getSettings();
+                webSettings.setDomStorageEnabled(true); // Enable DOM storage (localStorage)
+                webSettings.setDatabaseEnabled(true); // Enable database storage
+                
+                // Set cache mode to LOAD_DEFAULT (uses cache when available)
+                webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+                
+                // Enable JavaScript (required for cookies)
+                webSettings.setJavaScriptEnabled(true);
+                
+                // 🔥 CRITICAL: Set WebViewClient to prevent external browser from opening
+                // This ensures all links (refresh button, settings tab, etc.) open within the app
+                // Note: Google OAuth is handled by native plugin (uses Custom Tabs internally)
+                webView.setWebViewClient(new WebViewClient() {
+                    @Override
+                    public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                        // Always load URLs within WebView, never open external browser
+                        String url = request.getUrl().toString();
+                        view.loadUrl(url);
+                        return true; // We handled the URL loading
+                    }
+                    
+                    @Override
+                    @SuppressWarnings("deprecation")
+                    public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                        // For older Android versions
+                        view.loadUrl(url);
+                        return true; // We handled the URL loading
+                    }
+                    
+                    @Override
+                    public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                        // Add X-Platform: android header to all requests to our domain
+                        String urlString = request.getUrl().toString();
+                        if (urlString != null && urlString.contains("alertachart.com")) {
+                            try {
+                                java.net.URL url = request.getUrl();
+                                java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+                                
+                                // Copy all existing headers from original request
+                                if (request.getRequestHeaders() != null) {
+                                    for (java.util.Map.Entry<String, String> header : request.getRequestHeaders().entrySet()) {
+                                        connection.setRequestProperty(header.getKey(), header.getValue());
+                                    }
+                                }
+                                
+                                // Add X-Platform header
+                                connection.setRequestProperty("X-Platform", "android");
+                                
+                                // Get response
+                                int responseCode = connection.getResponseCode();
+                                String contentType = connection.getContentType();
+                                java.io.InputStream inputStream = responseCode >= 200 && responseCode < 300 
+                                    ? connection.getInputStream() 
+                                    : connection.getErrorStream();
+                                
+                                return new android.webkit.WebResourceResponse(
+                                    contentType,
+                                    connection.getContentEncoding(),
+                                    responseCode,
+                                    connection.getResponseMessage(),
+                                    connection.getHeaderFields(),
+                                    inputStream
+                                );
+                            } catch (Exception e) {
+                                android.util.Log.e("MainActivity", "Error adding X-Platform header: " + e.getMessage());
+                                return super.shouldInterceptRequest(view, request);
+                            }
+                        }
+                        
+                        // For non-alertachart.com URLs, use default behavior
+                        return super.shouldInterceptRequest(view, request);
+                    }
+                });
+                
+                android.util.Log.d("MainActivity", "✅ WebView settings configured for cookie persistence");
+                android.util.Log.d("MainActivity", "✅ WebViewClient configured to prevent external browser");
+            }
+            
+            // Flush cookies to ensure they are persisted
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                cookieManager.flush();
+            }
+            
+            android.util.Log.d("MainActivity", "✅ Cookie persistence enabled");
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "❌ Failed to enable cookie persistence: " + e.getMessage());
+        }
+        
+        // Create notification channels (like Expo did)
+        createNotificationChannels();
+        
+        // Setup Firebase Cloud Messaging listener
+        setupFCMListener();
+    }
+    
+    private void setupFCMListener() {
+        android.util.Log.d("MainActivity", "Setting up FCM listener...");
+        // FCM will automatically handle notifications when app is in background
+        // For foreground, we use PushNotifications plugin from Capacitor
+        // This is just a backup to ensure notifications are always received
+    }
+    
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        // Handle notification tap when app is running
+        if (intent != null && intent.getExtras() != null) {
+            android.util.Log.d("MainActivity", "onNewIntent with extras: " + intent.getExtras().toString());
+        }
+    }
+    
+    private void createNotificationChannels() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            NotificationManager notificationManager = getSystemService(NotificationManager.class);
+            
+            // Default channel
+            NotificationChannel defaultChannel = new NotificationChannel(
+                "default",
+                "Default",
+                NotificationManager.IMPORTANCE_DEFAULT
+            );
+            defaultChannel.setDescription("Default notifications");
+            notificationManager.createNotificationChannel(defaultChannel);
+            
+            // Price Alerts channel (Expo'daki gibi)
+            NotificationChannel priceAlertsChannel = new NotificationChannel(
+                "price-alerts-v2",
+                "Price Alerts",
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            priceAlertsChannel.setDescription("Fiyat uyarıları");
+            priceAlertsChannel.enableVibration(true);
+            notificationManager.createNotificationChannel(priceAlertsChannel);
+            
+            // Alarms channel
+            NotificationChannel alarmsChannel = new NotificationChannel(
+                "alarms-v2",
+                "Alarms",
+                NotificationManager.IMPORTANCE_HIGH
+            );
+            alarmsChannel.setDescription("Alarm bildirimleri");
+            alarmsChannel.enableVibration(true);
+            notificationManager.createNotificationChannel(alarmsChannel);
+            
+            // Admin notifications channel
+            NotificationChannel adminChannel = new NotificationChannel(
+                "admin-notifications",
+                "Admin Notifications",
+                NotificationManager.IMPORTANCE_DEFAULT
+            );
+            adminChannel.setDescription("Yönetici bildirimleri");
+            notificationManager.createNotificationChannel(adminChannel);
+            
+            android.util.Log.d("MainActivity", "✅ Notification channels created");
+        }
+    }
+    
+    private boolean isFirstStart = true;
+    
+    @Override
+    public void onStart() {
+        super.onStart();
+        
+        // Ensure WebViewClient is set (in case WebView wasn't ready in onCreate)
+        WebView webView = getBridge().getWebView();
+        if (webView != null) {
+            // Always set WebViewClient to prevent external browser from opening
+            // This ensures all links (refresh button, settings tab, etc.) open within the app
+            // Note: Google OAuth is handled by native plugin (uses Custom Tabs internally)
+            webView.setWebViewClient(new WebViewClient() {
+                @Override
+                public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                    // Always load URLs within WebView, never open external browser
+                    String url = request.getUrl().toString();
+                    view.loadUrl(url);
+                    return true; // We handled the URL loading
+                }
+                
+                @Override
+                @SuppressWarnings("deprecation")
+                public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                    // For older Android versions
+                    view.loadUrl(url);
+                    return true; // We handled the URL loading
+                }
+                
+                @Override
+                public android.webkit.WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+                    // Add X-Platform: android header to all requests to our domain
+                    String urlString = request.getUrl().toString();
+                    if (urlString != null && urlString.contains("alertachart.com")) {
+                        try {
+                            java.net.URL url = request.getUrl();
+                            java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
+                            
+                            // Copy all existing headers from original request
+                            if (request.getRequestHeaders() != null) {
+                                for (java.util.Map.Entry<String, String> header : request.getRequestHeaders().entrySet()) {
+                                    connection.setRequestProperty(header.getKey(), header.getValue());
+                                }
+                            }
+                            
+                            // Add X-Platform header
+                            connection.setRequestProperty("X-Platform", "android");
+                            
+                            // Get response
+                            int responseCode = connection.getResponseCode();
+                            String contentType = connection.getContentType();
+                            java.io.InputStream inputStream = responseCode >= 200 && responseCode < 300 
+                                ? connection.getInputStream() 
+                                : connection.getErrorStream();
+                            
+                            return new android.webkit.WebResourceResponse(
+                                contentType,
+                                connection.getContentEncoding(),
+                                responseCode,
+                                connection.getResponseMessage(),
+                                connection.getHeaderFields(),
+                                inputStream
+                            );
+                        } catch (Exception e) {
+                            android.util.Log.e("MainActivity", "Error adding X-Platform header: " + e.getMessage());
+                            return super.shouldInterceptRequest(view, request);
+                        }
+                    }
+                    
+                    // For non-alertachart.com URLs, use default behavior
+                    return super.shouldInterceptRequest(view, request);
+                }
+            });
+            android.util.Log.d("MainActivity", "✅ WebViewClient set in onStart");
+        }
+    }
+    
+    @Override
+    public void onResume() {
+        super.onResume();
+        
+        // Only reset on first start (app opened fresh), not on resume from background
+        if (isFirstStart) {
+            isFirstStart = false;
+            
+            WebView webView = getBridge().getWebView();
+            if (webView != null) {
+                String currentUrl = webView.getUrl();
+                android.util.Log.d("MainActivity", "Current URL on start: " + currentUrl);
+                
+                // If currently on remote URL, reset to local index.html
+                if (currentUrl != null && (currentUrl.startsWith("https://alertachart.com") || currentUrl.startsWith("http://alertachart.com"))) {
+                    runOnUiThread(() -> {
+                        webView.loadUrl("http://localhost/index.html");
+                        android.util.Log.d("MainActivity", "✅ Reset to local index.html from remote URL");
+                    });
+                }
+            }
+        }
+    }
+    
+    // Custom plugin to control WebView URL
+    @CapacitorPlugin(name = "WebViewController")
+    public static class WebViewController extends Plugin {
+        
+        @PluginMethod
+        public void loadUrl(PluginCall call) {
+            String url = call.getString("url");
+            if (url == null || url.isEmpty()) {
+                call.reject("URL is required");
+                return;
+            }
+            
+            getBridge().getActivity().runOnUiThread(() -> {
+                WebView webView = getBridge().getWebView();
+                if (webView != null) {
+                    webView.loadUrl(url);
+                    call.resolve();
+                } else {
+                    call.reject("WebView not available");
+                }
+            });
+        }
+        
+        @PluginMethod
+        public void reload(PluginCall call) {
+            // 🔥 CRITICAL: Reload WebView without opening external browser
+            getBridge().getActivity().runOnUiThread(() -> {
+                WebView webView = getBridge().getWebView();
+                if (webView != null) {
+                    webView.reload();
+                    android.util.Log.d("WebViewController", "✅ WebView reloaded");
+                    call.resolve();
+                } else {
+                    call.reject("WebView not available");
+                }
+            });
+        }
+    }
+}

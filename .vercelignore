@@ -1,0 +1,22 @@
+# Mobile app (Expo - ayrı build)
+mobile/
+
+# Documentation
+*.md
+!README.md
+
+# Test files
+*.test.ts
+*.test.tsx
+*.spec.ts
+*.spec.tsx
+
+# Database files
+database/
+
+# Build artifacts
+.next/
+out/
+build/
+dist/
+
