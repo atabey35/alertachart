@@ -194,10 +194,10 @@ export default function Home() {
       const sharedTimeframe = params.get('timeframe');
       const sharedMarketType = params.get('marketType') as 'spot' | 'futures' | null;
       const sharedWatchlist = params.get('watchlist');
-      const tabParam = params.get('tab') as 'chart' | 'watchlist' | 'alerts' | 'aggr' | null;
+      const tabParam = params.get('tab') as 'chart' | 'watchlist' | 'alerts' | 'aggr' | 'liquidations' | null;
       
       // Handle tab navigation from Settings page
-      if (tabParam && ['chart', 'watchlist', 'alerts', 'aggr'].includes(tabParam)) {
+      if (tabParam && ['chart', 'watchlist', 'alerts', 'aggr', 'liquidations'].includes(tabParam)) {
         setMobileTab(tabParam);
         // Clean URL after processing
         window.history.replaceState({}, '', window.location.pathname);
@@ -580,7 +580,7 @@ export default function Home() {
   const [showWatchlist, setShowWatchlist] = useState(true);
   const [showAlerts, setShowAlerts] = useState(false);
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
-  const [mobileTab, setMobileTab] = useState<'chart' | 'watchlist' | 'alerts' | 'aggr' | 'settings'>('chart');
+  const [mobileTab, setMobileTab] = useState<'chart' | 'watchlist' | 'alerts' | 'aggr' | 'liquidations' | 'settings'>('chart');
   const [showSymbolSearch, setShowSymbolSearch] = useState(false);
 
   // Load saved watchlist visibility on mount
@@ -1707,6 +1707,53 @@ export default function Home() {
           )}
         </div>
 
+        {/* MOBILE: Liquidations Tab (full screen) */}
+        <div className={`${mobileTab === 'liquidations' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-hidden bg-gray-950`}>
+          {user ? (
+            hasPremiumAccessValue ? (
+              <iframe
+                src="https://data.kriptokirmizi.com"
+                className="w-full h-full border-0"
+                title="Liquidations Dashboard"
+                allow="clipboard-write; clipboard-read"
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4">
+                  <span className="text-3xl">💎</span>
+                </div>
+                <h3 className="text-xl font-bold text-white mb-2">Pro Üye Gerekli</h3>
+                <p className="text-gray-400 mb-6 text-center">
+                  Liquidations dashboard'una erişmek için premium üyelik gereklidir.
+                </p>
+                <button
+                  onClick={() => setShowUpgradeModal(true)}
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-blue-500/25"
+                >
+                  Premium'a Geç
+                </button>
+              </div>
+            )
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full p-8 text-center">
+              <svg className="w-16 h-16 text-gray-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <h3 className="text-xl font-bold text-white mb-2">Giriş Yapmanız Gerekiyor</h3>
+              <p className="text-gray-400 mb-6">Liquidations dashboard'unu kullanmak için lütfen giriş yapın.</p>
+              <button
+                onClick={() => {
+                  // Web'de her zaman native login screen göster
+                  setShowLoginScreen(true);
+                }}
+                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg font-medium transition-colors"
+              >
+                Giriş Yap
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* MOBILE: Settings Tab removed - now redirects to /settings page */}
       </div>
 
@@ -1761,28 +1808,52 @@ export default function Home() {
         </button>
 
         {user && (
-          <button
-            onClick={() => {
-              if (hasPremiumAccessValue) {
-                setMobileTab('aggr');
-              } else {
-                setShowUpgradeModal(true);
-              }
-            }}
-            className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative ${
-              mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'
-            }`}
-          >
-            <div className="relative">
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-              </svg>
-              {!hasPremiumAccessValue && (
-                <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
-              )}
-            </div>
-            <span className="text-[10px] mt-1">Aggr</span>
-          </button>
+          <>
+            <button
+              onClick={() => {
+                if (hasPremiumAccessValue) {
+                  setMobileTab('aggr');
+                } else {
+                  setShowUpgradeModal(true);
+                }
+              }}
+              className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative ${
+                mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'
+              }`}
+            >
+              <div className="relative">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                </svg>
+                {!hasPremiumAccessValue && (
+                  <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
+                )}
+              </div>
+              <span className="text-[10px] mt-1">Aggr</span>
+            </button>
+            <button
+              onClick={() => {
+                if (hasPremiumAccessValue) {
+                  setMobileTab('liquidations');
+                } else {
+                  setShowUpgradeModal(true);
+                }
+              }}
+              className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative ${
+                mobileTab === 'liquidations' ? 'text-blue-400' : 'text-gray-500'
+              }`}
+            >
+              <div className="relative">
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                {!hasPremiumAccessValue && (
+                  <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
+                )}
+              </div>
+              <span className="text-[10px] mt-1">Liquidations</span>
+            </button>
+          </>
         )}
 
         <button

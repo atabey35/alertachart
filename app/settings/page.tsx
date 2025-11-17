@@ -891,7 +891,7 @@ export default function SettingsPage() {
     }
   };
 
-  const handleNavigateToTab = (tab: 'chart' | 'watchlist' | 'alerts' | 'aggr') => {
+  const handleNavigateToTab = (tab: 'chart' | 'watchlist' | 'alerts' | 'aggr' | 'liquidations') => {
     router.push(`/?tab=${tab}`);
   };
 
