@@ -1436,7 +1436,7 @@ export default function Home() {
         isCapacitor ? 'pb-[104px]' : '' // 56px (tab bar) + 48px (Android nav bar padding)
       }`}>
         {/* MOBILE & TABLET (iPad): Chart Tab (full screen) */}
-        <div className={`${mobileTab === 'chart' ? 'flex' : 'hidden'} ${isIPad ? 'flex' : 'lg:flex'} flex-1 overflow-hidden relative`}>
+        <div className={`${mobileTab === 'chart' || (!isIPad && typeof window !== 'undefined' && window.innerWidth >= 1024) ? 'flex' : 'hidden'} ${isIPad ? '' : 'lg:flex'} flex-1 overflow-hidden relative`}>
           {/* Drawing Toolbar Toggle Button (Always visible on Desktop, hidden on iPad) */}
           <button
             onClick={() => setShowDrawingToolbar(!showDrawingToolbar)}
