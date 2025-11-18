@@ -1057,15 +1057,15 @@ export default function Home() {
     <main className="flex h-screen flex-col overflow-hidden">
       {/* Header */}
       <header className="border-b border-gray-800 bg-black flex-shrink-0">
-        <div className="px-2 py-2 md:px-6 md:py-4">
+        <div className="px-2 py-2 lg:px-6 lg:py-4">
           {/* First row: Title and Selectors */}
-          <div className="flex items-center justify-between gap-2 md:gap-4">
-            <div className="flex items-center gap-2 md:gap-6">
+          <div className="flex items-center justify-between gap-2 lg:gap-4">
+            <div className="flex items-center gap-2 lg:gap-6">
               <div className="flex items-center gap-2">
-                <img src="/icon.png" alt="Alerta Chart Logo" className="w-6 h-6 md:w-10 md:h-10 rounded-lg" />
-                <h1 className="text-sm md:text-2xl font-bold text-blue-500 whitespace-nowrap hidden sm:block">ALERTA CHART</h1>
+                <img src="/icon.png" alt="Alerta Chart Logo" className="w-6 h-6 lg:w-10 lg:h-10 rounded-lg" />
+                <h1 className="text-sm lg:text-2xl font-bold text-blue-500 whitespace-nowrap hidden sm:block">ALERTA CHART</h1>
               </div>
-              <div className="hidden md:flex items-center gap-3 text-sm text-gray-400">
+              <div className="hidden lg:flex items-center gap-3 text-sm text-gray-400">
                 <span className="text-gray-300 font-semibold">Powered by Kripto Kırmızı</span>
                 {/* Auth Button */}
                 <div className="ml-4">
@@ -1176,7 +1176,7 @@ export default function Home() {
             </div>
 
             {/* Layout and Chart selectors */}
-            <div className="hidden md:flex items-center gap-2">
+            <div className="hidden lg:flex items-center gap-2">
               {/* Alerts toggle - Hidden on mobile (available in bottom menu) */}
               <button
                 onClick={() => setShowAlerts(!showAlerts)}
@@ -1203,8 +1203,8 @@ export default function Home() {
                 </svg>
               </button>
 
-              {/* Layout selector - Hidden on mobile (available in settings) */}
-              <div className="hidden md:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1">
+              {/* Layout selector - Hidden on mobile/iPad (available in settings) */}
+              <div className="hidden lg:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1">
                 <button
                   onClick={() => setLayout(1)}
                   className={`p-1.5 rounded transition-colors ${
@@ -1285,11 +1285,11 @@ export default function Home() {
           </div>
 
           {/* Second row: Market Type + Timeframe selector + Pair Selector */}
-          {/* MOBİL: Sadece grafik sekmesinde göster, WEB: Her zaman göster */}
-          {(mobileTab === 'chart' || typeof window === 'undefined' || window.innerWidth >= 768) && (
+          {/* MOBİL & TABLET (iPad): Sadece grafik sekmesinde göster, DESKTOP: Her zaman göster */}
+          {(mobileTab === 'chart' || typeof window === 'undefined' || window.innerWidth >= 1024) && (
           <div className="flex items-center gap-2 mt-3 overflow-x-auto scrollbar-hide">
-            {/* Market Type Toggle (Spot/Futures) - Hidden on mobile (available in settings) */}
-            <div className="hidden md:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1 mr-2">
+            {/* Market Type Toggle (Spot/Futures) - Hidden on mobile/iPad (available in settings) */}
+            <div className="hidden lg:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1 mr-2">
               <button
                 onClick={() => setMarketType('spot')}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
@@ -1315,7 +1315,7 @@ export default function Home() {
                 <button
                   key={tf}
                   onClick={() => updateActiveChart({ timeframe: tf })}
-                  className={`px-2 py-1 md:px-3 md:py-2 text-[10px] md:text-sm rounded whitespace-nowrap flex-shrink-0 ${
+                  className={`px-2 py-1 lg:px-3 lg:py-2 text-[10px] lg:text-sm rounded whitespace-nowrap flex-shrink-0 ${
                     activeChart.timeframe === tf
                       ? 'bg-blue-600 text-white'
                       : 'bg-gray-900 text-gray-400 hover:bg-gray-800'
@@ -1361,7 +1361,7 @@ export default function Home() {
             {/* Symbol Search Button */}
             <button
               onClick={() => setShowSymbolSearch(true)}
-              className="ml-2 flex items-center gap-2 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 md:py-2 text-xs md:text-sm hover:border-blue-500 hover:bg-gray-800 transition-colors group"
+              className="ml-2 flex items-center gap-2 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 lg:py-2 text-xs lg:text-sm hover:border-blue-500 hover:bg-gray-800 transition-colors group"
             >
               <svg 
                 className="w-4 h-4 text-gray-500 group-hover:text-blue-400" 
@@ -1371,7 +1371,7 @@ export default function Home() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <span className="hidden md:inline text-gray-300 group-hover:text-white">
+              <span className="hidden lg:inline text-gray-300 group-hover:text-white">
                 {(() => {
                   const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
                   let baseAsset = activeChart.pair.toUpperCase();
@@ -1395,7 +1395,7 @@ export default function Home() {
             
             {/* Pair count indicator */}
             {!loadingPairs && (
-              <div className="hidden md:block text-xs text-gray-500 whitespace-nowrap ml-2">
+              <div className="hidden lg:block text-xs text-gray-500 whitespace-nowrap ml-2">
                 {pairs.length} pairs
               </div>
             )}
@@ -1627,9 +1627,9 @@ export default function Home() {
             </div>
           )}
 
-          {/* Desktop: Watchlist Panel */}
+          {/* Desktop (1024px+): Watchlist Panel */}
           {showWatchlist && (
-            <div className="hidden md:block flex-shrink-0 h-full">
+            <div className="hidden lg:block flex-shrink-0 h-full">
               <Watchlist 
                 onSymbolClick={handleWatchlistSymbolClick}
                 currentSymbol={activeChart.pair}
@@ -1760,9 +1760,10 @@ export default function Home() {
       {/* MOBILE & TABLET (iPad): Bottom Tab Navigation */}
       <nav 
         className={`lg:hidden border-t border-gray-800 bg-black flex items-center justify-around ${
-          isCapacitor ? 'fixed bottom-0 left-0 right-0 z-50' : ''
+          isCapacitor ? 'fixed bottom-0 left-0 right-0 z-[100]' : 'fixed bottom-0 left-0 right-0 z-[100]'
         }`}
         style={{ 
+          pointerEvents: 'auto',
           ...(isCapacitor ? { 
             paddingBottom: '48px', // Android navigation bar yüksekliği (geri, orta, menü butonları)
             height: 'calc(56px + 48px)' // Tab bar + Android nav bar
@@ -1773,9 +1774,10 @@ export default function Home() {
       >
         <button
           onClick={() => setMobileTab('chart')}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors ${
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors cursor-pointer ${
             mobileTab === 'chart' ? 'text-blue-400' : 'text-gray-500'
           }`}
+          style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
@@ -1785,9 +1787,10 @@ export default function Home() {
 
         <button
           onClick={() => setMobileTab('watchlist')}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors ${
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors cursor-pointer ${
             mobileTab === 'watchlist' ? 'text-blue-400' : 'text-gray-500'
           }`}
+          style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
@@ -1797,9 +1800,10 @@ export default function Home() {
 
         <button
           onClick={() => setMobileTab('alerts')}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative ${
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative cursor-pointer ${
             mobileTab === 'alerts' ? 'text-blue-400' : 'text-gray-500'
           }`}
+          style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -1817,9 +1821,10 @@ export default function Home() {
                   setShowUpgradeModal(true);
                 }
               }}
-              className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative ${
+              className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative cursor-pointer ${
                 mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'
               }`}
+              style={{ pointerEvents: 'auto', zIndex: 101 }}
             >
               <div className="relative">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1839,9 +1844,10 @@ export default function Home() {
                   setShowUpgradeModal(true);
                 }
               }}
-              className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative ${
+              className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative cursor-pointer ${
                 mobileTab === 'liquidations' ? 'text-blue-400' : 'text-gray-500'
               }`}
+              style={{ pointerEvents: 'auto', zIndex: 101 }}
             >
               <div className="relative">
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">

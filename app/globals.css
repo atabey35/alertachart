@@ -43,6 +43,18 @@ body {
     display: flex;
     flex-direction: column;
   }
+  
+  /* Ensure bottom navigation is clickable */
+  nav[class*="lg:hidden"] {
+    pointer-events: auto !important;
+    z-index: 100 !important;
+  }
+  
+  nav[class*="lg:hidden"] button {
+    pointer-events: auto !important;
+    z-index: 101 !important;
+    cursor: pointer !important;
+  }
 }
 
 body {
