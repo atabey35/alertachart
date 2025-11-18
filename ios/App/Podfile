@@ -108,8 +108,26 @@ post_install do |installer|
       old_function_pattern = /func resolveSignInCallWith\(user: GIDGoogleUser\) \{[\s\S]*?signInCall\?\.resolve\(userData\);\s*\}\s*\}/
       swift_content.gsub!(old_function_pattern, resolve_function.strip)
       
-      # Fix signIn to use GIDSignInResult (returns GIDSignInResult)
-      swift_content.gsub!(/self\.googleSignIn\.signIn\(with: self\.googleSignInConfiguration, presenting: presentingVc, hint: nil, additionalScopes: self\.additionalScopes\) \{ user, error in/, 'self.googleSignIn.signIn(with: self.googleSignInConfiguration, presenting: presentingVc, hint: nil, additionalScopes: self.additionalScopes) { result, error in')
+      # Fix signIn to use GoogleSignIn 7.0 API: signIn(withPresenting:completion:)
+      # Old API: signIn(with:presenting:hint:additionalScopes:completion:) - DEPRECATED
+      # New API: signIn(withPresenting:completion:) or signIn(withPresenting:hint:additionalScopes:completion:)
+      if swift_content.include?('signIn(with: self.googleSignInConfiguration, presenting:')
+        # Replace old API call with new API
+        old_pattern = /self\.googleSignIn\.signIn\(with: self\.googleSignInConfiguration, presenting: presentingVc, hint: nil, additionalScopes: self\.additionalScopes\) \{ result, error in/
+        new_code = <<~SWIFT
+                // GoogleSignIn 7.0 API: signIn(withPresenting:completion:) or signIn(withPresenting:hint:additionalScopes:completion:)
+                if self.additionalScopes.isEmpty {
+                    self.googleSignIn.signIn(withPresenting: presentingVc) { result, error in
+        SWIFT
+        swift_content.gsub!(old_pattern, new_code.strip)
+        
+        # After the first signIn completion handler, add else branch for additionalScopes
+        # Find pattern: resolveSignInCallWith(...); }; (end of first signIn)
+        # Replace with: resolveSignInCallWith(...); } } else { ... }
+        swift_content.gsub!(/(self\.resolveSignInCallWith\(user: result\.user, serverAuthCode: result\.serverAuthCode\);\s*\}\s*);\s*$/) do |match|
+          "#{match.chomp(';')}\n                    }\n                } else {\n                    self.googleSignIn.signIn(withPresenting: presentingVc, hint: nil, additionalScopes: self.additionalScopes) { result, error in\n                        if let error = error {\n                            self.signInCall?.reject(error.localizedDescription, \"\\(error._code)\");\n                            return;\n                        }\n                        guard let result = result else {\n                            self.signInCall?.reject(\"Sign in failed: no result\");\n                            return;\n                        }\n                        self.resolveSignInCallWith(user: result.user, serverAuthCode: result.serverAuthCode);\n                    }\n                }"
+        end
+      end
       
       # Fix restorePreviousSignIn - it returns GIDGoogleUser directly, not GIDSignInResult
       # So we need to pass nil for serverAuthCode
