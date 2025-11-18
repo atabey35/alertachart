@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    const { deviceId } = body;
+    const { deviceId, pushToken, platform } = body;
     
     if (!deviceId) {
       return NextResponse.json(
@@ -23,6 +23,8 @@ export async function POST(request: NextRequest) {
     
     console.log('[Next.js API] Device link request:', {
       deviceId,
+      hasPushToken: !!pushToken,
+      platform,
       hasCookies: !!cookies,
       cookies: cookies ? `${cookies.substring(0, 50)}...` : 'none',
       body: JSON.stringify(body),
@@ -42,10 +44,15 @@ export async function POST(request: NextRequest) {
       headers['Cookie'] = cookies; // 🔥 CRITICAL: Forward httpOnly cookies!
     }
     
+    // 🔥 FIX: Forward all device linking parameters to backend
     const response = await fetch(`${backendUrl}/api/devices/link`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ deviceId }),
+      body: JSON.stringify({ 
+        deviceId,
+        pushToken: pushToken || undefined, // Only send if exists
+        platform: platform || undefined, // Only send if exists
+      }),
     });
     
     const result = await response.json();
