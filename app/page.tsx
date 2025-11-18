@@ -1082,8 +1082,8 @@ export default function Home() {
 
   return (
     <main className="flex h-screen flex-col overflow-hidden">
-      {/* Header */}
-      <header className="border-b border-gray-800 bg-black flex-shrink-0">
+      {/* Header - Hidden on iPad (mobile-like experience) */}
+      <header className={`border-b border-gray-800 bg-black flex-shrink-0 ${isIPad ? 'hidden' : ''}`}>
         <div className="px-2 py-2 lg:px-6 lg:py-4">
           {/* First row: Title and Selectors */}
           <div className="flex items-center justify-between gap-2 lg:gap-4">
@@ -1667,7 +1667,7 @@ export default function Home() {
         </div>
 
         {/* MOBILE & TABLET (iPad): Watchlist Tab (full screen) */}
-        <div className={`${mobileTab === 'watchlist' ? 'flex' : 'hidden'} ${isIPad ? 'flex' : 'lg:hidden'} flex-1 overflow-hidden`}>
+        <div className={`${mobileTab === 'watchlist' ? 'flex' : 'hidden'} ${!isIPad ? 'lg:hidden' : ''} flex-1 overflow-hidden`}>
           <Watchlist 
             onSymbolClick={(symbol) => {
               handleWatchlistSymbolClick(symbol);
@@ -1679,7 +1679,7 @@ export default function Home() {
         </div>
 
         {/* MOBILE & TABLET (iPad): Alerts Tab (full screen) */}
-        <div className={`${mobileTab === 'alerts' ? 'flex' : 'hidden'} ${isIPad ? 'flex' : 'lg:hidden'} flex-1 overflow-hidden`}>
+        <div className={`${mobileTab === 'alerts' ? 'flex' : 'hidden'} ${!isIPad ? 'lg:hidden' : ''} flex-1 overflow-hidden`}>
           <AlertsPanel
             exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
             pair={activeChart.pair}
@@ -1688,7 +1688,7 @@ export default function Home() {
         </div>
 
         {/* MOBILE & TABLET (iPad): Aggr Tab (full screen) */}
-        <div className={`${mobileTab === 'aggr' ? 'flex' : 'hidden'} ${isIPad ? 'flex' : 'lg:hidden'} flex-1 overflow-hidden bg-gray-950`}>
+        <div className={`${mobileTab === 'aggr' ? 'flex' : 'hidden'} ${!isIPad ? 'lg:hidden' : ''} flex-1 overflow-hidden bg-gray-950`}>
           {user ? (
             hasPremiumAccessValue ? (
               <iframe
@@ -1735,7 +1735,7 @@ export default function Home() {
         </div>
 
         {/* MOBILE & TABLET (iPad): Liquidations Tab (full screen) */}
-        <div className={`${mobileTab === 'liquidations' ? 'flex' : 'hidden'} ${isIPad ? 'flex' : 'lg:hidden'} flex-1 overflow-hidden bg-gray-950`}>
+        <div className={`${mobileTab === 'liquidations' ? 'flex' : 'hidden'} ${!isIPad ? 'lg:hidden' : ''} flex-1 overflow-hidden bg-gray-950`}>
           {user ? (
             hasPremiumAccessValue ? (
               <iframe
