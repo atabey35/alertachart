@@ -63,16 +63,15 @@ post_install do |installer|
     swift_content.gsub!(/getConfig\(\)\.getArray\("scopes"\) as\? \[String\] \?\? \[\] \?\? \[\]/, '(getConfig().getArray("scopes") as? [String]) ?? []')
     swift_content.gsub!(/getConfig\(\)\.getBoolean\("forceCodeForRefreshToken", false\) \?\? false/, 'getConfig().getBoolean("forceCodeForRefreshToken", false)')
     
-    # Fix DispatchQueue.main.async trailing closure warnings
-    swift_content.gsub!(/DispatchQueue\.main\.async \{/, 'DispatchQueue.main.async(execute: {')
-    swift_content.gsub!(/DispatchQueue\.main\.async \{([^}]+)\}\s*$/, 'DispatchQueue.main.async(execute: {\1})')
+    # Fix DispatchQueue.main.async - keep trailing closure (it's correct)
+    # Don't change DispatchQueue.main.async { } - it's the correct syntax
     
     # Fix GoogleSignIn 7.0 API: user.authentication is now async
     # Replace user.authentication.accessToken with async call
     if swift_content.include?('user.authentication.accessToken')
       # Update resolveSignInCallWith to use async authentication
       resolve_function = <<~SWIFT
-    func resolveSignInCallWith(user: GIDGoogleUser) {
+    func resolveSignInCallWith(user: GIDGoogleUser, serverAuthCode: String?) {
         user.refreshTokensIfNeeded { refreshedUser, error in
             guard let user = refreshedUser, error == nil else {
                 self.signInCall?.reject(error?.localizedDescription ?? "Failed to get authentication");
@@ -85,7 +84,7 @@ post_install do |installer|
                     "idToken": user.idToken?.tokenString ?? NSNull(),
                     "refreshToken": user.refreshToken.tokenString
                 ],
-                "serverAuthCode": user.serverAuthCode ?? NSNull(),
+                "serverAuthCode": serverAuthCode ?? NSNull(),
                 "email": user.profile?.email ?? NSNull(),
                 "familyName": user.profile?.familyName ?? NSNull(),
                 "givenName": user.profile?.givenName ?? NSNull(),
@@ -103,6 +102,25 @@ post_install do |installer|
       # Replace the old resolveSignInCallWith function
       old_function_pattern = /func resolveSignInCallWith\(user: GIDGoogleUser\) \{[\s\S]*?signInCall\?\.resolve\(userData\);\s*\}\s*\}/
       swift_content.gsub!(old_function_pattern, resolve_function.strip)
+      
+      # Fix signIn and restorePreviousSignIn to use GIDSignInResult
+      swift_content.gsub!(/self\.googleSignIn\.signIn\(with: self\.googleSignInConfiguration, presenting: presentingVc, hint: nil, additionalScopes: self\.additionalScopes\) \{ user, error in/, 'self.googleSignIn.signIn(with: self.googleSignInConfiguration, presenting: presentingVc, hint: nil, additionalScopes: self.additionalScopes) { result, error in')
+      swift_content.gsub!(/self\.googleSignIn\.restorePreviousSignIn\(\) \{ user, error in/, 'self.googleSignIn.restorePreviousSignIn() { result, error in')
+      
+      # Update signIn completion to use result.user and result.serverAuthCode
+      swift_content.gsub!(/guard let result = result else \{\s*self\.signInCall\?\.reject\("Sign in failed: no result"\);\s*return;\s*\}\s*self\.resolveSignInCallWith\(user: result\.user, serverAuthCode: result\.serverAuthCode\);/m, 'guard let result = result else {\n                        self.signInCall?.reject("Sign in failed: no result");\n                        return;\n                    }\n                    self.resolveSignInCallWith(user: result.user, serverAuthCode: result.serverAuthCode);')
+      
+      # Fix signIn completion handler
+      if swift_content.include?('self.resolveSignInCallWith(user: user!)')
+        swift_content.gsub!(/self\.resolveSignInCallWith\(user: user!\);/) do |match|
+          # Check if it's in a signIn or restorePreviousSignIn context
+          if swift_content.match(/signIn.*\{ result, error/)
+            'guard let result = result else {\n                        self.signInCall?.reject("Sign in failed: no result");\n                        return;\n                    }\n                    self.resolveSignInCallWith(user: result.user, serverAuthCode: result.serverAuthCode);'
+          else
+            match
+          end
+        end
+      end
       
       # Fix indentation for resolveSignInCallWith
       swift_content.gsub!(/^    func resolveSignInCallWith\(user: GIDGoogleUser\) \{/, '    func resolveSignInCallWith(user: GIDGoogleUser) {')
