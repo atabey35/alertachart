@@ -247,7 +247,7 @@ function CapacitorAuthContent() {
                           console.warn('[CapacitorAuth] ⚠️ Device registration failed (non-critical):', registerError);
                         }
                       }
-                    } catch (registerError) {
+                    } catch (registerError: any) {
                       console.warn('[CapacitorAuth] ⚠️ Device registration error (non-critical):', registerError);
                     }
                   } else {
@@ -293,7 +293,7 @@ function CapacitorAuthContent() {
                         // Registration already attempted above, so this is just a fallback
                       }
                     }
-                  } catch (linkError) {
+                  } catch (linkError: any) {
                     console.error('[CapacitorAuth] ❌ Error linking device:', {
                       error: linkError,
                       message: linkError?.message,
