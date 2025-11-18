@@ -517,6 +517,13 @@ export default function SettingsPage() {
     const tryRestoreSession = async () => {
       console.log('[Settings] 🚀 tryRestoreSession() called');
       
+      // 🔥 FIX: Prevent reload loop - check if session restore was already completed
+      const sessionRestoreCompleted = sessionStorage.getItem('sessionRestoreCompleted');
+      if (sessionRestoreCompleted === 'true') {
+        console.log('[Settings] ℹ️ Session restore already completed, skipping to prevent reload loop');
+        return;
+      }
+      
       try {
         if (typeof window === 'undefined' || !(window as any).Capacitor) {
           console.log('[Settings] ⚠️ Not a Capacitor app, skipping session restore');
@@ -567,6 +574,9 @@ export default function SettingsPage() {
               console.log('[Settings] ✅ User email saved to localStorage');
             }
 
+            // 🔥 FIX: Mark session restore as completed before reload to prevent loop
+            sessionStorage.setItem('sessionRestoreCompleted', 'true');
+            
             // Refresh the page to update session state
             console.log('[Settings] 🔄 Refreshing page to update session...');
             window.location.reload();

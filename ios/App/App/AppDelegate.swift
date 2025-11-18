@@ -243,11 +243,25 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                     }
                     
                     // Also store in localStorage as fallback
+                    // 🔥 CRITICAL: Store as 'fcm_token' (main key) and 'fcm_token_from_appdelegate' (fallback)
                     if (typeof localStorage !== 'undefined') {
                         try {
+                            // Main key that Settings page uses
+                            localStorage.setItem('fcm_token', token);
+                            console.log('[AppDelegate] ✅ Token stored in localStorage as fcm_token');
+                            
+                            // Fallback key for compatibility
                             localStorage.setItem('fcm_token_from_appdelegate', token);
-                            console.log('[AppDelegate] ✅ Token stored in localStorage as fallback');
-                            console.log('[AppDelegate] ✅ localStorage.getItem check:', localStorage.getItem('fcm_token_from_appdelegate') ? 'found' : 'not found');
+                            console.log('[AppDelegate] ✅ Token stored in localStorage as fcm_token_from_appdelegate (fallback)');
+                            
+                            // Verify both keys
+                            const mainToken = localStorage.getItem('fcm_token');
+                            const fallbackToken = localStorage.getItem('fcm_token_from_appdelegate');
+                            console.log('[AppDelegate] ✅ Verification:', {
+                                mainKey: mainToken ? 'found' : 'not found',
+                                fallbackKey: fallbackToken ? 'found' : 'not found',
+                                tokenLength: token.length
+                            });
                         } catch (e) {
                             console.warn('[AppDelegate] ⚠️ Could not store token in localStorage:', e);
                         }
@@ -319,8 +333,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
                                             }
                                         } else {
                                             print("[AppDelegate] ✅ FCM Token sent to JavaScript successfully")
-                                            // Verify token was stored
-                                            let verifyCode = "localStorage.getItem('fcm_token_from_appdelegate') || window.__fcmTokenFromAppDelegate || 'not found'"
+                                            // Verify token was stored (check both keys)
+                                            let verifyCode = "localStorage.getItem('fcm_token') || localStorage.getItem('fcm_token_from_appdelegate') || window.__fcmTokenFromAppDelegate || 'not found'"
                                             webView.evaluateJavaScript(verifyCode) { (verifyResult, _) in
                                                 if let verifyStr = verifyResult as? String, verifyStr != "not found" {
                                                     print("[AppDelegate] ✅ FCM Token verified in storage: \(verifyStr.prefix(50))...")
