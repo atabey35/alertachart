@@ -50,10 +50,23 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [symbolsWithAlerts, setSymbolsWithAlerts] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string>('gradient-gray');
+  const [isIPad, setIsIPad] = useState(false);
 
   // Detect client-side for responsive width
   useEffect(() => {
     setIsClient(true);
+    
+    // iPad detection
+    if (typeof window !== 'undefined') {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+      const isIPadUserAgent = /iPad/.test(userAgent) || 
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366;
+      const isCapacitorIOS = !!(window as any).Capacitor && 
+        ((window as any).Capacitor?.getPlatform?.() === 'ios' || /iPad|iPhone/.test(userAgent));
+      const isIPadDevice = isIPadUserAgent || (isCapacitorIOS && isIPadSize);
+      setIsIPad(isIPadDevice);
+    }
   }, []);
 
   // Track which symbols have active alerts for this market type
@@ -449,12 +462,12 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
   return (
     <div 
-      className={`${getBackgroundClass()} md:border-l border-gray-800/50 flex flex-col relative h-full overflow-hidden backdrop-blur-sm shadow-2xl`}
-      style={{ width: isClient && window.innerWidth >= 768 ? `${width}px` : '100%' }}
+      className={`${getBackgroundClass()} ${isIPad ? '' : 'md:border-l'} border-gray-800/50 flex flex-col relative h-full overflow-hidden backdrop-blur-sm shadow-2xl`}
+      style={{ width: isIPad ? '100%' : (isClient && window.innerWidth >= 768 ? `${width}px` : '100%') }}
     >
-      {/* Resize Handle - Desktop only */}
+      {/* Resize Handle - Desktop only (hidden on iPad) */}
       <div
-        className="hidden md:block absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-gradient-to-b hover:from-blue-500 hover:to-blue-600 transition-all duration-200 z-50 group"
+        className={`hidden ${isIPad ? '' : 'md:block'} absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-gradient-to-b hover:from-blue-500 hover:to-blue-600 transition-all duration-200 z-50 group`}
         onMouseDown={(e) => {
           e.preventDefault();
           setIsResizing(true);
