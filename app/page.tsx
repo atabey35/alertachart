@@ -801,14 +801,14 @@ export default function Home() {
   
   // Get grid class based on layout
   const getGridClass = () => {
-    // Mobile: optimize for vertical space
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    // Mobile & Tablet (iPad): optimize for vertical space (up to 1024px)
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       if (layout === 1) return 'grid-cols-1 grid-rows-1';
-      if (layout === 2) return 'grid-cols-1 grid-rows-2'; // Mobile: 1 column, 2 rows (stacked)
-      if (layout === 4) return 'grid-cols-2 grid-rows-2'; // Mobile: 2x2 grid
-      if (layout === 9) return 'grid-cols-3 grid-rows-3'; // Mobile: 3x3 grid
+      if (layout === 2) return 'grid-cols-1 grid-rows-2'; // Mobile/iPad: 1 column, 2 rows (stacked)
+      if (layout === 4) return 'grid-cols-2 grid-rows-2'; // Mobile/iPad: 2x2 grid
+      if (layout === 9) return 'grid-cols-3 grid-rows-3'; // Mobile/iPad: 3x3 grid
     }
-    // Desktop: original layout
+    // Desktop (1024px+): original layout
     if (layout === 1) return 'grid-cols-1 grid-rows-1';
     if (layout === 2) return 'grid-cols-2 grid-rows-1';
     if (layout === 4) return 'grid-cols-2 grid-rows-2';
@@ -818,11 +818,11 @@ export default function Home() {
   
   // Get optimal height based on layout
   const getGridHeight = () => {
-    // Mobile: use full available height with minimal margins
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      return 'calc(100vh - 180px)'; // Reduced margin for mobile
+    // Mobile & Tablet (iPad): use full available height with minimal margins (up to 1024px)
+    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+      return 'calc(100vh - 200px)'; // Reduced margin for mobile/iPad (includes bottom nav)
     }
-    // Desktop: original heights
+    // Desktop (1024px+): original heights
     if (layout === 1) return 'calc(100vh - 240px)'; // Single chart - full height minus header/footer
     if (layout === 2) return 'calc(100vh - 240px)'; // 2 charts side by side - full height
     if (layout === 4) return 'calc(100vh - 240px)'; // 2x2 grid - same total height, split into rows
@@ -1640,7 +1640,7 @@ export default function Home() {
         </div>
 
         {/* MOBILE: Watchlist Tab (full screen) */}
-        <div className={`${mobileTab === 'watchlist' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-hidden`}>
+        <div className={`${mobileTab === 'watchlist' ? 'flex' : 'hidden'} lg:hidden flex-1 overflow-hidden`}>
           <Watchlist 
             onSymbolClick={(symbol) => {
               handleWatchlistSymbolClick(symbol);
@@ -1652,7 +1652,7 @@ export default function Home() {
         </div>
 
         {/* MOBILE: Alerts Tab (full screen) */}
-        <div className={`${mobileTab === 'alerts' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-hidden`}>
+        <div className={`${mobileTab === 'alerts' ? 'flex' : 'hidden'} lg:hidden flex-1 overflow-hidden`}>
           <AlertsPanel
             exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
             pair={activeChart.pair}
@@ -1661,7 +1661,7 @@ export default function Home() {
         </div>
 
         {/* MOBILE: Aggr Tab (full screen) */}
-        <div className={`${mobileTab === 'aggr' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-hidden bg-gray-950`}>
+        <div className={`${mobileTab === 'aggr' ? 'flex' : 'hidden'} lg:hidden flex-1 overflow-hidden bg-gray-950`}>
           {user ? (
             hasPremiumAccessValue ? (
               <iframe
@@ -1708,7 +1708,7 @@ export default function Home() {
         </div>
 
         {/* MOBILE: Liquidations Tab (full screen) */}
-        <div className={`${mobileTab === 'liquidations' ? 'flex' : 'hidden'} md:hidden flex-1 overflow-hidden bg-gray-950`}>
+        <div className={`${mobileTab === 'liquidations' ? 'flex' : 'hidden'} lg:hidden flex-1 overflow-hidden bg-gray-950`}>
           {user ? (
             hasPremiumAccessValue ? (
               <iframe
@@ -1757,9 +1757,9 @@ export default function Home() {
         {/* MOBILE: Settings Tab removed - now redirects to /settings page */}
       </div>
 
-      {/* MOBILE: Bottom Tab Navigation */}
+      {/* MOBILE & TABLET (iPad): Bottom Tab Navigation */}
       <nav 
-        className={`md:hidden border-t border-gray-800 bg-black flex items-center justify-around ${
+        className={`lg:hidden border-t border-gray-800 bg-black flex items-center justify-around ${
           isCapacitor ? 'fixed bottom-0 left-0 right-0 z-50' : ''
         }`}
         style={{ 

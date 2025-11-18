@@ -78,5 +78,11 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>UIRequiresFullScreen</key>
+	<true/>
+	<key>UIApplicationSupportsMultipleScenes</key>
+	<false/>
+	<key>UIUserInterfaceStyle</key>
+	<string>Dark</string>
 </dict>
 </plist>

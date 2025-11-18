@@ -72,3 +72,4 @@ Başka bir şey seçmenize gerek yok.
 
 **Hiçbir değişiklik yapmanıza gerek yok!** Mevcut ayarlar uygulamanız için yeterli.
 
+

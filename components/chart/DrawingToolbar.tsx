@@ -250,8 +250,8 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
 
   return (
     <>
-      {/* MOBILE: Modern bottom toolbar */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 z-[90] bg-gradient-to-t from-gray-950 via-gray-900 to-gray-900 backdrop-blur-xl border-t border-gray-700/50 shadow-2xl" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px))', pointerEvents: 'auto' }}>
+      {/* MOBILE & TABLET (iPad): Modern bottom toolbar */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[90] bg-gradient-to-t from-gray-950 via-gray-900 to-gray-900 backdrop-blur-xl border-t border-gray-700/50 shadow-2xl" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px))', pointerEvents: 'auto' }}>
         {/* Expand/Collapse Button */}
         <button
           onClick={() => setIsMobileExpanded(!isMobileExpanded)}

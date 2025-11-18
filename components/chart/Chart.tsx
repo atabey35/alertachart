@@ -3957,7 +3957,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </div>
       )}
 
-      {/* Drawing Tools Toggle Button (Mobile only) */}
+      {/* Drawing Tools Toggle Button (Mobile & Tablet/iPad) */}
       <button
         onClick={() => {
           const newState = !showDrawingTools;
@@ -3969,7 +3969,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             setSelectedDrawingId(null);
           }
         }}
-        className={`md:hidden absolute top-32 left-2 z-20 p-2 rounded-lg transition-all shadow-lg ${
+        className={`lg:hidden absolute top-32 left-2 z-20 p-2 rounded-lg transition-all shadow-lg ${
           showDrawingTools 
             ? 'bg-blue-600 text-white' 
             : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
@@ -3981,8 +3981,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         </svg>
       </button>
 
-      {/* Drawing Toolbar (Mobile - Bottom) */}
-      <div className="md:hidden">
+      {/* Drawing Toolbar (Mobile & Tablet/iPad - Bottom) */}
+      <div className="lg:hidden">
         {showDrawingTools && (
           <DrawingToolbar
             activeTool={activeTool}
@@ -4131,7 +4131,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
       {/* Mobile hint for long-press */}
       {showMobileHint && (
-        <div className="md:hidden absolute bottom-20 left-1/2 -translate-x-1/2 bg-gray-800/90 px-4 py-2 rounded-lg text-xs text-gray-300 z-10 pointer-events-none animate-pulse">
+        <div className="lg:hidden absolute bottom-20 left-1/2 -translate-x-1/2 bg-gray-800/90 px-4 py-2 rounded-lg text-xs text-gray-300 z-10 pointer-events-none animate-pulse">
           👆 Long press on chart to set price alert
         </div>
       )}

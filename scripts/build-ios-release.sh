@@ -66,3 +66,4 @@ echo "🚀 Xcode'u açmak için:"
 echo "   cd ios/App && open App.xcworkspace"
 
 
+

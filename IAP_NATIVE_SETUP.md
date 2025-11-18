@@ -102,3 +102,4 @@ npx cap sync
 - Android: `MainActivity.java` içinde plugin register edildiğinden emin olun
 
 
+

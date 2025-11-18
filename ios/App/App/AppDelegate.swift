@@ -25,6 +25,18 @@ class AppDelegate: UIResponder, UIApplicationDelegate, UNUserNotificationCenterD
         HTTPCookieStorage.shared.cookieAcceptPolicy = .always
         print("[AppDelegate] ✅ Cookie persistence configured (HTTPCookieStorage)")
         
+        // 🔥 CRITICAL: iPad-specific window configuration
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            if let window = self.window {
+                // Force window to fill entire screen
+                window.frame = UIScreen.main.bounds
+                // Ensure window is key and visible
+                window.makeKeyAndVisible()
+                
+                print("[AppDelegate] ✅ iPad window configured for full screen")
+            }
+        }
+        
         // 🔥 CRITICAL: Setup push notifications
         setupPushNotifications(application: application)
         
