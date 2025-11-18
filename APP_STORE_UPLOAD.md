@@ -130,3 +130,4 @@ Build yüklendikten sonra TestFlight'ta test edebilirsiniz:
 
 
 
+

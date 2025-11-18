@@ -198,9 +198,10 @@ class CustomBridgeViewController: CAPBridgeViewController {
                 webView.configuration.preferences.isElementFullscreenEnabled = false
             }
             
-            // 🔥 CRITICAL: Change user agent to hide web browser identity
+            // 🔥 CRITICAL: Change user agent to hide web browser identity (keep iPad identifier for detection)
             let customUserAgent = "Mozilla/5.0 (iPad; CPU OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 AlertaChart/1.0"
             webView.customUserAgent = customUserAgent
+            print("[CustomBridgeViewController] ✅ Custom User-Agent set for iPad: \(customUserAgent)")
             
             // Force full-screen behavior on iPad
             if #available(iOS 11.0, *) {

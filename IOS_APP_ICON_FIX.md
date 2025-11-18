@@ -67,3 +67,4 @@ ls -lh ios/App/App/Assets.xcassets/AppIcon.appiconset/
 Eğer görünmüyorsa, Xcode'u kapatıp tekrar açın veya clean build yapın.
 
 
+

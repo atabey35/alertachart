@@ -22,12 +22,29 @@ export async function POST(request: NextRequest) {
   try {
     const { accessToken, refreshToken } = await request.json();
     
-    if (!accessToken || !refreshToken) {
+    // 🔥 CRITICAL FIX: Validate tokens are not undefined/null strings
+    if (!accessToken || !refreshToken || 
+        accessToken === 'undefined' || refreshToken === 'undefined' ||
+        accessToken === 'null' || refreshToken === 'null' ||
+        accessToken.trim() === '' || refreshToken.trim() === '') {
+      console.error('[set-capacitor-session] ❌ Invalid tokens received:', {
+        hasAccessToken: !!accessToken,
+        hasRefreshToken: !!refreshToken,
+        accessTokenType: typeof accessToken,
+        refreshTokenType: typeof refreshToken,
+        accessTokenPreview: accessToken ? `${accessToken.substring(0, 30)}...` : 'none',
+        refreshTokenPreview: refreshToken ? `${refreshToken.substring(0, 30)}...` : 'none',
+      });
       return NextResponse.json(
-        { error: 'Missing tokens' },
+        { error: 'Invalid or missing tokens. Please login again.' },
         { status: 400 }
       );
     }
+    
+    console.log('[set-capacitor-session] ✅ Valid tokens received:', {
+      accessTokenLength: accessToken.length,
+      refreshTokenLength: refreshToken.length,
+    });
     
     console.log('[set-capacitor-session] Setting cookies from native login');
     
