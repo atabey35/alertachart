@@ -84,5 +84,9 @@
 	<false/>
 	<key>UIUserInterfaceStyle</key>
 	<string>Dark</string>
+	<key>GIDClientID</key>
+	<string>776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com</string>
+	<key>GIDServerClientID</key>
+	<string>776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com</string>
 </dict>
 </plist>
