@@ -58,6 +58,12 @@ const nextConfig = {
       use: { loader: 'worker-loader' },
     });
     
+    // Ignore Capacitor IAP plugin in web builds (only available in native apps)
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@capacitor-community/in-app-purchase': false,
+    };
+    
     // Production optimizations
     if (!dev && !isServer) {
       config.optimization = {
