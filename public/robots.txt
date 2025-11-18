@@ -5,7 +5,7 @@ User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://alerta.kriptokirmizi.com/sitemap.xml
+Sitemap: https://alertachart.com/sitemap.xml
 
 # Crawl delay (be nice to servers)
 Crawl-delay: 1
@@ -13,13 +13,22 @@ Crawl-delay: 1
 # Special rules for major search engines
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 0
 
 User-agent: Googlebot-Image
 Allow: /
+Crawl-delay: 0
 
 User-agent: Bingbot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Slurp
 Allow: /
+Crawl-delay: 1
+
+# Disallow admin and API routes
+Disallow: /api/
+Disallow: /admin/
+Disallow: /auth/
 
