@@ -716,8 +716,53 @@ export default function SettingsPage() {
                 throw new Error('Failed to set session');
               }
               
-              console.log('[Settings] ✅ Session set successfully, redirecting...');
+              console.log('[Settings] ✅ Session set successfully');
+              
+              // 🔥 CRITICAL: Link device to user after login
+              try {
+                const { Device } = await import('@capacitor/device');
+                const deviceInfo = await Device.getId();
+                const deviceId = deviceInfo.identifier;
+                
+                if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+                  console.log('[Settings] 🔗 Linking device to user...', { deviceId });
+                  
+                  // Get FCM token if available
+                  const fcmToken = typeof window !== 'undefined' 
+                    ? (localStorage.getItem('fcm_token') || (window as any).fcmToken)
+                    : null;
+                  
+                  const platform = typeof window !== 'undefined' 
+                    ? ((window as any).Capacitor?.getPlatform?.() || 'ios')
+                    : 'ios';
+                  
+                  const linkResponse = await fetch('/api/devices/link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                      deviceId,
+                      pushToken: fcmToken && fcmToken !== 'null' && fcmToken !== 'undefined' ? fcmToken : undefined,
+                      platform,
+                    }),
+                  });
+                  
+                  if (linkResponse.ok) {
+                    const linkData = await linkResponse.json();
+                    console.log('[Settings] ✅ Device linked to user:', linkData);
+                  } else {
+                    const linkError = await linkResponse.json();
+                    console.warn('[Settings] ⚠️ Device link failed (non-critical):', linkError);
+                  }
+                } else {
+                  console.warn('[Settings] ⚠️ No valid deviceId available, skipping device link');
+                }
+              } catch (linkError: any) {
+                console.warn('[Settings] ⚠️ Device link error (non-critical):', linkError);
+              }
+              
               // Redirect to home
+              console.log('[Settings] Redirecting...');
               router.push('/');
               window.location.reload();
             } else {
@@ -803,7 +848,7 @@ export default function SettingsPage() {
               
               // Session set et
               if (data.tokens?.accessToken && data.tokens?.refreshToken) {
-                await fetch('/api/auth/set-capacitor-session', {
+                const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include',
@@ -813,7 +858,58 @@ export default function SettingsPage() {
                   }),
                 });
                 
+                if (!sessionResponse.ok) {
+                  console.error('[Settings] ❌ Failed to set session');
+                  throw new Error('Failed to set session');
+                }
+                
+                console.log('[Settings] ✅ Session set successfully');
+                
+                // 🔥 CRITICAL: Link device to user after login
+                try {
+                  const { Device } = await import('@capacitor/device');
+                  const deviceInfo = await Device.getId();
+                  const deviceId = deviceInfo.identifier;
+                  
+                  if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+                    console.log('[Settings] 🔗 Linking device to user...', { deviceId });
+                    
+                    // Get FCM token if available
+                    const fcmToken = typeof window !== 'undefined' 
+                      ? (localStorage.getItem('fcm_token') || (window as any).fcmToken)
+                      : null;
+                    
+                    const platform = typeof window !== 'undefined' 
+                      ? ((window as any).Capacitor?.getPlatform?.() || 'ios')
+                      : 'ios';
+                    
+                    const linkResponse = await fetch('/api/devices/link', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({ 
+                        deviceId,
+                        pushToken: fcmToken && fcmToken !== 'null' && fcmToken !== 'undefined' ? fcmToken : undefined,
+                        platform,
+                      }),
+                    });
+                    
+                    if (linkResponse.ok) {
+                      const linkData = await linkResponse.json();
+                      console.log('[Settings] ✅ Device linked to user:', linkData);
+                    } else {
+                      const linkError = await linkResponse.json();
+                      console.warn('[Settings] ⚠️ Device link failed (non-critical):', linkError);
+                    }
+                  } else {
+                    console.warn('[Settings] ⚠️ No valid deviceId available, skipping device link');
+                  }
+                } catch (linkError: any) {
+                  console.warn('[Settings] ⚠️ Device link error (non-critical):', linkError);
+                }
+                
                 // Redirect to home
+                console.log('[Settings] Redirecting...');
                 router.push('/');
                 window.location.reload();
               }
@@ -856,7 +952,7 @@ export default function SettingsPage() {
           
           // Session set et
           if (data.tokens?.accessToken && data.tokens?.refreshToken) {
-            await fetch('/api/auth/set-capacitor-session', {
+            const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               credentials: 'include',
@@ -866,7 +962,58 @@ export default function SettingsPage() {
               }),
             });
             
+            if (!sessionResponse.ok) {
+              console.error('[Settings] ❌ Failed to set session');
+              throw new Error('Failed to set session');
+            }
+            
+            console.log('[Settings] ✅ Session set successfully');
+            
+            // 🔥 CRITICAL: Link device to user after login
+            try {
+              const { Device } = await import('@capacitor/device');
+              const deviceInfo = await Device.getId();
+              const deviceId = deviceInfo.identifier;
+              
+              if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+                console.log('[Settings] 🔗 Linking device to user...', { deviceId });
+                
+                // Get FCM token if available
+                const fcmToken = typeof window !== 'undefined' 
+                  ? (localStorage.getItem('fcm_token') || (window as any).fcmToken)
+                  : null;
+                
+                const platform = typeof window !== 'undefined' 
+                  ? ((window as any).Capacitor?.getPlatform?.() || 'ios')
+                  : 'ios';
+                
+                const linkResponse = await fetch('/api/devices/link', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ 
+                    deviceId,
+                    pushToken: fcmToken && fcmToken !== 'null' && fcmToken !== 'undefined' ? fcmToken : undefined,
+                    platform,
+                  }),
+                });
+                
+                if (linkResponse.ok) {
+                  const linkData = await linkResponse.json();
+                  console.log('[Settings] ✅ Device linked to user:', linkData);
+                } else {
+                  const linkError = await linkResponse.json();
+                  console.warn('[Settings] ⚠️ Device link failed (non-critical):', linkError);
+                }
+              } else {
+                console.warn('[Settings] ⚠️ No valid deviceId available, skipping device link');
+              }
+            } catch (linkError: any) {
+              console.warn('[Settings] ⚠️ Device link error (non-critical):', linkError);
+            }
+            
             // Redirect to home
+            console.log('[Settings] Redirecting...');
             router.push('/');
             window.location.reload();
           }
