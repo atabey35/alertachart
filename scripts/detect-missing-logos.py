@@ -21,16 +21,21 @@ OUTPUT_FILE = Path('/tmp/still_missing_logos.txt')
 def get_futures_coins():
     """Binance Futures API'den coin listesini al"""
     try:
-        import requests
+        from urllib.request import urlopen, Request
+        from urllib.error import URLError, HTTPError
+        import json
+        
         url = 'https://fapi.binance.com/fapi/v1/exchangeInfo'
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            data = response.json()
-            coins = set()
-            for symbol in data.get('symbols', []):
-                if symbol.get('status') == 'TRADING' and symbol.get('contractType') == 'PERPETUAL':
-                    coins.add(symbol.get('baseAsset', '').lower())
-            return coins
+        req = Request(url)
+        req.add_header('User-Agent', 'Mozilla/5.0')
+        with urlopen(req, timeout=10) as response:
+            if response.status == 200:
+                data = json.loads(response.read().decode('utf-8'))
+                coins = set()
+                for symbol in data.get('symbols', []):
+                    if symbol.get('status') == 'TRADING' and symbol.get('contractType') == 'PERPETUAL':
+                        coins.add(symbol.get('baseAsset', '').lower())
+                return coins
     except Exception as e:
         print(f"⚠️  API'den coin listesi alınamadı: {e}")
         return None

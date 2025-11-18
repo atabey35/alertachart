@@ -25,6 +25,7 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(com.codetrixstudio.capacitor.GoogleAuth.GoogleAuth.class);
         registerPlugin(com.getcapacitor.community.applesignin.SignInWithApple.class);
         registerPlugin(WebViewController.class);
+        registerPlugin(InAppPurchasePlugin.class);
         
         super.onCreate(savedInstanceState);
         

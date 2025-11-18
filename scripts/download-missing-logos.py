@@ -8,9 +8,12 @@ Kullanım: python3 scripts/download-missing-logos.py
 
 import os
 import sys
-import requests
 import time
+import json
+import subprocess
 from pathlib import Path
+from urllib.request import urlopen, Request
+from urllib.error import URLError, HTTPError
 
 # Dizinler
 SCRIPT_DIR = Path(__file__).parent
@@ -29,14 +32,15 @@ REQUEST_DELAY = 0.5  # saniye
 def download_file(url, dest_path):
     """Dosya indir"""
     try:
-        response = requests.get(url, timeout=10, stream=True)
-        if response.status_code == 200:
-            with open(dest_path, 'wb') as f:
-                for chunk in response.iter_content(chunk_size=8192):
-                    f.write(chunk)
-            return True
+        req = Request(url)
+        req.add_header('User-Agent', 'Mozilla/5.0')
+        with urlopen(req, timeout=10) as response:
+            if response.status == 200:
+                with open(dest_path, 'wb') as f:
+                    f.write(response.read())
+                return True
         return False
-    except Exception as e:
+    except (URLError, HTTPError, Exception) as e:
         return False
 
 
@@ -44,13 +48,15 @@ def find_coin_id(symbol):
     """CoinGecko'dan coin ID bul"""
     try:
         url = f"{COINGECKO_API}/coins/list"
-        response = requests.get(url, timeout=10)
-        if response.status_code == 200:
-            coins = response.json()
-            for coin in coins:
-                if coin['symbol'].lower() == symbol.lower():
-                    return coin['id']
-    except Exception as e:
+        req = Request(url)
+        req.add_header('User-Agent', 'Mozilla/5.0')
+        with urlopen(req, timeout=10) as response:
+            if response.status == 200:
+                coins = json.loads(response.read().decode('utf-8'))
+                for coin in coins:
+                    if coin['symbol'].lower() == symbol.lower():
+                        return coin['id']
+    except (URLError, HTTPError, Exception) as e:
         pass
     return None
 

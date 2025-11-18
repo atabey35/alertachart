@@ -46,3 +46,10 @@ alert_logs.txt
 
 # Test files
 test-pine-script*.txt
+
+# Android signing keys (GÜVENLİK - ASLA commit etmeyin!)
+android/keystore.properties
+android/app/*.keystore
+android/app/*.jks
+*.keystore
+*.jks

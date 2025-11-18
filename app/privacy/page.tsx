@@ -46,12 +46,12 @@ export default function PrivacyPage() {
           <p className="text-gray-400 mb-8">
             <strong>Geçerli Alan Adı:</strong>{' '}
             <a 
-              href="https://alerta.kriptokirmizi.com" 
+              href="https://alertachart.com" 
               className="text-blue-400 hover:text-blue-300 underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              https://alerta.kriptokirmizi.com
+              https://alertachart.com
             </a>
           </p>
 
@@ -126,10 +126,10 @@ export default function PrivacyPage() {
             <p className="text-gray-300 leading-relaxed">
               Bu gizlilik politikası zaman zaman güncellenebilir. Güncel sürüm her zaman{' '}
               <a 
-                href="https://alerta.kriptokirmizi.com/privacy" 
+                href="https://alertachart.com/privacy" 
                 className="text-blue-400 hover:text-blue-300 underline"
               >
-                https://alerta.kriptokirmizi.com/privacy
+                https://alertachart.com/privacy
               </a>{' '}
               adresinde yayınlanacaktır.
             </p>
@@ -142,10 +142,10 @@ export default function PrivacyPage() {
             </p>
             <p className="text-gray-300 leading-relaxed mt-4">
               📧 <a 
-                href="mailto:kriptokirmizi@gmail.com" 
+                href="mailto:info@alertachart.com" 
                 className="text-blue-400 hover:text-blue-300 underline"
               >
-                kriptokirmizi@gmail.com
+                info@alertachart.com
               </a>
             </p>
           </section>

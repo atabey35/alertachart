@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { X, Play, Sparkles, Bell, BarChart3, Clock } from 'lucide-react';
 import FeatureVideoModal from './FeatureVideoModal';
+import { initializeIAP, purchaseProduct, isIAPAvailable, getProducts } from '@/services/iapService';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -30,6 +31,24 @@ export default function UpgradeModal({
     videoUrl?: string;
     description: string;
   } | null>(null);
+  const [iapInitialized, setIapInitialized] = useState(false);
+  const [iapAvailable, setIapAvailable] = useState(false);
+
+  // Initialize IAP on mount
+  useEffect(() => {
+    const initIAP = async () => {
+      const available = await isIAPAvailable();
+      setIapAvailable(available);
+      
+      if (available) {
+        const initialized = await initializeIAP();
+        setIapInitialized(initialized);
+        console.log('[UpgradeModal] IAP initialized:', initialized);
+      }
+    };
+    
+    initIAP();
+  }, []);
 
   // Get device ID and platform
   useEffect(() => {
@@ -148,6 +167,50 @@ export default function UpgradeModal({
       onClose();
     } catch (err: any) {
       console.error('[UpgradeModal] Error starting trial:', err);
+      setError('Bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePurchase = async () => {
+    if (loading) return;
+    
+    // Check if IAP is available
+    if (!iapAvailable || !iapInitialized) {
+      setError('Satın alma özelliği şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      // Product ID - you can configure this based on your store setup
+      // For now, using a single premium product
+      const productId = platform === 'ios' 
+        ? 'com.kriptokirmizi.alerta.premium.monthly'  // iOS product ID
+        : 'premium_monthly';  // Android product ID
+
+      console.log('[UpgradeModal] 🛒 Starting purchase for product:', productId);
+
+      const result = await purchaseProduct(productId);
+
+      if (result.success) {
+        console.log('[UpgradeModal] ✅ Purchase successful');
+        
+        // Refresh user plan
+        onUpgrade();
+        onClose();
+        
+        // Show success message
+        alert('Satın alma başarılı! Premium özellikler aktif edildi.');
+      } else {
+        console.error('[UpgradeModal] ❌ Purchase failed:', result.error);
+        setError(result.error || 'Satın alma işlemi başarısız oldu. Lütfen tekrar deneyin.');
+      }
+    } catch (err: any) {
+      console.error('[UpgradeModal] Error during purchase:', err);
       setError('Bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
@@ -284,14 +347,26 @@ export default function UpgradeModal({
             )}
 
             <button
-              onClick={onUpgrade}
-              className="w-full py-4 px-4 rounded-xl bg-gray-800/80 hover:bg-gray-700/80 text-white font-semibold transition-all border border-gray-600/50 active:scale-[0.98] shadow-md touch-manipulation"
+              onClick={handlePurchase}
+              disabled={loading || (platform !== 'web' && (!iapAvailable || !iapInitialized))}
+              className="w-full py-4 px-4 rounded-xl bg-gray-800/80 hover:bg-gray-700/80 disabled:bg-gray-900/50 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold transition-all border border-gray-600/50 active:scale-[0.98] shadow-md touch-manipulation"
             >
-              {platform === 'ios'
-                ? 'App Store\'dan Satın Al'
-                : platform === 'android'
-                ? 'Google Play\'den Satın Al'
-                : 'Premium\'a Geç'}
+              {loading ? (
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {platform === 'ios'
+                    ? 'Satın Alınıyor...'
+                    : platform === 'android'
+                    ? 'Satın Alınıyor...'
+                    : 'İşleniyor...'}
+                </span>
+              ) : (
+                platform === 'ios'
+                  ? 'App Store\'dan Satın Al'
+                  : platform === 'android'
+                  ? 'Google Play\'den Satın Al'
+                  : 'Premium\'a Geç'}
+              )}
             </button>
 
             <button

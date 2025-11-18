@@ -46,12 +46,12 @@ export default function PrivacyPageEN() {
           <p className="text-gray-400 mb-8">
             <strong>Applicable Domain:</strong>{' '}
             <a 
-              href="https://alerta.kriptokirmizi.com" 
+              href="https://alertachart.com" 
               className="text-blue-400 hover:text-blue-300 underline"
               target="_blank"
               rel="noopener noreferrer"
             >
-              https://alerta.kriptokirmizi.com
+              https://alertachart.com
             </a>
           </p>
 
@@ -126,10 +126,10 @@ export default function PrivacyPageEN() {
             <p className="text-gray-300 leading-relaxed">
               This privacy policy may be updated from time to time. The current version will always be published at{' '}
               <a 
-                href="https://alerta.kriptokirmizi.com/privacy" 
+                href="https://alertachart.com/privacy" 
                 className="text-blue-400 hover:text-blue-300 underline"
               >
-                https://alerta.kriptokirmizi.com/privacy
+                https://alertachart.com/privacy
               </a>.
             </p>
           </section>
@@ -141,10 +141,10 @@ export default function PrivacyPageEN() {
             </p>
             <p className="text-gray-300 leading-relaxed mt-4">
               📧 <a 
-                href="mailto:kriptokirmizi@gmail.com" 
+                href="mailto:info@alertachart.com" 
                 className="text-blue-400 hover:text-blue-300 underline"
               >
-                kriptokirmizi@gmail.com
+                info@alertachart.com
               </a>
             </p>
           </section>
