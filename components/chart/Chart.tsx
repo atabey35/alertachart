@@ -842,10 +842,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     volumeSeriesRef.current = volumeSeries;
     
     // console.log('[Chart] ✅ Chart and series refs set:', {
-      chartRef: !!chartRef.current,
-      seriesRef: !!seriesRef.current,
-      volumeSeriesRef: !!volumeSeriesRef.current
-    });
+    //   chartRef: !!chartRef.current,
+    //   seriesRef: !!seriesRef.current,
+    //   volumeSeriesRef: !!volumeSeriesRef.current
+    // });
 
     // Remove TradingView watermark aggressively
     const removeWatermark = () => {
@@ -1814,11 +1814,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
 
       // console.log('[Chart] Received data:', {
-        dataLength: response.data?.length || 0,
-        from: response.from,
-        to: response.to,
-        sampleBar: response.data?.[0]
-      });
+      //   dataLength: response.data?.length || 0,
+      //   from: response.from,
+      //   to: response.to,
+      //   sampleBar: response.data?.[0]
+      // });
 
       if (response.data && response.data.length > 0) {
         // Add to cache
@@ -1844,11 +1844,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         const lastHistoricalBar = response.data[response.data.length - 1];
         
         // console.log('[Chart] 🔍 Live bar check:', {
-          now: new Date(now).toISOString(),
-          currentBarWindow: new Date(currentBarTime).toISOString(),
-          lastHistoricalBar: new Date(lastHistoricalBar.time).toISOString(),
-          lastBarIsCurrentWindow: lastHistoricalBar.time === currentBarTime
-        });
+        //   now: new Date(now).toISOString(),
+        //   currentBarWindow: new Date(currentBarTime).toISOString(),
+        //   lastHistoricalBar: new Date(lastHistoricalBar.time).toISOString(),
+        //   lastBarIsCurrentWindow: lastHistoricalBar.time === currentBarTime
+        // });
         
         // Check if last bar is EMPTY (no trades yet)
         const isLastBarEmpty = lastHistoricalBar.high === lastHistoricalBar.open && 
@@ -1953,12 +1953,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const to = oldestTimestampRef.current - 1;
 
       // console.log('[Chart] Loading older candles:', { 
-        exchange: currentExchange,
-        pair: currentPair,
-        timeframe: currentTimeframe,
-        from: new Date(from).toISOString(), 
-        to: new Date(to).toISOString() 
-      });
+      //   exchange: currentExchange,
+      //   pair: currentPair,
+      //   timeframe: currentTimeframe,
+      //   from: new Date(from).toISOString(), 
+      //   to: new Date(to).toISOString() 
+      // });
 
       // Use Railway backend for pagination
       const response = await historicalService.fetchOlder(from, to, currentTimeframe, marketList);
@@ -1982,9 +1982,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         oldestTimestampRef.current = oldestBar.time;
 
         // console.log('[Chart] Loaded older data:', {
-          count: response.data.length,
-          newOldest: new Date(oldestTimestampRef.current).toISOString()
-        });
+        //   count: response.data.length,
+        //   newOldest: new Date(oldestTimestampRef.current).toISOString()
+        // });
 
         // Update chart without resetting view
         updateChart();
