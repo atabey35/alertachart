@@ -45,6 +45,90 @@ post_install do |installer|
     end
   end
   
+  # Patch Plugin.swift to fix GoogleSignIn 7.0 API compatibility
+  plugin_swift_path = File.expand_path('../../node_modules/@codetrix-studio/capacitor-google-auth/ios/Plugin/Plugin.swift', __dir__)
+  if File.exist?(plugin_swift_path)
+    swift_content = File.read(plugin_swift_path)
+    original_content = swift_content.dup
+    
+    # Fix deprecated getConfigValue calls
+    swift_content.gsub!(/getConfigValue\("scopes"\) as\? \[String\]/, 'getConfig().getArray("scopes", String.self) ?? []')
+    swift_content.gsub!(/getConfigValue\("forceCodeForRefreshToken"\) as\? Bool/, 'getConfig().getBoolean("forceCodeForRefreshToken", false)')
+    
+    # Fix GoogleSignIn 7.0 API: user.authentication is now async
+    # Replace user.authentication.accessToken with async call
+    if swift_content.include?('user.authentication.accessToken')
+      # Update resolveSignInCallWith to use async authentication
+      resolve_function = <<~SWIFT
+    func resolveSignInCallWith(user: GIDGoogleUser) {
+        user.refreshTokensIfNeeded { user, error in
+            guard let user = user, error == nil else {
+                self.signInCall?.reject(error?.localizedDescription ?? "Failed to get authentication");
+                return;
+            }
+            
+            var userData: [String: Any] = [
+                "authentication": [
+                    "accessToken": user.accessToken.tokenString,
+                    "idToken": user.idToken?.tokenString ?? NSNull(),
+                    "refreshToken": user.refreshToken.tokenString
+                ],
+                "serverAuthCode": user.serverAuthCode ?? NSNull(),
+                "email": user.profile?.email ?? NSNull(),
+                "familyName": user.profile?.familyName ?? NSNull(),
+                "givenName": user.profile?.givenName ?? NSNull(),
+                "id": user.userID ?? NSNull(),
+                "name": user.profile?.name ?? NSNull()
+            ];
+            if let imageUrl = user.profile?.imageURL(withDimension: 100)?.absoluteString {
+                userData["imageUrl"] = imageUrl;
+            }
+            self.signInCall?.resolve(userData);
+        }
+    }
+      SWIFT
+      
+      # Replace the old resolveSignInCallWith function
+      old_function_pattern = /func resolveSignInCallWith\(user: GIDGoogleUser\) \{[\s\S]*?signInCall\?\.resolve\(userData\);\s*\}/
+      swift_content.gsub!(old_function_pattern, resolve_function.strip)
+    end
+    
+    # Fix refresh function to use new API
+    if swift_content.include?('currentUser!.authentication.do')
+      refresh_function = <<~SWIFT
+    @objc
+    func refresh(_ call: CAPPluginCall) {
+        DispatchQueue.main.async {
+            guard let user = self.googleSignIn.currentUser else {
+                call.reject("User not logged in.");
+                return
+            }
+            user.refreshTokensIfNeeded { user, error in
+                guard let user = user, error == nil else {
+                    call.reject(error?.localizedDescription ?? "Something went wrong.");
+                    return;
+                }
+                let authenticationData: [String: Any] = [
+                    "accessToken": user.accessToken.tokenString,
+                    "idToken": user.idToken?.tokenString ?? NSNull(),
+                    "refreshToken": user.refreshToken.tokenString
+                ]
+                call.resolve(authenticationData);
+            }
+        }
+    }
+      SWIFT
+      
+      old_refresh_pattern = /@objc\s+func refresh\(_ call: CAPPluginCall\) \{[\s\S]*?call\.resolve\(authenticationData\);\s*\}\s*\}/
+      swift_content.gsub!(old_refresh_pattern, refresh_function.strip)
+    end
+    
+    if swift_content != original_content
+      File.write(plugin_swift_path, swift_content)
+      puts "✅ Patched Plugin.swift for GoogleSignIn 7.0 API compatibility"
+    end
+  end
+  
   # Set minimum deployment target for all targets
   installer.pods_project.targets.each do |target|
     target.build_configurations.each do |config|
