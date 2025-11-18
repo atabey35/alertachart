@@ -158,7 +158,49 @@ export default function IOSLogin() {
                 throw new Error(`Failed to set session: ${sessionError.error || 'Unknown error'}`);
               }
               
-              console.log('[IOSLogin] ✅ Session set successfully, redirecting...');
+              console.log('[IOSLogin] ✅ Session set successfully');
+              
+              // 🔥 CRITICAL: Link device to user after login
+              try {
+                const { Device } = await import('@capacitor/device');
+                const deviceInfo = await Device.getId();
+                const deviceId = deviceInfo.identifier;
+                
+                if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+                  console.log('[IOSLogin] 🔗 Linking device to user...', { deviceId });
+                  
+                  // Get FCM token if available
+                  const fcmToken = typeof window !== 'undefined' 
+                    ? (localStorage.getItem('fcm_token') || (window as any).fcmToken)
+                    : null;
+                  
+                  const platform = 'ios';
+                  
+                  const linkResponse = await fetch('/api/devices/link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                      deviceId,
+                      pushToken: fcmToken && fcmToken !== 'null' && fcmToken !== 'undefined' ? fcmToken : undefined,
+                      platform,
+                    }),
+                  });
+                  
+                  if (linkResponse.ok) {
+                    const linkData = await linkResponse.json();
+                    console.log('[IOSLogin] ✅ Device linked to user:', linkData);
+                  } else {
+                    const linkError = await linkResponse.json();
+                    console.warn('[IOSLogin] ⚠️ Device link failed (non-critical):', linkError);
+                  }
+                } else {
+                  console.warn('[IOSLogin] ⚠️ No valid deviceId available, skipping device link');
+                }
+              } catch (linkError: any) {
+                console.warn('[IOSLogin] ⚠️ Device link error (non-critical):', linkError);
+              }
+              
               // Redirect to home
               router.push('/');
               window.location.reload();
@@ -292,7 +334,49 @@ export default function IOSLogin() {
                 throw new Error(`Failed to set session: ${sessionError.error || 'Unknown error'}`);
               }
               
-              console.log('[IOSLogin] ✅ Session set successfully, redirecting...');
+              console.log('[IOSLogin] ✅ Session set successfully');
+              
+              // 🔥 CRITICAL: Link device to user after login
+              try {
+                const { Device } = await import('@capacitor/device');
+                const deviceInfo = await Device.getId();
+                const deviceId = deviceInfo.identifier;
+                
+                if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+                  console.log('[IOSLogin] 🔗 Linking device to user...', { deviceId });
+                  
+                  // Get FCM token if available
+                  const fcmToken = typeof window !== 'undefined' 
+                    ? (localStorage.getItem('fcm_token') || (window as any).fcmToken)
+                    : null;
+                  
+                  const platform = 'ios';
+                  
+                  const linkResponse = await fetch('/api/devices/link', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ 
+                      deviceId,
+                      pushToken: fcmToken && fcmToken !== 'null' && fcmToken !== 'undefined' ? fcmToken : undefined,
+                      platform,
+                    }),
+                  });
+                  
+                  if (linkResponse.ok) {
+                    const linkData = await linkResponse.json();
+                    console.log('[IOSLogin] ✅ Device linked to user:', linkData);
+                  } else {
+                    const linkError = await linkResponse.json();
+                    console.warn('[IOSLogin] ⚠️ Device link failed (non-critical):', linkError);
+                  }
+                } else {
+                  console.warn('[IOSLogin] ⚠️ No valid deviceId available, skipping device link');
+                }
+              } catch (linkError: any) {
+                console.warn('[IOSLogin] ⚠️ Device link error (non-critical):', linkError);
+              }
+              
               // Redirect to home
               router.push('/');
               window.location.reload();

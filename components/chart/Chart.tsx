@@ -494,7 +494,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       if (saved) {
         const loadedDrawings = JSON.parse(saved);
         setDrawings(loadedDrawings);
-        console.log('[Chart] Loaded drawings from localStorage:', loadedDrawings.length);
+        // console.log('[Chart] Loaded drawings from localStorage:', loadedDrawings.length);
       }
     } catch (e) {
       console.error('[Chart] Failed to load drawings:', e);
@@ -506,7 +506,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const storageKey = `drawings_${exchange}_${pair}`;
     try {
       localStorage.setItem(storageKey, JSON.stringify(drawings));
-      console.log('[Chart] Saved drawings to localStorage:', drawings.length);
+      // console.log('[Chart] Saved drawings to localStorage:', drawings.length);
     } catch (e) {
       console.error('[Chart] Failed to save drawings:', e);
     }
@@ -617,7 +617,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       width = 600;
     }
     
-    console.log('[Chart] Creating chart with dimensions:', { width, height });
+    // console.log('[Chart] Creating chart with dimensions:', { width, height });
     
     const chart = createChart(containerRef.current, {
       width,
@@ -841,7 +841,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     seriesRef.current = series;
     volumeSeriesRef.current = volumeSeries;
     
-    console.log('[Chart] ✅ Chart and series refs set:', {
+    // console.log('[Chart] ✅ Chart and series refs set:', {
       chartRef: !!chartRef.current,
       seriesRef: !!seriesRef.current,
       volumeSeriesRef: !!volumeSeriesRef.current
@@ -1761,7 +1761,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       if (seriesRef.current && volumeSeriesRef.current) {
         seriesRef.current.setData([]);
         volumeSeriesRef.current.setData([]);
-        console.log('[Chart] Cleared old chart data');
+        // console.log('[Chart] Cleared old chart data');
       }
 
       // Capture current values to detect changes during async operation
@@ -1796,7 +1796,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
       const marketList = markets.length > 0 ? markets : [`${currentExchange}:${currentPair}`];
 
-      console.log('[Chart] Fetching historical data:', { from, to, currentTimeframe, marketList });
+      // console.log('[Chart] Fetching historical data:', { from, to, currentTimeframe, marketList });
 
       // USE RAILWAY FOR ALL TIMEFRAMES
       // Railway includes current open candle with live data, which is critical for immediate chart movement
@@ -1813,7 +1813,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         return;
       }
 
-      console.log('[Chart] Received data:', {
+      // console.log('[Chart] Received data:', {
         dataLength: response.data?.length || 0,
         from: response.from,
         to: response.to,
@@ -1828,11 +1828,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         const oldestBar = response.data[0];
         oldestTimestampRef.current = oldestBar.time;
 
-        console.log('[Chart] Cache stats:', {
-          chunks: cacheRef.current.getChunkCount(),
-          bars: cacheRef.current.getBarCount(),
-          oldestTimestamp: new Date(oldestTimestampRef.current).toISOString()
-        });
+        // console.log('[Chart] Cache stats:', {
+        //   chunks: cacheRef.current.getChunkCount(),
+        //   bars: cacheRef.current.getBarCount(),
+        //   oldestTimestamp: new Date(oldestTimestampRef.current).toISOString()
+        // });
 
         // Update chart with historical data
         updateChart();
@@ -1843,7 +1843,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         const currentBarTime = Math.floor(now / (currentTimeframe * 1000)) * (currentTimeframe * 1000);
         const lastHistoricalBar = response.data[response.data.length - 1];
         
-        console.log('[Chart] 🔍 Live bar check:', {
+        // console.log('[Chart] 🔍 Live bar check:', {
           now: new Date(now).toISOString(),
           currentBarWindow: new Date(currentBarTime).toISOString(),
           lastHistoricalBar: new Date(lastHistoricalBar.time).toISOString(),
@@ -1855,18 +1855,18 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                                lastHistoricalBar.low === lastHistoricalBar.open && 
                                lastHistoricalBar.vbuy === 0;
         
-        console.log('[Chart] 📊 LAST BAR DETAILS:', {
-          time: lastHistoricalBar.time,
-          timeISO: new Date(lastHistoricalBar.time).toISOString(),
-          open: lastHistoricalBar.open,
-          high: lastHistoricalBar.high,
-          low: lastHistoricalBar.low,
-          close: lastHistoricalBar.close,
-          vbuy: lastHistoricalBar.vbuy,
-          vsell: lastHistoricalBar.vsell,
-          isEmpty: isLastBarEmpty,
-          isBeforeCurrentWindow: lastHistoricalBar.time < currentBarTime
-        });
+        // console.log('[Chart] 📊 LAST BAR DETAILS:', {
+        //   time: lastHistoricalBar.time,
+        //   timeISO: new Date(lastHistoricalBar.time).toISOString(),
+        //   open: lastHistoricalBar.open,
+        //   high: lastHistoricalBar.high,
+        //   low: lastHistoricalBar.low,
+        //   close: lastHistoricalBar.close,
+        //   vbuy: lastHistoricalBar.vbuy,
+        //   vsell: lastHistoricalBar.vsell,
+        //   isEmpty: isLastBarEmpty,
+        //   isBeforeCurrentWindow: lastHistoricalBar.time < currentBarTime
+        // });
         
         // ALWAYS create current candle if it doesn't match current time window
         // This ensures immediate chart movement on all timeframes
@@ -1952,7 +1952,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const from = oldestTimestampRef.current - hoursBack * 60 * 60 * 1000;
       const to = oldestTimestampRef.current - 1;
 
-      console.log('[Chart] Loading older candles:', { 
+      // console.log('[Chart] Loading older candles:', { 
         exchange: currentExchange,
         pair: currentPair,
         timeframe: currentTimeframe,
@@ -1981,7 +1981,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         const oldestBar = response.data[0];
         oldestTimestampRef.current = oldestBar.time;
 
-        console.log('[Chart] Loaded older data:', {
+        // console.log('[Chart] Loaded older data:', {
           count: response.data.length,
           newOldest: new Date(oldestTimestampRef.current).toISOString()
         });
@@ -2055,7 +2055,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     
     // Generate unique worker ID for debugging
     const workerId = Date.now().toString(36) + Math.random().toString(36).substring(7);
-    console.log('[Chart] 🆕 Creating NEW worker #' + thisWorkerGeneration, 'ID:', workerId.substring(0, 8));
+    // console.log('[Chart] 🆕 Creating NEW worker #' + thisWorkerGeneration, 'ID:', workerId.substring(0, 8));
 
     // Create new worker
     try {
@@ -2083,7 +2083,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
         switch (eventType) {
           case 'connected':
-            console.log('[Chart] Worker #' + thisWorkerGeneration, 'connected');
+            // console.log('[Chart] Worker #' + thisWorkerGeneration, 'connected');
             setWsConnected(true);
             
             // NOW that we're connected, initialize the active bar
@@ -2093,14 +2093,14 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
               const now = Date.now();
               const currentCandleTime = Math.floor(now / (timeframe * 1000)) * (timeframe * 1000);
               
-              console.log('[Chart] 📍 Current time window:', new Date(currentCandleTime).toISOString());
+              // console.log('[Chart] 📍 Current time window:', new Date(currentCandleTime).toISOString());
               
               // Try to find current window bar in cache
               const allBars = cacheRef.current.getAllBars();
               let currentCandle = allBars.find(bar => bar.time === currentCandleTime);
               
               if (currentCandle) {
-                console.log('[Chart] ✅ Found current bar in cache, sending to worker:', currentCandle.close);
+                // console.log('[Chart] ✅ Found current bar in cache, sending to worker:', currentCandle.close);
                 workerRef.current.postMessage({
                   op: 'initActiveBar',
                   data: currentCandle,
@@ -2191,7 +2191,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
     
     // DEBUG: Log every tick to see what's happening
-    console.log('[Chart] 📥 Tick received:', bar.close, 'at', new Date(bar.time).toISOString());
+    // console.log('[Chart] 📥 Tick received:', bar.close, 'at', new Date(bar.time).toISOString());
     
     // Add bar to cache
     cacheRef.current.addBar(bar);
@@ -2199,7 +2199,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // DEBUG: Check what cache returns after adding
     const allBars = cacheRef.current.getAllBars();
     const lastBar = allBars[allBars.length - 1];
-    console.log('[Chart] 📤 Cache last bar after add:', lastBar.close, 'at', new Date(lastBar.time).toISOString());
+    // console.log('[Chart] 📤 Cache last bar after add:', lastBar.close, 'at', new Date(lastBar.time).toISOString());
     
     // Update current price immediately (works in background tabs)
     // This ensures title updates even when tab is not visible
@@ -2383,7 +2383,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         
         // Only log 10% of updates
         if (Math.random() < 0.1) {
-          console.log('[Chart] 📊 setData:', candleData.length, 'bars, last:', lastBar.close, 'at', new Date(lastBar.time).toISOString());
+          // console.log('[Chart] 📊 setData:', candleData.length, 'bars, last:', lastBar.close, 'at', new Date(lastBar.time).toISOString());
         }
         
         // Smart update strategy:
@@ -2437,7 +2437,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
     
     if (shouldUpdateIndicators) {
-      console.log('[Indicators] 🔄 Updating indicators, bars:', bars.length, 'last close:', bars[bars.length - 1]?.close);
+      // console.log('[Indicators] 🔄 Updating indicators, bars:', bars.length, 'last close:', bars[bars.length - 1]?.close);
       updateIndicators(bars);
       lastIndicatorUpdateRef.current = now;
     }
@@ -2457,7 +2457,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         }
       }, 300);
       isInitialLoadRef.current = false;
-      console.log('[Chart] Initial fit content applied');
+      // console.log('[Chart] Initial fit content applied');
     }
   };
 
@@ -2475,13 +2475,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
     const settings = chartSettingsRef.current; // ✅ Use ref for up-to-date values
 
-    console.log('[Indicators] ✅ Updating with', bars.length, 'bars, last close:', bars[bars.length - 1].close);
-    console.log('[Indicators] Settings check:', {
-      showRSI: settings.showRSI,
-      showMACD: settings.showMACD,
-      hasRSISeries: !!rsiSeriesRef.current,
-      hasMACDSeries: !!macdLineSeriesRef.current
-    });
+    // console.log('[Indicators] ✅ Updating with', bars.length, 'bars, last close:', bars[bars.length - 1].close);
+    // console.log('[Indicators] Settings check:', {
+    //   showRSI: settings.showRSI,
+    //   showMACD: settings.showMACD,
+    //   hasRSISeries: !!rsiSeriesRef.current,
+    //   hasMACDSeries: !!macdLineSeriesRef.current
+    // });
 
     // Update RSI
     if (settings.showRSI && rsiSeriesRef.current) {

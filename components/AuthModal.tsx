@@ -174,6 +174,50 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
         if (sessionResponse.ok) {
           console.log('[AuthModal] Backend auth successful');
+          
+          // 🔥 CRITICAL: Link device to user after login
+          try {
+            const { Device } = await import('@capacitor/device');
+            const deviceInfo = await Device.getId();
+            const deviceId = deviceInfo.identifier;
+            
+            if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+              console.log('[AuthModal] 🔗 Linking device to user...', { deviceId });
+              
+              // Get FCM token if available
+              const fcmToken = typeof window !== 'undefined' 
+                ? (localStorage.getItem('fcm_token') || (window as any).fcmToken)
+                : null;
+              
+              // Detect platform
+              const capacitor = (window as any).Capacitor;
+              const platform = capacitor?.getPlatform?.() || 'ios';
+              
+              const linkResponse = await fetch('/api/devices/link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                  deviceId,
+                  pushToken: fcmToken && fcmToken !== 'null' && fcmToken !== 'undefined' ? fcmToken : undefined,
+                  platform,
+                }),
+              });
+              
+              if (linkResponse.ok) {
+                const linkData = await linkResponse.json();
+                console.log('[AuthModal] ✅ Device linked to user:', linkData);
+              } else {
+                const linkError = await linkResponse.json();
+                console.warn('[AuthModal] ⚠️ Device link failed (non-critical):', linkError);
+              }
+            } else {
+              console.warn('[AuthModal] ⚠️ No valid deviceId available, skipping device link');
+            }
+          } catch (linkError: any) {
+            console.warn('[AuthModal] ⚠️ Device link error (non-critical):', linkError);
+          }
+          
           onSuccess();
           onClose();
           window.location.reload();
@@ -244,6 +288,50 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
 
         if (sessionResponse.ok) {
           console.log('[AuthModal] Backend auth successful');
+          
+          // 🔥 CRITICAL: Link device to user after login
+          try {
+            const { Device } = await import('@capacitor/device');
+            const deviceInfo = await Device.getId();
+            const deviceId = deviceInfo.identifier;
+            
+            if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+              console.log('[AuthModal] 🔗 Linking device to user...', { deviceId });
+              
+              // Get FCM token if available
+              const fcmToken = typeof window !== 'undefined' 
+                ? (localStorage.getItem('fcm_token') || (window as any).fcmToken)
+                : null;
+              
+              // Detect platform
+              const capacitor = (window as any).Capacitor;
+              const platform = capacitor?.getPlatform?.() || 'ios';
+              
+              const linkResponse = await fetch('/api/devices/link', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                  deviceId,
+                  pushToken: fcmToken && fcmToken !== 'null' && fcmToken !== 'undefined' ? fcmToken : undefined,
+                  platform,
+                }),
+              });
+              
+              if (linkResponse.ok) {
+                const linkData = await linkResponse.json();
+                console.log('[AuthModal] ✅ Device linked to user:', linkData);
+              } else {
+                const linkError = await linkResponse.json();
+                console.warn('[AuthModal] ⚠️ Device link failed (non-critical):', linkError);
+              }
+            } else {
+              console.warn('[AuthModal] ⚠️ No valid deviceId available, skipping device link');
+            }
+          } catch (linkError: any) {
+            console.warn('[AuthModal] ⚠️ Device link error (non-critical):', linkError);
+          }
+          
           onSuccess();
           onClose();
           window.location.reload();

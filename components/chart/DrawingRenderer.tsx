@@ -1734,10 +1734,10 @@ export default function DrawingRenderer({
     }
   };
 
-  // Debug: Log when pointer events change
-  if (typeof window !== 'undefined') {
-    console.log('🎨 DrawingRenderer - isDrawing:', isDrawing, 'pointerEvents:', isDrawing ? 'none' : 'auto', 'drawings count:', drawings.length);
-  }
+  // Debug: Log when pointer events change (disabled for cleaner logs)
+  // if (typeof window !== 'undefined') {
+  //   console.log('🎨 DrawingRenderer - isDrawing:', isDrawing, 'pointerEvents:', isDrawing ? 'none' : 'auto', 'drawings count:', drawings.length);
+  // }
 
   return (
     <svg
