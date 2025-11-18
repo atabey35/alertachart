@@ -1,6 +1,6 @@
 require_relative '../../node_modules/@capacitor/ios/scripts/pods_helpers'
 
-platform :ios, '14.0'
+platform :ios, '15.0'
 use_frameworks!
 
 # workaround to avoid Xcode caching of Pods that requires
@@ -24,80 +24,33 @@ target 'App' do
   # Firebase for push notifications
   pod 'Firebase/Messaging'
   pod 'Firebase/Core'
+  
+  # Override Google SDK versions to include Privacy Manifest support
+  # GoogleSignIn 7.0+ includes PrivacyInfo.xcprivacy
+  # Force override plugin's dependency constraint
+  pod 'GoogleSignIn', '~> 7.0'
 end
 
 post_install do |installer|
   assertDeploymentTarget(installer)
   
-  # Add privacy manifests for Google SDKs that don't include them
-  pods_dir = File.expand_path('Pods', __dir__)
-  privacy_manifest_content = <<~XML
-    <?xml version="1.0" encoding="UTF-8"?>
-    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-    <plist version="1.0">
-    <dict>
-      <key>NSPrivacyTracking</key>
-      <false/>
-      <key>NSPrivacyTrackingDomains</key>
-      <array/>
-      <key>NSPrivacyCollectedDataTypes</key>
-      <array>
-        <dict>
-          <key>NSPrivacyCollectedDataType</key>
-          <string>NSPrivacyCollectedDataTypeUserID</string>
-          <key>NSPrivacyCollectedDataTypeLinked</key>
-          <true/>
-          <key>NSPrivacyCollectedDataTypeTracking</key>
-          <false/>
-          <key>NSPrivacyCollectedDataTypePurposes</key>
-          <array>
-            <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
-          </array>
-        </dict>
-      </array>
-      <key>NSPrivacyAccessedAPITypes</key>
-      <array>
-        <dict>
-          <key>NSPrivacyAccessedAPIType</key>
-          <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
-          <key>NSPrivacyAccessedAPITypeReasons</key>
-          <array>
-            <string>CA92.1</string>
-          </array>
-        </dict>
-        <dict>
-          <key>NSPrivacyAccessedAPIType</key>
-          <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
-          <key>NSPrivacyAccessedAPITypeReasons</key>
-          <array>
-            <string>C617.1</string>
-          </array>
-        </dict>
-      </array>
-    </dict>
-    </plist>
-  XML
+  # Patch plugin's podspec to allow GoogleSignIn 7.0
+  plugin_podspec_path = File.expand_path('../../node_modules/@codetrix-studio/capacitor-google-auth/CodetrixStudioCapacitorGoogleAuth.podspec', __dir__)
+  if File.exist?(plugin_podspec_path)
+    podspec_content = File.read(plugin_podspec_path)
+    if podspec_content.include?("s.dependency 'GoogleSignIn', '~> 6.2.4'")
+      podspec_content.gsub!("s.dependency 'GoogleSignIn', '~> 6.2.4'", "s.dependency 'GoogleSignIn', '~> 7.0'")
+      File.write(plugin_podspec_path, podspec_content)
+      puts "✅ Patched CodetrixStudioCapacitorGoogleAuth.podspec to use GoogleSignIn ~> 7.0"
+    end
+  end
   
-  ['GoogleSignIn', 'GTMAppAuth', 'GTMSessionFetcher'].each do |sdk_name|
-    # Try different possible paths
-    possible_paths = [
-      File.join(pods_dir, sdk_name, 'Resources', 'PrivacyInfo.xcprivacy'),
-      File.join(pods_dir, sdk_name, 'PrivacyInfo.xcprivacy'),
-      File.join(pods_dir, sdk_name, sdk_name, 'Resources', 'PrivacyInfo.xcprivacy'),
-    ]
-    
-    privacy_manifest_path = possible_paths.find { |path| File.exist?(File.dirname(path)) }
-    
-    if privacy_manifest_path && !File.exist?(privacy_manifest_path)
-      FileUtils.mkdir_p(File.dirname(privacy_manifest_path))
-      File.write(privacy_manifest_path, privacy_manifest_content)
-      puts "✅ Added PrivacyInfo.xcprivacy for #{sdk_name} at #{privacy_manifest_path}"
-    elsif !privacy_manifest_path
-      # Create in the most likely location
-      default_path = File.join(pods_dir, sdk_name, 'Resources', 'PrivacyInfo.xcprivacy')
-      FileUtils.mkdir_p(File.dirname(default_path))
-      File.write(default_path, privacy_manifest_content)
-      puts "✅ Added PrivacyInfo.xcprivacy for #{sdk_name} at #{default_path}"
+  # Set minimum deployment target for all targets
+  installer.pods_project.targets.each do |target|
+    target.build_configurations.each do |config|
+      if config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'].to_f < 15.0
+        config.build_settings['IPHONEOS_DEPLOYMENT_TARGET'] = '15.0'
+      end
     end
   end
 end
