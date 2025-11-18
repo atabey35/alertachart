@@ -209,7 +209,12 @@ function CapacitorAuthContent() {
                   : finalDeviceId;
                 
                 if (deviceIdToLink && deviceIdToLink !== 'unknown' && deviceIdToLink !== 'null' && deviceIdToLink !== 'undefined') {
-                  console.log('[CapacitorAuth] Linking device to user...', deviceIdToLink);
+                  console.log('[CapacitorAuth] 🔗 Linking device to user...', {
+                    deviceId: deviceIdToLink,
+                    platform: finalPlatform,
+                    hasFCMToken: !!fcmTokenFromStorage,
+                    fcmTokenPreview: fcmTokenFromStorage ? `${fcmTokenFromStorage.substring(0, 30)}...` : 'none',
+                  });
                   
                   // 🔥 CRITICAL: Try to register device first if FCM token is available
                   // This ensures device exists in database before linking
@@ -249,6 +254,7 @@ function CapacitorAuthContent() {
                   
                   // Now try to link device to user (backend will create device if it doesn't exist)
                   try {
+                    console.log('[CapacitorAuth] 📤 Sending device link request to /api/devices/link...');
                     const linkResponse = await fetch('/api/devices/link', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -260,12 +266,24 @@ function CapacitorAuthContent() {
                       }),
                     });
                     
+                    console.log('[CapacitorAuth] 📥 Device link response status:', linkResponse.status);
+                    
                     if (linkResponse.ok) {
                       const linkData = await linkResponse.json();
-                      console.log('[CapacitorAuth] ✅ Device linked to user:', linkData);
+                      console.log('[CapacitorAuth] ✅ Device linked to user:', {
+                        success: linkData.success,
+                        deviceId: linkData.device?.deviceId,
+                        userId: linkData.device?.userId,
+                        linkedAt: linkData.device?.linkedAt,
+                        hasValidToken: linkData.device?.hasValidToken,
+                      });
                     } else {
                       const linkError = await linkResponse.json();
-                      console.warn('[CapacitorAuth] ⚠️ Failed to link device:', linkError);
+                      console.error('[CapacitorAuth] ❌ Failed to link device:', {
+                        status: linkResponse.status,
+                        error: linkError.error,
+                        details: linkError,
+                      });
                       
                       // If device not found and we have FCM token, try registering again
                       if (linkError.error?.includes('not found') && fcmTokenFromStorage) {
@@ -274,7 +292,11 @@ function CapacitorAuthContent() {
                       }
                     }
                   } catch (linkError) {
-                    console.error('[CapacitorAuth] ❌ Error linking device:', linkError);
+                    console.error('[CapacitorAuth] ❌ Error linking device:', {
+                      error: linkError,
+                      message: linkError?.message,
+                      stack: linkError?.stack,
+                    });
                   }
                 } else {
                   console.warn('[CapacitorAuth] ⚠️ No valid deviceId available, skipping device link');

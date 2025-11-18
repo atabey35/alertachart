@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       deviceId,
       hasCookies: !!cookies,
       cookies: cookies ? `${cookies.substring(0, 50)}...` : 'none',
+      body: JSON.stringify(body),
     });
     
     // Backend'e ilet (alertachart-backend port 3002)
@@ -49,7 +50,18 @@ export async function POST(request: NextRequest) {
     
     const result = await response.json();
     
-    console.log(`[Next.js API] Backend response:`, result);
+    console.log(`[Next.js API] Backend response:`, {
+      status: response.status,
+      success: result.success,
+      device: result.device,
+      error: result.error,
+    });
+    
+    if (!response.ok) {
+      console.error(`[Next.js API] ❌ Backend device link failed:`, result);
+    } else {
+      console.log(`[Next.js API] ✅ Device link successful:`, result);
+    }
     
     return NextResponse.json(result, { status: response.status });
   } catch (error: any) {
