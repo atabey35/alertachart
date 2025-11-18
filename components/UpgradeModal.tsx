@@ -365,7 +365,7 @@ export default function UpgradeModal({
                   ? 'App Store\'dan Satın Al'
                   : platform === 'android'
                   ? 'Google Play\'den Satın Al'
-                  : 'Premium\'a Geç'}
+                  : 'Premium\'a Geç'
               )}
             </button>
 
