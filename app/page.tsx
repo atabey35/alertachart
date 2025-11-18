@@ -1082,11 +1082,11 @@ export default function Home() {
 
   return (
     <main className="flex h-screen flex-col overflow-hidden">
-      {/* Header - Hidden on iPad (mobile-like experience) */}
-      <header className={`border-b border-gray-800 bg-black flex-shrink-0 ${isIPad ? 'hidden' : ''}`}>
+      {/* Header - Top section hidden on iPad, bottom section (timeframe/pair) visible */}
+      <header className="border-b border-gray-800 bg-black flex-shrink-0">
         <div className="px-2 py-2 lg:px-6 lg:py-4">
-          {/* First row: Title and Selectors */}
-          <div className="flex items-center justify-between gap-2 lg:gap-4">
+          {/* First row: Title and Selectors - Hidden on iPad */}
+          <div className={`flex items-center justify-between gap-2 lg:gap-4 ${isIPad ? 'hidden' : ''}`}>
             <div className="flex items-center gap-2 lg:gap-6">
               <div className="flex items-center gap-2">
                 <img src="/icon.png" alt="Alerta Chart Logo" className="w-6 h-6 lg:w-10 lg:h-10 rounded-lg" />
@@ -1313,7 +1313,8 @@ export default function Home() {
 
           {/* Second row: Market Type + Timeframe selector + Pair Selector */}
           {/* MOBİL & TABLET (iPad): Sadece grafik sekmesinde göster, DESKTOP: Her zaman göster */}
-          {(mobileTab === 'chart' || typeof window === 'undefined' || window.innerWidth >= 1024) && (
+          {/* iPad'de bu kısım görünür (timeframe ve pair selector) */}
+          {(mobileTab === 'chart' || typeof window === 'undefined' || window.innerWidth >= 1024 || isIPad) && (
           <div className="flex items-center gap-2 mt-3 overflow-x-auto scrollbar-hide">
             {/* Market Type Toggle (Spot/Futures) - Hidden on mobile/iPad (available in settings) */}
             <div className="hidden lg:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1 mr-2">
