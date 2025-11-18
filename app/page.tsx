@@ -88,14 +88,22 @@ export default function Home() {
       const isIPadUserAgent = /iPad/.test(userAgent) || 
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       
-      setIsIPad(isIPadUserAgent);
-      console.log('[App] iPad detected:', isIPadUserAgent, 'width:', window.innerWidth, 'userAgent:', userAgent);
+      // In Capacitor, if it's iOS and screen is tablet-sized, assume iPad
+      const isCapacitorIOS = hasCapacitor && 
+        ((window as any).Capacitor?.getPlatform?.() === 'ios' || /iPad|iPhone/.test(userAgent));
+      const isIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366; // iPad can be up to 1366px wide
+      
+      // iPad detection: User-Agent OR (Capacitor iOS + tablet size)
+      const isIPadDevice = isIPadUserAgent || (isCapacitorIOS && isIPadSize);
+      
+      setIsIPad(isIPadDevice);
+      console.log('[App] iPad detected:', isIPadDevice, 'width:', window.innerWidth, 'userAgent:', userAgent, 'isCapacitorIOS:', isCapacitorIOS);
       
       // Listen for resize to update iPad detection (for responsive testing)
       const handleResize = () => {
-        const isIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366; // iPad can be up to 1366px wide
-        const isIPadDevice = isIPadUserAgent || isIPadSize;
-        setIsIPad(isIPadDevice);
+        const currentIsIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366;
+        const currentIsIPadDevice = isIPadUserAgent || (isCapacitorIOS && currentIsIPadSize);
+        setIsIPad(currentIsIPadDevice);
       };
       
       window.addEventListener('resize', handleResize);
@@ -1427,12 +1435,12 @@ export default function Home() {
       <div className={`flex flex-1 overflow-hidden relative ${
         isCapacitor ? 'pb-[104px]' : '' // 56px (tab bar) + 48px (Android nav bar padding)
       }`}>
-        {/* MOBILE: Chart Tab (full screen) */}
-        <div className={`${mobileTab === 'chart' ? 'flex' : 'hidden'} md:flex flex-1 overflow-hidden relative`}>
-          {/* Drawing Toolbar Toggle Button (Always visible on Desktop) */}
+        {/* MOBILE & TABLET (iPad): Chart Tab (full screen) */}
+        <div className={`${mobileTab === 'chart' ? 'flex' : 'hidden'} ${isIPad ? 'flex' : 'lg:flex'} flex-1 overflow-hidden relative`}>
+          {/* Drawing Toolbar Toggle Button (Always visible on Desktop, hidden on iPad) */}
           <button
             onClick={() => setShowDrawingToolbar(!showDrawingToolbar)}
-            className={`hidden md:flex absolute ${showDrawingToolbar ? 'left-12' : 'left-0'} top-1/2 -translate-y-1/2 z-[110] w-6 h-16 bg-gray-800/90 border border-gray-700 hover:bg-gray-700 rounded-r-lg items-center justify-center transition-all shadow-lg`}
+            className={`hidden lg:flex absolute ${showDrawingToolbar ? 'left-12' : 'left-0'} top-1/2 -translate-y-1/2 z-[110] w-6 h-16 bg-gray-800/90 border border-gray-700 hover:bg-gray-700 rounded-r-lg items-center justify-center transition-all shadow-lg`}
             title={showDrawingToolbar ? 'Hide Drawing Tools' : 'Show Drawing Tools'}
           >
             <svg 
@@ -1445,9 +1453,9 @@ export default function Home() {
             </svg>
           </button>
 
-          {/* Shared Drawing Toolbar (Multi-chart mode, Desktop only) - Overlay */}
+          {/* Shared Drawing Toolbar (Multi-chart mode, Desktop only) - Overlay (hidden on iPad) */}
           {layout > 1 && showDrawingToolbar && (
-            <div className="hidden md:block absolute left-0 top-0 h-full z-[100] pointer-events-none">
+            <div className="hidden lg:block absolute left-0 top-0 h-full z-[100] pointer-events-none">
               <div className="pointer-events-auto">
                 <DrawingToolbar
                   activeTool={sharedActiveTool}
@@ -1635,9 +1643,9 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Desktop: Alerts Panel */}
+          {/* Desktop (1024px+): Alerts Panel (hidden on iPad) */}
           {showAlerts && (
-            <div className="hidden md:block border-l border-gray-800">
+            <div className="hidden lg:block border-l border-gray-800">
               <AlertsPanel
                 exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
                 pair={activeChart.pair}
@@ -1658,8 +1666,8 @@ export default function Home() {
           )}
         </div>
 
-        {/* MOBILE: Watchlist Tab (full screen) */}
-        <div className={`${mobileTab === 'watchlist' ? 'flex' : 'hidden'} lg:hidden flex-1 overflow-hidden`}>
+        {/* MOBILE & TABLET (iPad): Watchlist Tab (full screen) */}
+        <div className={`${mobileTab === 'watchlist' ? 'flex' : 'hidden'} ${isIPad ? 'flex' : 'lg:hidden'} flex-1 overflow-hidden`}>
           <Watchlist 
             onSymbolClick={(symbol) => {
               handleWatchlistSymbolClick(symbol);
@@ -1670,8 +1678,8 @@ export default function Home() {
           />
         </div>
 
-        {/* MOBILE: Alerts Tab (full screen) */}
-        <div className={`${mobileTab === 'alerts' ? 'flex' : 'hidden'} lg:hidden flex-1 overflow-hidden`}>
+        {/* MOBILE & TABLET (iPad): Alerts Tab (full screen) */}
+        <div className={`${mobileTab === 'alerts' ? 'flex' : 'hidden'} ${isIPad ? 'flex' : 'lg:hidden'} flex-1 overflow-hidden`}>
           <AlertsPanel
             exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
             pair={activeChart.pair}
@@ -1679,8 +1687,8 @@ export default function Home() {
           />
         </div>
 
-        {/* MOBILE: Aggr Tab (full screen) */}
-        <div className={`${mobileTab === 'aggr' ? 'flex' : 'hidden'} lg:hidden flex-1 overflow-hidden bg-gray-950`}>
+        {/* MOBILE & TABLET (iPad): Aggr Tab (full screen) */}
+        <div className={`${mobileTab === 'aggr' ? 'flex' : 'hidden'} ${isIPad ? 'flex' : 'lg:hidden'} flex-1 overflow-hidden bg-gray-950`}>
           {user ? (
             hasPremiumAccessValue ? (
               <iframe
@@ -1726,8 +1734,8 @@ export default function Home() {
           )}
         </div>
 
-        {/* MOBILE: Liquidations Tab (full screen) */}
-        <div className={`${mobileTab === 'liquidations' ? 'flex' : 'hidden'} lg:hidden flex-1 overflow-hidden bg-gray-950`}>
+        {/* MOBILE & TABLET (iPad): Liquidations Tab (full screen) */}
+        <div className={`${mobileTab === 'liquidations' ? 'flex' : 'hidden'} ${isIPad ? 'flex' : 'lg:hidden'} flex-1 overflow-hidden bg-gray-950`}>
           {user ? (
             hasPremiumAccessValue ? (
               <iframe
