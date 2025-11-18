@@ -12,8 +12,26 @@ function CapacitorAuthContent() {
 
   useEffect(() => {
     const isCapacitorAuth = searchParams.get('capacitor_auth');
-    const accessToken = searchParams.get('access_token');
-    const refreshToken = searchParams.get('refresh_token');
+    // 🔥 CRITICAL FIX: Validate tokens from URL params
+    let accessToken = searchParams.get('access_token');
+    let refreshToken = searchParams.get('refresh_token');
+    
+    // Filter out null, undefined strings, and empty values
+    if (!accessToken || accessToken === 'null' || accessToken === 'undefined' || accessToken.trim() === '') {
+      console.error('[CapacitorAuth] ❌ Invalid accessToken from URL:', accessToken);
+      accessToken = null;
+    }
+    if (!refreshToken || refreshToken === 'null' || refreshToken === 'undefined' || refreshToken.trim() === '') {
+      console.error('[CapacitorAuth] ❌ Invalid refreshToken from URL:', refreshToken);
+      refreshToken = null;
+    }
+    
+    console.log('[CapacitorAuth] Token validation:', {
+      hasAccessToken: !!accessToken,
+      hasRefreshToken: !!refreshToken,
+      accessTokenLength: accessToken?.length || 0,
+      refreshTokenLength: refreshToken?.length || 0,
+    });
     const deviceId = searchParams.get('device_id');
     const platform = searchParams.get('platform');
     const fcmToken = searchParams.get('fcm_token'); // 🔥 FCM token from public/index.html
