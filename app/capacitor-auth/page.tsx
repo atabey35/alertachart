@@ -209,6 +209,9 @@ function CapacitorAuthContent() {
                   : finalDeviceId;
                 
                 if (deviceIdToLink && deviceIdToLink !== 'unknown' && deviceIdToLink !== 'null' && deviceIdToLink !== 'undefined') {
+                  // 🔥 CRITICAL: Get FCM token first (before using it in console.log)
+                  const fcmTokenFromStorage = typeof window !== 'undefined' ? localStorage.getItem('fcm_token') : null;
+                  
                   console.log('[CapacitorAuth] 🔗 Linking device to user...', {
                     deviceId: deviceIdToLink,
                     platform: finalPlatform,
@@ -218,7 +221,6 @@ function CapacitorAuthContent() {
                   
                   // 🔥 CRITICAL: Try to register device first if FCM token is available
                   // This ensures device exists in database before linking
-                  const fcmTokenFromStorage = typeof window !== 'undefined' ? localStorage.getItem('fcm_token') : null;
                   
                   if (fcmTokenFromStorage && fcmTokenFromStorage !== 'null' && fcmTokenFromStorage !== 'undefined') {
                     console.log('[CapacitorAuth] 🔔 FCM token found, registering device first...');
