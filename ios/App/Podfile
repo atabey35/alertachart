@@ -30,69 +30,74 @@ post_install do |installer|
   assertDeploymentTarget(installer)
   
   # Add privacy manifests for Google SDKs that don't include them
-  installer.pods_project.targets.each do |target|
-    if ['GoogleSignIn', 'GTMAppAuth', 'GTMSessionFetcher'].include?(target.name)
-      privacy_manifest_path = File.join(target.project.project_dir.path, target.name, 'Resources', 'PrivacyInfo.xcprivacy')
-      privacy_manifest_dir = File.dirname(privacy_manifest_path)
-      
-      unless File.exist?(privacy_manifest_path)
-        FileUtils.mkdir_p(privacy_manifest_dir)
-        
-        privacy_manifest_content = <<~XML
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>NSPrivacyTracking</key>
-            <false/>
-            <key>NSPrivacyTrackingDomains</key>
-            <array/>
-            <key>NSPrivacyCollectedDataTypes</key>
-            <array>
-              <dict>
-                <key>NSPrivacyCollectedDataType</key>
-                <string>NSPrivacyCollectedDataTypeUserID</string>
-                <key>NSPrivacyCollectedDataTypeLinked</key>
-                <true/>
-                <key>NSPrivacyCollectedDataTypeTracking</key>
-                <false/>
-                <key>NSPrivacyCollectedDataTypePurposes</key>
-                <array>
-                  <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
-                </array>
-              </dict>
-            </array>
-            <key>NSPrivacyAccessedAPITypes</key>
-            <array>
-              <dict>
-                <key>NSPrivacyAccessedAPIType</key>
-                <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
-                <key>NSPrivacyAccessedAPITypeReasons</key>
-                <array>
-                  <string>CA92.1</string>
-                </array>
-              </dict>
-              <dict>
-                <key>NSPrivacyAccessedAPIType</key>
-                <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
-                <key>NSPrivacyAccessedAPITypeReasons</key>
-                <array>
-                  <string>C617.1</string>
-                </array>
-              </dict>
-            </array>
-          </dict>
-          </plist>
-        XML
-        
-        File.write(privacy_manifest_path, privacy_manifest_content)
-        
-        # Add the file to the target
-        file_ref = target.project.new_file(privacy_manifest_path)
-        target.add_file_references([file_ref])
-        
-        puts "✅ Added PrivacyInfo.xcprivacy for #{target.name}"
-      end
+  pods_dir = File.expand_path('Pods', __dir__)
+  privacy_manifest_content = <<~XML
+    <?xml version="1.0" encoding="UTF-8"?>
+    <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+    <plist version="1.0">
+    <dict>
+      <key>NSPrivacyTracking</key>
+      <false/>
+      <key>NSPrivacyTrackingDomains</key>
+      <array/>
+      <key>NSPrivacyCollectedDataTypes</key>
+      <array>
+        <dict>
+          <key>NSPrivacyCollectedDataType</key>
+          <string>NSPrivacyCollectedDataTypeUserID</string>
+          <key>NSPrivacyCollectedDataTypeLinked</key>
+          <true/>
+          <key>NSPrivacyCollectedDataTypeTracking</key>
+          <false/>
+          <key>NSPrivacyCollectedDataTypePurposes</key>
+          <array>
+            <string>NSPrivacyCollectedDataTypePurposeAppFunctionality</string>
+          </array>
+        </dict>
+      </array>
+      <key>NSPrivacyAccessedAPITypes</key>
+      <array>
+        <dict>
+          <key>NSPrivacyAccessedAPIType</key>
+          <string>NSPrivacyAccessedAPICategoryUserDefaults</string>
+          <key>NSPrivacyAccessedAPITypeReasons</key>
+          <array>
+            <string>CA92.1</string>
+          </array>
+        </dict>
+        <dict>
+          <key>NSPrivacyAccessedAPIType</key>
+          <string>NSPrivacyAccessedAPICategoryFileTimestamp</string>
+          <key>NSPrivacyAccessedAPITypeReasons</key>
+          <array>
+            <string>C617.1</string>
+          </array>
+        </dict>
+      </array>
+    </dict>
+    </plist>
+  XML
+  
+  ['GoogleSignIn', 'GTMAppAuth', 'GTMSessionFetcher'].each do |sdk_name|
+    # Try different possible paths
+    possible_paths = [
+      File.join(pods_dir, sdk_name, 'Resources', 'PrivacyInfo.xcprivacy'),
+      File.join(pods_dir, sdk_name, 'PrivacyInfo.xcprivacy'),
+      File.join(pods_dir, sdk_name, sdk_name, 'Resources', 'PrivacyInfo.xcprivacy'),
+    ]
+    
+    privacy_manifest_path = possible_paths.find { |path| File.exist?(File.dirname(path)) }
+    
+    if privacy_manifest_path && !File.exist?(privacy_manifest_path)
+      FileUtils.mkdir_p(File.dirname(privacy_manifest_path))
+      File.write(privacy_manifest_path, privacy_manifest_content)
+      puts "✅ Added PrivacyInfo.xcprivacy for #{sdk_name} at #{privacy_manifest_path}"
+    elsif !privacy_manifest_path
+      # Create in the most likely location
+      default_path = File.join(pods_dir, sdk_name, 'Resources', 'PrivacyInfo.xcprivacy')
+      FileUtils.mkdir_p(File.dirname(default_path))
+      File.write(default_path, privacy_manifest_content)
+      puts "✅ Added PrivacyInfo.xcprivacy for #{sdk_name} at #{default_path}"
     end
   end
 end
