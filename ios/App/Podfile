@@ -51,11 +51,21 @@ post_install do |installer|
     swift_content = File.read(plugin_swift_path)
     original_content = swift_content.dup
     
-    # Fix deprecated getConfigValue calls and duplicate operators
-    swift_content.gsub!(/getConfigValue\("scopes"\) as\? \[String\]/, 'getConfig().getArray("scopes", String.self) ?? []')
+    # Fix deprecated getConfigValue calls
+    swift_content.gsub!(/getConfigValue\("scopes"\) as\? \[String\]/, '(getConfig().getArray("scopes") as? [String]) ?? []')
     swift_content.gsub!(/getConfigValue\("forceCodeForRefreshToken"\) as\? Bool/, 'getConfig().getBoolean("forceCodeForRefreshToken", false)')
-    swift_content.gsub!(/getConfig\(\)\.getArray\("scopes", String\.self\) \?\? \[\] \?\? \[\]/, 'getConfig().getArray("scopes", String.self) ?? []')
+    
+    # Fix getArray calls to use proper Capacitor API
+    swift_content.gsub!(/getConfig\(\)\.getArray\("scopes", String\.self\)/, 'getConfig().getArray("scopes") as? [String]')
+    swift_content.gsub!(/call\.getArray\("scopes", String\.self\)/, 'call.getArray("scopes") as? [String]')
+    
+    # Fix duplicate operators
+    swift_content.gsub!(/getConfig\(\)\.getArray\("scopes"\) as\? \[String\] \?\? \[\] \?\? \[\]/, '(getConfig().getArray("scopes") as? [String]) ?? []')
     swift_content.gsub!(/getConfig\(\)\.getBoolean\("forceCodeForRefreshToken", false\) \?\? false/, 'getConfig().getBoolean("forceCodeForRefreshToken", false)')
+    
+    # Fix DispatchQueue.main.async trailing closure warnings
+    swift_content.gsub!(/DispatchQueue\.main\.async \{/, 'DispatchQueue.main.async(execute: {')
+    swift_content.gsub!(/DispatchQueue\.main\.async \{([^}]+)\}\s*$/, 'DispatchQueue.main.async(execute: {\1})')
     
     # Fix GoogleSignIn 7.0 API: user.authentication is now async
     # Replace user.authentication.accessToken with async call
@@ -63,8 +73,8 @@ post_install do |installer|
       # Update resolveSignInCallWith to use async authentication
       resolve_function = <<~SWIFT
     func resolveSignInCallWith(user: GIDGoogleUser) {
-        user.refreshTokensIfNeeded { user, error in
-            guard let user = user, error == nil else {
+        user.refreshTokensIfNeeded { refreshedUser, error in
+            guard let user = refreshedUser, error == nil else {
                 self.signInCall?.reject(error?.localizedDescription ?? "Failed to get authentication");
                 return;
             }
@@ -104,13 +114,13 @@ post_install do |installer|
       refresh_function = <<~SWIFT
     @objc
     func refresh(_ call: CAPPluginCall) {
-        DispatchQueue.main.async {
+        DispatchQueue.main.async(execute: {
             guard let user = self.googleSignIn.currentUser else {
                 call.reject("User not logged in.");
                 return
             }
-            user.refreshTokensIfNeeded { user, error in
-                guard let user = user, error == nil else {
+            user.refreshTokensIfNeeded { refreshedUser, error in
+                guard let user = refreshedUser, error == nil else {
                     call.reject(error?.localizedDescription ?? "Something went wrong.");
                     return;
                 }
@@ -121,7 +131,7 @@ post_install do |installer|
                 ]
                 call.resolve(authenticationData);
             }
-        }
+        })
     }
       SWIFT
       
