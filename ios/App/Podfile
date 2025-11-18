@@ -51,9 +51,11 @@ post_install do |installer|
     swift_content = File.read(plugin_swift_path)
     original_content = swift_content.dup
     
-    # Fix deprecated getConfigValue calls
+    # Fix deprecated getConfigValue calls and duplicate operators
     swift_content.gsub!(/getConfigValue\("scopes"\) as\? \[String\]/, 'getConfig().getArray("scopes", String.self) ?? []')
     swift_content.gsub!(/getConfigValue\("forceCodeForRefreshToken"\) as\? Bool/, 'getConfig().getBoolean("forceCodeForRefreshToken", false)')
+    swift_content.gsub!(/getConfig\(\)\.getArray\("scopes", String\.self\) \?\? \[\] \?\? \[\]/, 'getConfig().getArray("scopes", String.self) ?? []')
+    swift_content.gsub!(/getConfig\(\)\.getBoolean\("forceCodeForRefreshToken", false\) \?\? false/, 'getConfig().getBoolean("forceCodeForRefreshToken", false)')
     
     # Fix GoogleSignIn 7.0 API: user.authentication is now async
     # Replace user.authentication.accessToken with async call
@@ -89,8 +91,12 @@ post_install do |installer|
       SWIFT
       
       # Replace the old resolveSignInCallWith function
-      old_function_pattern = /func resolveSignInCallWith\(user: GIDGoogleUser\) \{[\s\S]*?signInCall\?\.resolve\(userData\);\s*\}/
+      old_function_pattern = /func resolveSignInCallWith\(user: GIDGoogleUser\) \{[\s\S]*?signInCall\?\.resolve\(userData\);\s*\}\s*\}/
       swift_content.gsub!(old_function_pattern, resolve_function.strip)
+      
+      # Fix indentation for resolveSignInCallWith
+      swift_content.gsub!(/^    func resolveSignInCallWith\(user: GIDGoogleUser\) \{/, '    func resolveSignInCallWith(user: GIDGoogleUser) {')
+      swift_content.gsub!(/^    user\.refreshTokensIfNeeded/, '        user.refreshTokensIfNeeded')
     end
     
     # Fix refresh function to use new API
@@ -119,8 +125,14 @@ post_install do |installer|
     }
       SWIFT
       
-      old_refresh_pattern = /@objc\s+func refresh\(_ call: CAPPluginCall\) \{[\s\S]*?call\.resolve\(authenticationData\);\s*\}\s*\}/
+      old_refresh_pattern = /@objc\s+func refresh\(_ call: CAPPluginCall\) \{[\s\S]*?call\.resolve\(authenticationData\);\s*\}\s*\}\s*\}/
       swift_content.gsub!(old_refresh_pattern, refresh_function.strip)
+      
+      # Fix indentation for refresh function
+      swift_content.gsub!(/^@objc\nfunc refresh\(_ call: CAPPluginCall\) \{/, '@objc\n    func refresh(_ call: CAPPluginCall) {')
+      
+      # Remove extra closing braces at end of file
+      swift_content.gsub!(/^}\s*$/, '') if swift_content.scan(/^}\s*$/).length > 1
     end
     
     if swift_content != original_content
