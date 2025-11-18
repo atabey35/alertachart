@@ -63,8 +63,13 @@ post_install do |installer|
     swift_content.gsub!(/getConfig\(\)\.getArray\("scopes"\) as\? \[String\] \?\? \[\] \?\? \[\]/, '(getConfig().getArray("scopes") as? [String]) ?? []')
     swift_content.gsub!(/getConfig\(\)\.getBoolean\("forceCodeForRefreshToken", false\) \?\? false/, 'getConfig().getBoolean("forceCodeForRefreshToken", false)')
     
-    # Fix DispatchQueue.main.async - keep trailing closure (it's correct)
-    # Don't change DispatchQueue.main.async { } - it's the correct syntax
+    # Fix DispatchQueue.main.async - use explicit DispatchWorkItem to avoid trailing closure issues
+    # Replace DispatchQueue.main.async { } with DispatchWorkItem pattern
+    swift_content.gsub!(/DispatchQueue\.main\.async \{([\s\S]*?)\}\s*$/) do |match|
+      content = $1
+      # Create DispatchWorkItem pattern
+      "let workItem = DispatchWorkItem {\n#{content}\n        }\n        DispatchQueue.main.async(execute: workItem)"
+    end
     
     # Fix GoogleSignIn 7.0 API: user.authentication is now async
     # Replace user.authentication.accessToken with async call
@@ -103,9 +108,25 @@ post_install do |installer|
       old_function_pattern = /func resolveSignInCallWith\(user: GIDGoogleUser\) \{[\s\S]*?signInCall\?\.resolve\(userData\);\s*\}\s*\}/
       swift_content.gsub!(old_function_pattern, resolve_function.strip)
       
-      # Fix signIn and restorePreviousSignIn to use GIDSignInResult
+      # Fix signIn to use GIDSignInResult (returns GIDSignInResult)
       swift_content.gsub!(/self\.googleSignIn\.signIn\(with: self\.googleSignInConfiguration, presenting: presentingVc, hint: nil, additionalScopes: self\.additionalScopes\) \{ user, error in/, 'self.googleSignIn.signIn(with: self.googleSignInConfiguration, presenting: presentingVc, hint: nil, additionalScopes: self.additionalScopes) { result, error in')
-      swift_content.gsub!(/self\.googleSignIn\.restorePreviousSignIn\(\) \{ user, error in/, 'self.googleSignIn.restorePreviousSignIn() { result, error in')
+      
+      # Fix restorePreviousSignIn - it returns GIDGoogleUser directly, not GIDSignInResult
+      # So we need to pass nil for serverAuthCode
+      swift_content.gsub!(/self\.googleSignIn\.restorePreviousSignIn\(\) \{ result, error in[\s\S]*?self\.resolveSignInCallWith\(user: result\.user, serverAuthCode: result\.serverAuthCode\);/m) do |match|
+        'self.googleSignIn.restorePreviousSignIn() { user, error in
+                    if let error = error {
+                        self.signInCall?.reject(error.localizedDescription);
+                        return;
+                    }
+                    guard let user = user else {
+                        self.signInCall?.reject("Restore sign in failed: no user");
+                        return;
+                    }
+                    // restorePreviousSignIn returns GIDGoogleUser directly, not GIDSignInResult
+                    // serverAuthCode is only available from signIn (GIDSignInResult)
+                    self.resolveSignInCallWith(user: user, serverAuthCode: nil);'
+      end
       
       # Update signIn completion to use result.user and result.serverAuthCode
       swift_content.gsub!(/guard let result = result else \{\s*self\.signInCall\?\.reject\("Sign in failed: no result"\);\s*return;\s*\}\s*self\.resolveSignInCallWith\(user: result\.user, serverAuthCode: result\.serverAuthCode\);/m, 'guard let result = result else {\n                        self.signInCall?.reject("Sign in failed: no result");\n                        return;\n                    }\n                    self.resolveSignInCallWith(user: result.user, serverAuthCode: result.serverAuthCode);')
