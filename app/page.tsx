@@ -57,6 +57,7 @@ export default function Home() {
   const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
   const { data: session, status, update } = useSession();
   const [isCapacitor, setIsCapacitor] = useState(false);
+  const [isIPad, setIsIPad] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
 
@@ -75,12 +76,30 @@ export default function Home() {
   // This ensures database changes are reflected immediately
   const hasPremiumAccessValue: boolean = userPlan?.hasPremiumAccess ?? hasPremiumAccess(fullUser) ?? false;
 
-  // Capacitor kontrolü
+  // Capacitor ve iPad kontrolü
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const hasCapacitor = !!(window as any).Capacitor;
       setIsCapacitor(hasCapacitor);
       console.log('[App] Capacitor detected:', hasCapacitor);
+      
+      // iPad detection: User-Agent (more reliable than screen size)
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+      const isIPadUserAgent = /iPad/.test(userAgent) || 
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      
+      setIsIPad(isIPadUserAgent);
+      console.log('[App] iPad detected:', isIPadUserAgent, 'width:', window.innerWidth, 'userAgent:', userAgent);
+      
+      // Listen for resize to update iPad detection (for responsive testing)
+      const handleResize = () => {
+        const isIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366; // iPad can be up to 1366px wide
+        const isIPadDevice = isIPadUserAgent || isIPadSize;
+        setIsIPad(isIPadDevice);
+      };
+      
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
     }
   }, []);
 
@@ -1759,7 +1778,7 @@ export default function Home() {
 
       {/* MOBILE & TABLET (iPad): Bottom Tab Navigation */}
       <nav 
-        className={`lg:hidden border-t border-gray-800 bg-black flex items-center justify-around ${
+        className={`${isIPad ? 'flex' : 'lg:hidden'} border-t border-gray-800 bg-black flex items-center justify-around ${
           isCapacitor ? 'fixed bottom-0 left-0 right-0 z-[100]' : 'fixed bottom-0 left-0 right-0 z-[100]'
         }`}
         style={{ 
