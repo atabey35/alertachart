@@ -34,6 +34,17 @@ export default function SettingsPage() {
   const [layout, setLayout] = useState<1 | 2 | 4 | 9>(1);
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
 
+  // Custom coin alerts state
+  const [customAlerts, setCustomAlerts] = useState<any[]>([]);
+  const [showAddAlertModal, setShowAddAlertModal] = useState(false);
+  const [newAlert, setNewAlert] = useState({
+    symbol: '',
+    targetPrice: '',
+    proximityDelta: '',
+    direction: 'up' as 'up' | 'down',
+  });
+  const [loadingAlerts, setLoadingAlerts] = useState(false);
+
   // Load layout and market type from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -170,6 +181,48 @@ export default function SettingsPage() {
 
     fetchUserPlan();
   }, [user]);
+
+  // Fetch custom alerts when user has premium access
+  useEffect(() => {
+    if (!user || !hasPremiumAccessValue) {
+      setCustomAlerts([]);
+      return;
+    }
+
+    const fetchCustomAlerts = async () => {
+      setLoadingAlerts(true);
+      try {
+        const deviceId = typeof window !== 'undefined' 
+          ? localStorage.getItem('native_device_id') 
+          : null;
+        
+        if (!deviceId) {
+          console.warn('[Settings] No device ID found');
+          setLoadingAlerts(false);
+          return;
+        }
+
+        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
+        const response = await fetch(`${backendUrl}/api/alerts/price?deviceId=${deviceId}`, {
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setCustomAlerts(data.alerts || []);
+        } else if (response.status === 401 || response.status === 403) {
+          // Not authenticated or no premium
+          setCustomAlerts([]);
+        }
+      } catch (error) {
+        console.error('[Settings] Error fetching custom alerts:', error);
+      } finally {
+        setLoadingAlerts(false);
+      }
+    };
+
+    fetchCustomAlerts();
+  }, [user, hasPremiumAccessValue]);
 
   // Capacitor kontrolü: Session restore ve push notification init (sadece native app için)
   useEffect(() => {
@@ -1392,7 +1445,226 @@ export default function SettingsPage() {
             </button>
           </div>
         </div>
+
+        {/* Custom Coin Alerts (Premium Only) */}
+        {hasPremiumAccessValue && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-sm font-medium text-gray-300">Custom Coin Alerts</label>
+              <button
+                onClick={() => setShowAddAlertModal(true)}
+                className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition"
+              >
+                + Add Alert
+              </button>
+            </div>
+
+            {loadingAlerts ? (
+              <div className="text-center py-4 text-gray-400">Loading alerts...</div>
+            ) : customAlerts.length === 0 ? (
+              <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 text-center text-gray-400 text-sm">
+                No custom alerts yet. Add one to get notified when your coin approaches a price level.
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {customAlerts.map((alert) => (
+                  <div
+                    key={alert.id}
+                    className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-bold text-white">{alert.symbol}</span>
+                        <span className={`text-xs px-2 py-0.5 rounded ${
+                          alert.direction === 'up' 
+                            ? 'bg-green-500/20 text-green-300' 
+                            : 'bg-red-500/20 text-red-300'
+                        }`}>
+                          {alert.direction === 'up' ? '📈 Up' : '📉 Down'}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-400">
+                        Target: ${parseFloat(alert.target_price).toLocaleString()} 
+                        {alert.proximity_delta && ` (±$${parseFloat(alert.proximity_delta).toLocaleString()})`}
+                      </div>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        const deviceId = typeof window !== 'undefined' 
+                          ? localStorage.getItem('native_device_id') 
+                          : null;
+                        
+                        if (!deviceId) return;
+
+                        try {
+                          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
+                          const response = await fetch(`${backendUrl}/api/alerts/price`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ id: alert.id, deviceId }),
+                          });
+
+                          if (response.ok) {
+                            setCustomAlerts(customAlerts.filter(a => a.id !== alert.id));
+                          }
+                        } catch (error) {
+                          console.error('Error deleting alert:', error);
+                        }
+                      }}
+                      className="p-2 text-red-400 hover:text-red-300 transition"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Add Alert Modal */}
+      {showAddAlertModal && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+          <div className="bg-gray-900 rounded-2xl border-2 border-gray-700 p-6 max-w-md w-full space-y-4">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white">Add Custom Coin Alert</h2>
+              <button
+                onClick={() => {
+                  setShowAddAlertModal(false);
+                  setNewAlert({ symbol: '', targetPrice: '', proximityDelta: '', direction: 'up' });
+                }}
+                className="text-gray-400 hover:text-white"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Symbol (e.g., BTCUSDT)</label>
+                <input
+                  type="text"
+                  value={newAlert.symbol}
+                  onChange={(e) => setNewAlert({ ...newAlert, symbol: e.target.value.toUpperCase() })}
+                  placeholder="BTCUSDT"
+                  className="w-full px-4 py-2 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Target Price ($)</label>
+                <input
+                  type="number"
+                  value={newAlert.targetPrice}
+                  onChange={(e) => setNewAlert({ ...newAlert, targetPrice: e.target.value })}
+                  placeholder="50000"
+                  step="0.01"
+                  className="w-full px-4 py-2 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Proximity Delta ($)</label>
+                <input
+                  type="number"
+                  value={newAlert.proximityDelta}
+                  onChange={(e) => setNewAlert({ ...newAlert, proximityDelta: e.target.value })}
+                  placeholder="100"
+                  step="0.01"
+                  className="w-full px-4 py-2 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
+                />
+                <p className="text-xs text-gray-500 mt-1">Alert when price is within this range of target</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-300 mb-2">Direction</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setNewAlert({ ...newAlert, direction: 'up' })}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      newAlert.direction === 'up'
+                        ? 'border-blue-500 bg-blue-900/20 text-white'
+                        : 'border-gray-700 bg-gray-800 text-gray-400'
+                    }`}
+                  >
+                    📈 Approaching Up
+                  </button>
+                  <button
+                    onClick={() => setNewAlert({ ...newAlert, direction: 'down' })}
+                    className={`p-3 rounded-lg border-2 transition-all ${
+                      newAlert.direction === 'down'
+                        ? 'border-blue-500 bg-blue-900/20 text-white'
+                        : 'border-gray-700 bg-gray-800 text-gray-400'
+                    }`}
+                  >
+                    📉 Approaching Down
+                  </button>
+                </div>
+              </div>
+
+              <button
+                onClick={async () => {
+                  if (!newAlert.symbol || !newAlert.targetPrice || !newAlert.proximityDelta) {
+                    setError('Please fill all fields');
+                    return;
+                  }
+
+                  setLoading(true);
+                  try {
+                    const deviceId = typeof window !== 'undefined' 
+                      ? localStorage.getItem('native_device_id') 
+                      : null;
+                    
+                    if (!deviceId) {
+                      setError('Device ID not found');
+                      setLoading(false);
+                      return;
+                    }
+
+                    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
+                    const response = await fetch(`${backendUrl}/api/alerts/price`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      credentials: 'include',
+                      body: JSON.stringify({
+                        deviceId,
+                        symbol: newAlert.symbol,
+                        targetPrice: parseFloat(newAlert.targetPrice),
+                        proximityDelta: parseFloat(newAlert.proximityDelta),
+                        direction: newAlert.direction,
+                      }),
+                    });
+
+                    if (response.ok) {
+                      const data = await response.json();
+                      setCustomAlerts([...customAlerts, data.alert]);
+                      setShowAddAlertModal(false);
+                      setNewAlert({ symbol: '', targetPrice: '', proximityDelta: '', direction: 'up' });
+                    } else {
+                      const errorData = await response.json();
+                      setError(errorData.error || 'Failed to create alert');
+                    }
+                  } catch (error: any) {
+                    setError(error.message || 'Failed to create alert');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading}
+                className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {loading ? 'Creating...' : 'Create Alert'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upgrade Modal */}
       <UpgradeModal
