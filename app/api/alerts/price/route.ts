@@ -16,6 +16,16 @@ export async function POST(request: NextRequest) {
     const cookies = request.headers.get('cookie') || '';
     const body = await request.json();
     
+    // Debug: Log cookie info
+    const cookieNames = cookies ? cookies.split(';').map(c => c.split('=')[0].trim()).filter(Boolean) : [];
+    console.log('[Next.js API] Alert create request:', {
+      hasCookies: !!cookies,
+      cookieCount: cookieNames.length,
+      cookieNames: cookieNames,
+      deviceId: body.deviceId,
+      symbol: body.symbol,
+    });
+    
     const response = await fetch(`${backendUrl}/api/alerts/price`, {
       method: 'POST',
       headers: {
@@ -26,6 +36,12 @@ export async function POST(request: NextRequest) {
     });
     
     const result = await response.json();
+    
+    console.log('[Next.js API] Backend response:', {
+      status: response.status,
+      hasError: !!result.error,
+      error: result.error,
+    });
     
     const nextResponse = NextResponse.json(result, { status: response.status });
     
