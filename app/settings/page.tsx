@@ -1330,6 +1330,20 @@ export default function SettingsPage() {
 
         {/* Navigation Buttons - Quick access to other tabs */}
         <div className="grid grid-cols-2 gap-2">
+          {/* Liquidations - Premium Only */}
+          {user && hasPremiumAccessValue && (
+            <button
+              onClick={() => handleNavigateToTab('liquidations')}
+              className="p-3 rounded-lg border-2 border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600 hover:text-white transition"
+            >
+              <div className="flex flex-col items-center gap-1">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+                <span className="text-xs">Liquidations</span>
+              </div>
+            </button>
+          )}
           <button
             onClick={() => handleNavigateToTab('chart')}
             className="p-3 rounded-lg border-2 border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600 hover:text-white transition"
@@ -1454,10 +1468,13 @@ export default function SettingsPage() {
               {!hasPremiumAccessValue && (
                 <button
                   onClick={() => setShowUpgradeModal(true)}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                  className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-500 hover:via-purple-500 hover:to-pink-500 text-white rounded-xl font-bold transition-all duration-200 shadow-lg shadow-blue-500/25 hover:shadow-xl hover:shadow-purple-500/30 active:scale-95 relative overflow-hidden"
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-xl">💎</span>
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-purple-400/20 to-pink-400/20 animate-pulse"></div>
+                  <div className="relative flex items-center justify-center gap-2">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+                    </svg>
                     <span>Premium'a Geç</span>
                   </div>
                 </button>
@@ -1535,6 +1552,78 @@ export default function SettingsPage() {
             </>
           )}
         </div>
+
+        {/* Premium Features Section - For non-premium users */}
+        {!hasPremiumAccessValue && (
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-gray-300">Premium Özellikler</label>
+            <div className="space-y-2">
+              {/* Liquidations */}
+              <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white">Liquidations Dashboard</div>
+                    <div className="text-xs text-gray-400">Gerçek zamanlı liquidation verileri</div>
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Premium</span>
+              </div>
+
+              {/* Aggr */}
+              <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white">Aggr Trade</div>
+                    <div className="text-xs text-gray-400">Gelişmiş trading analizi</div>
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Premium</span>
+              </div>
+
+              {/* Custom Coin Alerts */}
+              <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-cyan-600 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white">Custom Coin Alerts</div>
+                    <div className="text-xs text-gray-400">Herhangi bir coin için özel fiyat alarmları</div>
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Premium</span>
+              </div>
+
+              {/* Advanced Layouts */}
+              <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white">Advanced Chart Layouts</div>
+                    <div className="text-xs text-gray-400">2x2 ve 3x3 çoklu grafik düzenleri</div>
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Premium</span>
+              </div>
+            </div>
+          </div>
+        )}
             
         {/* Layout Selection */}
         <div className="space-y-2">
