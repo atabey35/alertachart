@@ -1847,9 +1847,9 @@ export default function Home() {
             <button
               onClick={() => {
                 if (hasPremiumAccessValue) {
-                  // Open AGGR in new window/tab
+                  // Navigate to AGGR in same window (cookies will be shared for same domain)
                   if (typeof window !== 'undefined') {
-                    window.open('https://aggr.alertachart.com', '_blank');
+                    window.location.href = 'https://aggr.alertachart.com';
                   }
                 } else {
                   setShowUpgradeModal(true);
