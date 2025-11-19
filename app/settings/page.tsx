@@ -44,6 +44,14 @@ export default function SettingsPage() {
     direction: 'up' as 'up' | 'down',
   });
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+  
+  // Coin search state
+  const [symbolSuggestions, setSymbolSuggestions] = useState<any[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [loadingSymbols, setLoadingSymbols] = useState(false);
+  const [allSymbols, setAllSymbols] = useState<any[]>([]);
+  const symbolInputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   // Load layout and market type from localStorage
   useEffect(() => {
@@ -273,6 +281,102 @@ export default function SettingsPage() {
 
     fetchCustomAlerts();
   }, [user, hasPremiumAccessValue, status]);
+
+  // Fetch Binance symbols for coin search
+  useEffect(() => {
+    if (!showAddAlertModal) return;
+
+    const fetchSymbols = async () => {
+      setLoadingSymbols(true);
+      try {
+        const baseUrl = marketType === 'futures' 
+          ? 'https://fapi.binance.com/fapi/v1/exchangeInfo'
+          : 'https://api.binance.com/api/v3/exchangeInfo';
+        
+        const response = await fetch(baseUrl);
+        const data = await response.json();
+        
+        // Get all trading pairs (USDT, BTC, ETH, BNB, etc.)
+        const allPairs = data.symbols
+          .filter((s: any) => s.status === 'TRADING')
+          .map((s: any) => ({
+            symbol: s.symbol.toUpperCase(),
+            baseAsset: s.baseAsset,
+            quoteAsset: s.quoteAsset,
+            displayName: `${s.baseAsset}/${s.quoteAsset}`,
+          }))
+          .sort((a: any, b: any) => {
+            // Sort by quote asset priority: USDT > BTC > ETH > BNB > others
+            const quotePriority: { [key: string]: number } = {
+              'USDT': 0,
+              'BTC': 1,
+              'ETH': 2,
+              'BNB': 3,
+              'BUSD': 4,
+              'FDUSD': 5,
+            };
+            
+            const aPriority = quotePriority[a.quoteAsset] ?? 999;
+            const bPriority = quotePriority[b.quoteAsset] ?? 999;
+            
+            if (aPriority !== bPriority) return aPriority - bPriority;
+            
+            // Within same quote asset, sort alphabetically
+            return a.baseAsset.localeCompare(b.baseAsset);
+          });
+        
+        setAllSymbols(allPairs);
+      } catch (error) {
+        console.error('[Settings] Failed to fetch symbols:', error);
+      } finally {
+        setLoadingSymbols(false);
+      }
+    };
+
+    fetchSymbols();
+  }, [showAddAlertModal, marketType]);
+
+  // Filter symbols based on search query
+  const filteredSymbols = useMemo(() => {
+    if (!newAlert.symbol.trim()) return [];
+    
+    const query = newAlert.symbol.toUpperCase();
+    return allSymbols
+      .filter(s => 
+        s.symbol.includes(query) ||
+        s.baseAsset.toUpperCase().includes(query) ||
+        s.displayName.toUpperCase().includes(query)
+      )
+      .slice(0, 20); // Limit to 20 suggestions
+  }, [newAlert.symbol, allSymbols]);
+
+  // Update suggestions when symbol changes
+  useEffect(() => {
+    if (newAlert.symbol.trim() && filteredSymbols.length > 0) {
+      setShowSuggestions(true);
+    } else {
+      setShowSuggestions(false);
+    }
+  }, [newAlert.symbol, filteredSymbols]);
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(event.target as Node) &&
+        symbolInputRef.current &&
+        !symbolInputRef.current.contains(event.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    if (showSuggestions) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showSuggestions]);
 
   // Capacitor kontrolü: Session restore ve push notification init (sadece native app için)
   useEffect(() => {
@@ -1647,15 +1751,82 @@ export default function SettingsPage() {
             )}
 
             <div className="space-y-4">
-              <div>
+              <div className="relative">
                 <label className="block text-sm font-medium text-gray-300 mb-2">Symbol (e.g., BTCUSDT)</label>
                 <input
+                  ref={symbolInputRef}
                   type="text"
                   value={newAlert.symbol}
-                  onChange={(e) => setNewAlert({ ...newAlert, symbol: e.target.value.toUpperCase() })}
+                  onChange={(e) => {
+                    setNewAlert({ ...newAlert, symbol: e.target.value.toUpperCase() });
+                    setShowSuggestions(true);
+                  }}
+                  onFocus={() => {
+                    if (filteredSymbols.length > 0) {
+                      setShowSuggestions(true);
+                    }
+                  }}
                   placeholder="BTCUSDT"
                   className="w-full px-4 py-2 bg-gray-800 border-2 border-gray-700 rounded-lg text-white focus:border-blue-500 focus:outline-none"
                 />
+                
+                {/* Coin Suggestions Dropdown */}
+                {showSuggestions && filteredSymbols.length > 0 && (
+                  <div
+                    ref={suggestionsRef}
+                    className="absolute z-50 w-full mt-1 bg-gray-900 border-2 border-gray-700 rounded-lg shadow-2xl max-h-64 overflow-y-auto scrollbar-thin"
+                  >
+                    {filteredSymbols.map((symbol) => {
+                      const logoPath = `/logos/${symbol.baseAsset.toLowerCase()}.png`;
+                      
+                      return (
+                        <div
+                          key={symbol.symbol}
+                          onClick={() => {
+                            setNewAlert({ ...newAlert, symbol: symbol.symbol });
+                            setShowSuggestions(false);
+                          }}
+                          className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-gray-800/70 transition-colors"
+                        >
+                          {/* Logo */}
+                          <div className="relative w-8 h-8 flex-shrink-0">
+                            <img 
+                              src={logoPath}
+                              alt={symbol.baseAsset}
+                              className="w-8 h-8 rounded-full object-cover"
+                              onError={(e) => {
+                                const target = e.currentTarget;
+                                target.style.display = 'none';
+                                const fallback = target.nextElementSibling as HTMLElement;
+                                if (fallback) fallback.style.display = 'flex';
+                              }}
+                            />
+                            <div 
+                              className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 hidden items-center justify-center text-white font-bold text-xs"
+                            >
+                              {symbol.baseAsset.charAt(0)}
+                            </div>
+                          </div>
+                          
+                          {/* Symbol Info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-white">{symbol.baseAsset}</span>
+                              <span className="text-xs text-gray-400">{symbol.quoteAsset}</span>
+                            </div>
+                            <div className="text-xs text-gray-500">{symbol.symbol}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                
+                {loadingSymbols && (
+                  <div className="absolute right-3 top-9 text-gray-400 text-sm">
+                    Loading...
+                  </div>
+                )}
               </div>
 
               <div>
