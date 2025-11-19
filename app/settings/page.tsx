@@ -192,6 +192,20 @@ export default function SettingsPage() {
     const fetchCustomAlerts = async () => {
       setLoadingAlerts(true);
       try {
+        // 🔥 CRITICAL: Try to restore session first (for mobile app cookie issues)
+        const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+        if (isCapacitor && status === 'authenticated') {
+          try {
+            await fetch('/api/auth/restore-session', {
+              method: 'POST',
+              credentials: 'include',
+            });
+            console.log('[Settings] Session restore attempted before fetching alerts');
+          } catch (restoreError) {
+            console.warn('[Settings] Session restore failed (non-critical):', restoreError);
+          }
+        }
+
         // Try to get device ID from various sources
         let deviceId = typeof window !== 'undefined' 
           ? localStorage.getItem('native_device_id') 
@@ -223,6 +237,7 @@ export default function SettingsPage() {
           setCustomAlerts(data.alerts || []);
         } else if (response.status === 401 || response.status === 403) {
           // Not authenticated or no premium
+          console.warn('[Settings] Failed to fetch alerts:', response.status);
           setCustomAlerts([]);
         }
       } catch (error) {
@@ -233,7 +248,7 @@ export default function SettingsPage() {
     };
 
     fetchCustomAlerts();
-  }, [user, hasPremiumAccessValue]);
+  }, [user, hasPremiumAccessValue, status]);
 
   // Capacitor kontrolü: Session restore ve push notification init (sadece native app için)
   useEffect(() => {
@@ -1658,6 +1673,22 @@ export default function SettingsPage() {
 
                   setLoading(true);
                   try {
+                    // 🔥 CRITICAL: Try to restore session first (for mobile app cookie issues)
+                    const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+                    if (isCapacitor) {
+                      try {
+                        await fetch('/api/auth/restore-session', {
+                          method: 'POST',
+                          credentials: 'include',
+                        });
+                        console.log('[Settings] Session restore attempted before creating alert');
+                        // Wait a bit for cookies to be set
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                      } catch (restoreError) {
+                        console.warn('[Settings] Session restore failed (non-critical):', restoreError);
+                      }
+                    }
+
                     // Try to get device ID from various sources
                     let deviceId = typeof window !== 'undefined' 
                       ? localStorage.getItem('native_device_id') 
