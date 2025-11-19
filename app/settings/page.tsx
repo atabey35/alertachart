@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { TrendingUp, BarChart3, Bell, Sparkles, Clock } from 'lucide-react';
 import { handleGoogleWebLogin, handleAppleWebLogin } from '@/utils/webAuth';
 import { isNativePlatform } from '@/utils/platformDetection';
 import { authService } from '@/services/authService';
@@ -1574,10 +1575,8 @@ export default function SettingsPage() {
               {/* Liquidations */}
               <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center shadow-md">
+                    <TrendingUp className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <div className="font-semibold text-white">Liquidations Dashboard</div>
@@ -1590,10 +1589,8 @@ export default function SettingsPage() {
               {/* Aggr */}
               <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                    </svg>
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 border border-blue-600/30 flex items-center justify-center shadow-md">
+                    <BarChart3 className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <div className="font-semibold text-white">Aggr Trade</div>
@@ -1606,10 +1603,8 @@ export default function SettingsPage() {
               {/* Custom Coin Alerts */}
               <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-cyan-600 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                    </svg>
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 border border-cyan-500/30 flex items-center justify-center shadow-md">
+                    <Bell className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <div className="font-semibold text-white">Custom Coin Alerts</div>
@@ -1622,10 +1617,8 @@ export default function SettingsPage() {
               {/* Advanced Layouts */}
               <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM14 5a1 1 0 011-1h4a1 1 0 011 1v7a1 1 0 01-1 1h-4a1 1 0 01-1-1V5zM4 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-3zM14 16a1 1 0 011-1h4a1 1 0 011 1v3a1 1 0 01-1 1h-4a1 1 0 01-1-1v-3z" />
-                    </svg>
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-500 border border-indigo-500/30 flex items-center justify-center shadow-md">
+                    <Sparkles className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <div className="font-semibold text-white">{language === 'tr' ? 'Gelişmiş Grafik Düzenleri' : 'Advanced Chart Layouts'}</div>
@@ -1638,10 +1631,8 @@ export default function SettingsPage() {
               {/* 10s & 30s Timeframe */}
               <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-400 border border-blue-400/30 flex items-center justify-center shadow-md">
+                    <Clock className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <div className="font-semibold text-white">10s & 30s Timeframe</div>
