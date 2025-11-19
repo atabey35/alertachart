@@ -31,6 +31,7 @@ export default function UpgradeModal({
   const [selectedFeature, setSelectedFeature] = useState<{
     title: string;
     videoUrl?: string;
+    videoUrls?: Array<{ label: string; url: string }>;
     description: string;
   } | null>(null);
   const [iapInitialized, setIapInitialized] = useState(false);
@@ -270,7 +271,10 @@ export default function UpgradeModal({
       icon: Sparkles,
       title: language === 'tr' ? '4-9 Lu Grafik' : '4-9 Chart Layouts',
       description: language === 'tr' ? 'Çoklu grafik düzenleri' : 'Multiple chart layouts',
-      videoUrl: '/videos/multi-chart.mp4',
+      videoUrls: [
+        { label: '4 Chart', url: '/videos/4chart.mp4' },
+        { label: '9 Chart', url: '/videos/9chart.mp4' },
+      ],
       color: 'from-indigo-500 to-blue-500',
       bgColor: 'bg-indigo-500/10',
       borderColor: 'border-indigo-500/30',
@@ -325,6 +329,7 @@ export default function UpgradeModal({
                     onClick={() => setSelectedFeature({
                       title: feature.title,
                       videoUrl: feature.videoUrl,
+                      videoUrls: feature.videoUrls,
                       description: feature.description,
                     })}
                     className="w-full flex items-center gap-3 p-3 rounded-lg bg-gray-900/60 hover:bg-gray-900/80 border border-gray-800/60 hover:border-blue-500/30 transition-all group active:scale-[0.98] touch-manipulation"

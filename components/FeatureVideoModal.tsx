@@ -9,6 +9,7 @@ interface FeatureVideoModalProps {
   feature: {
     title: string;
     videoUrl?: string;
+    videoUrls?: Array<{ label: string; url: string }>;
     description: string;
   };
 }
@@ -16,18 +17,27 @@ interface FeatureVideoModalProps {
 export default function FeatureVideoModal({ isOpen, onClose, feature }: FeatureVideoModalProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [hasError, setHasError] = useState(false);
+  const [selectedVideoIndex, setSelectedVideoIndex] = useState(0);
+
+  // Multiple videos support
+  const hasMultipleVideos = feature.videoUrls && feature.videoUrls.length > 0;
+  const currentVideoUrl = hasMultipleVideos 
+    ? feature.videoUrls[selectedVideoIndex]?.url 
+    : feature.videoUrl;
 
   useEffect(() => {
     if (isOpen) {
       setIsLoading(true);
       setHasError(false);
+      setSelectedVideoIndex(0);
     }
-  }, [isOpen, feature.videoUrl]);
+  }, [isOpen, currentVideoUrl]);
 
   if (!isOpen) return null;
 
   // Video URL yoksa placeholder göster
-  const hasVideo = feature.videoUrl && feature.videoUrl.trim() !== '';
+  const hasVideo = (hasMultipleVideos && feature.videoUrls && feature.videoUrls.length > 0) || 
+                   (feature.videoUrl && feature.videoUrl.trim() !== '');
 
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 safe-area-inset">
@@ -45,6 +55,29 @@ export default function FeatureVideoModal({ isOpen, onClose, feature }: FeatureV
         <div className="px-6 pt-6 pb-4">
           <h3 className="text-xl font-bold text-white mb-2">{feature.title}</h3>
           <p className="text-gray-400 text-sm">{feature.description}</p>
+          
+          {/* Video Selector (if multiple videos) */}
+          {hasMultipleVideos && feature.videoUrls && feature.videoUrls.length > 1 && (
+            <div className="flex gap-2 mt-4">
+              {feature.videoUrls.map((video, index) => (
+                <button
+                  key={index}
+                  onClick={() => {
+                    setSelectedVideoIndex(index);
+                    setIsLoading(true);
+                    setHasError(false);
+                  }}
+                  className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                    selectedVideoIndex === index
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-700/50 text-gray-300 hover:bg-gray-700'
+                  }`}
+                >
+                  {video.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Video Container */}
@@ -65,7 +98,8 @@ export default function FeatureVideoModal({ isOpen, onClose, feature }: FeatureV
                 </div>
               )}
               <video
-                src={feature.videoUrl}
+                key={currentVideoUrl}
+                src={currentVideoUrl}
                 controls
                 autoPlay
                 playsInline
