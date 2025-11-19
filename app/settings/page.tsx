@@ -1541,17 +1541,41 @@ export default function SettingsPage() {
                     <button
                       onClick={async () => {
                         // Try to get device ID from various sources
-                        let deviceId = typeof window !== 'undefined' 
-                          ? localStorage.getItem('native_device_id') 
-                          : null;
+                        let deviceId = null;
                         
-                        // Fallback: Check other localStorage keys
+                        // 🔥 CRITICAL: For native apps, try to get device ID from Capacitor first
+                        const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+                        if (isCapacitor) {
+                          try {
+                            const { Device } = (window as any).Capacitor?.Plugins;
+                            if (Device && typeof Device.getId === 'function') {
+                              const deviceIdInfo = await Device.getId();
+                              const nativeId = deviceIdInfo?.identifier;
+                              
+                              if (nativeId && nativeId !== 'unknown' && nativeId !== 'null' && nativeId !== 'undefined') {
+                                deviceId = nativeId;
+                                if (typeof window !== 'undefined') {
+                                  localStorage.setItem('native_device_id', deviceId);
+                                }
+                              }
+                            }
+                          } catch (capacitorError) {
+                            console.warn('[Settings] Failed to get device ID from Capacitor:', capacitorError);
+                          }
+                        }
+                        
+                        // Fallback 1: Check localStorage for native_device_id
+                        if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+                          deviceId = localStorage.getItem('native_device_id');
+                        }
+                        
+                        // Fallback 2: Check other localStorage keys
                         if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
                           deviceId = localStorage.getItem('device_id');
                         }
                         
-                        // Fallback: Use web device ID
-                        if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+                        // Fallback 3: Use web device ID ONLY if not Capacitor
+                        if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined' && !isCapacitor) {
                           deviceId = localStorage.getItem('web_device_id');
                         }
                         
