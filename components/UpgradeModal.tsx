@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Play, Sparkles, Bell, BarChart3, Clock } from 'lucide-react';
+import { X, Play, Sparkles, Bell, BarChart3, Clock, TrendingUp } from 'lucide-react';
 import FeatureVideoModal from './FeatureVideoModal';
 import { initializeIAP, purchaseProduct, isIAPAvailable, getProducts } from '@/services/iapService';
 
@@ -221,64 +221,73 @@ export default function UpgradeModal({
 
   const premiumFeatures = [
     {
+      icon: TrendingUp,
+      title: 'Liquidations Dashboard',
+      description: 'Gerçek zamanlı liquidation verileri',
+      videoUrl: '/videos/liquidations.mp4',
+      color: 'from-blue-500 to-cyan-500',
+      bgColor: 'bg-blue-500/10',
+      borderColor: 'border-blue-500/30',
+    },
+    {
       icon: BarChart3,
       title: 'AGGR Menüsü',
       description: 'Gelişmiş analiz araçlarına erişim',
-      videoUrl: '/videos/aggr-menu.mp4', // Video URL'leri eklenecek
-      color: 'from-green-500 to-emerald-600',
-      bgColor: 'bg-green-500/10',
-      borderColor: 'border-green-500/30',
+      videoUrl: '/videos/aggr-menu.mp4',
+      color: 'from-blue-600 to-indigo-600',
+      bgColor: 'bg-blue-600/10',
+      borderColor: 'border-blue-600/30',
     },
     {
       icon: Bell,
       title: 'Otomatik Fiyat Takibi',
       description: 'Backend üzerinden otomatik bildirimler',
       videoUrl: '/videos/auto-price-tracking.mp4',
-      color: 'from-yellow-500 to-orange-600',
-      bgColor: 'bg-yellow-500/10',
-      borderColor: 'border-yellow-500/30',
+      color: 'from-cyan-500 to-blue-500',
+      bgColor: 'bg-cyan-500/10',
+      borderColor: 'border-cyan-500/30',
     },
     {
       icon: Sparkles,
       title: '4-9 Lu Grafik',
       description: 'Çoklu grafik düzenleri',
       videoUrl: '/videos/multi-chart.mp4',
-      color: 'from-blue-500 to-cyan-600',
-      bgColor: 'bg-blue-500/10',
-      borderColor: 'border-blue-500/30',
+      color: 'from-indigo-500 to-blue-500',
+      bgColor: 'bg-indigo-500/10',
+      borderColor: 'border-indigo-500/30',
     },
     {
       icon: Clock,
       title: '10s & 30s Timeframe',
       description: 'Yüksek frekanslı veri analizi',
       videoUrl: '/videos/timeframe.mp4',
-      color: 'from-purple-500 to-pink-600',
-      bgColor: 'bg-purple-500/10',
-      borderColor: 'border-purple-500/30',
+      color: 'from-blue-400 to-cyan-400',
+      bgColor: 'bg-blue-400/10',
+      borderColor: 'border-blue-400/30',
     },
   ];
 
   return (
     <>
-      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/80 backdrop-blur-sm p-4 safe-area-inset">
-        <div className="relative w-full max-w-md bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-3xl shadow-2xl border border-gray-700/50 overflow-hidden max-h-[90vh] flex flex-col" style={{ maxHeight: 'calc(90vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))' }}>
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 safe-area-inset">
+        <div className="relative w-full max-w-md bg-gradient-to-br from-gray-950 via-black to-gray-950 rounded-2xl shadow-2xl border border-blue-500/20 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(90vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))' }}>
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 z-10 w-10 h-10 flex items-center justify-center rounded-full bg-gray-800/90 hover:bg-gray-700 text-gray-300 hover:text-white transition-all backdrop-blur-sm shadow-lg"
+            className="absolute top-3 right-3 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-gray-900/80 hover:bg-gray-800 text-gray-400 hover:text-white transition-all backdrop-blur-sm border border-gray-700/50"
             aria-label="Kapat"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
 
           {/* Header */}
-          <div className="relative pt-10 pb-6 px-6 bg-gradient-to-r from-blue-600/30 via-purple-600/30 to-blue-600/30 border-b border-gray-700/50">
+          <div className="relative pt-8 pb-5 px-6 bg-gradient-to-b from-blue-600/20 via-blue-500/10 to-transparent border-b border-blue-500/20">
             <div className="text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-600 to-blue-500 mb-4 shadow-lg shadow-blue-500/30">
-                <Sparkles className="w-10 h-10 text-white" />
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-500 mb-3 shadow-lg shadow-blue-500/40 border border-blue-400/30">
+                <Sparkles className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Premium'a Geç</h2>
-              <p className="text-gray-400 text-sm">
+              <h2 className="text-xl font-bold text-white mb-1.5">Premium'a Geç</h2>
+              <p className="text-gray-400 text-xs">
                 {isTrial
                   ? `${trialRemainingDays} gün deneme sürümü kaldı`
                   : 'Tüm özelliklere erişim kazan'}
@@ -286,54 +295,56 @@ export default function UpgradeModal({
             </div>
           </div>
 
-          {/* Features List */}
-          <div className="px-6 py-6 space-y-3 overflow-y-auto flex-1 scrollbar-hide">
-            {premiumFeatures.map((feature, index) => {
-              const IconComponent = feature.icon;
-              return (
-                <button
-                  key={index}
-                  onClick={() => setSelectedFeature({
-                    title: feature.title,
-                    videoUrl: feature.videoUrl,
-                    description: feature.description,
-                  })}
-                  className="w-full flex items-center gap-4 p-4 rounded-xl bg-gray-800/60 hover:bg-gray-800/80 border border-gray-700/40 hover:border-gray-600/60 transition-all group active:scale-[0.98] touch-manipulation"
-                >
-                  {/* Icon Container */}
-                  <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} ${feature.bgColor} border ${feature.borderColor} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform`}>
-                    <IconComponent className="w-6 h-6 text-white" />
-                  </div>
-                  
-                  {/* Content */}
-                  <div className="flex-1 min-w-0 text-left">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-white font-semibold text-sm group-hover:text-blue-400 transition-colors">
-                        {feature.title}
-                      </h3>
-                      <Play className="w-4 h-4 text-gray-500 group-hover:text-blue-400 transition-colors flex-shrink-0" />
+          {/* Features List - Compact Grid */}
+          <div className="px-4 py-4 flex-1">
+            <div className="grid grid-cols-1 gap-2.5">
+              {premiumFeatures.map((feature, index) => {
+                const IconComponent = feature.icon;
+                return (
+                  <button
+                    key={index}
+                    onClick={() => setSelectedFeature({
+                      title: feature.title,
+                      videoUrl: feature.videoUrl,
+                      description: feature.description,
+                    })}
+                    className="w-full flex items-center gap-3 p-3 rounded-lg bg-gray-900/60 hover:bg-gray-900/80 border border-gray-800/60 hover:border-blue-500/30 transition-all group active:scale-[0.98] touch-manipulation"
+                  >
+                    {/* Icon Container */}
+                    <div className={`flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br ${feature.color} ${feature.bgColor} border ${feature.borderColor} flex items-center justify-center shadow-md group-hover:scale-105 transition-transform`}>
+                      <IconComponent className="w-5 h-5 text-white" />
                     </div>
-                    <p className="text-gray-400 text-xs leading-relaxed">{feature.description}</p>
-                  </div>
-                </button>
-              );
-            })}
+                    
+                    {/* Content */}
+                    <div className="flex-1 min-w-0 text-left">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <h3 className="text-white font-semibold text-xs group-hover:text-blue-400 transition-colors">
+                          {feature.title}
+                        </h3>
+                        <Play className="w-3 h-3 text-gray-500 group-hover:text-blue-400 transition-colors flex-shrink-0" />
+                      </div>
+                      <p className="text-gray-400 text-[10px] leading-tight">{feature.description}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="mx-6 mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30">
-              <p className="text-red-400 text-sm text-center">{error}</p>
+            <div className="mx-4 mb-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30">
+              <p className="text-red-400 text-xs text-center">{error}</p>
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="px-6 pb-6 pt-2 space-y-3 border-t border-gray-700/50">
+          <div className="px-4 pb-4 pt-2 space-y-2 border-t border-gray-800/60">
             {currentPlan === 'free' && !isTrial && (
               <button
                 onClick={handleStartTrial}
                 disabled={loading}
-                className="w-full py-4 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-purple-600 to-blue-600 hover:from-blue-500 hover:via-purple-500 hover:to-blue-500 text-white font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 active:scale-[0.98] touch-manipulation"
+                className="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 text-white font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 active:scale-[0.98] touch-manipulation"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -349,7 +360,7 @@ export default function UpgradeModal({
             <button
               onClick={handlePurchase}
               disabled={loading || (platform !== 'web' && (!iapAvailable || !iapInitialized))}
-              className="w-full py-4 px-4 rounded-xl bg-gray-800/80 hover:bg-gray-700/80 disabled:bg-gray-900/50 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold transition-all border border-gray-600/50 active:scale-[0.98] shadow-md touch-manipulation"
+              className="w-full py-3 px-4 rounded-lg bg-gray-900/80 hover:bg-gray-800/80 disabled:bg-gray-900/50 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all border border-gray-700/50 hover:border-gray-600/50 active:scale-[0.98] shadow-md touch-manipulation"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
@@ -371,7 +382,7 @@ export default function UpgradeModal({
 
             <button
               onClick={onClose}
-              className="w-full py-3 px-4 rounded-xl text-gray-400 hover:text-white transition-colors text-sm font-medium"
+              className="w-full py-2.5 px-4 rounded-lg text-gray-400 hover:text-white transition-colors text-xs font-medium"
             >
               Daha Sonra
             </button>
