@@ -21,8 +21,9 @@ export async function POST(request: NextRequest) {
     let cookieString = cookieHeader;
     if (cookiesObj && cookiesObj.size > 0) {
       const cookiePairs: string[] = [];
-      cookiesObj.forEach((value, name) => {
-        cookiePairs.push(`${name}=${value}`);
+      // RequestCookies uses getAll() method, not forEach
+      cookiesObj.getAll().forEach((cookie) => {
+        cookiePairs.push(`${cookie.name}=${cookie.value}`);
       });
       if (cookiePairs.length > 0) {
         cookieString = cookiePairs.join('; ');
@@ -96,8 +97,9 @@ export async function GET(request: NextRequest) {
     let cookieString = cookieHeader;
     if (cookiesObj && cookiesObj.size > 0) {
       const cookiePairs: string[] = [];
-      cookiesObj.forEach((value, name) => {
-        cookiePairs.push(`${name}=${value}`);
+      // RequestCookies uses getAll() method, not forEach
+      cookiesObj.getAll().forEach((cookie) => {
+        cookiePairs.push(`${cookie.name}=${cookie.value}`);
       });
       if (cookiePairs.length > 0) {
         cookieString = cookiePairs.join('; ');
@@ -149,8 +151,9 @@ export async function DELETE(request: NextRequest) {
     let cookieString = cookieHeader;
     if (cookiesObj && cookiesObj.size > 0) {
       const cookiePairs: string[] = [];
-      cookiesObj.forEach((value, name) => {
-        cookiePairs.push(`${name}=${value}`);
+      // RequestCookies uses getAll() method, not forEach
+      cookiesObj.getAll().forEach((cookie) => {
+        cookiePairs.push(`${cookie.name}=${cookie.value}`);
       });
       if (cookiePairs.length > 0) {
         cookieString = cookiePairs.join('; ');
