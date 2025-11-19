@@ -41,21 +41,32 @@ export async function POST(request: NextRequest) {
     // If no accessToken but has refreshToken, try to refresh
     if (!hasAccessToken && hasRefreshToken) {
       try {
-        const refreshResponse = await fetch(`${backendUrl}/api/auth/refresh`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Cookie': cookieString,
-          },
-          body: JSON.stringify({}),
-        });
+        // Extract refreshToken from cookie string
+        const refreshTokenMatch = cookieString.match(/refreshToken=([^;]+)/);
+        const refreshToken = refreshTokenMatch ? refreshTokenMatch[1] : null;
         
-        if (refreshResponse.ok) {
-          const refreshResult = await refreshResponse.json();
-          if (refreshResult.accessToken) {
-            // Add new accessToken to cookie string
-            cookieString = `${cookieString}; accessToken=${refreshResult.accessToken}`;
-            console.log('[Next.js API] Token refreshed successfully');
+        if (refreshToken) {
+          const refreshResponse = await fetch(`${backendUrl}/api/auth/refresh`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Cookie': cookieString,
+            },
+            body: JSON.stringify({ refreshToken }),
+          });
+          
+          if (refreshResponse.ok) {
+            const refreshResult = await refreshResponse.json();
+            // Backend returns tokens in tokens object
+            const newAccessToken = refreshResult.tokens?.accessToken || refreshResult.accessToken;
+            if (newAccessToken) {
+              // Add new accessToken to cookie string
+              cookieString = `${cookieString}; accessToken=${newAccessToken}`;
+              console.log('[Next.js API] Token refreshed successfully');
+            }
+          } else {
+            const errorData = await refreshResponse.json();
+            console.warn('[Next.js API] Token refresh failed:', errorData);
           }
         }
       } catch (refreshError) {
