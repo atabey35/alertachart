@@ -57,10 +57,16 @@ export default function UpgradeModal({
     const getDeviceId = async () => {
       if (typeof window === 'undefined') return;
       
-      // Check if Capacitor (mobile app)
+      // Check if Capacitor (mobile app) - but verify it's actually native, not just web with Capacitor script
       if ((window as any).Capacitor) {
         const detectedPlatform = (window as any).Capacitor.getPlatform();
-        setPlatform(detectedPlatform === 'ios' ? 'ios' : 'android');
+        // Only set as iOS/Android if platform is actually 'ios' or 'android', not 'web'
+        if (detectedPlatform === 'ios' || detectedPlatform === 'android') {
+          setPlatform(detectedPlatform === 'ios' ? 'ios' : 'android');
+        } else {
+          // Capacitor exists but platform is 'web' - treat as web
+          setPlatform('web');
+        }
         
         let finalDeviceId: string | null = null;
         
@@ -115,6 +121,17 @@ export default function UpgradeModal({
         }
         setDeviceId(storedDeviceId);
         setPlatform('web');
+      }
+      
+      // Final check: if platform is still 'web' after all checks, ensure it's set correctly
+      // This handles edge cases where Capacitor might be present but we're actually on web
+      if (typeof window !== 'undefined' && !(window as any).Capacitor) {
+        setPlatform('web');
+      } else if ((window as any).Capacitor) {
+        const finalPlatform = (window as any).Capacitor.getPlatform();
+        if (finalPlatform === 'web') {
+          setPlatform('web');
+        }
       }
     };
     
