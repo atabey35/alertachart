@@ -798,12 +798,12 @@ export default function SettingsPage() {
               console.log('[Settings] ✅ User email saved to localStorage');
             }
 
-            // 🔥 FIX: Mark session restore as completed before reload to prevent loop
+            // 🔥 FIX: Mark session restore as completed to prevent loop
             sessionStorage.setItem('sessionRestoreCompleted', 'true');
             
-            // Refresh the page to update session state
-            console.log('[Settings] 🔄 Refreshing page to update session...');
-            window.location.reload();
+            // Session restored - NextAuth will automatically update via useSession hook
+            // No need to reload the page
+            console.log('[Settings] ✅ Session restored - no reload needed');
           } else {
             console.log('[Settings] ⚠️ Session restore failed');
             if (savedEmail) {

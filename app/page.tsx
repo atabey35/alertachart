@@ -383,25 +383,17 @@ export default function Home() {
               console.log('[App] ✅ User email saved to localStorage for future checks');
             }
             
-            // Force NextAuth to re-check session
-            // First try to update the session
+            // Force NextAuth to re-check session without page reload
+            // Just update the session - NextAuth will handle state updates automatically
             try {
               await update();
-              console.log('[App] ✅ NextAuth session updated');
-              
-              // Wait a bit for session to propagate
-              await new Promise(resolve => setTimeout(resolve, 300));
-              
-              // Reload to ensure everything is synced
-              console.log('[App] 🔄 Reloading page to sync session state...');
-              window.location.reload();
+              console.log('[App] ✅ NextAuth session updated - no reload needed');
+              // Session state will update automatically via NextAuth's useSession hook
+              // No need to reload the page
             } catch (updateError) {
               console.warn('[App] ⚠️ Failed to update NextAuth session:', updateError);
-              // Still reload even if update fails
-              setTimeout(() => {
-                console.log('[App] 🔄 Reloading page after session restore...');
-                window.location.reload();
-              }, 500);
+              // Even if update fails, don't reload - let NextAuth handle it naturally
+              // The session cookie is set, so it will work on next check
             }
           } else {
             const error = await response.json().catch(() => ({ error: 'Unknown error' }));
