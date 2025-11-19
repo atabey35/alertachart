@@ -192,11 +192,22 @@ export default function SettingsPage() {
     const fetchCustomAlerts = async () => {
       setLoadingAlerts(true);
       try {
-        const deviceId = typeof window !== 'undefined' 
+        // Try to get device ID from various sources
+        let deviceId = typeof window !== 'undefined' 
           ? localStorage.getItem('native_device_id') 
           : null;
         
-        if (!deviceId) {
+        // Fallback: Check other localStorage keys
+        if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+          deviceId = localStorage.getItem('device_id');
+        }
+        
+        // Fallback: Use web device ID
+        if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+          deviceId = localStorage.getItem('web_device_id');
+        }
+        
+        if (!deviceId || deviceId === 'unknown' || deviceId === 'null') {
           console.warn('[Settings] No device ID found');
           setLoadingAlerts(false);
           return;
@@ -1490,11 +1501,25 @@ export default function SettingsPage() {
                     </div>
                     <button
                       onClick={async () => {
-                        const deviceId = typeof window !== 'undefined' 
+                        // Try to get device ID from various sources
+                        let deviceId = typeof window !== 'undefined' 
                           ? localStorage.getItem('native_device_id') 
                           : null;
                         
-                        if (!deviceId) return;
+                        // Fallback: Check other localStorage keys
+                        if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+                          deviceId = localStorage.getItem('device_id');
+                        }
+                        
+                        // Fallback: Use web device ID
+                        if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+                          deviceId = localStorage.getItem('web_device_id');
+                        }
+                        
+                        if (!deviceId || deviceId === 'unknown' || deviceId === 'null') {
+                          console.error('[Settings] No device ID found for delete');
+                          return;
+                        }
 
                         try {
                           const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
@@ -1507,9 +1532,14 @@ export default function SettingsPage() {
 
                           if (response.ok) {
                             setCustomAlerts(customAlerts.filter(a => a.id !== alert.id));
+                          } else {
+                            const errorData = await response.json();
+                            console.error('[Settings] Error deleting alert:', errorData);
+                            setError(errorData.error || 'Failed to delete alert');
                           }
                         } catch (error) {
-                          console.error('Error deleting alert:', error);
+                          console.error('[Settings] Error deleting alert:', error);
+                          setError('Failed to delete alert');
                         }
                       }}
                       className="p-2 text-red-400 hover:text-red-300 transition"
@@ -1536,6 +1566,7 @@ export default function SettingsPage() {
                 onClick={() => {
                   setShowAddAlertModal(false);
                   setNewAlert({ symbol: '', targetPrice: '', proximityDelta: '', direction: 'up' });
+                  setError('');
                 }}
                 className="text-gray-400 hover:text-white"
               >
@@ -1544,6 +1575,13 @@ export default function SettingsPage() {
                 </svg>
               </button>
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="p-3 bg-red-900/20 border border-red-500/50 rounded-lg text-red-300 text-sm">
+                {error}
+              </div>
+            )}
 
             <div className="space-y-4">
               <div>
@@ -1610,6 +1648,9 @@ export default function SettingsPage() {
 
               <button
                 onClick={async () => {
+                  console.log('[Settings] Create alert button clicked');
+                  setError(''); // Clear previous errors
+                  
                   if (!newAlert.symbol || !newAlert.targetPrice || !newAlert.proximityDelta) {
                     setError('Please fill all fields');
                     return;
@@ -1617,41 +1658,79 @@ export default function SettingsPage() {
 
                   setLoading(true);
                   try {
-                    const deviceId = typeof window !== 'undefined' 
+                    // Try to get device ID from various sources
+                    let deviceId = typeof window !== 'undefined' 
                       ? localStorage.getItem('native_device_id') 
                       : null;
                     
-                    if (!deviceId) {
-                      setError('Device ID not found');
+                    // Fallback: Check other localStorage keys
+                    if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+                      deviceId = localStorage.getItem('device_id');
+                    }
+                    
+                    // Fallback: Generate device ID for web users
+                    if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+                      const existingId = localStorage.getItem('web_device_id');
+                      if (existingId) {
+                        deviceId = existingId;
+                      } else {
+                        deviceId = `web-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+                        localStorage.setItem('web_device_id', deviceId);
+                        console.log('[Settings] Generated web device ID:', deviceId);
+                      }
+                    }
+                    
+                    console.log('[Settings] Device ID:', deviceId);
+                    
+                    if (!deviceId || deviceId === 'unknown' || deviceId === 'null') {
+                      setError('Device ID not found. Please refresh the page and try again.');
                       setLoading(false);
                       return;
                     }
 
                     const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
+                    const requestBody = {
+                      deviceId,
+                      symbol: newAlert.symbol,
+                      targetPrice: parseFloat(newAlert.targetPrice),
+                      proximityDelta: parseFloat(newAlert.proximityDelta),
+                      direction: newAlert.direction,
+                    };
+                    
+                    console.log('[Settings] Sending request to:', `${backendUrl}/api/alerts/price`);
+                    console.log('[Settings] Request body:', requestBody);
+                    
                     const response = await fetch(`${backendUrl}/api/alerts/price`, {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       credentials: 'include',
-                      body: JSON.stringify({
-                        deviceId,
-                        symbol: newAlert.symbol,
-                        targetPrice: parseFloat(newAlert.targetPrice),
-                        proximityDelta: parseFloat(newAlert.proximityDelta),
-                        direction: newAlert.direction,
-                      }),
+                      body: JSON.stringify(requestBody),
                     });
 
+                    console.log('[Settings] Response status:', response.status);
+                    const responseText = await response.text();
+                    console.log('[Settings] Response text:', responseText);
+
                     if (response.ok) {
-                      const data = await response.json();
+                      const data = JSON.parse(responseText);
+                      console.log('[Settings] Alert created successfully:', data);
                       setCustomAlerts([...customAlerts, data.alert]);
                       setShowAddAlertModal(false);
                       setNewAlert({ symbol: '', targetPrice: '', proximityDelta: '', direction: 'up' });
+                      setError('');
                     } else {
-                      const errorData = await response.json();
-                      setError(errorData.error || 'Failed to create alert');
+                      try {
+                        const errorData = JSON.parse(responseText);
+                        console.error('[Settings] Error response:', errorData);
+                        setError(errorData.error || 'Failed to create alert');
+                      } catch (parseError) {
+                        console.error('[Settings] Failed to parse error response:', responseText);
+                        setError(`Failed to create alert (Status: ${response.status})`);
+                      }
                     }
                   } catch (error: any) {
-                    setError(error.message || 'Failed to create alert');
+                    console.error('[Settings] Exception creating alert:', error);
+                    setError(error.message || 'Failed to create alert. Please check console for details.');
                   } finally {
                     setLoading(false);
                   }
