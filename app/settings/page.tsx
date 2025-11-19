@@ -213,8 +213,8 @@ export default function SettingsPage() {
           return;
         }
 
-        const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
-        const response = await fetch(`${backendUrl}/api/alerts/price?deviceId=${deviceId}`, {
+        // Use Next.js API route proxy (forwards cookies automatically)
+        const response = await fetch(`/api/alerts/price?deviceId=${deviceId}`, {
           credentials: 'include',
         });
 
@@ -1522,8 +1522,8 @@ export default function SettingsPage() {
                         }
 
                         try {
-                          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
-                          const response = await fetch(`${backendUrl}/api/alerts/price`, {
+                          // Use Next.js API route proxy (forwards cookies automatically)
+                          const response = await fetch('/api/alerts/price', {
                             method: 'DELETE',
                             headers: { 'Content-Type': 'application/json' },
                             credentials: 'include',
@@ -1688,7 +1688,6 @@ export default function SettingsPage() {
                       return;
                     }
 
-                    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
                     const requestBody = {
                       deviceId,
                       symbol: newAlert.symbol,
@@ -1697,10 +1696,11 @@ export default function SettingsPage() {
                       direction: newAlert.direction,
                     };
                     
-                    console.log('[Settings] Sending request to:', `${backendUrl}/api/alerts/price`);
+                    console.log('[Settings] Sending request to: /api/alerts/price');
                     console.log('[Settings] Request body:', requestBody);
                     
-                    const response = await fetch(`${backendUrl}/api/alerts/price`, {
+                    // Use Next.js API route proxy (forwards cookies automatically)
+                    const response = await fetch('/api/alerts/price', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       credentials: 'include',
