@@ -34,6 +34,35 @@ export async function POST(request: NextRequest) {
       }
     }
     
+    // Check if we have accessToken, if not try to refresh
+    const hasAccessToken = cookieString.includes('accessToken=');
+    const hasRefreshToken = cookieString.includes('refreshToken=');
+    
+    // If no accessToken but has refreshToken, try to refresh
+    if (!hasAccessToken && hasRefreshToken) {
+      try {
+        const refreshResponse = await fetch(`${backendUrl}/api/auth/refresh`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': cookieString,
+          },
+          body: JSON.stringify({}),
+        });
+        
+        if (refreshResponse.ok) {
+          const refreshResult = await refreshResponse.json();
+          if (refreshResult.accessToken) {
+            // Add new accessToken to cookie string
+            cookieString = `${cookieString}; accessToken=${refreshResult.accessToken}`;
+            console.log('[Next.js API] Token refreshed successfully');
+          }
+        }
+      } catch (refreshError) {
+        console.warn('[Next.js API] Token refresh failed (non-critical):', refreshError);
+      }
+    }
+    
     const body = await request.json();
     
     // Debug: Log cookie info
@@ -41,6 +70,8 @@ export async function POST(request: NextRequest) {
     console.log('[Next.js API] Alert create request:', {
       hasCookieHeader: !!cookieHeader,
       hasCookiesObj: cookiesObj && cookiesObj.size > 0,
+      hasAccessToken: cookieString.includes('accessToken='),
+      hasRefreshToken: cookieString.includes('refreshToken='),
       cookieStringLength: cookieString.length,
       cookieCount: cookieNames.length,
       cookieNames: cookieNames,
