@@ -33,6 +33,7 @@ export default function SettingsPage() {
   // Layout and market type state (synced with localStorage)
   const [layout, setLayout] = useState<1 | 2 | 4 | 9>(1);
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
+  const [language, setLanguage] = useState<'tr' | 'en'>('tr');
 
   // Custom coin alerts state
   const [customAlerts, setCustomAlerts] = useState<any[]>([]);
@@ -56,7 +57,7 @@ export default function SettingsPage() {
   // Info tooltip state
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
-  // Load layout and market type from localStorage
+  // Load layout, market type, and language from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedLayout = localStorage.getItem('chartLayout');
@@ -67,6 +68,11 @@ export default function SettingsPage() {
       const savedMarketType = localStorage.getItem('marketType');
       if (savedMarketType === 'spot' || savedMarketType === 'futures') {
         setMarketType(savedMarketType);
+      }
+
+      const savedLanguage = localStorage.getItem('language');
+      if (savedLanguage === 'tr' || savedLanguage === 'en') {
+        setLanguage(savedLanguage);
       }
     }
   }, []);
@@ -84,6 +90,13 @@ export default function SettingsPage() {
       localStorage.setItem('marketType', marketType);
     }
   }, [marketType]);
+
+  // Save language to localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('language', language);
+    }
+  }, [language]);
 
   // Simple premium access check
   const hasPremiumAccessValue: boolean = userPlan?.hasPremiumAccess ?? hasPremiumAccess(fullUser) ?? false;
@@ -1340,7 +1353,7 @@ export default function SettingsPage() {
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-                <span className="text-xs">Liquidations</span>
+                <span className="text-xs">{language === 'tr' ? 'Liquidations' : 'Liquidations'}</span>
               </div>
             </button>
           )}
@@ -1352,7 +1365,7 @@ export default function SettingsPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              <span className="text-xs">Grafik</span>
+              <span className="text-xs">{language === 'tr' ? 'Grafik' : 'Chart'}</span>
             </div>
           </button>
           <button
@@ -1363,7 +1376,7 @@ export default function SettingsPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
-              <span className="text-xs">İzleme</span>
+              <span className="text-xs">{language === 'tr' ? 'İzleme' : 'Watchlist'}</span>
             </div>
           </button>
           <button
@@ -1374,7 +1387,7 @@ export default function SettingsPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              <span className="text-xs">Alarmlar</span>
+              <span className="text-xs">{language === 'tr' ? 'Alarmlar' : 'Alerts'}</span>
             </div>
           </button>
           {user && (
@@ -1556,7 +1569,7 @@ export default function SettingsPage() {
         {/* Premium Features Section - For non-premium users */}
         {!hasPremiumAccessValue && (
           <div className="space-y-3">
-            <label className="block text-sm font-medium text-gray-300">Premium Özellikler</label>
+            <label className="block text-sm font-medium text-gray-300">{language === 'tr' ? 'Premium Özellikler' : 'Premium Features'}</label>
             <div className="space-y-2">
               {/* Liquidations */}
               <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
@@ -1568,7 +1581,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <div className="font-semibold text-white">Liquidations Dashboard</div>
-                    <div className="text-xs text-gray-400">Gerçek zamanlı liquidation verileri</div>
+                    <div className="text-xs text-gray-400">{language === 'tr' ? 'Gerçek zamanlı liquidation verileri' : 'Real-time liquidation data'}</div>
                   </div>
                 </div>
                 <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Premium</span>
@@ -1584,7 +1597,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <div className="font-semibold text-white">Aggr Trade</div>
-                    <div className="text-xs text-gray-400">Gelişmiş trading analizi</div>
+                    <div className="text-xs text-gray-400">{language === 'tr' ? 'Gelişmiş trading analizi' : 'Advanced trading analysis'}</div>
                   </div>
                 </div>
                 <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Premium</span>
@@ -1600,7 +1613,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <div className="font-semibold text-white">Custom Coin Alerts</div>
-                    <div className="text-xs text-gray-400">Herhangi bir coin için özel fiyat alarmları</div>
+                    <div className="text-xs text-gray-400">{language === 'tr' ? 'Herhangi bir coin için özel fiyat alarmları' : 'Custom price alerts for any coin'}</div>
                   </div>
                 </div>
                 <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Premium</span>
@@ -1615,8 +1628,24 @@ export default function SettingsPage() {
                     </svg>
                   </div>
                   <div>
-                    <div className="font-semibold text-white">Advanced Chart Layouts</div>
-                    <div className="text-xs text-gray-400">2x2 ve 3x3 çoklu grafik düzenleri</div>
+                    <div className="font-semibold text-white">{language === 'tr' ? 'Gelişmiş Grafik Düzenleri' : 'Advanced Chart Layouts'}</div>
+                    <div className="text-xs text-gray-400">{language === 'tr' ? '2x2 ve 3x3 çoklu grafik düzenleri' : '2x2 and 3x3 multi-chart layouts'}</div>
+                  </div>
+                </div>
+                <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Premium</span>
+              </div>
+
+              {/* 10s & 30s Timeframe */}
+              <div className="p-4 rounded-lg border-2 border-gray-700 bg-gray-800/50 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <div className="font-semibold text-white">10s & 30s Timeframe</div>
+                    <div className="text-xs text-gray-400">{language === 'tr' ? 'Yüksek frekanslı veri analizi' : 'High-frequency data analysis'}</div>
                   </div>
                 </div>
                 <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">Premium</span>
@@ -1667,7 +1696,7 @@ export default function SettingsPage() {
 
         {/* Market Type */}
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-300">Market Type</label>
+          <label className="block text-sm font-medium text-gray-300">{language === 'tr' ? 'Market Tipi' : 'Market Type'}</label>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setMarketType('spot')}
@@ -1688,6 +1717,33 @@ export default function SettingsPage() {
               }`}
             >
               Futures
+            </button>
+          </div>
+        </div>
+
+        {/* Language Selection */}
+        <div className="space-y-2">
+          <label className="block text-sm font-medium text-gray-300">{language === 'tr' ? 'Dil' : 'Language'}</label>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setLanguage('tr')}
+              className={`p-3 rounded-lg border-2 transition-all ${
+                language === 'tr'
+                  ? 'border-blue-500 bg-blue-900/20 text-white'
+                  : 'border-gray-700 bg-gray-800 text-gray-400'
+              }`}
+            >
+              🇹🇷 Türkçe
+            </button>
+            <button
+              onClick={() => setLanguage('en')}
+              className={`p-3 rounded-lg border-2 transition-all ${
+                language === 'en'
+                  ? 'border-blue-500 bg-blue-900/20 text-white'
+                  : 'border-gray-700 bg-gray-800 text-gray-400'
+              }`}
+            >
+              🇬🇧 English
             </button>
           </div>
         </div>
@@ -2279,6 +2335,7 @@ export default function SettingsPage() {
       <UpgradeModal
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
+        language={language}
         onUpgrade={() => {
           setShowUpgradeModal(false);
           // Handle upgrade action

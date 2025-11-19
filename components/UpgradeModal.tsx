@@ -12,6 +12,7 @@ interface UpgradeModalProps {
   currentPlan?: 'free' | 'premium';
   isTrial?: boolean;
   trialRemainingDays?: number;
+  language?: 'tr' | 'en';
 }
 
 export default function UpgradeModal({
@@ -21,6 +22,7 @@ export default function UpgradeModal({
   currentPlan = 'free',
   isTrial = false,
   trialRemainingDays = 0,
+  language = 'tr',
 }: UpgradeModalProps) {
   const [deviceId, setDeviceId] = useState<string>('');
   const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
@@ -222,8 +224,8 @@ export default function UpgradeModal({
   const premiumFeatures = [
     {
       icon: TrendingUp,
-      title: 'Liquidations Dashboard',
-      description: 'Gerçek zamanlı liquidation verileri',
+      title: language === 'tr' ? 'Liquidations Dashboard' : 'Liquidations Dashboard',
+      description: language === 'tr' ? 'Gerçek zamanlı liquidation verileri' : 'Real-time liquidation data',
       videoUrl: '/videos/liquidations.mp4',
       color: 'from-blue-500 to-cyan-500',
       bgColor: 'bg-blue-500/10',
@@ -231,8 +233,8 @@ export default function UpgradeModal({
     },
     {
       icon: BarChart3,
-      title: 'AGGR Menüsü',
-      description: 'Gelişmiş analiz araçlarına erişim',
+      title: language === 'tr' ? 'AGGR Menüsü' : 'AGGR Menu',
+      description: language === 'tr' ? 'Gelişmiş analiz araçlarına erişim' : 'Access to advanced analysis tools',
       videoUrl: '/videos/aggr-menu.mp4',
       color: 'from-blue-600 to-indigo-600',
       bgColor: 'bg-blue-600/10',
@@ -240,8 +242,8 @@ export default function UpgradeModal({
     },
     {
       icon: Bell,
-      title: 'Otomatik Fiyat Takibi',
-      description: 'Backend üzerinden otomatik bildirimler',
+      title: language === 'tr' ? 'Otomatik Fiyat Takibi' : 'Automatic Price Tracking',
+      description: language === 'tr' ? 'Backend üzerinden otomatik bildirimler' : 'Automatic notifications via backend',
       videoUrl: '/videos/auto-price-tracking.mp4',
       color: 'from-cyan-500 to-blue-500',
       bgColor: 'bg-cyan-500/10',
@@ -249,8 +251,8 @@ export default function UpgradeModal({
     },
     {
       icon: Sparkles,
-      title: '4-9 Lu Grafik',
-      description: 'Çoklu grafik düzenleri',
+      title: language === 'tr' ? '4-9 Lu Grafik' : '4-9 Chart Layouts',
+      description: language === 'tr' ? 'Çoklu grafik düzenleri' : 'Multiple chart layouts',
       videoUrl: '/videos/multi-chart.mp4',
       color: 'from-indigo-500 to-blue-500',
       bgColor: 'bg-indigo-500/10',
@@ -259,7 +261,7 @@ export default function UpgradeModal({
     {
       icon: Clock,
       title: '10s & 30s Timeframe',
-      description: 'Yüksek frekanslı veri analizi',
+      description: language === 'tr' ? 'Yüksek frekanslı veri analizi' : 'High-frequency data analysis',
       videoUrl: '/videos/timeframe.mp4',
       color: 'from-blue-400 to-cyan-400',
       bgColor: 'bg-blue-400/10',
@@ -286,11 +288,11 @@ export default function UpgradeModal({
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-500 mb-3 shadow-lg shadow-blue-500/40 border border-blue-400/30">
                 <Sparkles className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-1.5">Premium'a Geç</h2>
+              <h2 className="text-xl font-bold text-white mb-1.5">{language === 'tr' ? 'Premium\'a Geç' : 'Go Premium'}</h2>
               <p className="text-gray-400 text-xs">
                 {isTrial
-                  ? `${trialRemainingDays} gün deneme sürümü kaldı`
-                  : 'Tüm özelliklere erişim kazan'}
+                  ? (language === 'tr' ? `${trialRemainingDays} gün deneme sürümü kaldı` : `${trialRemainingDays} days of trial remaining`)
+                  : (language === 'tr' ? 'Tüm özelliklere erişim kazan' : 'Gain access to all features')}
               </p>
             </div>
           </div>
@@ -349,10 +351,10 @@ export default function UpgradeModal({
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Başlatılıyor...
+                    {language === 'tr' ? 'Başlatılıyor...' : 'Starting...'}
                   </span>
                 ) : (
-                  '3 Gün Ücretsiz Dene'
+                  language === 'tr' ? '3 Gün Ücretsiz Dene' : 'Try 3 Days Free'
                 )}
               </button>
             )}
@@ -366,17 +368,17 @@ export default function UpgradeModal({
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   {platform === 'ios'
-                    ? 'Satın Alınıyor...'
+                    ? (language === 'tr' ? 'Satın Alınıyor...' : 'Purchasing...')
                     : platform === 'android'
-                    ? 'Satın Alınıyor...'
-                    : 'İşleniyor...'}
+                    ? (language === 'tr' ? 'Satın Alınıyor...' : 'Purchasing...')
+                    : (language === 'tr' ? 'İşleniyor...' : 'Processing...')}
                 </span>
               ) : (
                 platform === 'ios'
-                  ? 'App Store\'dan Satın Al'
+                  ? (language === 'tr' ? 'App Store\'dan Satın Al' : 'Buy from App Store')
                   : platform === 'android'
-                  ? 'Google Play\'den Satın Al'
-                  : 'Premium\'a Geç'
+                  ? (language === 'tr' ? 'Google Play\'den Satın Al' : 'Buy from Google Play')
+                  : (language === 'tr' ? 'Premium\'a Geç' : 'Go Premium')
               )}
             </button>
 
@@ -384,7 +386,7 @@ export default function UpgradeModal({
               onClick={onClose}
               className="w-full py-2.5 px-4 rounded-lg text-gray-400 hover:text-white transition-colors text-xs font-medium"
             >
-              Daha Sonra
+              {language === 'tr' ? 'Daha Sonra' : 'Later'}
             </button>
           </div>
         </div>
