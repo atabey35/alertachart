@@ -360,7 +360,8 @@ export default function UpgradeModal({
           {/* Action Buttons */}
           <div className="px-4 pb-4 pt-2 space-y-2 border-t border-gray-800/60">
             {/* Trial button - only for native apps (iOS/Android), not web */}
-            {currentPlan === 'free' && !isTrial && platform !== 'web' && (
+            {/* Double check: platform must be 'ios' or 'android', not 'web' */}
+            {currentPlan === 'free' && !isTrial && (platform === 'ios' || platform === 'android') && (
               <button
                 onClick={handleStartTrial}
                 disabled={loading}
