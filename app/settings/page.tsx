@@ -1741,7 +1741,6 @@ export default function SettingsPage() {
                     let deviceId = null;
                     
                     // 🔥 CRITICAL: For native apps, try to get device ID from Capacitor first
-                    const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
                     if (isCapacitor) {
                       try {
                         const { Device } = (window as any).Capacitor?.Plugins;
