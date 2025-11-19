@@ -52,6 +52,9 @@ export default function SettingsPage() {
   const [allSymbols, setAllSymbols] = useState<any[]>([]);
   const symbolInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
+  
+  // Info tooltip state
+  const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
   // Load layout and market type from localStorage
   useEffect(() => {
@@ -1730,19 +1733,44 @@ export default function SettingsPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <h2 className="text-xl font-bold text-white">Add Custom Coin Alert</h2>
-                <div className="group relative">
-                  <svg className="w-5 h-5 text-gray-400 hover:text-blue-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <button
+                  onClick={() => setActiveTooltip(activeTooltip === 'title' ? null : 'title')}
+                  className="text-gray-400 hover:text-blue-400 cursor-help"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <div className="absolute left-0 top-6 w-80 bg-gray-800 border-2 border-gray-700 rounded-lg p-3 text-sm text-gray-300 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                    <div className="font-semibold text-white mb-2">How It Works / Nasıl Çalışır</div>
-                    <div className="space-y-2">
-                      <p><strong>EN:</strong> Set a target price and proximity range. When the coin price approaches your target within the specified range, you'll receive a push notification.</p>
-                      <p><strong>TR:</strong> Bir hedef fiyat ve yaklaşma aralığı belirleyin. Coin fiyatı belirlediğiniz aralık içinde hedefe yaklaştığında push bildirimi alırsınız.</p>
+                </button>
+              </div>
+              
+              {/* Title Tooltip Modal */}
+              {activeTooltip === 'title' && (
+                <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setActiveTooltip(null)}>
+                  <div className="bg-gray-900 border-2 border-gray-700 rounded-lg p-4 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="font-semibold text-white text-lg">How It Works / Nasıl Çalışır</div>
+                      <button
+                        onClick={() => setActiveTooltip(null)}
+                        className="text-gray-400 hover:text-white"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
+                    <div className="space-y-3 text-sm text-gray-300">
+                      <div>
+                        <p className="font-semibold text-blue-400 mb-1">English:</p>
+                        <p>Set a target price and proximity range. When the coin price approaches your target within the specified range, you'll receive a push notification. The alert stays active until you delete it.</p>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
+                        <p>Bir hedef fiyat ve yaklaşma aralığı belirleyin. Coin fiyatı belirlediğiniz aralık içinde hedefe yaklaştığında push bildirimi alırsınız. Alert, silinene kadar aktif kalır.</p>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              )}
               <button
                 onClick={() => {
                   setShowAddAlertModal(false);
@@ -1846,16 +1874,14 @@ export default function SettingsPage() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <label className="block text-sm font-medium text-gray-300">Target Price ($)</label>
-                  <div className="group relative">
-                    <svg className="w-4 h-4 text-gray-400 hover:text-blue-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <button
+                    onClick={() => setActiveTooltip(activeTooltip === 'target' ? null : 'target')}
+                    className="text-gray-400 hover:text-blue-400 cursor-help"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <div className="absolute left-0 top-5 w-72 bg-gray-800 border-2 border-gray-700 rounded-lg p-3 text-xs text-gray-300 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                      <div className="font-semibold text-white mb-1">Target Price / Hedef Fiyat</div>
-                      <p className="mb-2"><strong>EN:</strong> The price level you want to be notified about. The alert will trigger when the current price approaches this target.</p>
-                      <p><strong>TR:</strong> Bildirim almak istediğiniz fiyat seviyesi. Mevcut fiyat bu hedefe yaklaştığında alert tetiklenir.</p>
-                    </div>
-                  </div>
+                  </button>
                 </div>
                 <input
                   type="number"
@@ -1870,16 +1896,14 @@ export default function SettingsPage() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <label className="block text-sm font-medium text-gray-300">Proximity Delta ($)</label>
-                  <div className="group relative">
-                    <svg className="w-4 h-4 text-gray-400 hover:text-blue-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <button
+                    onClick={() => setActiveTooltip(activeTooltip === 'delta' ? null : 'delta')}
+                    className="text-gray-400 hover:text-blue-400 cursor-help"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <div className="absolute left-0 top-5 w-80 bg-gray-800 border-2 border-gray-700 rounded-lg p-3 text-xs text-gray-300 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                      <div className="font-semibold text-white mb-1">Proximity Delta / Yaklaşma Aralığı</div>
-                      <p className="mb-2"><strong>EN:</strong> The distance from target price that triggers the alert. Example: Target 2.25$, Delta 0.1$ → Alert triggers when price is between 2.15$ - 2.25$.</p>
-                      <p><strong>TR:</strong> Hedef fiyattan ne kadar uzaklıkta alert tetikleneceği. Örnek: Hedef 2.25$, Delta 0.1$ → Fiyat 2.15$ - 2.25$ aralığında bildirim gönderilir.</p>
-                    </div>
-                  </div>
+                  </button>
                 </div>
                 <input
                   type="number"
@@ -1895,16 +1919,14 @@ export default function SettingsPage() {
               <div>
                 <div className="flex items-center gap-2 mb-2">
                   <label className="block text-sm font-medium text-gray-300">Direction / Yön</label>
-                  <div className="group relative">
-                    <svg className="w-4 h-4 text-gray-400 hover:text-blue-400 cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <button
+                    onClick={() => setActiveTooltip(activeTooltip === 'direction' ? null : 'direction')}
+                    className="text-gray-400 hover:text-blue-400 cursor-help"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    <div className="absolute left-0 top-5 w-80 bg-gray-800 border-2 border-gray-700 rounded-lg p-3 text-xs text-gray-300 z-50 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200">
-                      <div className="font-semibold text-white mb-1">Direction / Yön</div>
-                      <p className="mb-2"><strong>EN:</strong> <strong>Up:</strong> Price is below target and approaching upward. <strong>Down:</strong> Price is above target and approaching downward.</p>
-                      <p><strong>TR:</strong> <strong>Yukarı:</strong> Fiyat hedefin altında ve yukarı doğru yaklaşıyor. <strong>Aşağı:</strong> Fiyat hedefin üstünde ve aşağı doğru yaklaşıyor.</p>
-                    </div>
-                  </div>
+                  </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <button
@@ -2072,6 +2094,93 @@ export default function SettingsPage() {
               >
                 {loading ? 'Creating...' : 'Create Alert'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Info Tooltip Modals */}
+      {activeTooltip === 'target' && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setActiveTooltip(null)}>
+          <div className="bg-gray-900 border-2 border-gray-700 rounded-lg p-4 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold text-white text-lg">Target Price / Hedef Fiyat</div>
+              <button
+                onClick={() => setActiveTooltip(null)}
+                className="text-gray-400 hover:text-white"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-3 text-sm text-gray-300">
+              <div>
+                <p className="font-semibold text-blue-400 mb-1">English:</p>
+                <p>The price level you want to be notified about. The alert will trigger when the current price approaches this target within the proximity delta range.</p>
+              </div>
+              <div>
+                <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
+                <p>Bildirim almak istediğiniz fiyat seviyesi. Mevcut fiyat, yaklaşma aralığı (proximity delta) içinde bu hedefe yaklaştığında alert tetiklenir.</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTooltip === 'delta' && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setActiveTooltip(null)}>
+          <div className="bg-gray-900 border-2 border-gray-700 rounded-lg p-4 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold text-white text-lg">Proximity Delta / Yaklaşma Aralığı</div>
+              <button
+                onClick={() => setActiveTooltip(null)}
+                className="text-gray-400 hover:text-white"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-3 text-sm text-gray-300">
+              <div>
+                <p className="font-semibold text-blue-400 mb-1">English:</p>
+                <p>The distance from target price that triggers the alert. Example: Target 2.25$, Delta 0.1$ → Alert triggers when price is between 2.15$ - 2.25$ (for "up" direction).</p>
+              </div>
+              <div>
+                <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
+                <p>Hedef fiyattan ne kadar uzaklıkta alert tetikleneceği. Örnek: Hedef 2.25$, Delta 0.1$ → Fiyat 2.15$ - 2.25$ aralığında bildirim gönderilir ("yukarı" yönü için).</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTooltip === 'direction' && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4" onClick={() => setActiveTooltip(null)}>
+          <div className="bg-gray-900 border-2 border-gray-700 rounded-lg p-4 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="font-semibold text-white text-lg">Direction / Yön</div>
+              <button
+                onClick={() => setActiveTooltip(null)}
+                className="text-gray-400 hover:text-white"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="space-y-3 text-sm text-gray-300">
+              <div>
+                <p className="font-semibold text-blue-400 mb-1">English:</p>
+                <p><strong>Up (📈):</strong> Price is below target and approaching upward. Alert triggers when price is in range: (target - delta) to target.</p>
+                <p className="mt-2"><strong>Down (📉):</strong> Price is above target and approaching downward. Alert triggers when price is in range: target to (target + delta).</p>
+              </div>
+              <div>
+                <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
+                <p><strong>Yukarı (📈):</strong> Fiyat hedefin altında ve yukarı doğru yaklaşıyor. Fiyat (hedef - delta) ile hedef aralığında bildirim gönderilir.</p>
+                <p className="mt-2"><strong>Aşağı (📉):</strong> Fiyat hedefin üstünde ve aşağı doğru yaklaşıyor. Fiyat hedef ile (hedef + delta) aralığında bildirim gönderilir.</p>
+              </div>
             </div>
           </div>
         </div>
