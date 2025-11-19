@@ -1344,17 +1344,26 @@ export default function SettingsPage() {
 
         {/* Navigation Buttons - Quick access to other tabs */}
         <div className="grid grid-cols-2 gap-2">
-          {/* Liquidations - Premium Only */}
-          {user && hasPremiumAccessValue && (
+          {/* Liquidations - Show for all users, but premium check on click */}
+          {user && (
             <button
-              onClick={() => handleNavigateToTab('liquidations')}
-              className="p-3 rounded-lg border-2 border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600 hover:text-white transition"
+              onClick={() => {
+                if (hasPremiumAccessValue) {
+                  handleNavigateToTab('liquidations');
+                } else {
+                  setShowUpgradeModal(true);
+                }
+              }}
+              className="p-3 rounded-lg border-2 border-gray-700 bg-gray-800 text-gray-400 hover:border-gray-600 hover:text-white transition relative"
             >
               <div className="flex flex-col items-center gap-1">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
                 <span className="text-xs">{language === 'tr' ? 'Liquidations' : 'Liquidations'}</span>
+                {!hasPremiumAccessValue && (
+                  <span className="absolute top-1 right-1 text-[8px]">🔒</span>
+                )}
               </div>
             </button>
           )}
@@ -1489,7 +1498,7 @@ export default function SettingsPage() {
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                     </svg>
-                    <span>Premium'a Geç</span>
+                    <span>{language === 'tr' ? 'Premium\'a Geç' : 'Go Premium'}</span>
                   </div>
                 </button>
               )}
@@ -1503,7 +1512,7 @@ export default function SettingsPage() {
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                  <span>Çıkış Yap</span>
+                  <span>{language === 'tr' ? 'Çıkış Yap' : 'Logout'}</span>
                 </div>
               </button>
             </div>
