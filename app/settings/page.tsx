@@ -1690,24 +1690,57 @@ export default function SettingsPage() {
                     }
 
                     // Try to get device ID from various sources
-                    let deviceId = typeof window !== 'undefined' 
-                      ? localStorage.getItem('native_device_id') 
-                      : null;
+                    let deviceId = null;
                     
-                    // Fallback: Check other localStorage keys
-                    if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
-                      deviceId = localStorage.getItem('device_id');
+                    // 🔥 CRITICAL: For native apps, try to get device ID from Capacitor first
+                    const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+                    if (isCapacitor) {
+                      try {
+                        const { Device } = (window as any).Capacitor?.Plugins;
+                        if (Device && typeof Device.getId === 'function') {
+                          const deviceIdInfo = await Device.getId();
+                          const nativeId = deviceIdInfo?.identifier;
+                          
+                          if (nativeId && nativeId !== 'unknown' && nativeId !== 'null' && nativeId !== 'undefined') {
+                            deviceId = nativeId;
+                            // Store in localStorage for future use
+                            if (typeof window !== 'undefined') {
+                              localStorage.setItem('native_device_id', deviceId);
+                            }
+                            console.log('[Settings] ✅ Got device ID from Capacitor:', deviceId);
+                          }
+                        }
+                      } catch (capacitorError) {
+                        console.warn('[Settings] Failed to get device ID from Capacitor:', capacitorError);
+                      }
                     }
                     
-                    // Fallback: Generate device ID for web users
+                    // Fallback 1: Check localStorage for native_device_id
                     if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+                      deviceId = localStorage.getItem('native_device_id');
+                      if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+                        console.log('[Settings] ✅ Got device ID from localStorage (native_device_id):', deviceId);
+                      }
+                    }
+                    
+                    // Fallback 2: Check other localStorage keys
+                    if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+                      deviceId = localStorage.getItem('device_id');
+                      if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+                        console.log('[Settings] ✅ Got device ID from localStorage (device_id):', deviceId);
+                      }
+                    }
+                    
+                    // Fallback 3: Generate device ID for web users ONLY if not Capacitor
+                    if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined' && !isCapacitor) {
                       const existingId = localStorage.getItem('web_device_id');
                       if (existingId) {
                         deviceId = existingId;
+                        console.log('[Settings] ✅ Using existing web device ID:', deviceId);
                       } else {
                         deviceId = `web-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
                         localStorage.setItem('web_device_id', deviceId);
-                        console.log('[Settings] Generated web device ID:', deviceId);
+                        console.log('[Settings] ⚠️ Generated web device ID (not a native app):', deviceId);
                       }
                     }
                     
