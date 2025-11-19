@@ -1847,7 +1847,10 @@ export default function Home() {
             <button
               onClick={() => {
                 if (hasPremiumAccessValue) {
-                  setMobileTab('aggr');
+                  // Open AGGR in new window/tab
+                  if (typeof window !== 'undefined') {
+                    window.open('https://aggr.alertachart.com', '_blank');
+                  }
                 } else {
                   setShowUpgradeModal(true);
                 }
