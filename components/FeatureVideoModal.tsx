@@ -22,7 +22,7 @@ export default function FeatureVideoModal({ isOpen, onClose, feature }: FeatureV
   // Multiple videos support
   const hasMultipleVideos = feature.videoUrls && feature.videoUrls.length > 0;
   const currentVideoUrl = hasMultipleVideos 
-    ? feature.videoUrls[selectedVideoIndex]?.url 
+    ? feature.videoUrls?.[selectedVideoIndex]?.url 
     : feature.videoUrl;
 
   useEffect(() => {
