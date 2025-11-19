@@ -29,9 +29,18 @@ export default function FeatureVideoModal({ isOpen, onClose, feature }: FeatureV
     if (isOpen) {
       setIsLoading(true);
       setHasError(false);
+      // Only reset to first video when modal first opens
       setSelectedVideoIndex(0);
     }
-  }, [isOpen, currentVideoUrl]);
+  }, [isOpen]);
+
+  // When video index changes, reset loading state
+  useEffect(() => {
+    if (isOpen && hasMultipleVideos) {
+      setIsLoading(true);
+      setHasError(false);
+    }
+  }, [selectedVideoIndex, isOpen, hasMultipleVideos]);
 
   if (!isOpen) return null;
 
@@ -97,19 +106,21 @@ export default function FeatureVideoModal({ isOpen, onClose, feature }: FeatureV
                   </p>
                 </div>
               )}
-              <video
-                key={currentVideoUrl}
-                src={currentVideoUrl}
-                controls
-                autoPlay
-                playsInline
-                className="w-full h-full object-contain"
-                onLoadedData={() => setIsLoading(false)}
-                onError={() => {
-                  setIsLoading(false);
-                  setHasError(true);
-                }}
-              />
+              {currentVideoUrl && (
+                <video
+                  key={currentVideoUrl}
+                  src={currentVideoUrl}
+                  controls
+                  autoPlay
+                  playsInline
+                  className="w-full h-full object-contain"
+                  onLoadedData={() => setIsLoading(false)}
+                  onError={() => {
+                    setIsLoading(false);
+                    setHasError(true);
+                  }}
+                />
+              )}
             </>
           ) : (
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-blue-900/20 to-purple-900/20 p-6">
