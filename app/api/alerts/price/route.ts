@@ -13,13 +13,34 @@ const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_UR
  */
 export async function POST(request: NextRequest) {
   try {
-    const cookies = request.headers.get('cookie') || '';
+    // Get cookies from both sources (headers and cookies object)
+    const cookieHeader = request.headers.get('cookie') || '';
+    const cookiesObj = request.cookies;
+    
+    // Build cookie string from cookies object (more reliable)
+    let cookieString = cookieHeader;
+    if (cookiesObj && cookiesObj.size > 0) {
+      const cookiePairs: string[] = [];
+      cookiesObj.forEach((value, name) => {
+        cookiePairs.push(`${name}=${value}`);
+      });
+      if (cookiePairs.length > 0) {
+        cookieString = cookiePairs.join('; ');
+        // Also append header cookies if they exist
+        if (cookieHeader) {
+          cookieString = `${cookieString}; ${cookieHeader}`;
+        }
+      }
+    }
+    
     const body = await request.json();
     
     // Debug: Log cookie info
-    const cookieNames = cookies ? cookies.split(';').map(c => c.split('=')[0].trim()).filter(Boolean) : [];
+    const cookieNames = cookieString ? cookieString.split(';').map(c => c.split('=')[0].trim()).filter(Boolean) : [];
     console.log('[Next.js API] Alert create request:', {
-      hasCookies: !!cookies,
+      hasCookieHeader: !!cookieHeader,
+      hasCookiesObj: cookiesObj && cookiesObj.size > 0,
+      cookieStringLength: cookieString.length,
       cookieCount: cookieNames.length,
       cookieNames: cookieNames,
       deviceId: body.deviceId,
@@ -30,7 +51,7 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': cookies,
+        'Cookie': cookieString,
       },
       body: JSON.stringify(body),
     });
@@ -67,7 +88,25 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
-    const cookies = request.headers.get('cookie') || '';
+    // Get cookies from both sources
+    const cookieHeader = request.headers.get('cookie') || '';
+    const cookiesObj = request.cookies;
+    
+    // Build cookie string from cookies object
+    let cookieString = cookieHeader;
+    if (cookiesObj && cookiesObj.size > 0) {
+      const cookiePairs: string[] = [];
+      cookiesObj.forEach((value, name) => {
+        cookiePairs.push(`${name}=${value}`);
+      });
+      if (cookiePairs.length > 0) {
+        cookieString = cookiePairs.join('; ');
+        if (cookieHeader) {
+          cookieString = `${cookieString}; ${cookieHeader}`;
+        }
+      }
+    }
+    
     const { searchParams } = new URL(request.url);
     const deviceId = searchParams.get('deviceId');
     
@@ -80,7 +119,7 @@ export async function GET(request: NextRequest) {
     
     const response = await fetch(`${backendUrl}/api/alerts/price?deviceId=${deviceId}`, {
       headers: {
-        'Cookie': cookies,
+        'Cookie': cookieString,
       },
     });
     
@@ -102,14 +141,32 @@ export async function GET(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
-    const cookies = request.headers.get('cookie') || '';
+    // Get cookies from both sources
+    const cookieHeader = request.headers.get('cookie') || '';
+    const cookiesObj = request.cookies;
+    
+    // Build cookie string from cookies object
+    let cookieString = cookieHeader;
+    if (cookiesObj && cookiesObj.size > 0) {
+      const cookiePairs: string[] = [];
+      cookiesObj.forEach((value, name) => {
+        cookiePairs.push(`${name}=${value}`);
+      });
+      if (cookiePairs.length > 0) {
+        cookieString = cookiePairs.join('; ');
+        if (cookieHeader) {
+          cookieString = `${cookieString}; ${cookieHeader}`;
+        }
+      }
+    }
+    
     const body = await request.json();
     
     const response = await fetch(`${backendUrl}/api/alerts/price`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': cookies,
+        'Cookie': cookieString,
       },
       body: JSON.stringify(body),
     });
