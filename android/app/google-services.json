@@ -12,7 +12,12 @@
           "package_name": "com.kriptokirmizi.alerta"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyB4ZNx-jXowGYxHpgltpp3PeTaUkKEFJNw"
@@ -20,7 +25,20 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.kriptokirmizi.alerta",
+                "app_store_id": "6755160060"
+              }
+            }
+          ]
         }
       }
     }
