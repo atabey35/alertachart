@@ -77,13 +77,8 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
       id: 'lines',
       name: 'Lines',
       icon: <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4" strokeWidth="2.5"/></svg>,
-      defaultTool: 'trend', // Default: Trend Line
+      defaultTool: 'horizontal', // Default: Horizontal Line
       tools: [
-        { 
-          id: 'trend', 
-          icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4" strokeWidth="2"/></svg>,
-          label: 'Trend Line' 
-        },
         { 
           id: 'horizontal', 
           icon: <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><line x1="4" y1="12" x2="20" y2="12" strokeWidth="2"/></svg>,
