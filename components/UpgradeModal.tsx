@@ -216,15 +216,47 @@ export default function UpgradeModal({
 
       const result = await purchaseProduct(productId);
 
-      if (result.success) {
-        console.log('[UpgradeModal] ✅ Purchase successful');
+      if (result.success && result.transactionId && result.receipt && result.productId) {
+        console.log('[UpgradeModal] ✅ Purchase successful, verifying with backend...');
         
-        // Refresh user plan
-        onUpgrade();
-        onClose();
-        
-        // Show success message
-        alert('Satın alma başarılı! Premium özellikler aktif edildi.');
+        // Verify purchase with backend
+        try {
+          const verifyResponse = await fetch('/api/subscription/verify-purchase', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              platform,
+              productId: result.productId,
+              transactionId: result.transactionId,
+              receipt: result.receipt,
+            }),
+          });
+
+          const verifyData = await verifyResponse.json();
+
+          if (!verifyResponse.ok) {
+            console.error('[UpgradeModal] ❌ Purchase verification failed:', verifyData.error);
+            setError(verifyData.error || 'Satın alma doğrulanamadı. Lütfen destek ile iletişime geçin.');
+            setLoading(false);
+            return;
+          }
+
+          console.log('[UpgradeModal] ✅ Purchase verified, premium activated');
+          
+          // Refresh user plan
+          onUpgrade();
+          onClose();
+          
+          // Show success message
+          alert('Satın alma başarılı! Premium özellikler aktif edildi.');
+        } catch (verifyError: any) {
+          console.error('[UpgradeModal] ❌ Error verifying purchase:', verifyError);
+          setError('Satın alma doğrulanamadı. Lütfen sayfayı yenileyin veya destek ile iletişime geçin.');
+          setLoading(false);
+          return;
+        }
       } else {
         console.error('[UpgradeModal] ❌ Purchase failed:', result.error);
         setError(result.error || 'Satın alma işlemi başarısız oldu. Lütfen tekrar deneyin.');

@@ -865,13 +865,12 @@ export default function SettingsPage() {
           // 🔥 CRITICAL: Initialize plugin before signIn
           // Plugin must be initialized with clientId and scopes before signIn can be called
           // 🔥 CRITICAL: Platform-specific client ID kullanılmalı
-          // Android: Web client ID
+          // Android: Android client ID
           // iOS: iOS client ID (Web client ID custom scheme URI'leri desteklemez)
           const platform = typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown';
           const clientId = platform === 'ios' 
             ? '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com' // iOS client ID
-            : (process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 
-               '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com'); // Web client ID for Android
+            : '776781271347-fgnaoenplt1lnnmjivcagc013fa01ch1.apps.googleusercontent.com'; // Android client ID
           
           console.log('[Settings] 🔧 Initializing GoogleAuth plugin...');
           console.log('[Settings] Platform:', platform);

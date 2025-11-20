@@ -58,7 +58,13 @@ export async function getProducts(): Promise<any[]> {
 /**
  * Purchase a product
  */
-export async function purchaseProduct(productId: string): Promise<{ success: boolean; transactionId?: string; error?: string }> {
+export async function purchaseProduct(productId: string): Promise<{ 
+  success: boolean; 
+  transactionId?: string; 
+  receipt?: string;
+  productId?: string;
+  error?: string 
+}> {
   if (typeof window === 'undefined') {
     return { success: false, error: 'Not available in web' };
   }
@@ -69,7 +75,12 @@ export async function purchaseProduct(productId: string): Promise<{ success: boo
     const result = await InAppPurchase.purchase({ productId });
     
     if (result.transaction?.transactionId) {
-      return { success: true, transactionId: result.transaction.transactionId };
+      return { 
+        success: true, 
+        transactionId: result.transaction.transactionId,
+        receipt: result.transaction.receipt || result.transaction.transactionReceipt,
+        productId: result.transaction.productId || productId
+      };
     }
     
     return { success: false, error: 'Purchase failed' };

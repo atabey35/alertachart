@@ -17,6 +17,8 @@ import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.RemoteMessage;
+import org.json.JSONObject;
+import java.io.InputStream;
 
 public class MainActivity extends BridgeActivity {
     @Override
@@ -45,6 +47,17 @@ public class MainActivity extends BridgeActivity {
                 webSettings.setDomStorageEnabled(true); // Enable DOM storage (localStorage)
                 webSettings.setDatabaseEnabled(true); // Enable database storage
                 
+                // 🔥 CRITICAL: Clear WebView cache to ensure new domain is loaded
+                // This prevents old domain (alerta.kriptokirmizi.com) from being cached
+                webView.clearCache(true);
+                webView.clearHistory();
+                
+                // Clear cookies for old domain
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    cookieManager.removeAllCookies(null);
+                    cookieManager.flush();
+                }
+                
                 // Set cache mode to LOAD_DEFAULT (uses cache when available)
                 webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
                 
@@ -59,6 +72,15 @@ public class MainActivity extends BridgeActivity {
                     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                         // Always load URLs within WebView, never open external browser
                         String url = request.getUrl().toString();
+                        
+                        // 🔥 CRITICAL: Redirect old domain to new domain
+                        if (url.contains("alerta.kriptokirmizi.com")) {
+                            String newUrl = url.replace("alerta.kriptokirmizi.com", "alertachart.com");
+                            android.util.Log.d("MainActivity", "🔄 Redirecting old domain to new: " + newUrl);
+                            view.loadUrl(newUrl);
+                            return true;
+                        }
+                        
                         view.loadUrl(url);
                         return true; // We handled the URL loading
                     }
@@ -67,8 +89,31 @@ public class MainActivity extends BridgeActivity {
                     @SuppressWarnings("deprecation")
                     public boolean shouldOverrideUrlLoading(WebView view, String url) {
                         // For older Android versions
+                        
+                        // 🔥 CRITICAL: Redirect old domain to new domain
+                        if (url.contains("alerta.kriptokirmizi.com")) {
+                            String newUrl = url.replace("alerta.kriptokirmizi.com", "alertachart.com");
+                            android.util.Log.d("MainActivity", "🔄 Redirecting old domain to new: " + newUrl);
+                            view.loadUrl(newUrl);
+                            return true;
+                        }
+                        
                         view.loadUrl(url);
                         return true; // We handled the URL loading
+                    }
+                    
+                    @Override
+                    public void onReceivedError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceError error) {
+                        super.onReceivedError(view, request, error);
+                        String url = request.getUrl().toString();
+                        android.util.Log.e("MainActivity", "❌ WebView error for URL: " + url + " - " + error.getDescription());
+                        
+                        // If error is for old domain, redirect to new domain
+                        if (url.contains("alerta.kriptokirmizi.com")) {
+                            String newUrl = url.replace("alerta.kriptokirmizi.com", "alertachart.com");
+                            android.util.Log.d("MainActivity", "🔄 Redirecting after error: " + newUrl);
+                            view.loadUrl(newUrl);
+                        }
                     }
                     
                     // Removed shouldInterceptRequest - it was breaking WebView rendering
@@ -94,6 +139,90 @@ public class MainActivity extends BridgeActivity {
         
         // Setup Firebase Cloud Messaging listener
         setupFCMListener();
+        
+        // 🔥 CRITICAL: Force WebView to load correct URL after Capacitor initialization
+        // This ensures Play Store builds use the correct domain from capacitor.config.json
+        getBridge().getWebView().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                forceCorrectServerUrl();
+            }
+        }, 500); // Wait 500ms for Capacitor to initialize
+    }
+    
+    /**
+     * 🔥 CRITICAL: Force WebView to load the correct server URL from capacitor.config.json
+     * This fixes the issue where Play Store builds load old domain from cache
+     */
+    private void forceCorrectServerUrl() {
+        try {
+            WebView webView = getBridge().getWebView();
+            if (webView == null) {
+                android.util.Log.w("MainActivity", "⚠️ WebView not available for forceCorrectServerUrl");
+                return;
+            }
+            
+            // Read capacitor.config.json from assets
+            String serverUrl = readServerUrlFromConfig();
+            if (serverUrl != null && !serverUrl.isEmpty()) {
+                String currentUrl = webView.getUrl();
+                
+                // If WebView is loading old domain or hasn't loaded yet, force correct URL
+                if (currentUrl == null || 
+                    currentUrl.contains("alerta.kriptokirmizi.com") || 
+                    currentUrl.isEmpty() ||
+                    currentUrl.equals("about:blank")) {
+                    
+                    android.util.Log.d("MainActivity", "🔄 Force loading correct server URL: " + serverUrl);
+                    webView.loadUrl(serverUrl);
+                } else if (!currentUrl.startsWith(serverUrl)) {
+                    // If current URL doesn't match config, redirect
+                    android.util.Log.d("MainActivity", "🔄 Current URL doesn't match config, redirecting to: " + serverUrl);
+                    webView.loadUrl(serverUrl);
+                } else {
+                    android.util.Log.d("MainActivity", "✅ WebView already on correct URL: " + currentUrl);
+                }
+            } else {
+                android.util.Log.w("MainActivity", "⚠️ Could not read server URL from config, using default");
+                // Fallback to default URL
+                String defaultUrl = "https://alertachart.com";
+                String currentUrl = webView.getUrl();
+                if (currentUrl == null || currentUrl.contains("alerta.kriptokirmizi.com")) {
+                    webView.loadUrl(defaultUrl);
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "❌ Error in forceCorrectServerUrl: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+    
+    /**
+     * Read server.url from capacitor.config.json
+     */
+    private String readServerUrlFromConfig() {
+        try {
+            InputStream inputStream = getAssets().open("capacitor.config.json");
+            int size = inputStream.available();
+            byte[] buffer = new byte[size];
+            inputStream.read(buffer);
+            inputStream.close();
+            
+            String json = new String(buffer, "UTF-8");
+            JSONObject config = new JSONObject(json);
+            
+            if (config.has("server")) {
+                JSONObject server = config.getJSONObject("server");
+                if (server.has("url")) {
+                    String url = server.getString("url");
+                    android.util.Log.d("MainActivity", "✅ Read server URL from config: " + url);
+                    return url;
+                }
+            }
+        } catch (Exception e) {
+            android.util.Log.e("MainActivity", "❌ Error reading capacitor.config.json: " + e.getMessage());
+        }
+        return null;
     }
     
     private void setupFCMListener() {
@@ -164,6 +293,14 @@ public class MainActivity extends BridgeActivity {
     public void onStart() {
         super.onStart();
         
+        // 🔥 CRITICAL: Force correct server URL on start (in case app was restored from background)
+        getBridge().getWebView().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                forceCorrectServerUrl();
+            }
+        }, 300);
+        
         // Ensure WebViewClient is set (in case WebView wasn't ready in onCreate)
         WebView webView = getBridge().getWebView();
         if (webView != null) {
@@ -175,6 +312,15 @@ public class MainActivity extends BridgeActivity {
                 public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                     // Always load URLs within WebView, never open external browser
                     String url = request.getUrl().toString();
+                    
+                    // 🔥 CRITICAL: Redirect old domain to new domain
+                    if (url.contains("alerta.kriptokirmizi.com")) {
+                        String newUrl = url.replace("alerta.kriptokirmizi.com", "alertachart.com");
+                        android.util.Log.d("MainActivity", "🔄 Redirecting old domain to new: " + newUrl);
+                        view.loadUrl(newUrl);
+                        return true;
+                    }
+                    
                     view.loadUrl(url);
                     return true; // We handled the URL loading
                 }
@@ -183,8 +329,31 @@ public class MainActivity extends BridgeActivity {
                 @SuppressWarnings("deprecation")
                 public boolean shouldOverrideUrlLoading(WebView view, String url) {
                     // For older Android versions
+                    
+                    // 🔥 CRITICAL: Redirect old domain to new domain
+                    if (url.contains("alerta.kriptokirmizi.com")) {
+                        String newUrl = url.replace("alerta.kriptokirmizi.com", "alertachart.com");
+                        android.util.Log.d("MainActivity", "🔄 Redirecting old domain to new: " + newUrl);
+                        view.loadUrl(newUrl);
+                        return true;
+                    }
+                    
                     view.loadUrl(url);
                     return true; // We handled the URL loading
+                }
+                
+                @Override
+                public void onReceivedError(WebView view, android.webkit.WebResourceRequest request, android.webkit.WebResourceError error) {
+                    super.onReceivedError(view, request, error);
+                    String url = request.getUrl().toString();
+                    android.util.Log.e("MainActivity", "❌ WebView error for URL: " + url + " - " + error.getDescription());
+                    
+                    // If error is for old domain, redirect to new domain
+                    if (url.contains("alerta.kriptokirmizi.com")) {
+                        String newUrl = url.replace("alerta.kriptokirmizi.com", "alertachart.com");
+                        android.util.Log.d("MainActivity", "🔄 Redirecting after error: " + newUrl);
+                        view.loadUrl(newUrl);
+                    }
                 }
                 
                 // Removed shouldInterceptRequest - it was breaking WebView rendering
@@ -198,8 +367,24 @@ public class MainActivity extends BridgeActivity {
     public void onResume() {
         super.onResume();
         
-        // No reset needed - Capacitor handles URL loading via server.url config
-        // App will load https://alertachart.com directly
+        // 🔥 CRITICAL: Force correct server URL on resume (in case app was restored)
+        getBridge().getWebView().postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                forceCorrectServerUrl();
+            }
+        }, 200);
+        
+        // 🔥 CRITICAL: Check if WebView is trying to load old domain and redirect
+        WebView webView = getBridge().getWebView();
+        if (webView != null) {
+            String currentUrl = webView.getUrl();
+            if (currentUrl != null && currentUrl.contains("alerta.kriptokirmizi.com")) {
+                String newUrl = currentUrl.replace("alerta.kriptokirmizi.com", "alertachart.com");
+                android.util.Log.d("MainActivity", "🔄 onResume: Redirecting old domain to new: " + newUrl);
+                webView.loadUrl(newUrl);
+            }
+        }
     }
     
     // Custom plugin to control WebView URL

@@ -73,15 +73,14 @@ export default function AndroidLogin() {
           console.log('[AndroidLogin] ✅ GoogleAuth plugin is available');
           
           // Initialize plugin
-          // 🔥 CRITICAL: Android'de Web client ID kullanılmalı (Android client ID değil)
-          const webClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 
-            '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com';
+          // 🔥 CRITICAL: Android'de Android client ID kullanılmalı
+          const androidClientId = '776781271347-fgnaoenplt1lnnmjivcagc013fa01ch1.apps.googleusercontent.com';
           
           console.log('[AndroidLogin] 🔧 Initializing GoogleAuth plugin...');
-          console.log('[AndroidLogin] Using Web Client ID:', webClientId);
+          console.log('[AndroidLogin] Using Android Client ID:', androidClientId);
           try {
             await GoogleAuth.initialize({
-              clientId: webClientId,
+              clientId: androidClientId,
               scopes: ['profile', 'email'],
             });
             console.log('[AndroidLogin] ✅ GoogleAuth plugin initialized successfully');

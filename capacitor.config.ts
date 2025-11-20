@@ -14,9 +14,11 @@ const config: CapacitorConfig = {
       // 🔥 CRITICAL: serverClientId her zaman Web client ID (backend token exchange için)
       serverClientId: '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com',
       // 🔥 CRITICAL: clientId platform-specific olmalı
-      // Android: Web client ID kullan
+      // Android: Android client ID kullan
       // iOS: iOS client ID kullan (Web client ID custom scheme URI'leri desteklemez)
-      clientId: '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com', // iOS client ID
+      // NOT: Runtime'da AndroidLogin.tsx ve IOSLogin.tsx'de doğru client ID kullanılıyor
+      // Bu config sadece fallback olarak kullanılabilir
+      clientId: '776781271347-fgnaoenplt1lnnmjivcagc013fa01ch1.apps.googleusercontent.com', // Android client ID
       forceCodeForRefreshToken: true,
     },
     WebViewController: {},
