@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "776781271347-fgnaoenplt1lnnmjivcagc013fa01ch1.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kriptokirmizi.alerta",
+            "certificate_hash": "1076d808edf5eb6b19e6961276eaa1ccb698e799"
+          }
+        },
+        {
+          "client_id": "776781271347-o2ohcm5drhv947p7kcn3pao8aa5j57mf.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.kriptokirmizi.alerta",
+            "certificate_hash": "037ca0059fc10cc786958c27949567d7cc0cfaf2"
+          }
+        },
+        {
           "client_id": "776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com",
           "client_type": 3
         }
