@@ -2761,6 +2761,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   // Long-press handler for mobile devices
   const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const longPressPositionRef = useRef<{ x: number; y: number } | null>(null);
+  // Ref to store touch start point for drawing (to avoid async state issues)
+  const touchStartDrawingPointRef = useRef<DrawingPoint | null>(null);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return; // Only handle single touch
@@ -3402,12 +3404,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     setActiveTool('none');
   };
 
-  const handleChartClickForDrawing = (clientX: number, clientY: number) => {
+  const handleChartClickForDrawing = (clientX: number, clientY: number, overrideTempDrawing?: DrawingPoint | null) => {
 
     console.log('🎯 handleChartClickForDrawing CALLED');
     console.log('  activeTool:', activeTool);
     console.log('  clientX:', clientX, 'clientY:', clientY);
     console.log('  tempDrawing:', tempDrawing);
+    console.log('  overrideTempDrawing:', overrideTempDrawing);
     
     if (activeTool === 'none' || !containerRef.current || !chartRef.current || !seriesRef.current) {
       console.log('❌ EARLY RETURN:', {
@@ -3514,11 +3517,14 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const fourPointTools = ['wedge'];
     const pointCount = fourPointTools.includes(activeTool) ? 4 : (threePointTools.includes(activeTool) ? 3 : 2);
     
+    // Use overrideTempDrawing if provided, otherwise use state
+    const effectiveTempDrawing = overrideTempDrawing !== undefined ? overrideTempDrawing : tempDrawing;
+    
     // Check current temp drawing state
     const tempDraw = drawings.find(d => d.id === 'temp');
-    const currentPointCount = tempDraw ? tempDraw.points.length : (tempDrawing ? 1 : 0);
+    const currentPointCount = tempDraw ? tempDraw.points.length : (effectiveTempDrawing ? 1 : 0);
     
-    if (!tempDrawing && currentPointCount === 0) {
+    if (!effectiveTempDrawing && currentPointCount === 0) {
       // First point
       console.log('📍 First point set for', activeTool, ':', point);
       setTempDrawing(point);
@@ -3560,11 +3566,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         setTempDrawing(null);
       } else if (pointCount === 3 && currentPointCount === 1) {
         // Create temp drawing with 2 points (need 3 total)
-        if (!tempDrawing) return; // TypeScript guard
+        if (!effectiveTempDrawing) return; // TypeScript guard
         const tempDraw: Drawing = {
           id: 'temp',
           type: activeTool as DrawingType,
-          points: [{ ...tempDrawing }, { ...point }],
+          points: [{ ...effectiveTempDrawing }, { ...point }],
           color: '#2962FF',
           lineWidth: 2
         };
@@ -3572,11 +3578,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         setTempDrawing(null);
       } else if (pointCount === 4 && currentPointCount === 1) {
         // Create temp drawing with 2 points (wedge - need 4 total)
-        if (!tempDrawing) return; // TypeScript guard
+        if (!effectiveTempDrawing) return; // TypeScript guard
         const tempDraw: Drawing = {
           id: 'temp',
           type: activeTool as DrawingType,
-          points: [{ ...tempDrawing }, { ...point }],
+          points: [{ ...effectiveTempDrawing }, { ...point }],
           color: '#2962FF',
           lineWidth: 2
         };
@@ -3584,11 +3590,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         setTempDrawing(null);
       } else {
         // Complete 2-point drawing
-        if (!tempDrawing) return; // TypeScript guard
+        if (!effectiveTempDrawing) return; // TypeScript guard
         const newDrawing: Drawing = {
           id: `drawing-${Date.now()}`,
           type: activeTool as DrawingType,
-          points: [{ ...tempDrawing }, { ...point }],
+          points: [{ ...effectiveTempDrawing }, { ...point }],
           color: '#2962FF',
           lineWidth: 2,
           fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.3)' : undefined,
@@ -4249,7 +4255,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                               const price = seriesRef.current.coordinateToPrice(y);
                               
                               if (time && price !== null) {
-                                setTempDrawing({ time, price });
+                                const point = { time, price };
+                                // Store in both state and ref for immediate access
+                                setTempDrawing(point);
+                                touchStartDrawingPointRef.current = point;
                                 // Also trigger preview immediately
                                 handleMouseMoveForPreview(touch.clientX, touch.clientY);
                               }
@@ -4346,7 +4355,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                         if (activeTool === 'brush' && isDrawingBrush) {
                           handleBrushEnd();
                         } else if (activeTool !== 'brush') {
-                          handleChartClickForDrawing(touch.clientX, touch.clientY);
+                          // Use ref value if available (avoids async state issues)
+                          const tempDrawingToUse = touchStartDrawingPointRef.current || tempDrawing;
+                          handleChartClickForDrawing(touch.clientX, touch.clientY, tempDrawingToUse);
+                          // Clear ref after use
+                          touchStartDrawingPointRef.current = null;
                         }
                       }
                     }}
