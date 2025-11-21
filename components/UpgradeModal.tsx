@@ -36,22 +36,59 @@ export default function UpgradeModal({
   } | null>(null);
   const [iapInitialized, setIapInitialized] = useState(false);
   const [iapAvailable, setIapAvailable] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [productsLoaded, setProductsLoaded] = useState(false);
+
+  // Helper function to log button interactions
+  const logButtonClick = async (eventType: string) => {
+    const msg = `[BUTTON] ${eventType} triggered on Purchase button`;
+    console.log('[UpgradeModal]', msg);
+    try {
+      const Capacitor = (window as any).Capacitor;
+      if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
+        await Capacitor.Plugins.InAppPurchase.logDebug({ message: `[UpgradeModal] ${msg}` });
+      }
+    } catch (e) {
+      // Ignore
+    }
+  };
 
   // Initialize IAP on mount
   useEffect(() => {
     const initIAP = async () => {
+      console.log('[UpgradeModal] 🔄 Starting IAP initialization...');
       const available = await isIAPAvailable();
+      console.log('[UpgradeModal] IAP available:', available);
       setIapAvailable(available);
       
       if (available) {
+        console.log('[UpgradeModal] Initializing IAP...');
         const initialized = await initializeIAP();
         setIapInitialized(initialized);
         console.log('[UpgradeModal] IAP initialized:', initialized);
+        
+        if (initialized) {
+          // Load products after initialization
+          console.log('[UpgradeModal] Loading products...');
+          const loadedProducts = await getProducts();
+          setProducts(loadedProducts);
+          setProductsLoaded(true);
+          console.log('[UpgradeModal] Products loaded:', loadedProducts.length);
+          if (loadedProducts.length === 0) {
+            console.warn('[UpgradeModal] ⚠️ No products found! This will prevent purchases.');
+          }
+        } else {
+          console.error('[UpgradeModal] ❌ IAP initialization failed');
+        }
+      } else {
+        console.warn('[UpgradeModal] ⚠️ IAP not available on this platform');
       }
     };
     
-    initIAP();
-  }, []);
+    if (isOpen) {
+      initIAP();
+    }
+  }, [isOpen]);
 
   // Get device ID and platform
   useEffect(() => {
@@ -194,80 +231,115 @@ export default function UpgradeModal({
   };
 
   const handlePurchase = async () => {
-    if (loading) return;
-    
-    // Check if IAP is available
+    console.log('[UpgradeModal][DEBUG] --- handlePurchase ENTRY');
+    // Log to native first (always visible)
+    try {
+      const Capacitor = (window as any).Capacitor;
+      if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
+        await Capacitor.Plugins.InAppPurchase.logDebug({ message: '[UpgradeModal] 🛒 handlePurchase CALLED!' });
+      }
+    } catch (e) {}
+    console.log('[UpgradeModal][DEBUG] loading:', loading, 'iapAvailable:', iapAvailable, 'iapInitialized:', iapInitialized, 'productsLoaded:', productsLoaded, 'products:', products);
+    if (loading) {
+      console.warn('[UpgradeModal][DEBUG] loading was TRUE, click ignored');
+      return;
+    }
     if (!iapAvailable || !iapInitialized) {
+      console.error('[UpgradeModal][DEBUG] IAP not available/initialized', { iapAvailable, iapInitialized });
       setError('Satın alma özelliği şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
       return;
     }
-
+    if (!productsLoaded) {
+      setError('Ürünler yükleniyor, lütfen bekleyin...');
+      console.warn('[UpgradeModal][DEBUG] Products not loaded! Will load now');
+      const loadedProducts = await getProducts();
+      console.log('[UpgradeModal][DEBUG] loadedProducts:', loadedProducts);
+      setProducts(loadedProducts);
+      setProductsLoaded(true);
+      if (loadedProducts.length === 0) {
+        console.error('[UpgradeModal][DEBUG] loadedProducts BOS!');
+        setError('Ürünler bulunamadı. Lütfen Play Store ayarlarını kontrol edin veya uygulamayı Play Store\'dan indirin.');
+        return;
+      }
+    }
+    if (products.length === 0) {
+      console.error('[UpgradeModal][DEBUG] Products array BOS!');
+      setError('Ürünler bulunamadı. Lütfen Play Store ayarlarını kontrol edin veya uygulamayı Play Store\'dan indirin.');
+      return;
+    }
     setLoading(true);
     setError('');
-
     try {
-      // Product ID - you can configure this based on your store setup
-      // For now, using a single premium product
-      const productId = platform === 'ios' 
-        ? 'com.kriptokirmizi.alerta.premium.monthly'  // iOS product ID
-        : 'premium_monthly';  // Android product ID
-
-      console.log('[UpgradeModal] 🛒 Starting purchase for product:', productId);
-
+      let productId = platform === 'ios'
+        ? 'com.kriptokirmizi.alerta.premium.monthly'
+        : 'premium_monthly';
+      const foundProduct = products.find((p) => p.productId === productId || p.productId === 'premium_monthly' || p.productId === 'alerta_monthly');
+      if (foundProduct) {
+        productId = foundProduct.productId;
+        console.log('[UpgradeModal][DEBUG] Found product:', productId);
+      } else if (products.length > 0) {
+        productId = products[0].productId;
+        console.warn('[UpgradeModal][DEBUG] Using fallback first product:', productId);
+      } else {
+        console.error('[UpgradeModal][DEBUG] Hiç ürün yok!', products);
+        setError('Ürün bulunamadı. Lütfen Play Store ayarlarını kontrol edin.');
+        setLoading(false);
+        return;
+      }
+      console.log('[UpgradeModal][DEBUG] Calling purchaseProduct for productId:', productId);
       const result = await purchaseProduct(productId);
-
+      console.log('[UpgradeModal][DEBUG] purchaseProduct returned:', result);
       if (result.success && result.transactionId && result.receipt && result.productId) {
-        console.log('[UpgradeModal] ✅ Purchase successful, verifying with backend...');
-        
-        // Verify purchase with backend
+        console.log('[UpgradeModal][DEBUG] Purchase OK! Proceeding to verify...');
         try {
           const verifyResponse = await fetch('/api/subscription/verify-purchase', {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              platform,
-              productId: result.productId,
-              transactionId: result.transactionId,
-              receipt: result.receipt,
-            }),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ platform, productId: result.productId, transactionId: result.transactionId, receipt: result.receipt }),
           });
-
           const verifyData = await verifyResponse.json();
-
+          console.log('[UpgradeModal][DEBUG] verify-purchase POST response:', verifyData);
           if (!verifyResponse.ok) {
-            console.error('[UpgradeModal] ❌ Purchase verification failed:', verifyData.error);
+            console.error('[UpgradeModal][DEBUG] purchase verification failed', verifyData);
             setError(verifyData.error || 'Satın alma doğrulanamadı. Lütfen destek ile iletişime geçin.');
             setLoading(false);
             return;
           }
-
-          console.log('[UpgradeModal] ✅ Purchase verified, premium activated');
-          
-          // Refresh user plan
           onUpgrade();
           onClose();
-          
-          // Show success message
-          alert('Satın alma başarılı! Premium özellikler aktif edildi.');
-        } catch (verifyError: any) {
-          console.error('[UpgradeModal] ❌ Error verifying purchase:', verifyError);
+          alert('Satın alma başarılı! Premium aktif edildi.');
+        } catch (verifyError) {
+          console.error('[UpgradeModal][DEBUG] Error on verify:', verifyError);
           setError('Satın alma doğrulanamadı. Lütfen sayfayı yenileyin veya destek ile iletişime geçin.');
           setLoading(false);
           return;
         }
       } else {
-        console.error('[UpgradeModal] ❌ Purchase failed:', result.error);
+        console.error('[UpgradeModal][DEBUG] Purchase failed!', result.error);
         setError(result.error || 'Satın alma işlemi başarısız oldu. Lütfen tekrar deneyin.');
       }
-    } catch (err: any) {
-      console.error('[UpgradeModal] Error during purchase:', err);
+    } catch (err) {
+      console.error('[UpgradeModal][DEBUG] Exception in purchase:', err);
       setError('Bir hata oluştu. Lütfen tekrar deneyin.');
     } finally {
       setLoading(false);
     }
   };
+
+  // Debug: Log when modal opens/closes
+  useEffect(() => {
+    if (isOpen) {
+      console.log('[UpgradeModal] ✅ Modal is OPEN');
+      try {
+        const Capacitor = (window as any).Capacitor;
+        if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
+          Capacitor.Plugins.InAppPurchase.logDebug({ message: '[UpgradeModal] ✅ Modal is OPEN' });
+        }
+      } catch (e) {}
+    } else {
+      console.log('[UpgradeModal] ❌ Modal is CLOSED');
+    }
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -396,6 +468,35 @@ export default function UpgradeModal({
 
           {/* Action Buttons */}
           <div className="px-4 pb-4 pt-2 space-y-2 border-t border-gray-800/60">
+            {/* Debug Info - Always show in development */}
+            <div 
+              className="text-xs text-gray-500 p-2 bg-gray-900/50 rounded mb-2"
+              onClick={async () => {
+                const msg = `Debug Info Clicked: platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}, loading=${loading}`;
+                console.log('[UpgradeModal]', msg);
+                try {
+                  const Capacitor = (window as any).Capacitor;
+                  if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
+                    await Capacitor.Plugins.InAppPurchase.logDebug({ message: `[UpgradeModal] ${msg}` });
+                  }
+                } catch (e) {}
+              }}
+            >
+              <div>Platform: {platform}</div>
+              <div>IAP Available: {String(iapAvailable)}</div>
+              <div>IAP Initialized: {String(iapInitialized)}</div>
+              <div>Loading: {String(loading)}</div>
+              <div>Products: {products.length}</div>
+              <div>Button Disabled: {String(loading || (platform !== 'web' && (!iapAvailable || !iapInitialized)))}</div>
+            </div>
+            {/* Debug: Show button state */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="text-xs text-gray-500 p-2 bg-gray-900/50 rounded">
+                Debug: platform={platform}, iapAvailable={String(iapAvailable)}, iapInitialized={String(iapInitialized)}, 
+                disabled={String(loading || (platform !== 'web' && (!iapAvailable || !iapInitialized)))}
+              </div>
+            )}
+            
             {/* Trial button - only for native apps (iOS/Android), not web */}
             {/* Double check: platform must be 'ios' or 'android', not 'web' */}
             {currentPlan === 'free' && !isTrial && (platform === 'ios' || platform === 'android') && (
@@ -416,8 +517,68 @@ export default function UpgradeModal({
             )}
 
             <button
-              onClick={handlePurchase}
+              type="button"
+              onMouseDown={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await logButtonClick('onMouseDown');
+              }}
+              onTouchStart={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await logButtonClick('onTouchStart');
+              }}
+              onClick={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                await logButtonClick('onClick');
+                
+                // Log to both console and native
+                const isDisabled = loading || (platform !== 'web' && (!iapAvailable || !iapInitialized));
+                const logMsg = `🔘 Purchase button clicked! disabled=${isDisabled}, loading=${loading}, platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}`;
+                console.log('[UpgradeModal]', logMsg);
+                
+                // Send to native Android log (always visible in Logcat)
+                try {
+                  const Capacitor = (window as any).Capacitor;
+                  if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
+                    await Capacitor.Plugins.InAppPurchase.logDebug({ message: `[UpgradeModal] ${logMsg}` });
+                  }
+                } catch (e) {
+                  // Ignore
+                }
+                
+                if (isDisabled) {
+                  const disabledMsg = `Button is DISABLED! loading=${loading}, platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}`;
+                  console.warn('[UpgradeModal]', disabledMsg);
+                  try {
+                    const Capacitor = (window as any).Capacitor;
+                    if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
+                      await Capacitor.Plugins.InAppPurchase.logDebug({ message: `[UpgradeModal] ${disabledMsg}` });
+                    }
+                  } catch (e) {
+                    // Ignore
+                  }
+                  return;
+                }
+                
+                console.log('[UpgradeModal] Button state:', {
+                  loading,
+                  platform,
+                  iapAvailable,
+                  iapInitialized,
+                  disabled: isDisabled
+                });
+                
+                handlePurchase();
+              }}
               disabled={loading || (platform !== 'web' && (!iapAvailable || !iapInitialized))}
+              style={{ 
+                pointerEvents: 'auto', 
+                zIndex: 1000,
+                position: 'relative',
+                WebkitTapHighlightColor: 'transparent'
+              }}
               className="w-full py-3 px-4 rounded-lg bg-gray-900/80 hover:bg-gray-800/80 disabled:bg-gray-900/50 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-sm transition-all border border-gray-700/50 hover:border-gray-600/50 active:scale-[0.98] shadow-md touch-manipulation"
             >
               {loading ? (

@@ -60,9 +60,10 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    // 🔥 CRITICAL: Clear NextAuth cookies (CSRF token, session token, etc.)
-    // NextAuth cookie names that need to be cleared
-    const nextAuthCookies = [
+    // 🔥 CRITICAL: Clear all auth cookies (NextAuth + backend tokens)
+    // All cookies that need to be cleared on logout
+    const cookiesToClear = [
+      // NextAuth cookies
       'next-auth.session-token',
       'next-auth.csrf-token',
       'next-auth.callback-url',
@@ -72,15 +73,21 @@ export async function POST(request: NextRequest) {
       '__Secure-next-auth.session-token',
       '__Secure-next-auth.csrf-token',
       '__Host-next-auth.csrf-token',
+      // Backend auth cookies (httpOnly, must be cleared server-side)
+      'accessToken',
+      'refreshToken',
     ];
 
-    // Clear each NextAuth cookie by setting it to expire in the past
-    nextAuthCookies.forEach(cookieName => {
+    // Clear each cookie by setting it to expire in the past
+    // For httpOnly cookies (accessToken, refreshToken), we must use HttpOnly flag
+    cookiesToClear.forEach(cookieName => {
+      const isHttpOnly = cookieName === 'accessToken' || cookieName === 'refreshToken';
+      
       // Clear with different SameSite and Secure combinations to ensure it works
       const cookieOptions = [
-        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure`,
-        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None; Secure`,
-        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure${isHttpOnly ? '; HttpOnly' : ''}`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None; Secure${isHttpOnly ? '; HttpOnly' : ''}`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict${isHttpOnly ? '; HttpOnly' : ''}`,
       ];
       
       cookieOptions.forEach(option => {
@@ -88,7 +95,7 @@ export async function POST(request: NextRequest) {
       });
     });
     
-    console.log('[Next.js API] ✅ NextAuth cookies cleared in logout response');
+    console.log('[Next.js API] ✅ All auth cookies cleared in logout response (NextAuth + accessToken + refreshToken)');
     
     return NextResponse.json(result, { 
       status: response.status,

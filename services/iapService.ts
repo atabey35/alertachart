@@ -1,39 +1,111 @@
 /**
  * In-App Purchase Service
  * Handles IAP initialization and purchases for iOS and Android
+ * Uses custom Capacitor plugin: InAppPurchase
  */
+
+/**
+ * Log to native Android (always visible in Logcat)
+ */
+function logToNative(message: string) {
+  if (typeof window === 'undefined') return;
+  
+  try {
+    const Capacitor = (window as any).Capacitor;
+    if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
+      Capacitor.Plugins.InAppPurchase.logDebug({ message });
+    }
+  } catch (error) {
+    // Ignore errors
+  }
+}
+
+/**
+ * Get the InAppPurchase plugin from Capacitor
+ */
+function getIAPPlugin(): any {
+  if (typeof window === 'undefined') {
+    console.log('[IAP Service] getIAPPlugin: window is undefined');
+    logToNative('getIAPPlugin: window is undefined');
+    return null;
+  }
+  
+  const Capacitor = (window as any).Capacitor;
+  if (!Capacitor) {
+    console.log('[IAP Service] getIAPPlugin: Capacitor not found');
+    logToNative('getIAPPlugin: Capacitor not found');
+    return null;
+  }
+  
+  try {
+    const plugin = Capacitor.Plugins.InAppPurchase;
+    console.log('[IAP Service] getIAPPlugin: Plugin found:', !!plugin);
+    logToNative(`getIAPPlugin: Plugin found: ${!!plugin}`);
+    if (plugin) {
+      console.log('[IAP Service] getIAPPlugin: Plugin methods:', Object.keys(plugin));
+      logToNative(`getIAPPlugin: Plugin methods: ${Object.keys(plugin).join(', ')}`);
+    }
+    return plugin;
+  } catch (error) {
+    console.error('[IAP Service] getIAPPlugin: Error:', error);
+    logToNative(`getIAPPlugin: Error: ${error}`);
+    return null;
+  }
+}
 
 /**
  * Check if IAP is available on the current platform
  */
 export async function isIAPAvailable(): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
+  console.log('[IAP Service] isIAPAvailable: Checking...');
   
-  const Capacitor = (window as any).Capacitor;
-  if (!Capacitor?.isNativePlatform?.()) return false;
-  
-  try {
-    // @ts-ignore - Optional dependency, may not be installed in web builds
-    const { InAppPurchase } = await import('@capacitor-community/in-app-purchase');
-    return !!InAppPurchase;
-  } catch {
+  if (typeof window === 'undefined') {
+    console.log('[IAP Service] isIAPAvailable: window is undefined');
     return false;
   }
+  
+  const Capacitor = (window as any).Capacitor;
+  if (!Capacitor) {
+    console.log('[IAP Service] isIAPAvailable: Capacitor not found');
+    return false;
+  }
+  
+  const isNative = Capacitor.isNativePlatform?.();
+  console.log('[IAP Service] isIAPAvailable: isNativePlatform:', isNative);
+  
+  if (!isNative) {
+    console.log('[IAP Service] isIAPAvailable: Not a native platform');
+    return false;
+  }
+  
+  const plugin = getIAPPlugin();
+  const available = !!plugin;
+  console.log('[IAP Service] isIAPAvailable: Result:', available);
+  return available;
 }
 
 /**
  * Initialize IAP service
  */
 export async function initializeIAP(): Promise<boolean> {
-  if (typeof window === 'undefined') return false;
+  if (typeof window === 'undefined') {
+    console.log('[IAP Service] Not available in web');
+    return false;
+  }
   
   try {
-    // @ts-ignore - Optional dependency, may not be installed in web builds
-    const { InAppPurchase } = await import('@capacitor-community/in-app-purchase');
-    await InAppPurchase.initialize();
+    const plugin = getIAPPlugin();
+    if (!plugin) {
+      console.error('[IAP Service] InAppPurchase plugin not found');
+      return false;
+    }
+    
+    console.log('[IAP Service] Initializing IAP...');
+    await plugin.initialize();
+    console.log('[IAP Service] ✅ IAP initialized successfully');
     return true;
-  } catch (error) {
-    console.error('[IAP Service] Failed to initialize:', error);
+  } catch (error: any) {
+    console.error('[IAP Service] ❌ Failed to initialize:', error);
     return false;
   }
 }
@@ -42,15 +114,42 @@ export async function initializeIAP(): Promise<boolean> {
  * Get available products
  */
 export async function getProducts(): Promise<any[]> {
-  if (typeof window === 'undefined') return [];
+  console.log('[IAP Service][DEBUG] getProducts ENTRY');
+  if (typeof window === 'undefined') {
+    console.log('[IAP Service] getProducts: Not available in web');
+    return [];
+  }
   
   try {
-    // @ts-ignore - Optional dependency, may not be installed in web builds
-    const { InAppPurchase } = await import('@capacitor-community/in-app-purchase');
-    const result = await InAppPurchase.getProducts({ productIds: ['premium_monthly', 'premium_yearly'] });
-    return result.products || [];
-  } catch (error) {
-    console.error('[IAP Service] Failed to get products:', error);
+    const plugin = getIAPPlugin();
+    if (!plugin) {
+      console.error('[IAP Service] getProducts: Plugin not found');
+      return [];
+    }
+    
+    // Try both product IDs that might be in Play Console
+    const productIds = ['premium_monthly', 'premium_yearly', 'alerta_monthly'];
+    console.log('[IAP Service] getProducts: Querying products:', productIds);
+    
+    const result = await plugin.getProducts({ productIds });
+    const products = result?.products || [];
+    
+    console.log('[IAP Service] getProducts: ✅ Found', products.length, 'products');
+    if (products.length === 0) {
+      console.warn('[IAP Service] getProducts: ⚠️ No products found! Check:');
+      console.warn('[IAP Service] 1. Product IDs match Play Console exactly');
+      console.warn('[IAP Service] 2. Products are active in Play Console');
+      console.warn('[IAP Service] 3. App is installed from Play Store (not debug APK)');
+      console.warn('[IAP Service] 4. Product type is SUBSCRIPTION (not one-time)');
+    } else {
+      products.forEach((p: any) => {
+        console.log('[IAP Service] Product:', p.productId, '-', p.price, p.currency);
+      });
+    }
+    
+    return products;
+  } catch (error: any) {
+    console.error('[IAP Service] getProducts: ❌ Failed:', error);
     return [];
   }
 }
@@ -65,27 +164,42 @@ export async function purchaseProduct(productId: string): Promise<{
   productId?: string;
   error?: string 
 }> {
+  console.log('[IAP Service][DEBUG] purchaseProduct ENTRY', { productId });
   if (typeof window === 'undefined') {
+    console.error('[IAP Service][DEBUG] purchaseProduct: window is undefined!');
     return { success: false, error: 'Not available in web' };
   }
-  
+  if (!productId) {
+    console.error('[IAP Service][DEBUG] productId required!');
+    return { success: false, error: 'productId is required' };
+  }
   try {
-    // @ts-ignore - Optional dependency, may not be installed in web builds
-    const { InAppPurchase } = await import('@capacitor-community/in-app-purchase');
-    const result = await InAppPurchase.purchase({ productId });
-    
-    if (result.transaction?.transactionId) {
-      return { 
-        success: true, 
-        transactionId: result.transaction.transactionId,
-        receipt: result.transaction.receipt || result.transaction.transactionReceipt,
-        productId: result.transaction.productId || productId
-      };
+    const plugin = getIAPPlugin();
+    console.log('[IAP Service][DEBUG] got plugin', plugin);
+    if (!plugin) {
+      console.error('[IAP Service][DEBUG] Plugin not found');
+      return { success: false, error: 'IAP plugin not available' };
     }
-    
-    return { success: false, error: 'Purchase failed' };
-  } catch (error: any) {
-    console.error('[IAP Service] Purchase failed:', error);
-    return { success: false, error: error?.message || 'Purchase failed' };
+    // Check product exists
+    const products = await getProducts();
+    console.log('[IAP Service][DEBUG] products loaded:', products);
+    const productExists = products.some((p: any) => p.productId === productId);
+    if (!productExists && products.length > 0) {
+      console.error('[IAP Service][DEBUG] Product not found in products', { productId, products });
+      return { success: false, error: `Product ${productId} not found. Available: ${products.map((p: any) => p.productId).join(', ')}` };
+    }
+    if (products.length === 0) {
+      console.error('[IAP Service][DEBUG] No products available!');
+      return { success: false, error: 'No products available. Check Play Console settings.' };
+    }
+    console.log('[IAP Service][DEBUG] STARTING plugin.purchase',{ productId });
+    const result = await plugin.purchase({ productId });
+    console.log('[IAP Service][DEBUG] plugin.purchase return:', result);
+    if (result?.transactionId || result?.orderId)
+      return { success: true, transactionId: result.transactionId || result.orderId, receipt: result.receipt, productId: result.productId || productId };
+    return { success: false, error: result?.error || 'Satın alma başarısız (unknown)' };
+  } catch (err: any) {
+    console.error('[IAP Service][DEBUG] purchaseProduct ERROR:', err);
+    return { success: false, error: err?.message || err?.toString() };
   }
 }

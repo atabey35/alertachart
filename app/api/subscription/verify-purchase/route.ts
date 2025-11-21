@@ -271,10 +271,111 @@ async function verifyAppleReceipt(
 }
 
 /**
+ * Get Google OAuth2 access token from Service Account
+ */
+async function getGoogleAccessToken(): Promise<string> {
+  try {
+    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+    
+    if (!serviceAccountKey) {
+      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY not set');
+    }
+
+    // Parse service account key (can be JSON string or base64 encoded)
+    let serviceAccount: any;
+    try {
+      // Try parsing as JSON string first
+      serviceAccount = JSON.parse(serviceAccountKey);
+    } catch {
+      // If that fails, try base64 decode
+      try {
+        const decoded = Buffer.from(serviceAccountKey, 'base64').toString('utf-8');
+        serviceAccount = JSON.parse(decoded);
+      } catch {
+        throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT_KEY format');
+      }
+    }
+
+    const { private_key, client_email } = serviceAccount;
+
+    if (!private_key || !client_email) {
+      throw new Error('Invalid service account key: missing private_key or client_email');
+    }
+
+    // Create JWT for OAuth2
+    const jwt = await createJWT(client_email, private_key);
+    
+    // Exchange JWT for access token
+    const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+        assertion: jwt,
+      }),
+    });
+
+    if (!tokenResponse.ok) {
+      const errorText = await tokenResponse.text();
+      throw new Error(`Failed to get access token: ${errorText}`);
+    }
+
+    const tokenData = await tokenResponse.json();
+    return tokenData.access_token;
+  } catch (error: any) {
+    console.error('[Verify Purchase] ❌ Error getting Google access token:', error);
+    throw error;
+  }
+}
+
+/**
+ * Base64URL encode (replaces + with -, / with _, and removes padding)
+ */
+function base64UrlEncode(str: string): string {
+  return Buffer.from(str)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
+
+/**
+ * Create JWT for Google Service Account
+ */
+async function createJWT(email: string, privateKey: string): Promise<string> {
+  const header = {
+    alg: 'RS256',
+    typ: 'JWT',
+  };
+
+  const now = Math.floor(Date.now() / 1000);
+  const claim = {
+    iss: email,
+    scope: 'https://www.googleapis.com/auth/androidpublisher',
+    aud: 'https://oauth2.googleapis.com/token',
+    exp: now + 3600, // 1 hour
+    iat: now,
+  };
+
+  const encodedHeader = base64UrlEncode(JSON.stringify(header));
+  const encodedClaim = base64UrlEncode(JSON.stringify(claim));
+  const signatureInput = `${encodedHeader}.${encodedClaim}`;
+
+  // Sign with private key
+  const crypto = await import('crypto');
+  const sign = crypto.createSign('RSA-SHA256');
+  sign.update(signatureInput);
+  const signature = sign.sign(privateKey, 'base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+
+  return `${signatureInput}.${signature}`;
+}
+
+/**
  * Verify Google Play Billing purchase
- * Note: For production, use Google Play Developer API
- * For now, we'll do basic validation
- * In production, you MUST verify with Google's API
+ * Uses Google Play Developer API for production verification
  */
 async function verifyGoogleReceipt(
   receipt: string,
@@ -286,29 +387,80 @@ async function verifyGoogleReceipt(
       return { valid: false, error: 'Invalid purchase token' };
     }
 
-    // In production, verify with Google Play Developer API:
-    // https://androidpublisher.googleapis.com/androidpublisher/v3/applications/{packageName}/purchases/products/{productId}/tokens/{token}
-    // Requires: GOOGLE_SERVICE_ACCOUNT_KEY (JSON)
-    
-    // For now, we'll do basic validation
-    // TODO: Implement full Google Play verification
-    // const response = await fetch(
-    //   `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${process.env.ANDROID_PACKAGE_NAME}/purchases/products/${productId}/tokens/${receipt}`,
-    //   {
-    //     headers: {
-    //       'Authorization': `Bearer ${await getGoogleAccessToken()}`,
-    //     },
-    //   }
-    // );
-    // if (!response.ok) {
-    //   return { valid: false, error: 'Purchase verification failed' };
-    // }
+    const packageName = process.env.ANDROID_PACKAGE_NAME || 'com.kriptokirmizi.alerta';
+    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 
-    console.log('[Verify Purchase] ✅ Google purchase validated (basic check)');
-    return { valid: true };
+    // If service account key is not set, fall back to basic validation (for development)
+    if (!serviceAccountKey) {
+      console.warn('[Verify Purchase] ⚠️ GOOGLE_SERVICE_ACCOUNT_KEY not set, using basic validation');
+      return { valid: true };
+    }
+
+    // Get OAuth2 access token
+    const accessToken = await getGoogleAccessToken();
+
+    // Verify purchase with Google Play Developer API
+    const apiUrl = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/purchases/products/${productId}/tokens/${receipt}`;
+    
+    const response = await fetch(apiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Verify Purchase] ❌ Google Play API error:', response.status, errorText);
+      
+      // Handle specific error codes
+      if (response.status === 404) {
+        return { valid: false, error: 'Purchase not found or invalid token' };
+      }
+      if (response.status === 401) {
+        return { valid: false, error: 'Authentication failed - check service account key' };
+      }
+      if (response.status === 403) {
+        return { valid: false, error: 'Permission denied - check service account permissions' };
+      }
+      
+      return { valid: false, error: `Google Play API error: ${response.status}` };
+    }
+
+    const purchaseData = await response.json();
+
+    // Check purchase state
+    // purchaseState: 0 = Purchased, 1 = Canceled
+    if (purchaseData.purchaseState !== 0) {
+      return { valid: false, error: 'Purchase was canceled or refunded' };
+    }
+
+    // Check consumption state (for one-time purchases)
+    // For subscriptions, this is usually 0 (not consumed)
+    // consumptionState: 0 = Not consumed, 1 = Consumed
+
+    // Extract expiry date if available
+    let expiryDate: Date | undefined;
+    if (purchaseData.expiryTimeMillis) {
+      expiryDate = new Date(parseInt(purchaseData.expiryTimeMillis));
+    }
+
+    console.log('[Verify Purchase] ✅ Google purchase validated via API', {
+      orderId: purchaseData.orderId,
+      purchaseState: purchaseData.purchaseState,
+      expiryDate: expiryDate?.toISOString(),
+    });
+
+    return { valid: true, expiryDate };
   } catch (error: any) {
     console.error('[Verify Purchase] ❌ Google verification error:', error);
-    return { valid: false, error: error.message };
+    
+    // If it's a known error, return specific message
+    if (error.message?.includes('GOOGLE_SERVICE_ACCOUNT_KEY')) {
+      return { valid: false, error: 'Google service account not configured' };
+    }
+    
+    return { valid: false, error: error.message || 'Google Play verification failed' };
   }
 }
 

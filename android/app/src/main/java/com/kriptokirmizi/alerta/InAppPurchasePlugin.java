@@ -20,23 +20,41 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
     @Override
     public void load() {
         super.load();
+        android.util.Log.d("InAppPurchase", "[PLUGIN] load() called - Plugin is loading");
         
         // Initialize Google Play Billing
+        android.util.Log.d("InAppPurchase", "[PLUGIN] Creating BillingClient...");
         billingClient = BillingClient.newBuilder(getContext())
             .setListener(this)
             .enablePendingPurchases()
             .build();
         
         // Start connection
+        android.util.Log.d("InAppPurchase", "[PLUGIN] Starting billing service connection...");
         billingClient.startConnection(this);
     }
     
     @PluginMethod
+    public void logDebug(PluginCall call) {
+        String message = call.getString("message");
+        if (message != null) {
+            android.util.Log.d("InAppPurchase", "[JS_LOG] " + message);
+        }
+        call.resolve();
+    }
+    
+    @PluginMethod
     public void initialize(PluginCall call) {
+        android.util.Log.d("InAppPurchase", "[INITIALIZE] Called");
+        android.util.Log.d("InAppPurchase", "[INITIALIZE] billingClient: " + (billingClient != null ? "exists" : "null"));
+        android.util.Log.d("InAppPurchase", "[INITIALIZE] isServiceConnected: " + isServiceConnected);
+        
         if (billingClient != null && isServiceConnected) {
+            android.util.Log.d("InAppPurchase", "[INITIALIZE] ✅ Resolving - service is connected");
             call.resolve();
         } else {
-            call.reject("Billing service not connected");
+            android.util.Log.e("InAppPurchase", "[INITIALIZE] ❌ Rejecting - service not connected");
+            call.reject("Billing service not connected. billingClient: " + (billingClient != null) + ", isServiceConnected: " + isServiceConnected);
         }
     }
     
@@ -65,11 +83,19 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                 .build();
             
             billingClient.querySkuDetailsAsync(params, (billingResult, skuDetailsList) -> {
-                if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK && skuDetailsList != null) {
+                int responseCode = billingResult.getResponseCode();
+                String debugMessage = billingResult.getDebugMessage();
+                
+                android.util.Log.d("InAppPurchase", "[GET_PRODUCTS] querySkuDetailsAsync responseCode: " + responseCode + ", message: " + debugMessage);
+                
+                if (responseCode == BillingClient.BillingResponseCode.OK && skuDetailsList != null) {
+                    android.util.Log.d("InAppPurchase", "[GET_PRODUCTS] ✅ Found " + skuDetailsList.size() + " products");
+                    
                     JSObject result = new JSObject();
                     org.json.JSONArray productsArray = new org.json.JSONArray();
                     
                     for (SkuDetails skuDetails : skuDetailsList) {
+                        android.util.Log.d("InAppPurchase", "[GET_PRODUCTS] Product: " + skuDetails.getSku() + " - " + skuDetails.getPrice());
                         JSObject product = new JSObject();
                         product.put("productId", skuDetails.getSku());
                         product.put("price", skuDetails.getPrice());
@@ -79,10 +105,18 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                         productsArray.put(product);
                     }
                     
+                    if (skuDetailsList.isEmpty()) {
+                        android.util.Log.w("InAppPurchase", "[GET_PRODUCTS] ⚠️ Product list is empty! Check:");
+                        android.util.Log.w("InAppPurchase", "[GET_PRODUCTS] 1. Product IDs match Play Console");
+                        android.util.Log.w("InAppPurchase", "[GET_PRODUCTS] 2. Products are active");
+                        android.util.Log.w("InAppPurchase", "[GET_PRODUCTS] 3. App installed from Play Store");
+                    }
+                    
                     result.put("products", productsArray);
                     call.resolve(result);
                 } else {
-                    call.reject("Failed to query products: " + billingResult.getDebugMessage());
+                    android.util.Log.e("InAppPurchase", "[GET_PRODUCTS] ❌ Failed to query products: " + debugMessage + " (code: " + responseCode + ")");
+                    call.reject("Failed to query products: " + debugMessage + " (code: " + responseCode + ")");
                 }
             });
         } catch (Exception e) {
@@ -94,7 +128,16 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
     public void purchase(PluginCall call) {
         String productId = call.getString("productId");
         
+        android.util.Log.d("InAppPurchase", "[PURCHASE] Starting purchase for productId: " + productId);
+        
+        if (productId == null || productId.isEmpty()) {
+            android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ productId is null or empty");
+            call.reject("productId is required");
+            return;
+        }
+        
         if (!isServiceConnected) {
+            android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ Billing service not connected");
             call.reject("Billing service not connected");
             return;
         }
@@ -106,32 +149,87 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
         List<String> skuList = new ArrayList<>();
         skuList.add(productId);
         
+        android.util.Log.d("InAppPurchase", "[PURCHASE] Querying product details for: " + productId);
+        
         SkuDetailsParams params = SkuDetailsParams.newBuilder()
             .setSkusList(skuList)
             .setType(BillingClient.SkuType.SUBS)
             .build();
         
         billingClient.querySkuDetailsAsync(params, (billingResult, skuDetailsList) -> {
-            if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK 
-                && skuDetailsList != null && !skuDetailsList.isEmpty()) {
+            int responseCode = billingResult.getResponseCode();
+            String debugMessage = billingResult.getDebugMessage();
+            
+            android.util.Log.d("InAppPurchase", "[PURCHASE] querySkuDetailsAsync responseCode: " + responseCode + ", message: " + debugMessage);
+            
+            if (responseCode == BillingClient.BillingResponseCode.OK) {
+                if (skuDetailsList == null) {
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ skuDetailsList is null");
+                    if (pendingPurchaseCall != null) {
+                        pendingPurchaseCall.reject("Product query returned null list");
+                        pendingPurchaseCall = null;
+                    }
+                    return;
+                }
+                
+                if (skuDetailsList.isEmpty()) {
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ skuDetailsList is empty - product not found: " + productId);
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] This usually means:");
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] 1. Product ID doesn't match Play Console");
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] 2. Product is not active in Play Console");
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] 3. App was not installed from Play Store");
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] 4. Wrong product type (SUBS vs INAPP)");
+                    if (pendingPurchaseCall != null) {
+                        pendingPurchaseCall.reject("Product not found: " + productId + ". Check Play Console settings.");
+                        pendingPurchaseCall = null;
+                    }
+                    return;
+                }
                 
                 SkuDetails skuDetails = skuDetailsList.get(0);
+                android.util.Log.d("InAppPurchase", "[PURCHASE] ✅ Product found: " + skuDetails.getSku() + ", price: " + skuDetails.getPrice());
+                
                 BillingFlowParams flowParams = BillingFlowParams.newBuilder()
                     .setSkuDetails(skuDetails)
                     .build();
                 
+                android.util.Log.d("InAppPurchase", "[PURCHASE] Launching billing flow...");
                 BillingResult result = billingClient.launchBillingFlow(getActivity(), flowParams);
                 
-                if (result.getResponseCode() != BillingClient.BillingResponseCode.OK) {
+                int launchResponseCode = result.getResponseCode();
+                String launchDebugMessage = result.getDebugMessage();
+                
+                android.util.Log.d("InAppPurchase", "[PURCHASE] launchBillingFlow responseCode: " + launchResponseCode + ", message: " + launchDebugMessage);
+                
+                if (launchResponseCode == BillingClient.BillingResponseCode.OK) {
+                    android.util.Log.d("InAppPurchase", "[PURCHASE] ✅ Billing flow launched successfully - waiting for user response");
+                    // Purchase result will be handled in onPurchasesUpdated
+                } else if (launchResponseCode == BillingClient.BillingResponseCode.DEVELOPER_ERROR) {
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ DEVELOPER_ERROR - Usually means:");
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] - App not installed from Play Store");
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] - Wrong package name");
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] - Product not available in test track");
                     if (pendingPurchaseCall != null) {
-                        pendingPurchaseCall.reject("Failed to launch billing flow: " + result.getDebugMessage());
+                        pendingPurchaseCall.reject("DEVELOPER_ERROR: " + launchDebugMessage + ". Make sure app is installed from Play Store test track.");
+                        pendingPurchaseCall = null;
+                    }
+                } else if (launchResponseCode == BillingClient.BillingResponseCode.ITEM_UNAVAILABLE) {
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ ITEM_UNAVAILABLE - Product not available");
+                    if (pendingPurchaseCall != null) {
+                        pendingPurchaseCall.reject("ITEM_UNAVAILABLE: " + launchDebugMessage);
+                        pendingPurchaseCall = null;
+                    }
+                } else {
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ Failed to launch billing flow: " + launchResponseCode + " - " + launchDebugMessage);
+                    if (pendingPurchaseCall != null) {
+                        pendingPurchaseCall.reject("Failed to launch billing flow: " + launchDebugMessage + " (code: " + launchResponseCode + ")");
                         pendingPurchaseCall = null;
                     }
                 }
-                // Purchase result will be handled in onPurchasesUpdated
             } else {
+                android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ querySkuDetailsAsync failed: " + responseCode + " - " + debugMessage);
                 if (pendingPurchaseCall != null) {
-                    pendingPurchaseCall.reject("Product not found: " + productId);
+                    pendingPurchaseCall.reject("Failed to query product: " + debugMessage + " (code: " + responseCode + ")");
                     pendingPurchaseCall = null;
                 }
             }
@@ -174,12 +272,19 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
     // BillingClientStateListener
     @Override
     public void onBillingSetupFinished(BillingResult billingResult) {
-        if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+        int responseCode = billingResult.getResponseCode();
+        String debugMessage = billingResult.getDebugMessage();
+        
+        android.util.Log.d("InAppPurchase", "[BILLING_SETUP] onBillingSetupFinished called");
+        android.util.Log.d("InAppPurchase", "[BILLING_SETUP] responseCode: " + responseCode);
+        android.util.Log.d("InAppPurchase", "[BILLING_SETUP] debugMessage: " + debugMessage);
+        
+        if (responseCode == BillingClient.BillingResponseCode.OK) {
             isServiceConnected = true;
-            android.util.Log.d("InAppPurchase", "✅ Billing service connected");
+            android.util.Log.d("InAppPurchase", "[BILLING_SETUP] ✅ Billing service connected");
         } else {
             isServiceConnected = false;
-            android.util.Log.e("InAppPurchase", "❌ Billing setup failed: " + billingResult.getDebugMessage());
+            android.util.Log.e("InAppPurchase", "[BILLING_SETUP] ❌ Billing setup failed: " + debugMessage + " (code: " + responseCode + ")");
         }
     }
     
@@ -194,20 +299,28 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
     // PurchasesUpdatedListener
     @Override
     public void onPurchasesUpdated(BillingResult billingResult, List<Purchase> purchases) {
-        if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK && purchases != null) {
+        int responseCode = billingResult.getResponseCode();
+        String debugMessage = billingResult.getDebugMessage();
+        
+        android.util.Log.d("InAppPurchase", "[PURCHASE_UPDATE] responseCode: " + responseCode + ", message: " + debugMessage);
+        android.util.Log.d("InAppPurchase", "[PURCHASE_UPDATE] purchases count: " + (purchases != null ? purchases.size() : 0));
+        
+        if (responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
+            android.util.Log.d("InAppPurchase", "[PURCHASE_UPDATE] ✅ Purchase successful");
             for (Purchase purchase : purchases) {
+                android.util.Log.d("InAppPurchase", "[PURCHASE_UPDATE] Processing purchase: " + purchase.getSkus().get(0));
                 handlePurchase(purchase);
             }
-        } else if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.USER_CANCELED) {
-            android.util.Log.d("InAppPurchase", "User canceled purchase");
+        } else if (responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
+            android.util.Log.d("InAppPurchase", "[PURCHASE_UPDATE] ⚠️ User canceled purchase");
             if (pendingPurchaseCall != null) {
                 pendingPurchaseCall.reject("User canceled purchase");
                 pendingPurchaseCall = null;
             }
         } else {
-            android.util.Log.e("InAppPurchase", "Purchase failed: " + billingResult.getDebugMessage());
+            android.util.Log.e("InAppPurchase", "[PURCHASE_UPDATE] ❌ Purchase failed: " + debugMessage + " (code: " + responseCode + ")");
             if (pendingPurchaseCall != null) {
-                pendingPurchaseCall.reject("Purchase failed: " + billingResult.getDebugMessage());
+                pendingPurchaseCall.reject("Purchase failed: " + debugMessage + " (code: " + responseCode + ")");
                 pendingPurchaseCall = null;
             }
         }

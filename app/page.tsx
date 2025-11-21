@@ -345,8 +345,13 @@ export default function Home() {
     // This runs on app startup to restore session from cookies
     // Check directly for Capacitor (don't rely on isCapacitor state which may not be set yet)
     const hasCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+    const isNativePlatform = hasCapacitor && 
+      ((window as any).Capacitor?.getPlatform?.() === 'ios' || 
+       (window as any).Capacitor?.getPlatform?.() === 'android' ||
+       (window as any).Capacitor?.isNativePlatform?.() === true);
     
-    if (hasCapacitor && (status === 'unauthenticated' || status === 'loading')) {
+    // Only restore session in native apps, not in web (even if Capacitor script is loaded)
+    if (isNativePlatform && (status === 'unauthenticated' || status === 'loading')) {
       const restoreSession = async () => {
         try {
           // Wait a bit for cookies to be available
@@ -397,6 +402,13 @@ export default function Home() {
               // Even if update fails, don't reload - let NextAuth handle it naturally
               // The session cookie is set, so it will work on next check
             }
+          } else if (response.status === 404) {
+            // 404 is normal if restore-session endpoint doesn't exist or user is logged out
+            console.log('[App] ℹ️ restore-session endpoint not found (404) - user is logged out');
+            // Clear saved email if restore failed
+            if (typeof window !== 'undefined' && savedEmail) {
+              localStorage.removeItem('user_email');
+            }
           } else {
             const error = await response.json().catch(() => ({ error: 'Unknown error' }));
             console.log('[App] ⚠️ Session restore failed:', error);
@@ -406,7 +418,12 @@ export default function Home() {
             }
           }
         } catch (error) {
-          console.error('[App] ❌ Error restoring session:', error);
+          // Silently handle network errors (404, etc.) - user might be logged out
+          if ((error as any)?.message?.includes('404') || (error as any)?.status === 404) {
+            console.log('[App] ℹ️ restore-session endpoint not available (logged out)');
+          } else {
+            console.error('[App] ❌ Error restoring session:', error);
+          }
         }
       };
       
