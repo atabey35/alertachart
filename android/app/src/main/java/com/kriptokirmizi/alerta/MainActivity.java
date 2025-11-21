@@ -31,13 +31,6 @@ public class MainActivity extends BridgeActivity {
         
         super.onCreate(savedInstanceState);
         
-        // 🔥 CRITICAL: Enable WebView debugging for Chrome DevTools
-        // This allows us to inspect the WebView using chrome://inspect
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
-            WebView.setWebContentsDebuggingEnabled(true);
-            android.util.Log.d("MainActivity", "✅ WebView debugging enabled");
-        }
-        
         // 🔥 CRITICAL: Enable cookie persistence for WebView
         // This ensures httpOnly cookies (session tokens) are preserved when app is closed
         try {
