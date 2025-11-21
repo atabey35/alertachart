@@ -164,12 +164,18 @@ export default function SettingsPage() {
           return; // No saved email, user never logged in
         }
         
-        // 🔥 CRITICAL: Restore if session is missing OR if user state is null
-        // Sometimes status is 'authenticated' but user state is null (race condition)
-        const shouldRestore = (status === 'unauthenticated' || status === 'loading') || !user;
+        // 🔥 CRITICAL: Android - Always try to restore if user is missing
+        // Android WebView loses cookies when app is closed, so even if status is 'authenticated',
+        // user state might be null because cookies are gone
+        // We need to restore from Preferences token
+        const shouldRestore = !user || status === 'unauthenticated' || status === 'loading';
         
-        if (!shouldRestore) {
-          console.log('[Settings] ℹ️ Session exists, no restore needed');
+        if (!shouldRestore && user) {
+          console.log('[Settings] ℹ️ Session exists and user is set, no restore needed', {
+            status,
+            hasUser: !!user,
+            userEmail: user.email,
+          });
           return;
         }
         
@@ -177,6 +183,7 @@ export default function SettingsPage() {
           status,
           hasUser: !!user,
           savedEmail,
+          shouldRestore,
         });
         
         try {
