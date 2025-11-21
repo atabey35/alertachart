@@ -7,8 +7,9 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.android.billingclient.api.*;
-import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 
 @CapacitorPlugin(name = "InAppPurchase")
@@ -167,7 +168,7 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
         pendingPurchaseCall = call;
         
         // Query for the product (7.x API)
-        List<QueryProductDetailsParams.Product> productList = ImmutableList.of(
+        List<QueryProductDetailsParams.Product> productList = Collections.singletonList(
             QueryProductDetailsParams.Product.newBuilder()
                 .setProductId(productId)
                 .setProductType(BillingClient.ProductType.SUBS)
@@ -226,7 +227,7 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                 
                 String offerToken = offersList.get(0).getOfferToken();
                 
-                List<BillingFlowParams.ProductDetailsParams> productDetailsParamsList = ImmutableList.of(
+                List<BillingFlowParams.ProductDetailsParams> productDetailsParamsList = Collections.singletonList(
                     BillingFlowParams.ProductDetailsParams.newBuilder()
                         .setProductDetails(productDetails)
                         .setOfferToken(offerToken)
