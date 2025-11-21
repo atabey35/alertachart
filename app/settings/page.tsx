@@ -166,11 +166,12 @@ export default function SettingsPage() {
           userEmail: user?.email,
         });
         
-        // 🔥 CRITICAL: Android - Always try to restore if user is missing
+        // 🔥 CRITICAL: Android - Always try to restore if user is missing OR if status is not authenticated
         // Android WebView loses cookies when app is closed, so even if status is 'authenticated',
         // user state might be null because cookies are gone
         // We need to restore from Preferences token
-        const shouldRestore = !user || status === 'unauthenticated' || status === 'loading';
+        // Also restore if status is 'authenticated' but user is null (cookie loss scenario)
+        const shouldRestore = !user || status === 'unauthenticated' || status === 'loading' || (status === 'authenticated' && !user);
         
         console.log('[Settings] 🔍 shouldRestore check:', {
           shouldRestore,
@@ -179,9 +180,11 @@ export default function SettingsPage() {
           condition1: !user,
           condition2: status === 'unauthenticated',
           condition3: status === 'loading',
+          condition4: status === 'authenticated' && !user,
         });
         
-        if (!shouldRestore && user) {
+        // Only skip restore if we have both user AND authenticated status
+        if (user && status === 'authenticated') {
           console.log('[Settings] ℹ️ Session exists and user is set, no restore needed', {
             status,
             hasUser: !!user,
@@ -243,12 +246,14 @@ export default function SettingsPage() {
             console.log('[Settings] ⚠️ Preferences plugin not available');
           }
           
-          // If no token in Preferences, check localStorage for savedEmail (fallback)
+          // If no token in Preferences, try to restore using cookies (if available)
+          // Cookie'den token bulunabilir ama NextAuth session yok olabilir
           if (!refreshTokenFromPreferences) {
             const savedEmail = localStorage.getItem('user_email');
-            console.log('[Settings] 🔍 No token in Preferences, checking localStorage:', {
+            console.log('[Settings] 🔍 No token in Preferences, checking localStorage and cookies:', {
               savedEmail,
               allKeys: Object.keys(localStorage),
+              hasCookies: typeof document !== 'undefined' && document.cookie.length > 0,
             });
             
             if (!savedEmail) {
@@ -256,40 +261,50 @@ export default function SettingsPage() {
               return; // No saved email, user never logged in
             }
             
-            console.log('[Settings] ⚠️ No refreshToken in Preferences but savedEmail exists - cannot restore without token');
-            return;
+            // Even if no token in Preferences, try to restore using cookies
+            // restore-session API will check cookies if body is empty
+            console.log('[Settings] ⚠️ No refreshToken in Preferences but savedEmail exists - will try restore with cookies');
+            // Continue to restore-session call (it will use cookies if body is empty)
           }
           
-          // Restore session using Preferences refreshToken
-          if (!refreshTokenFromPreferences || 
-              typeof refreshTokenFromPreferences !== 'string' ||
-              refreshTokenFromPreferences.trim().length === 0) {
-            console.log('[Settings] ❌ Cannot restore: refreshToken is empty or invalid');
-            return;
+          // Restore session using Preferences refreshToken OR cookies
+          // If Preferences token exists, use it. Otherwise, let API use cookies
+          let requestBody: { refreshToken?: string } | undefined = undefined;
+          
+          if (refreshTokenFromPreferences && 
+              typeof refreshTokenFromPreferences === 'string' &&
+              refreshTokenFromPreferences.trim().length > 0) {
+            // TypeScript type narrowing: at this point refreshTokenFromPreferences is definitely a non-empty string
+            const token = refreshTokenFromPreferences.trim();
+            requestBody = { refreshToken: token };
+            console.log('[Settings] 🔍 Calling restore-session API with Preferences token...', {
+              hasRefreshToken: !!token,
+              refreshTokenLength: token.length,
+              refreshTokenPreview: `${token.substring(0, 20)}...`,
+              url: '/api/auth/restore-session',
+            });
+          } else {
+            // No Preferences token, but try restore with cookies
+            console.log('[Settings] 🔍 Calling restore-session API with cookies (no Preferences token)...', {
+              hasRefreshToken: false,
+              willUseCookies: true,
+              url: '/api/auth/restore-session',
+            });
           }
           
-          // TypeScript type narrowing: at this point refreshTokenFromPreferences is definitely a non-empty string
-          const token = refreshTokenFromPreferences.trim();
-          
-          console.log('[Settings] 🔍 Calling restore-session API...', {
-            hasRefreshToken: !!token,
-            refreshTokenLength: token.length,
-            refreshTokenPreview: `${token.substring(0, 20)}...`,
-            url: '/api/auth/restore-session',
-          });
-          
-          const requestBody = { refreshToken: token };
-          console.log('[Settings] 🔍 Request body:', {
-            hasRefreshToken: !!requestBody.refreshToken,
-            refreshTokenLength: requestBody.refreshToken.length,
-            bodyString: JSON.stringify(requestBody).substring(0, 100),
-          });
+          if (requestBody) {
+            console.log('[Settings] 🔍 Request body:', {
+              hasRefreshToken: !!requestBody.refreshToken,
+              refreshTokenLength: requestBody.refreshToken?.length,
+              bodyString: JSON.stringify(requestBody).substring(0, 100),
+            });
+          }
           
           const response = await fetch('/api/auth/restore-session', {
             method: 'POST',
             credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
+            headers: requestBody ? { 'Content-Type': 'application/json' } : {},
+            body: requestBody ? JSON.stringify(requestBody) : undefined,
           });
           
           console.log('[Settings] 🔍 restore-session API response:', {
