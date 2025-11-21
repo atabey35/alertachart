@@ -468,35 +468,6 @@ export default function UpgradeModal({
 
           {/* Action Buttons */}
           <div className="px-4 pb-4 pt-2 space-y-2 border-t border-gray-800/60">
-            {/* Debug Info - Always show in development */}
-            <div 
-              className="text-xs text-gray-500 p-2 bg-gray-900/50 rounded mb-2"
-              onClick={async () => {
-                const msg = `Debug Info Clicked: platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}, loading=${loading}`;
-                console.log('[UpgradeModal]', msg);
-                try {
-                  const Capacitor = (window as any).Capacitor;
-                  if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
-                    await Capacitor.Plugins.InAppPurchase.logDebug({ message: `[UpgradeModal] ${msg}` });
-                  }
-                } catch (e) {}
-              }}
-            >
-              <div>Platform: {platform}</div>
-              <div>IAP Available: {String(iapAvailable)}</div>
-              <div>IAP Initialized: {String(iapInitialized)}</div>
-              <div>Loading: {String(loading)}</div>
-              <div>Products: {products.length}</div>
-              <div>Button Disabled: {String(loading || (platform !== 'web' && (!iapAvailable || !iapInitialized)))}</div>
-            </div>
-            {/* Debug: Show button state */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="text-xs text-gray-500 p-2 bg-gray-900/50 rounded">
-                Debug: platform={platform}, iapAvailable={String(iapAvailable)}, iapInitialized={String(iapInitialized)}, 
-                disabled={String(loading || (platform !== 'web' && (!iapAvailable || !iapInitialized)))}
-              </div>
-            )}
-            
             {/* Trial button - only for native apps (iOS/Android), not web */}
             {/* Double check: platform must be 'ios' or 'android', not 'web' */}
             {currentPlan === 'free' && !isTrial && (platform === 'ios' || platform === 'android') && (
