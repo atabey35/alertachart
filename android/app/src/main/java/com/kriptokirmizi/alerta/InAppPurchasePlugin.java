@@ -7,6 +7,7 @@ import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
 import com.getcapacitor.annotation.CapacitorPlugin;
 import com.android.billingclient.api.*;
+import com.google.common.collect.ImmutableList;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -72,40 +73,60 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                 return;
             }
             
-            List<String> skuList = new ArrayList<>();
+            // Build product list for Billing Library 7.x
+            List<QueryProductDetailsParams.Product> productList = new ArrayList<>();
             for (int i = 0; i < productIdsArray.length(); i++) {
-                skuList.add(productIdsArray.getString(i));
+                String productId = productIdsArray.getString(i);
+                productList.add(
+                    QueryProductDetailsParams.Product.newBuilder()
+                        .setProductId(productId)
+                        .setProductType(BillingClient.ProductType.SUBS)
+                        .build()
+                );
             }
             
-            SkuDetailsParams params = SkuDetailsParams.newBuilder()
-                .setSkusList(skuList)
-                .setType(BillingClient.SkuType.SUBS) // or INAPP for one-time purchases
+            QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
+                .setProductList(productList)
                 .build();
             
-            billingClient.querySkuDetailsAsync(params, (billingResult, skuDetailsList) -> {
+            billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsList) -> {
                 int responseCode = billingResult.getResponseCode();
                 String debugMessage = billingResult.getDebugMessage();
                 
-                android.util.Log.d("InAppPurchase", "[GET_PRODUCTS] querySkuDetailsAsync responseCode: " + responseCode + ", message: " + debugMessage);
+                android.util.Log.d("InAppPurchase", "[GET_PRODUCTS] queryProductDetailsAsync responseCode: " + responseCode + ", message: " + debugMessage);
                 
-                if (responseCode == BillingClient.BillingResponseCode.OK && skuDetailsList != null) {
-                    android.util.Log.d("InAppPurchase", "[GET_PRODUCTS] ✅ Found " + skuDetailsList.size() + " products");
+                if (responseCode == BillingClient.BillingResponseCode.OK && productDetailsList != null) {
+                    android.util.Log.d("InAppPurchase", "[GET_PRODUCTS] ✅ Found " + productDetailsList.size() + " products");
                     
                     JSObject result = new JSObject();
                     org.json.JSONArray productsArray = new org.json.JSONArray();
                     
-                    for (SkuDetails skuDetails : skuDetailsList) {
-                        android.util.Log.d("InAppPurchase", "[GET_PRODUCTS] Product: " + skuDetails.getSku() + " - " + skuDetails.getPrice());
-                        JSObject product = new JSObject();
-                        product.put("productId", skuDetails.getSku());
-                        product.put("price", skuDetails.getPrice());
-                        product.put("currency", skuDetails.getPriceCurrencyCode());
-                        product.put("title", skuDetails.getTitle());
-                        product.put("description", skuDetails.getDescription());
-                        productsArray.put(product);
+                    for (ProductDetails productDetails : productDetailsList) {
+                        android.util.Log.d("InAppPurchase", "[GET_PRODUCTS] Product: " + productDetails.getProductId());
+                        
+                        // Get subscription offer details (7.x API)
+                        List<ProductDetails.SubscriptionOfferDetails> offersList = productDetails.getSubscriptionOfferDetails();
+                        if (offersList != null && !offersList.isEmpty()) {
+                            ProductDetails.SubscriptionOfferDetails offer = offersList.get(0);
+                            List<ProductDetails.PricingPhase> pricingPhases = offer.getPricingPhases().getPricingPhaseList();
+                            
+                            if (!pricingPhases.isEmpty()) {
+                                ProductDetails.PricingPhase pricingPhase = pricingPhases.get(0);
+                                
+                                JSObject product = new JSObject();
+                                product.put("productId", productDetails.getProductId());
+                                product.put("price", pricingPhase.getFormattedPrice());
+                                product.put("currency", pricingPhase.getPriceCurrencyCode());
+                                product.put("title", productDetails.getTitle());
+                                product.put("description", productDetails.getDescription());
+                                productsArray.put(product);
+                                
+                                android.util.Log.d("InAppPurchase", "[GET_PRODUCTS] Price: " + pricingPhase.getFormattedPrice());
+                            }
+                        }
                     }
                     
-                    if (skuDetailsList.isEmpty()) {
+                    if (productDetailsList.isEmpty()) {
                         android.util.Log.w("InAppPurchase", "[GET_PRODUCTS] ⚠️ Product list is empty! Check:");
                         android.util.Log.w("InAppPurchase", "[GET_PRODUCTS] 1. Product IDs match Play Console");
                         android.util.Log.w("InAppPurchase", "[GET_PRODUCTS] 2. Products are active");
@@ -145,26 +166,29 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
         // Store call for later use in onPurchasesUpdated
         pendingPurchaseCall = call;
         
-        // Query for the product
-        List<String> skuList = new ArrayList<>();
-        skuList.add(productId);
+        // Query for the product (7.x API)
+        List<QueryProductDetailsParams.Product> productList = ImmutableList.of(
+            QueryProductDetailsParams.Product.newBuilder()
+                .setProductId(productId)
+                .setProductType(BillingClient.ProductType.SUBS)
+                .build()
+        );
         
         android.util.Log.d("InAppPurchase", "[PURCHASE] Querying product details for: " + productId);
         
-        SkuDetailsParams params = SkuDetailsParams.newBuilder()
-            .setSkusList(skuList)
-            .setType(BillingClient.SkuType.SUBS)
+        QueryProductDetailsParams params = QueryProductDetailsParams.newBuilder()
+            .setProductList(productList)
             .build();
         
-        billingClient.querySkuDetailsAsync(params, (billingResult, skuDetailsList) -> {
+        billingClient.queryProductDetailsAsync(params, (billingResult, productDetailsList) -> {
             int responseCode = billingResult.getResponseCode();
             String debugMessage = billingResult.getDebugMessage();
             
-            android.util.Log.d("InAppPurchase", "[PURCHASE] querySkuDetailsAsync responseCode: " + responseCode + ", message: " + debugMessage);
+            android.util.Log.d("InAppPurchase", "[PURCHASE] queryProductDetailsAsync responseCode: " + responseCode + ", message: " + debugMessage);
             
             if (responseCode == BillingClient.BillingResponseCode.OK) {
-                if (skuDetailsList == null) {
-                    android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ skuDetailsList is null");
+                if (productDetailsList == null) {
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ productDetailsList is null");
                     if (pendingPurchaseCall != null) {
                         pendingPurchaseCall.reject("Product query returned null list");
                         pendingPurchaseCall = null;
@@ -172,8 +196,8 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                     return;
                 }
                 
-                if (skuDetailsList.isEmpty()) {
-                    android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ skuDetailsList is empty - product not found: " + productId);
+                if (productDetailsList.isEmpty()) {
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ productDetailsList is empty - product not found: " + productId);
                     android.util.Log.e("InAppPurchase", "[PURCHASE] This usually means:");
                     android.util.Log.e("InAppPurchase", "[PURCHASE] 1. Product ID doesn't match Play Console");
                     android.util.Log.e("InAppPurchase", "[PURCHASE] 2. Product is not active in Play Console");
@@ -186,11 +210,31 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                     return;
                 }
                 
-                SkuDetails skuDetails = skuDetailsList.get(0);
-                android.util.Log.d("InAppPurchase", "[PURCHASE] ✅ Product found: " + skuDetails.getSku() + ", price: " + skuDetails.getPrice());
+                ProductDetails productDetails = productDetailsList.get(0);
+                android.util.Log.d("InAppPurchase", "[PURCHASE] ✅ Product found: " + productDetails.getProductId());
+                
+                // Get the subscription offer token (7.x API requirement)
+                List<ProductDetails.SubscriptionOfferDetails> offersList = productDetails.getSubscriptionOfferDetails();
+                if (offersList == null || offersList.isEmpty()) {
+                    android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ No subscription offers found");
+                    if (pendingPurchaseCall != null) {
+                        pendingPurchaseCall.reject("No subscription offers available for: " + productId);
+                        pendingPurchaseCall = null;
+                    }
+                    return;
+                }
+                
+                String offerToken = offersList.get(0).getOfferToken();
+                
+                List<BillingFlowParams.ProductDetailsParams> productDetailsParamsList = ImmutableList.of(
+                    BillingFlowParams.ProductDetailsParams.newBuilder()
+                        .setProductDetails(productDetails)
+                        .setOfferToken(offerToken)
+                        .build()
+                );
                 
                 BillingFlowParams flowParams = BillingFlowParams.newBuilder()
-                    .setSkuDetails(skuDetails)
+                    .setProductDetailsParamsList(productDetailsParamsList)
                     .build();
                 
                 android.util.Log.d("InAppPurchase", "[PURCHASE] Launching billing flow...");
@@ -227,7 +271,7 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                     }
                 }
             } else {
-                android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ querySkuDetailsAsync failed: " + responseCode + " - " + debugMessage);
+                android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ queryProductDetailsAsync failed: " + responseCode + " - " + debugMessage);
                 if (pendingPurchaseCall != null) {
                     pendingPurchaseCall.reject("Failed to query product: " + debugMessage + " (code: " + responseCode + ")");
                     pendingPurchaseCall = null;
@@ -245,7 +289,7 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
         
         billingClient.queryPurchasesAsync(
             QueryPurchasesParams.newBuilder()
-                .setProductType(BillingClient.SkuType.SUBS)
+                .setProductType(BillingClient.ProductType.SUBS)
                 .build(),
             (billingResult, purchasesList) -> {
                 if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
@@ -255,7 +299,11 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                     for (Purchase purchase : purchasesList) {
                         JSObject transaction = new JSObject();
                         transaction.put("transactionId", purchase.getOrderId());
-                        transaction.put("productId", purchase.getSkus().get(0));
+                        // 7.x API: getProducts() returns List<String>
+                        List<String> products = purchase.getProducts();
+                        if (!products.isEmpty()) {
+                            transaction.put("productId", products.get(0));
+                        }
                         transaction.put("receipt", purchase.getPurchaseToken());
                         transactionsArray.put(transaction);
                     }
@@ -308,7 +356,11 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
         if (responseCode == BillingClient.BillingResponseCode.OK && purchases != null) {
             android.util.Log.d("InAppPurchase", "[PURCHASE_UPDATE] ✅ Purchase successful");
             for (Purchase purchase : purchases) {
-                android.util.Log.d("InAppPurchase", "[PURCHASE_UPDATE] Processing purchase: " + purchase.getSkus().get(0));
+                // 7.x API: getProducts() returns List<String>
+                List<String> products = purchase.getProducts();
+                if (!products.isEmpty()) {
+                    android.util.Log.d("InAppPurchase", "[PURCHASE_UPDATE] Processing purchase: " + products.get(0));
+                }
                 handlePurchase(purchase);
             }
         } else if (responseCode == BillingClient.BillingResponseCode.USER_CANCELED) {
@@ -342,7 +394,11 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                         if (pendingPurchaseCall != null) {
                             JSObject result = new JSObject();
                             result.put("transactionId", purchase.getOrderId());
-                            result.put("productId", purchase.getSkus().get(0));
+                            // 7.x API: getProducts() returns List<String>
+                            List<String> products = purchase.getProducts();
+                            if (!products.isEmpty()) {
+                                result.put("productId", products.get(0));
+                            }
                             result.put("receipt", purchase.getPurchaseToken());
                             result.put("transactionReceipt", purchase.getOriginalJson());
                             
@@ -362,7 +418,11 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                 if (pendingPurchaseCall != null) {
                     JSObject result = new JSObject();
                     result.put("transactionId", purchase.getOrderId());
-                    result.put("productId", purchase.getSkus().get(0));
+                    // 7.x API: getProducts() returns List<String>
+                    List<String> products = purchase.getProducts();
+                    if (!products.isEmpty()) {
+                        result.put("productId", products.get(0));
+                    }
                     result.put("receipt", purchase.getPurchaseToken());
                     result.put("transactionReceipt", purchase.getOriginalJson());
                     
@@ -373,4 +433,3 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
         }
     }
 }
-

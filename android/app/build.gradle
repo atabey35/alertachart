@@ -72,9 +72,9 @@ dependencies {
     implementation platform('com.google.firebase:firebase-bom:33.7.0')
     implementation 'com.google.firebase:firebase-messaging'
     
-    // Google Play Billing
-    implementation 'com.android.billingclient:billing:6.1.0'
-    implementation 'com.android.billingclient:billing-ktx:6.1.0'
+    // Google Play Billing (Updated to 7.0.0+ for Play Console compliance)
+    implementation 'com.android.billingclient:billing:7.1.1'
+    implementation 'com.android.billingclient:billing-ktx:7.1.1'
 }
 
 apply from: 'capacitor.build.gradle'
