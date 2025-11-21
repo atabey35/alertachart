@@ -173,7 +173,30 @@ export default function AndroidLogin() {
                 throw new Error(`Failed to set session: ${sessionError.error || 'Unknown error'}`);
               }
               
-              console.log('[AndroidLogin] ✅ Session set successfully, redirecting...');
+              // 🔥 CRITICAL: Save user email to localStorage for Android session restore
+              // Android WebView sometimes loses cookies when app goes to background
+              // This ensures session can be restored when app is reopened
+              const sessionData = await sessionResponse.json();
+              if (sessionData?.user?.email && typeof window !== 'undefined') {
+                localStorage.setItem('user_email', sessionData.user.email);
+                console.log('[AndroidLogin] ✅ User email saved to localStorage for session restore:', sessionData.user.email);
+              } else {
+                // Fallback: Use email from Google auth result
+                if (result?.authentication?.idToken) {
+                  try {
+                    const payload = JSON.parse(atob(result.authentication.idToken.split('.')[1]));
+                    if (payload.email && typeof window !== 'undefined') {
+                      localStorage.setItem('user_email', payload.email);
+                      console.log('[AndroidLogin] ✅ User email saved from Google token for session restore');
+                    }
+                  } catch (e) {
+                    console.warn('[AndroidLogin] ⚠️ Could not extract email from token');
+                  }
+                }
+              }
+              
+              console.log('[AndroidLogin] ✅ Session set successfully');
+              
               // Redirect to home
               router.push('/');
               window.location.reload();

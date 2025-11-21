@@ -446,6 +446,16 @@ export default function Home() {
       };
       setUser(newUser);
       
+      // 🔥 CRITICAL: Save user email to localStorage for Android session restore
+      // Android WebView sometimes loses cookies when app goes to background
+      if (newUser.email && typeof window !== 'undefined') {
+        const savedEmail = localStorage.getItem('user_email');
+        if (!savedEmail || savedEmail !== newUser.email) {
+          localStorage.setItem('user_email', newUser.email);
+          console.log('[App] ✅ User email saved to localStorage for Android session restore');
+        }
+      }
+      
       // 🔥 CRITICAL: Force fetch user plan immediately after login
       // This ensures premium status is loaded right after Google/Apple login
       const fetchUserPlanImmediately = async () => {
@@ -505,7 +515,48 @@ export default function Home() {
       }
     });
 
-    return () => unsubscribe();
+    // 🔥 CRITICAL: Android session restore on app resume
+    // Android WebView sometimes loses cookies when app goes to background
+    // Restore session when app becomes visible again
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        // App became visible (resumed from background)
+        const hasCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+        const platform = hasCapacitor ? (window as any).Capacitor?.getPlatform?.() : 'web';
+        
+        if (platform === 'android' && (status === 'unauthenticated' || status === 'loading')) {
+          const savedEmail = typeof window !== 'undefined' ? localStorage.getItem('user_email') : null;
+          if (savedEmail) {
+            console.log('[App] 📱 Android app resumed, attempting session restore...');
+            // Wait a bit for WebView to be ready
+            setTimeout(async () => {
+              try {
+                const response = await fetch('/api/auth/restore-session', {
+                  method: 'POST',
+                  credentials: 'include',
+                });
+                if (response.ok) {
+                  const result = await response.json();
+                  console.log('[App] ✅ Session restored on Android app resume');
+                  if (result.user?.email) {
+                    await update();
+                  }
+                }
+              } catch (error) {
+                console.log('[App] ⚠️ Session restore on resume failed (non-critical)');
+              }
+            }, 500);
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      unsubscribe();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [session, status, update]);
 
   // Fetch user plan when user changes
