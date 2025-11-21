@@ -158,7 +158,20 @@ export default function SettingsPage() {
       
       // Only for Android
       if (platform === 'android') {
+        console.log('[Settings] 🔍 Android restore check:', {
+          platform,
+          hasCapacitor,
+          status,
+          hasUser: !!user,
+          userEmail: user?.email,
+        });
+        
         const savedEmail = localStorage.getItem('user_email');
+        console.log('[Settings] 🔍 localStorage check:', {
+          savedEmail,
+          allKeys: Object.keys(localStorage),
+        });
+        
         if (!savedEmail) {
           console.log('[Settings] ℹ️ No saved email, user never logged in');
           return; // No saved email, user never logged in
@@ -169,6 +182,15 @@ export default function SettingsPage() {
         // user state might be null because cookies are gone
         // We need to restore from Preferences token
         const shouldRestore = !user || status === 'unauthenticated' || status === 'loading';
+        
+        console.log('[Settings] 🔍 shouldRestore check:', {
+          shouldRestore,
+          hasUser: !!user,
+          status,
+          condition1: !user,
+          condition2: status === 'unauthenticated',
+          condition3: status === 'loading',
+        });
         
         if (!shouldRestore && user) {
           console.log('[Settings] ℹ️ Session exists and user is set, no restore needed', {
@@ -189,18 +211,37 @@ export default function SettingsPage() {
         try {
           // Get refreshToken from Preferences
           let refreshTokenFromPreferences: string | null = null;
+          console.log('[Settings] 🔍 Checking Preferences:', {
+            hasCapacitor,
+            hasPreferencesPlugin: !!(hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences),
+          });
+          
           if (hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
             try {
+              console.log('[Settings] 🔍 Reading refreshToken from Preferences...');
               const prefsResult = await (window as any).Capacitor.Plugins.Preferences.get({ 
                 key: 'refreshToken' 
               });
+              console.log('[Settings] 🔍 Preferences result:', {
+                hasValue: !!prefsResult?.value,
+                valueType: typeof prefsResult?.value,
+                valueLength: prefsResult?.value?.length,
+                valuePreview: prefsResult?.value ? `${prefsResult.value.substring(0, 20)}...` : 'none',
+                isNull: prefsResult?.value === 'null',
+                isUndefined: prefsResult?.value === 'undefined',
+              });
+              
               if (prefsResult?.value && prefsResult.value !== 'null' && prefsResult.value !== 'undefined') {
                 refreshTokenFromPreferences = prefsResult.value;
                 console.log('[Settings] ✅ RefreshToken found in Preferences');
+              } else {
+                console.log('[Settings] ⚠️ RefreshToken in Preferences is null/undefined/empty');
               }
             } catch (e) {
-              console.log('[Settings] ⚠️ Could not get refreshToken from Preferences');
+              console.error('[Settings] ❌ Error reading Preferences:', e);
             }
+          } else {
+            console.log('[Settings] ⚠️ Preferences plugin not available');
           }
           
           if (!refreshTokenFromPreferences) {
@@ -209,11 +250,23 @@ export default function SettingsPage() {
           }
           
           // Restore session using Preferences refreshToken
+          console.log('[Settings] 🔍 Calling restore-session API...', {
+            hasRefreshToken: !!refreshTokenFromPreferences,
+            refreshTokenLength: refreshTokenFromPreferences?.length,
+            url: '/api/auth/restore-session',
+          });
+          
           const response = await fetch('/api/auth/restore-session', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ refreshToken: refreshTokenFromPreferences }),
+          });
+          
+          console.log('[Settings] 🔍 restore-session API response:', {
+            status: response.status,
+            statusText: response.statusText,
+            ok: response.ok,
           });
           
           if (response.ok) {
