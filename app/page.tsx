@@ -119,33 +119,49 @@ export default function Home() {
 
   // 🔥 CRITICAL: Clean old/stale NextAuth cookies before showing login screen
   // This prevents "Only one navigator.credentials.get request may be outstanding" error
+  // Works for both pure web and Capacitor web context (DevTools testing)
   useEffect(() => {
-    if (typeof window !== 'undefined' && !isCapacitor && showLoginScreen && status === 'unauthenticated') {
-      console.log('[Web Auth] Cleaning stale NextAuth cookies before login...');
+    if (typeof window !== 'undefined' && showLoginScreen && status === 'unauthenticated') {
+      // Check if we're in web context (pure web OR Capacitor with platform=web)
+      const platform = (window as any).Capacitor?.getPlatform?.() || 'web';
+      const isWebContext = !((window as any).Capacitor) || platform === 'web';
       
-      // Clear all NextAuth-related cookies
-      const cookiesToClear = [
-        'next-auth.session-token',
-        'next-auth.csrf-token',
-        'next-auth.callback-url',
-        '__Secure-next-auth.session-token',
-        '__Secure-next-auth.csrf-token',
-        '__Secure-next-auth.callback-url',
-      ];
-      
-      cookiesToClear.forEach(cookieName => {
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
-        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
-      });
-      
-      console.log('[Web Auth] ✅ Stale cookies cleared');
+      if (isWebContext) {
+        console.log('[Web Auth] 🧹 Cleaning stale NextAuth cookies before login...');
+        console.log('[Web Auth] Platform:', platform, 'hasCapacitor:', !!((window as any).Capacitor));
+        
+        // Clear all NextAuth-related cookies
+        const cookiesToClear = [
+          'next-auth.session-token',
+          'next-auth.csrf-token',
+          'next-auth.callback-url',
+          '__Secure-next-auth.session-token',
+          '__Secure-next-auth.csrf-token',
+          '__Secure-next-auth.callback-url',
+        ];
+        
+        cookiesToClear.forEach(cookieName => {
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+        });
+        
+        console.log('[Web Auth] ✅ Stale cookies cleared');
+      }
     }
-  }, [showLoginScreen, isCapacitor, status]);
+  }, [showLoginScreen, status]);
 
   // Google Identity Services (GIS) initialization for web
   useEffect(() => {
-    if (typeof window !== 'undefined' && !isCapacitor && showLoginScreen) {
+    if (typeof window !== 'undefined' && showLoginScreen) {
+      // Check if we're in web context (pure web OR Capacitor with platform=web)
+      const platform = (window as any).Capacitor?.getPlatform?.() || 'web';
+      const isWebContext = !((window as any).Capacitor) || platform === 'web';
+      
+      if (!isWebContext) {
+        console.log('[Web Auth] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
+        return;
+      }
       // Prevent multiple initializations
       if (googleInitializedRef.current) {
         console.log('[Web Auth] Google Identity Services already initialized, skipping');
@@ -242,7 +258,7 @@ export default function Home() {
         }
       };
     }
-  }, [showLoginScreen, isCapacitor, status]);
+  }, [showLoginScreen, status]);
 
 
   // Initialize safe area listener for native app
@@ -1229,7 +1245,7 @@ export default function Home() {
 
   // Debug logging (only when state changes)
   useEffect(() => {
-    if (showLoginScreen) {
+  if (showLoginScreen) {
       console.log('[Login Screen] State check:', {
         showLoginScreen,
         isWeb,
