@@ -1297,10 +1297,13 @@ export default function SettingsPage() {
 
       await authService.logout();
 
+      // Web'de redirect yap, native app'te authService.logout() zaten redirect yapacak
       if (!isCapacitor) {
         router.replace('/');
         router.refresh();
       }
+      // Native app'te: authService.logout() içinde redirect var, 
+      // isLoggingOut'u false yapma - redirect olacak ve sayfa reload olacak
     } catch (err: any) {
       const fallbackMessage = language === 'tr'
         ? 'Çıkış yapılamadı. Lütfen tekrar deneyin.'
@@ -1308,8 +1311,16 @@ export default function SettingsPage() {
       const message = err?.message || fallbackMessage;
       setLogoutError(message);
       console.error('[Settings] Logout failed:', err);
+      // Only reset on error if we're not redirecting
+      if (!isCapacitor) {
+        setIsLoggingOut(false);
+      }
     } finally {
-      setIsLoggingOut(false);
+      // Only reset if we're on web (not native app)
+      // Native app'te redirect olacak, sayfa reload olacak, state zaten reset olacak
+      if (!isCapacitor) {
+        setIsLoggingOut(false);
+      }
     }
   }, [isLoggingOut, status, isCapacitor, router, language]);
 

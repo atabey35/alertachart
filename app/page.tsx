@@ -895,15 +895,26 @@ export default function Home() {
 
       await authService.logout();
 
+      // Web'de redirect yap, native app'te authService.logout() zaten redirect yapacak
       if (!isCapacitor && typeof window !== 'undefined') {
         window.location.replace('/');
       }
+      // Native app'te: authService.logout() içinde redirect var, 
+      // isLoggingOut'u false yapma - redirect olacak ve sayfa reload olacak
     } catch (error: any) {
       const message = error?.message || 'Çıkış yapılamadı. Lütfen tekrar deneyin.';
       setLogoutError(message);
       console.error('[Logout] Failed:', error);
+      // Only reset on error if we're not redirecting
+      if (!isCapacitor) {
+        setIsLoggingOut(false);
+      }
     } finally {
-      setIsLoggingOut(false);
+      // Only reset if we're on web (not native app)
+      // Native app'te redirect olacak, sayfa reload olacak, state zaten reset olacak
+      if (!isCapacitor) {
+        setIsLoggingOut(false);
+      }
     }
   }, [isLoggingOut, status, isCapacitor]);
   

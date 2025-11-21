@@ -280,11 +280,10 @@ class AuthService {
         if (hasCapacitor) {
           console.log('[AuthService] 🔄 Redirecting to native login page (/index.html)...');
           // Use replace instead of href to prevent back button navigation
-          // Force immediate redirect - don't wait for any async operations
-          setTimeout(() => {
-            console.log('[AuthService] ✅ Executing redirect to /index.html');
-            window.location.replace('/index.html');
-          }, 50);
+          // 🔥 CRITICAL: Immediate redirect (no setTimeout) to prevent double-click issues on iOS
+          // Don't reset isLoggingOut - redirect will happen and page will reload
+          window.location.replace('/index.html');
+          return; // Exit early, don't run finally block
         } else {
           console.log('[AuthService] ⚠️ Capacitor not found, skipping redirect to /index.html');
         }
@@ -293,7 +292,13 @@ class AuthService {
       console.error('[AuthService] Failed to logout:', error);
       throw error;
     } finally {
-      this.isLoggingOut = false;
+      // Only reset if we're not redirecting (web case)
+      const Capacitor = typeof window !== 'undefined' ? (window as any).Capacitor : null;
+      const hasCapacitor = !!Capacitor;
+      if (!hasCapacitor) {
+        this.isLoggingOut = false;
+      }
+      // If hasCapacitor, redirect will happen and page will reload, so don't reset flag
     }
   }
 
