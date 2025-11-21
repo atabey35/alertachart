@@ -285,72 +285,72 @@ class AuthService {
 
       console.log('[AuthService] ✅ Server logout successful');
 
-      // Clear localStorage
-      if (typeof window !== 'undefined') {
-        localStorage.removeItem('user_email');
-        localStorage.removeItem('native_device_id');
-        localStorage.removeItem('native_platform');
-        localStorage.removeItem('fcm_token');
-        console.log('[AuthService] ✅ LocalStorage cleared');
-        
+    // Clear localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user_email');
+      localStorage.removeItem('native_device_id');
+      localStorage.removeItem('native_platform');
+      localStorage.removeItem('fcm_token');
+      console.log('[AuthService] ✅ LocalStorage cleared');
+      
         // 🔥 CRITICAL: Clear tokens from Capacitor Preferences (Android)
         // Android stores tokens in Preferences instead of cookies
-        const Capacitor = (window as any).Capacitor;
-        if (Capacitor?.Plugins?.Preferences) {
-          try {
+      const Capacitor = (window as any).Capacitor;
+      if (Capacitor?.Plugins?.Preferences) {
+        try {
             // Clear both accessToken and refreshToken
             await Capacitor.Plugins.Preferences.remove({ key: 'accessToken' });
             await Capacitor.Plugins.Preferences.remove({ key: 'refreshToken' });
             console.log('[AuthService] ✅ Tokens removed from Preferences (Android)');
-          } catch (e) {
+        } catch (e) {
             console.error('[AuthService] Failed to remove tokens from Preferences:', e);
-          }
         }
+      }
 
         // Note: httpOnly cookies (accessToken, refreshToken, next-auth.session-token) 
         // cannot be cleared from client-side. They are cleared server-side in /api/auth/logout
         // But Android uses Preferences, not cookies, so we clear Preferences above
         // Non-httpOnly cookies (next-auth.csrf-token, etc.) are also cleared server-side
+    }
+
+    this.user = null;
+    this.notifyListeners();
+
+    // Native app'te ise token'ı temizle (sendToNative varsa)
+    try {
+      if (typeof window !== 'undefined' && (window as any).sendToNative) {
+        (window as any).sendToNative('AUTH_TOKEN', { token: null });
       }
+    } catch (e) {
+      console.error('[AuthService] Failed to send logout to native:', e);
+    }
 
-      this.user = null;
-      this.notifyListeners();
-
-      // Native app'te ise token'ı temizle (sendToNative varsa)
-      try {
-        if (typeof window !== 'undefined' && (window as any).sendToNative) {
-          (window as any).sendToNative('AUTH_TOKEN', { token: null });
-        }
-      } catch (e) {
-        console.error('[AuthService] Failed to send logout to native:', e);
-      }
-
-      // 🔥 CRITICAL: Redirect to native login page in Capacitor app
-      // Always redirect to /index.html if we're in a native app context
-      // (detected by checking if Capacitor exists, even if isNativePlatform() fails)
-      if (typeof window !== 'undefined') {
-        const Capacitor = (window as any).Capacitor;
-        const hasCapacitor = !!Capacitor;
-        const isCapacitor = Capacitor?.isNativePlatform?.() ?? false;
-        
-        console.log('[AuthService] 🔍 Capacitor check:', {
-          hasCapacitor,
-          isNativePlatform: isCapacitor,
-          platform: Capacitor?.getPlatform?.()
-        });
-        
-        // If Capacitor exists, we're in a native app - always redirect to /index.html
-        // This avoids the /login page which uses NextAuth signIn() that doesn't work in WebView
-        if (hasCapacitor) {
-          console.log('[AuthService] 🔄 Redirecting to native login page (/index.html)...');
-          // Use replace instead of href to prevent back button navigation
+    // 🔥 CRITICAL: Redirect to native login page in Capacitor app
+    // Always redirect to /index.html if we're in a native app context
+    // (detected by checking if Capacitor exists, even if isNativePlatform() fails)
+    if (typeof window !== 'undefined') {
+      const Capacitor = (window as any).Capacitor;
+      const hasCapacitor = !!Capacitor;
+      const isCapacitor = Capacitor?.isNativePlatform?.() ?? false;
+      
+      console.log('[AuthService] 🔍 Capacitor check:', {
+        hasCapacitor,
+        isNativePlatform: isCapacitor,
+        platform: Capacitor?.getPlatform?.()
+      });
+      
+      // If Capacitor exists, we're in a native app - always redirect to /index.html
+      // This avoids the /login page which uses NextAuth signIn() that doesn't work in WebView
+      if (hasCapacitor) {
+        console.log('[AuthService] 🔄 Redirecting to native login page (/index.html)...');
+        // Use replace instead of href to prevent back button navigation
           // 🔥 CRITICAL: Immediate redirect (no setTimeout) to prevent double-click issues on iOS
           // Don't reset isLoggingOut - redirect will happen and page will reload
           window.location.replace('/index.html');
           return; // Exit early, don't run finally block
-        } else {
-          console.log('[AuthService] ⚠️ Capacitor not found, skipping redirect to /index.html');
-        }
+      } else {
+        console.log('[AuthService] ⚠️ Capacitor not found, skipping redirect to /index.html');
+      }
       }
     } catch (error) {
       console.error('[AuthService] Failed to logout:', error);

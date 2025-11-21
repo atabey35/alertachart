@@ -506,7 +506,7 @@ export default function Home() {
           if ((error as any)?.message?.includes('404') || (error as any)?.status === 404) {
             console.log('[App] ℹ️ restore-session endpoint not available (logged out)');
           } else {
-            console.error('[App] ❌ Error restoring session:', error);
+          console.error('[App] ❌ Error restoring session:', error);
           }
         }
       };
@@ -1351,13 +1351,13 @@ export default function Home() {
                     <div className="flex items-center gap-2">
                       <span className="text-gray-300 text-xs">{user.email}</span>
                       <div className="flex flex-col items-start gap-0.5">
-                        <button
+                      <button
                           onClick={handleGlobalLogout}
                           disabled={isLoggingOut}
                           className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition disabled:opacity-60 disabled:cursor-not-allowed"
-                        >
+                      >
                           {isLoggingOut ? 'Çıkış yapılıyor...' : 'Çıkış'}
-                        </button>
+                      </button>
                         {logoutError && (
                           <span className="text-[10px] text-red-400">{logoutError}</span>
                         )}

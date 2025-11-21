@@ -164,6 +164,12 @@ export default function SettingsPage() {
         userEmail: user?.email,
       });
       
+      // Reset restore flag if user becomes null (cookie loss scenario)
+      if (!user && restoreAttemptedRef.current) {
+        console.log('[Settings] 🔄 Resetting restore flag because user is null');
+        restoreAttemptedRef.current = false;
+      }
+      
       // Prevent multiple restore attempts
       if (restoreAttemptedRef.current || restoreInProgressRef.current) {
         console.log('[Settings] ⏭️ Restore already attempted or in progress, skipping');
@@ -434,9 +440,9 @@ export default function SettingsPage() {
     // Small delay to ensure Capacitor is ready
     setTimeout(restoreAndroidSession, 500);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Only run once on mount - restoreAttemptedRef prevents multiple attempts
-  // Note: We don't depend on status/user because restoreAttemptedRef prevents re-runs
-  // If restore fails, user can refresh the page to try again
+  }, [user]); // Run when user changes - restoreAttemptedRef prevents multiple attempts
+  // Note: We depend on user to re-trigger restore if user becomes null
+  // This handles the case where cookies are lost and user is cleared
 
   // Fetch user data
   useEffect(() => {
@@ -1584,7 +1590,7 @@ export default function SettingsPage() {
 
     try {
       if (status === 'authenticated') {
-        await signOut({ redirect: false });
+      await signOut({ redirect: false });
       }
 
       await authService.logout();
@@ -1612,7 +1618,7 @@ export default function SettingsPage() {
       // Native app'te redirect olacak, sayfa reload olacak, state zaten reset olacak
       if (!isCapacitor) {
         setIsLoggingOut(false);
-      }
+    }
     }
   }, [isLoggingOut, status, isCapacitor, router, language]);
 

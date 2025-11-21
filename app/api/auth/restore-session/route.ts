@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
         if (text && text.trim()) {
           console.log('[restore-session] 🔍 Request body (raw):', text.length > 100 ? `${text.substring(0, 100)}...` : text);
           const body = JSON.parse(text);
-          refreshToken = body.refreshToken;
+        refreshToken = body.refreshToken;
           console.log('[restore-session] 🔍 RefreshToken from body:', {
             found: !!refreshToken,
             isNull: refreshToken === null,
@@ -188,19 +188,21 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 🔥 CRITICAL: Detect Android from User-Agent
-    // Android uses Preferences, not cookies, so we need to return tokens in response
+    // 🔥 CRITICAL: ALWAYS return tokens in response for Android reliability
+    // Android WebView cookies are unreliable - Preferences are the primary storage
+    // We return tokens in ALL responses so Android can save them to Preferences
     const userAgent = request.headers.get('user-agent') || '';
-    const isAndroid = userAgent.includes('Android') || userAgent.includes('Dalvik');
+    const isAndroid = userAgent.includes('Android') || userAgent.includes('Dalvik') || userAgent.includes('wv');
     const hasRefreshTokenInBody = !!refreshToken && !request.cookies.get('refreshToken')?.value;
     const isAndroidRequest = isAndroid || hasRefreshTokenInBody;
     
     console.log('[restore-session] Platform detection:', {
-      userAgent: userAgent.substring(0, 100),
+      userAgent: userAgent.substring(0, 150),
       isAndroid,
       hasRefreshTokenInBody,
       isAndroidRequest,
-      hasCookies: !!request.cookies.get('refreshToken')?.value,
+      hasCookiesRefreshToken: !!request.cookies.get('refreshToken')?.value,
+      refreshTokenSource: refreshToken ? (hasRefreshTokenInBody ? 'body' : 'cookie') : 'none',
     });
     
     // Create response with tokens for Android
@@ -209,18 +211,18 @@ export async function POST(request: NextRequest) {
       user: userData 
     };
     
-    // 🔥 CRITICAL: Always return tokens for Android (even if cookies exist)
-    // Android WebView cookies are unreliable, so we always use Preferences
-    if (isAndroidRequest && (newAccessToken || refreshToken)) {
-      responseData.tokens = {
-        accessToken: newAccessToken || null,
-        refreshToken: refreshToken || null,
-      };
-      console.log('[restore-session] ✅ Returning tokens for Android Preferences storage', {
-        hasAccessToken: !!newAccessToken,
-        hasRefreshToken: !!refreshToken,
-      });
-    }
+    // 🔥 CRITICAL: ALWAYS return tokens for ALL requests (not just Android)
+    // This ensures tokens are available for Preferences storage
+    // Android relies on Preferences, not cookies
+    responseData.tokens = {
+      accessToken: newAccessToken || null,
+      refreshToken: refreshToken || null,
+    };
+    console.log('[restore-session] ✅ Returning tokens in response for Preferences storage', {
+      hasAccessToken: !!newAccessToken,
+      hasRefreshToken: !!refreshToken,
+      isAndroidRequest,
+    });
     
     const response = NextResponse.json(responseData);
     
