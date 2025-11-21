@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, BarChart3, Bell, Sparkles, Clock } from 'lucide-react';
@@ -16,6 +16,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isCapacitor, setIsCapacitor] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
   const { data: session, status } = useSession();
   const router = useRouter();
 
@@ -1279,14 +1281,37 @@ export default function SettingsPage() {
   };
 
 
-  const handleLogout = async () => {
-    if (isCapacitor) {
-      await signOut({ redirect: false });
-      authService.logout();
-    } else {
-      await signOut({ callbackUrl: '/' });
+  const handleLogout = useCallback(async () => {
+    if (isLoggingOut) {
+      console.log('[Settings] Logout already running - ignoring duplicate tap');
+      return;
     }
-  };
+
+    setLogoutError('');
+    setIsLoggingOut(true);
+
+    try {
+      if (status === 'authenticated') {
+        await signOut({ redirect: false });
+      }
+
+      await authService.logout();
+
+      if (!isCapacitor) {
+        router.replace('/');
+        router.refresh();
+      }
+    } catch (err: any) {
+      const fallbackMessage = language === 'tr'
+        ? 'Çıkış yapılamadı. Lütfen tekrar deneyin.'
+        : 'Unable to logout. Please try again.';
+      const message = err?.message || fallbackMessage;
+      setLogoutError(message);
+      console.error('[Settings] Logout failed:', err);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }, [isLoggingOut, status, isCapacitor, router, language]);
 
   const handleNavigateToTab = (tab: 'chart' | 'watchlist' | 'alerts' | 'aggr' | 'liquidations') => {
     router.push(`/?tab=${tab}`);
@@ -1522,15 +1547,25 @@ export default function SettingsPage() {
               {/* Logout Button */}
               <button
                 onClick={handleLogout}
-                className="w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95"
+                disabled={isLoggingOut}
+                className="w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
               >
                 <div className="flex items-center justify-center gap-2">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                  <span>{language === 'tr' ? 'Çıkış Yap' : 'Logout'}</span>
+                  <span>
+                    {isLoggingOut
+                      ? language === 'tr' ? 'Çıkış yapılıyor...' : 'Logging out...'
+                      : language === 'tr' ? 'Çıkış Yap' : 'Logout'}
+                  </span>
                 </div>
               </button>
+              {logoutError && (
+                <p className="mt-2 text-xs text-center text-red-400">
+                  {logoutError}
+                </p>
+              )}
             </div>
           ) : (
             <>
@@ -1922,7 +1957,7 @@ export default function SettingsPage() {
                     <div className="space-y-3 text-sm text-gray-300">
                       <div>
                         <p className="font-semibold text-blue-400 mb-1">English:</p>
-                        <p>Set a target price and proximity range. When the coin price approaches your target within the specified range, you'll receive a push notification. The alert stays active until you delete it.</p>
+                        <p>Set a target price and proximity range. When the coin price approaches your target within the specified range, you&apos;ll receive a push notification. The alert stays active until you delete it.</p>
                       </div>
                       <div>
                         <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
@@ -2306,11 +2341,11 @@ export default function SettingsPage() {
             <div className="space-y-3 text-sm text-gray-300">
               <div>
                 <p className="font-semibold text-blue-400 mb-1">English:</p>
-                <p>The distance from target price that triggers the alert. Example: Target 2.25$, Delta 0.1$ → Alert triggers when price is between 2.15$ - 2.25$ (for "up" direction).</p>
+                <p>The distance from target price that triggers the alert. Example: Target 2.25$, Delta 0.1$ → Alert triggers when price is between 2.15$ - 2.25$ (for &quot;up&quot; direction).</p>
               </div>
               <div>
                 <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
-                <p>Hedef fiyattan ne kadar uzaklıkta alert tetikleneceği. Örnek: Hedef 2.25$, Delta 0.1$ → Fiyat 2.15$ - 2.25$ aralığında bildirim gönderilir ("yukarı" yönü için).</p>
+                <p>Hedef fiyattan ne kadar uzaklıkta alert tetikleneceği. Örnek: Hedef 2.25$, Delta 0.1$ → Fiyat 2.15$ - 2.25$ aralığında bildirim gönderilir (&quot;yukarı&quot; yönü için).</p>
               </div>
             </div>
           </div>

@@ -17,6 +17,7 @@ interface AuthTokens {
 class AuthService {
   private user: User | null = null;
   private listeners: ((user: User | null) => void)[] = [];
+  private isLoggingOut = false;
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -189,74 +190,106 @@ class AuthService {
    * Logout user
    */
   async logout(): Promise<void> {
-    try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        credentials: 'include', // Send cookies
-      });
-    } catch (e) {
-      console.error('[AuthService] Failed to logout on server:', e);
+    if (this.isLoggingOut) {
+      console.log('[AuthService] Logout already in progress - skipping duplicate call');
+      return;
     }
 
-    // Clear localStorage
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('user_email');
-      localStorage.removeItem('native_device_id');
-      localStorage.removeItem('native_platform');
-      localStorage.removeItem('fcm_token');
-      console.log('[AuthService] ✅ LocalStorage cleared');
-      
-      // 🔥 CRITICAL: Clear refreshToken from Capacitor Preferences
-      const Capacitor = (window as any).Capacitor;
-      if (Capacitor?.Plugins?.Preferences) {
-        try {
-          Capacitor.Plugins.Preferences.remove({ key: 'refreshToken' });
-          console.log('[AuthService] ✅ RefreshToken removed from Preferences');
-        } catch (e) {
-          console.error('[AuthService] Failed to remove refreshToken from Preferences:', e);
+    this.isLoggingOut = true;
+
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+        cache: 'no-store',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+
+      let responseBody: any = null;
+      let rawBody: string | null = null;
+      try {
+        rawBody = await response.text();
+        responseBody = rawBody ? JSON.parse(rawBody) : null;
+      } catch {
+        responseBody = rawBody || null;
+      }
+
+      if (!response.ok) {
+        const message = typeof responseBody === 'string'
+          ? responseBody
+          : responseBody?.error || responseBody?.message || `Logout failed (${response.status})`;
+        throw new Error(message);
+      }
+
+      console.log('[AuthService] ✅ Server logout successful');
+
+      // Clear localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user_email');
+        localStorage.removeItem('native_device_id');
+        localStorage.removeItem('native_platform');
+        localStorage.removeItem('fcm_token');
+        console.log('[AuthService] ✅ LocalStorage cleared');
+        
+        // 🔥 CRITICAL: Clear refreshToken from Capacitor Preferences
+        const Capacitor = (window as any).Capacitor;
+        if (Capacitor?.Plugins?.Preferences) {
+          try {
+            Capacitor.Plugins.Preferences.remove({ key: 'refreshToken' });
+            console.log('[AuthService] ✅ RefreshToken removed from Preferences');
+          } catch (e) {
+            console.error('[AuthService] Failed to remove refreshToken from Preferences:', e);
+          }
         }
       }
-    }
 
-    this.user = null;
-    this.notifyListeners();
+      this.user = null;
+      this.notifyListeners();
 
-    // Native app'te ise token'ı temizle (sendToNative varsa)
-    try {
-      if (typeof window !== 'undefined' && (window as any).sendToNative) {
-        (window as any).sendToNative('AUTH_TOKEN', { token: null });
+      // Native app'te ise token'ı temizle (sendToNative varsa)
+      try {
+        if (typeof window !== 'undefined' && (window as any).sendToNative) {
+          (window as any).sendToNative('AUTH_TOKEN', { token: null });
+        }
+      } catch (e) {
+        console.error('[AuthService] Failed to send logout to native:', e);
       }
-    } catch (e) {
-      console.error('[AuthService] Failed to send logout to native:', e);
-    }
 
-    // 🔥 CRITICAL: Redirect to native login page in Capacitor app
-    // Always redirect to /index.html if we're in a native app context
-    // (detected by checking if Capacitor exists, even if isNativePlatform() fails)
-    if (typeof window !== 'undefined') {
-      const Capacitor = (window as any).Capacitor;
-      const hasCapacitor = !!Capacitor;
-      const isCapacitor = Capacitor?.isNativePlatform?.() ?? false;
-      
-      console.log('[AuthService] 🔍 Capacitor check:', {
-        hasCapacitor,
-        isNativePlatform: isCapacitor,
-        platform: Capacitor?.getPlatform?.()
-      });
-      
-      // If Capacitor exists, we're in a native app - always redirect to /index.html
-      // This avoids the /login page which uses NextAuth signIn() that doesn't work in WebView
-      if (hasCapacitor) {
-        console.log('[AuthService] 🔄 Redirecting to native login page (/index.html)...');
-        // Use replace instead of href to prevent back button navigation
-        // Force immediate redirect - don't wait for any async operations
-        setTimeout(() => {
-          console.log('[AuthService] ✅ Executing redirect to /index.html');
-          window.location.replace('/index.html');
-        }, 50);
-      } else {
-        console.log('[AuthService] ⚠️ Capacitor not found, skipping redirect to /index.html');
+      // 🔥 CRITICAL: Redirect to native login page in Capacitor app
+      // Always redirect to /index.html if we're in a native app context
+      // (detected by checking if Capacitor exists, even if isNativePlatform() fails)
+      if (typeof window !== 'undefined') {
+        const Capacitor = (window as any).Capacitor;
+        const hasCapacitor = !!Capacitor;
+        const isCapacitor = Capacitor?.isNativePlatform?.() ?? false;
+        
+        console.log('[AuthService] 🔍 Capacitor check:', {
+          hasCapacitor,
+          isNativePlatform: isCapacitor,
+          platform: Capacitor?.getPlatform?.()
+        });
+        
+        // If Capacitor exists, we're in a native app - always redirect to /index.html
+        // This avoids the /login page which uses NextAuth signIn() that doesn't work in WebView
+        if (hasCapacitor) {
+          console.log('[AuthService] 🔄 Redirecting to native login page (/index.html)...');
+          // Use replace instead of href to prevent back button navigation
+          // Force immediate redirect - don't wait for any async operations
+          setTimeout(() => {
+            console.log('[AuthService] ✅ Executing redirect to /index.html');
+            window.location.replace('/index.html');
+          }, 50);
+        } else {
+          console.log('[AuthService] ⚠️ Capacitor not found, skipping redirect to /index.html');
+        }
       }
+    } catch (error) {
+      console.error('[AuthService] Failed to logout:', error);
+      throw error;
+    } finally {
+      this.isLoggingOut = false;
     }
   }
 

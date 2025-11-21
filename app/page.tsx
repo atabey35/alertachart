@@ -60,6 +60,8 @@ export default function Home() {
   const [isIPad, setIsIPad] = useState(false);
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
 
   // Premium state
   const [userPlan, setUserPlan] = useState<{
@@ -859,6 +861,34 @@ export default function Home() {
     if (layout === 9) return 'calc(100vh - 240px)'; // 3x3 grid - same total height, split into rows
     return 'calc(100vh - 240px)';
   };
+
+  const handleGlobalLogout = useCallback(async () => {
+    if (isLoggingOut) {
+      console.log('[Logout] A logout action is already running, skipping duplicate click');
+      return;
+    }
+
+    setLogoutError('');
+    setIsLoggingOut(true);
+
+    try {
+      if (status === 'authenticated') {
+        await signOut({ redirect: false });
+      }
+
+      await authService.logout();
+
+      if (!isCapacitor && typeof window !== 'undefined') {
+        window.location.replace('/');
+      }
+    } catch (error: any) {
+      const message = error?.message || 'Çıkış yapılamadı. Lütfen tekrar deneyin.';
+      setLogoutError(message);
+      console.error('[Logout] Failed:', error);
+    } finally {
+      setIsLoggingOut(false);
+    }
+  }, [isLoggingOut, status, isCapacitor]);
   
   // Memoized price update handler to prevent infinite loops
   const handlePriceUpdate = useCallback((chartId: number, price: number) => {
@@ -1102,39 +1132,18 @@ export default function Home() {
                   {user ? (
                     <div className="flex items-center gap-2">
                       <span className="text-gray-300 text-xs">{user.email}</span>
-                      <button
-                        onClick={async () => {
-                          // 🔥 CRITICAL: In Capacitor app, use authService.logout() which redirects to /index.html
-                          console.log('[Logout] Button clicked, isCapacitor:', isCapacitor, 'status:', status);
-                          
-                          if (isCapacitor) {
-                            console.log('[Logout] Capacitor app detected - using authService.logout()');
-                            // Clear NextAuth session first (without redirect)
-                            if (status === 'authenticated') {
-                              console.log('[Logout] Clearing NextAuth session...');
-                              await signOut({ redirect: false });
-                              // Wait a bit for session to clear
-                              await new Promise(resolve => setTimeout(resolve, 200));
-                            }
-                            // Then use authService.logout() which redirects to /index.html
-                            console.log('[Logout] Calling authService.logout()...');
-                            // Don't await - let it redirect immediately
-                            authService.logout().catch(err => {
-                              console.error('[Logout] Error during logout:', err);
-                            });
-                          } else {
-                            // Web: use NextAuth signOut
-                            if (status === 'authenticated') {
-                              await signOut({ callbackUrl: '/' });
-                            } else {
-                              await authService.logout();
-                            }
-                          }
-                        }}
-                        className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition"
-                      >
-                        Çıkış
-                      </button>
+                      <div className="flex flex-col items-start gap-0.5">
+                        <button
+                          onClick={handleGlobalLogout}
+                          disabled={isLoggingOut}
+                          className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition disabled:opacity-60 disabled:cursor-not-allowed"
+                        >
+                          {isLoggingOut ? 'Çıkış yapılıyor...' : 'Çıkış'}
+                        </button>
+                        {logoutError && (
+                          <span className="text-[10px] text-red-400">{logoutError}</span>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <button
@@ -1708,13 +1717,13 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">Pro Üye Gerekli</h3>
                 <p className="text-gray-400 mb-6 text-center">
-                  AGGR trading dashboard'una erişmek için premium üyelik gereklidir.
+                  AGGR trading dashboard&apos;una erişmek için premium üyelik gereklidir.
                 </p>
                 <button
                   onClick={() => setShowUpgradeModal(true)}
                   className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-blue-500/25"
                 >
-                  Premium'a Geç
+                  Premium&apos;a Geç
                 </button>
               </div>
             )
@@ -1724,7 +1733,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
               <h3 className="text-xl font-bold text-white mb-2">Giriş Yapmanız Gerekiyor</h3>
-              <p className="text-gray-400 mb-6">Aggr trading dashboard'unu kullanmak için lütfen giriş yapın.</p>
+              <p className="text-gray-400 mb-6">Aggr trading dashboard&apos;unu kullanmak için lütfen giriş yapın.</p>
               <button
                 onClick={() => {
                   // Web'de her zaman native login screen göster
@@ -1755,13 +1764,13 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">Pro Üye Gerekli</h3>
                 <p className="text-gray-400 mb-6 text-center">
-                  Liquidations dashboard'una erişmek için premium üyelik gereklidir.
+                  Liquidations dashboard&apos;una erişmek için premium üyelik gereklidir.
                 </p>
                 <button
                   onClick={() => setShowUpgradeModal(true)}
                   className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-blue-500/25"
                 >
-                  Premium'a Geç
+                  Premium&apos;a Geç
                 </button>
               </div>
             )
@@ -1771,7 +1780,7 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
               <h3 className="text-xl font-bold text-white mb-2">Giriş Yapmanız Gerekiyor</h3>
-              <p className="text-gray-400 mb-6">Liquidations dashboard'unu kullanmak için lütfen giriş yapın.</p>
+              <p className="text-gray-400 mb-6">Liquidations dashboard&apos;unu kullanmak için lütfen giriş yapın.</p>
               <button
                 onClick={() => {
                   // Web'de her zaman native login screen göster
