@@ -166,17 +166,6 @@ export default function SettingsPage() {
           userEmail: user?.email,
         });
         
-        const savedEmail = localStorage.getItem('user_email');
-        console.log('[Settings] 🔍 localStorage check:', {
-          savedEmail,
-          allKeys: Object.keys(localStorage),
-        });
-        
-        if (!savedEmail) {
-          console.log('[Settings] ℹ️ No saved email, user never logged in');
-          return; // No saved email, user never logged in
-        }
-        
         // 🔥 CRITICAL: Android - Always try to restore if user is missing
         // Android WebView loses cookies when app is closed, so even if status is 'authenticated',
         // user state might be null because cookies are gone
@@ -204,12 +193,11 @@ export default function SettingsPage() {
         console.log('[Settings] 📱 Android: Attempting session restore...', {
           status,
           hasUser: !!user,
-          savedEmail,
           shouldRestore,
         });
         
         try {
-          // Get refreshToken from Preferences
+          // Get refreshToken from Preferences FIRST (more reliable than localStorage)
           let refreshTokenFromPreferences: string | null = null;
           console.log('[Settings] 🔍 Checking Preferences:', {
             hasCapacitor,
@@ -244,8 +232,20 @@ export default function SettingsPage() {
             console.log('[Settings] ⚠️ Preferences plugin not available');
           }
           
+          // If no token in Preferences, check localStorage for savedEmail (fallback)
           if (!refreshTokenFromPreferences) {
-            console.log('[Settings] ⚠️ No refreshToken in Preferences, cannot restore');
+            const savedEmail = localStorage.getItem('user_email');
+            console.log('[Settings] 🔍 No token in Preferences, checking localStorage:', {
+              savedEmail,
+              allKeys: Object.keys(localStorage),
+            });
+            
+            if (!savedEmail) {
+              console.log('[Settings] ℹ️ No saved email and no token in Preferences, user never logged in');
+              return; // No saved email, user never logged in
+            }
+            
+            console.log('[Settings] ⚠️ No refreshToken in Preferences but savedEmail exists - cannot restore without token');
             return;
           }
           
