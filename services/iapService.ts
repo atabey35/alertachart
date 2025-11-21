@@ -70,17 +70,36 @@ export async function isIAPAvailable(): Promise<boolean> {
     return false;
   }
   
-  const isNative = Capacitor.isNativePlatform?.();
-  console.log('[IAP Service] isIAPAvailable: isNativePlatform:', isNative);
+  // 🔥 CRITICAL: Check platform directly (more reliable than isNativePlatform)
+  const platform = Capacitor.getPlatform?.();
+  console.log('[IAP Service] isIAPAvailable: Platform:', platform);
   
-  if (!isNative) {
+  // Check if it's actually iOS or Android (not web)
+  const isNative = platform === 'ios' || platform === 'android';
+  console.log('[IAP Service] isIAPAvailable: isNative (from platform):', isNative);
+  
+  // Also check isNativePlatform as fallback
+  const isNativePlatform = Capacitor.isNativePlatform?.();
+  console.log('[IAP Service] isIAPAvailable: isNativePlatform:', isNativePlatform);
+  
+  // Must be native platform (iOS or Android)
+  if (!isNative && !isNativePlatform) {
     console.log('[IAP Service] isIAPAvailable: Not a native platform');
     return false;
   }
   
+  // Check if plugin exists
   const plugin = getIAPPlugin();
   const available = !!plugin;
-  console.log('[IAP Service] isIAPAvailable: Result:', available);
+  console.log('[IAP Service] isIAPAvailable: Plugin available:', available);
+  
+  if (!available) {
+    console.warn('[IAP Service] ⚠️ IAP plugin not found! Check:');
+    console.warn('[IAP Service] 1. InAppPurchase plugin is installed in native project');
+    console.warn('[IAP Service] 2. Plugin is registered in capacitor.config.ts');
+    console.warn('[IAP Service] 3. Native project is rebuilt after plugin installation');
+  }
+  
   return available;
 }
 
@@ -127,20 +146,45 @@ export async function getProducts(): Promise<any[]> {
       return [];
     }
     
-    // Try both product IDs that might be in Play Console
-    const productIds = ['premium_monthly', 'premium_yearly', 'alerta_monthly'];
-    console.log('[IAP Service] getProducts: Querying products:', productIds);
+    // Get platform to determine product IDs
+    const Capacitor = (window as any).Capacitor;
+    const platform = Capacitor?.getPlatform?.() || 'web';
+    
+    // iOS and Android use different product ID formats
+    const productIds = platform === 'ios'
+      ? [
+          'com.kriptokirmizi.alerta.premium.monthly',
+          'com.kriptokirmizi.alerta.premium.yearly',
+          'premium_monthly', // Fallback
+          'premium_yearly',  // Fallback
+        ]
+      : [
+          'premium_monthly',
+          'premium_yearly',
+          'alerta_monthly', // Fallback
+        ];
+    
+    console.log('[IAP Service] getProducts: Platform:', platform, 'Querying products:', productIds);
     
     const result = await plugin.getProducts({ productIds });
     const products = result?.products || [];
     
     console.log('[IAP Service] getProducts: ✅ Found', products.length, 'products');
     if (products.length === 0) {
+      const platform = (window as any).Capacitor?.getPlatform?.() || 'unknown';
       console.warn('[IAP Service] getProducts: ⚠️ No products found! Check:');
-      console.warn('[IAP Service] 1. Product IDs match Play Console exactly');
-      console.warn('[IAP Service] 2. Products are active in Play Console');
-      console.warn('[IAP Service] 3. App is installed from Play Store (not debug APK)');
-      console.warn('[IAP Service] 4. Product type is SUBSCRIPTION (not one-time)');
+      if (platform === 'ios') {
+        console.warn('[IAP Service] iOS: 1. Product IDs match App Store Connect exactly');
+        console.warn('[IAP Service] iOS: 2. Products are active in App Store Connect');
+        console.warn('[IAP Service] iOS: 3. App is installed from TestFlight or App Store (not Xcode debug)');
+        console.warn('[IAP Service] iOS: 4. Product type is AUTO_RENEWABLE_SUBSCRIPTION');
+        console.warn('[IAP Service] iOS: 5. Using Sandbox test account (for TestFlight)');
+      } else if (platform === 'android') {
+        console.warn('[IAP Service] Android: 1. Product IDs match Play Console exactly');
+        console.warn('[IAP Service] Android: 2. Products are active in Play Console');
+        console.warn('[IAP Service] Android: 3. App is installed from Play Store (not debug APK)');
+        console.warn('[IAP Service] Android: 4. Product type is SUBSCRIPTION (not one-time)');
+      }
     } else {
       products.forEach((p: any) => {
         console.log('[IAP Service] Product:', p.productId, '-', p.price, p.currency);
