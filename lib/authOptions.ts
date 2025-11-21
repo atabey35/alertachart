@@ -181,36 +181,40 @@ export const authOptions: NextAuthOptions = {
       name: `next-auth.session-token`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none', // REQUIRED for Android WebView cookie persistence
         path: '/',
-        secure: true,
+        secure: true, // REQUIRED for sameSite: 'none'
+        domain: '.alertachart.com', // Allows subdomain access
       },
     },
     callbackUrl: {
       name: `next-auth.callback-url`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none', // REQUIRED for Android WebView cookie persistence
         path: '/',
-        secure: true,
+        secure: true, // REQUIRED for sameSite: 'none'
+        domain: '.alertachart.com', // Allows subdomain access
       },
     },
     csrfToken: {
       name: `next-auth.csrf-token`,
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none', // REQUIRED for Android WebView cookie persistence
         path: '/',
-        secure: true,
+        secure: true, // REQUIRED for sameSite: 'none'
+        domain: '.alertachart.com', // Allows subdomain access
       },
     },
     pkceCodeVerifier: {
       name: 'next-auth.pkce.code_verifier',
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none', // REQUIRED for Android WebView cookie persistence
         path: '/',
-        secure: true,
+        secure: true, // REQUIRED for sameSite: 'none'
+        domain: '.alertachart.com', // Allows subdomain access
         maxAge: 60 * 15, // 15 minutes
       },
     },
@@ -218,9 +222,10 @@ export const authOptions: NextAuthOptions = {
       name: 'next-auth.state',
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none', // REQUIRED for Android WebView cookie persistence
         path: '/',
-        secure: true,
+        secure: true, // REQUIRED for sameSite: 'none'
+        domain: '.alertachart.com', // Allows subdomain access
         maxAge: 60 * 15, // 15 minutes
       },
     },
@@ -228,9 +233,10 @@ export const authOptions: NextAuthOptions = {
       name: 'next-auth.nonce',
       options: {
         httpOnly: true,
-        sameSite: 'lax',
+        sameSite: 'none', // REQUIRED for Android WebView cookie persistence
         path: '/',
-        secure: true,
+        secure: true, // REQUIRED for sameSite: 'none'
+        domain: '.alertachart.com', // Allows subdomain access
       },
     },
   },

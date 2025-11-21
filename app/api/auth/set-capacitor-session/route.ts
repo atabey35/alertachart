@@ -122,13 +122,15 @@ export async function POST(request: NextRequest) {
     
     // 🔥 CRITICAL: Set cookies with Android WebView-compatible flags
     // Android WebView requires specific cookie settings for persistence
+    // sameSite: 'none' is REQUIRED for Android WebView (lax doesn't work)
+    // secure: true is REQUIRED when sameSite is 'none'
+    // domain: '.alertachart.com' allows subdomain access
     const cookieOptions = {
       httpOnly: true,
-      secure: true, // Always secure in production
-      sameSite: 'lax' as const, // 'lax' works better than 'none' for same-domain
+      secure: true, // REQUIRED for sameSite: 'none'
+      sameSite: 'none' as const, // REQUIRED for Android WebView cookie persistence
       path: '/',
-      // Note: domain is not set (defaults to current domain)
-      // Setting domain to '.alertachart.com' can cause issues with Android WebView
+      domain: '.alertachart.com', // Allows subdomain access (e.g., www.alertachart.com)
     };
     
     // Set access token cookie (15 minutes)
@@ -152,12 +154,12 @@ export async function POST(request: NextRequest) {
       console.log('[set-capacitor-session] NextAuth session cookie set successfully');
     }
     
-    console.log('[set-capacitor-session] Cookie flags:', {
+    console.log('[set-capacitor-session] ✅ Cookie flags applied:', {
       httpOnly: true,
       secure: true,
-      sameSite: 'lax',
+      sameSite: 'none', // REQUIRED for Android WebView
       path: '/',
-      hasDomain: false, // Not setting domain for Android compatibility
+      domain: '.alertachart.com', // Allows subdomain access
     });
     
     console.log('[set-capacitor-session] All cookies set successfully');
