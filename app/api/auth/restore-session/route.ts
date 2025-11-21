@@ -118,6 +118,16 @@ export async function POST(request: NextRequest) {
       if (users.length > 0) {
         const dbUser = users[0];
         
+        // 🔥 CRITICAL: Use dbUser data if userData from backend is missing
+        if (!userData) {
+          userData = {
+            id: dbUser.id,
+            email: dbUser.email,
+            name: dbUser.name,
+          };
+          console.log('[restore-session] Using database user data (backend userData was missing)');
+        }
+        
         // Create NextAuth JWT token
         const token = {
           sub: dbUser.provider_user_id || dbUser.id.toString(),

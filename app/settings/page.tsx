@@ -156,12 +156,28 @@ export default function SettingsPage() {
       const hasCapacitor = !!(window as any).Capacitor;
       const platform = hasCapacitor ? (window as any).Capacitor?.getPlatform?.() : 'web';
       
-      // Only for Android and when session is missing
-      if (platform === 'android' && (status === 'unauthenticated' || status === 'loading')) {
+      // Only for Android
+      if (platform === 'android') {
         const savedEmail = localStorage.getItem('user_email');
-        if (!savedEmail) return; // No saved email, user never logged in
+        if (!savedEmail) {
+          console.log('[Settings] ℹ️ No saved email, user never logged in');
+          return; // No saved email, user never logged in
+        }
         
-        console.log('[Settings] 📱 Android: Attempting session restore...');
+        // 🔥 CRITICAL: Restore if session is missing OR if user state is null
+        // Sometimes status is 'authenticated' but user state is null (race condition)
+        const shouldRestore = (status === 'unauthenticated' || status === 'loading') || !user;
+        
+        if (!shouldRestore) {
+          console.log('[Settings] ℹ️ Session exists, no restore needed');
+          return;
+        }
+        
+        console.log('[Settings] 📱 Android: Attempting session restore...', {
+          status,
+          hasUser: !!user,
+          savedEmail,
+        });
         
         try {
           // Get refreshToken from Preferences
@@ -195,11 +211,52 @@ export default function SettingsPage() {
           
           if (response.ok) {
             const result = await response.json();
-            console.log('[Settings] ✅ Session restored successfully');
+            console.log('[Settings] ✅ Session restored successfully:', result);
+            
             // Update NextAuth session
-            await update();
+            try {
+              await update();
+              console.log('[Settings] ✅ NextAuth session updated');
+            } catch (updateError) {
+              console.warn('[Settings] ⚠️ Failed to update NextAuth session:', updateError);
+            }
+            
+            // 🔥 CRITICAL: Manually set user state if session update didn't work
+            // Sometimes NextAuth session takes time to propagate
+            if (result?.user?.email) {
+              setUser({
+                id: result.user.id || 0,
+                email: result.user.email,
+                name: result.user.name || undefined,
+              });
+              console.log('[Settings] ✅ User state manually set from restore result');
+              
+              // Also save email to localStorage if not already saved
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('user_email', result.user.email);
+              }
+              
+              // Also update authService user state
+              try {
+                await authService.checkAuth();
+                console.log('[Settings] ✅ authService.checkAuth() called');
+              } catch (e) {
+                console.warn('[Settings] ⚠️ authService.checkAuth() failed:', e);
+              }
+            }
+            
+            // Force a small delay and check session again
+            setTimeout(async () => {
+              try {
+                await update();
+                console.log('[Settings] ✅ Second NextAuth session update attempt');
+              } catch (e) {
+                console.warn('[Settings] ⚠️ Second update attempt failed');
+              }
+            }, 1000);
           } else {
-            console.log('[Settings] ⚠️ Session restore failed:', response.status);
+            const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+            console.log('[Settings] ⚠️ Session restore failed:', response.status, errorData);
           }
         } catch (error) {
           console.error('[Settings] ❌ Error restoring session:', error);
@@ -209,7 +266,7 @@ export default function SettingsPage() {
     
     // Small delay to ensure Capacitor is ready
     setTimeout(restoreAndroidSession, 500);
-  }, [status, update]);
+  }, [status, update, user]);
 
   // Fetch user data
   useEffect(() => {
