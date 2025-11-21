@@ -409,6 +409,16 @@ export default function Home() {
             
             // 🔥 CRITICAL: Android - Save tokens to Preferences if returned
             // Android uses Preferences instead of cookies (cookies unreliable)
+            console.log('[App] 🔍 Checking if tokens should be saved to Preferences:', {
+              platform,
+              isAndroid: platform === 'android',
+              hasResultTokens: !!result.tokens,
+              hasAccessToken: !!result.tokens?.accessToken,
+              hasRefreshToken: !!result.tokens?.refreshToken,
+              hasCapacitor,
+              hasPreferencesPlugin: !!(hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences),
+            });
+            
             if (platform === 'android' && result.tokens && hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
               try {
                 if (result.tokens.accessToken) {
@@ -416,18 +426,46 @@ export default function Home() {
                     key: 'accessToken', 
                     value: result.tokens.accessToken 
                   });
-                  console.log('[App] ✅ AccessToken saved to Preferences (Android)');
+                  console.log('[App] ✅ AccessToken saved to Preferences (Android)', {
+                    length: result.tokens.accessToken.length,
+                    preview: `${result.tokens.accessToken.substring(0, 20)}...`,
+                  });
+                } else {
+                  console.log('[App] ⚠️ No accessToken in result.tokens to save');
                 }
                 if (result.tokens.refreshToken) {
                   await (window as any).Capacitor.Plugins.Preferences.set({ 
                     key: 'refreshToken', 
                     value: result.tokens.refreshToken 
                   });
-                  console.log('[App] ✅ RefreshToken saved to Preferences (Android)');
+                  console.log('[App] ✅ RefreshToken saved to Preferences (Android)', {
+                    length: result.tokens.refreshToken.length,
+                    preview: `${result.tokens.refreshToken.substring(0, 20)}...`,
+                  });
+                  
+                  // Verify it was saved
+                  const verifyResult = await (window as any).Capacitor.Plugins.Preferences.get({ 
+                    key: 'refreshToken' 
+                  });
+                  console.log('[App] 🔍 Verification: RefreshToken in Preferences after save:', {
+                    found: !!verifyResult?.value,
+                    length: verifyResult?.value?.length,
+                    matches: verifyResult?.value === result.tokens.refreshToken,
+                  });
+                } else {
+                  console.log('[App] ⚠️ No refreshToken in result.tokens to save');
                 }
               } catch (e) {
                 console.error('[App] ❌ Failed to save tokens to Preferences:', e);
               }
+            } else {
+              console.log('[App] ⚠️ Not saving tokens to Preferences:', {
+                platform,
+                isAndroid: platform === 'android',
+                hasResultTokens: !!result.tokens,
+                hasCapacitor,
+                hasPreferencesPlugin: !!(hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences),
+              });
             }
             
             // Save email to localStorage for future checks (if not already saved)

@@ -156,6 +156,14 @@ export default function SettingsPage() {
     const restoreAndroidSession = async () => {
       if (typeof window === 'undefined') return;
       
+      console.log('[Settings] 🔍 Restore check started:', {
+        restoreAttempted: restoreAttemptedRef.current,
+        restoreInProgress: restoreInProgressRef.current,
+        status,
+        hasUser: !!user,
+        userEmail: user?.email,
+      });
+      
       // Prevent multiple restore attempts
       if (restoreAttemptedRef.current || restoreInProgressRef.current) {
         console.log('[Settings] ⏭️ Restore already attempted or in progress, skipping');
@@ -164,6 +172,12 @@ export default function SettingsPage() {
       
       const hasCapacitor = !!(window as any).Capacitor;
       const platform = hasCapacitor ? (window as any).Capacitor?.getPlatform?.() : 'web';
+      
+      console.log('[Settings] 🔍 Platform check:', {
+        hasCapacitor,
+        platform,
+        isAndroid: platform === 'android',
+      });
       
       // Only for Android
       if (platform === 'android') {
