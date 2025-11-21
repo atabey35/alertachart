@@ -91,17 +91,16 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Start trial (3 days) and set premium
-    const trialStartedAt = now;
-    const trialEndedAt = new Date(trialStartedAt.getTime() + 3 * 24 * 60 * 60 * 1000); // 3 days
-
     // Update user subscription
+    // IAP purchase = direct premium, NOT trial
+    // Clear any existing trial data by setting trial_ended_at to past (before now)
+    const pastDate = new Date(now.getTime() - 1000); // 1 second ago
     await sql`
       UPDATE users
       SET 
         plan = 'premium',
-        trial_started_at = COALESCE(trial_started_at, ${trialStartedAt.toISOString()}),
-        trial_ended_at = COALESCE(trial_ended_at, ${trialEndedAt.toISOString()}),
+        trial_started_at = COALESCE(trial_started_at, ${pastDate.toISOString()}),
+        trial_ended_at = ${pastDate.toISOString()},
         subscription_started_at = COALESCE(subscription_started_at, ${now.toISOString()}),
         subscription_platform = ${platform},
         subscription_id = ${transactionId},
@@ -110,14 +109,14 @@ export async function POST(request: NextRequest) {
       WHERE id = ${user.id}
     `;
 
-    console.log(`[Verify Purchase] ✅ User ${user.id} purchase verified - Premium activated`);
+    console.log(`[Verify Purchase] ✅ User ${user.id} purchase verified - Premium activated (no trial)`);
 
     return NextResponse.json({
       success: true,
       message: 'Purchase verified and subscription activated',
-      trialStartedAt: trialStartedAt.toISOString(),
-      trialEndedAt: trialEndedAt.toISOString(),
       expiryDate: expiryDate.toISOString(),
+      isPremium: true,
+      isTrial: false,
     });
   } catch (error: any) {
     console.error('[Verify Purchase] ❌ Error:', error);
