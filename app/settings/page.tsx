@@ -353,27 +353,67 @@ export default function SettingsPage() {
             // Mark restore as attempted (successful)
             restoreAttemptedRef.current = true;
             
+            // 🔥 CRITICAL: Check if tokens are in response
+            console.log('[Settings] 🔍 Checking tokens in response:', {
+              hasTokens: !!result.tokens,
+              hasAccessToken: !!result.tokens?.accessToken,
+              hasRefreshToken: !!result.tokens?.refreshToken,
+              platform,
+              isAndroid: platform === 'android',
+              hasCapacitor,
+              hasPreferencesPlugin: !!(hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences),
+            });
+            
             // 🔥 CRITICAL: Android - Save tokens to Preferences if returned
             // Android uses Preferences instead of cookies (cookies unreliable)
             if (platform === 'android' && result.tokens && hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
+              console.log('[Settings] 💾 Saving tokens to Preferences...');
               try {
                 if (result.tokens.accessToken) {
                   await (window as any).Capacitor.Plugins.Preferences.set({ 
                     key: 'accessToken', 
                     value: result.tokens.accessToken 
                   });
-                  console.log('[Settings] ✅ AccessToken saved to Preferences (Android)');
+                  console.log('[Settings] ✅ AccessToken saved to Preferences (Android)', {
+                    length: result.tokens.accessToken.length,
+                    preview: `${result.tokens.accessToken.substring(0, 20)}...`,
+                  });
+                } else {
+                  console.log('[Settings] ⚠️ No accessToken in result.tokens');
                 }
                 if (result.tokens.refreshToken) {
                   await (window as any).Capacitor.Plugins.Preferences.set({ 
                     key: 'refreshToken', 
                     value: result.tokens.refreshToken 
                   });
-                  console.log('[Settings] ✅ RefreshToken saved to Preferences (Android)');
+                  console.log('[Settings] ✅ RefreshToken saved to Preferences (Android)', {
+                    length: result.tokens.refreshToken.length,
+                    preview: `${result.tokens.refreshToken.substring(0, 20)}...`,
+                  });
+                  
+                  // Verify it was saved
+                  const verifyResult = await (window as any).Capacitor.Plugins.Preferences.get({ 
+                    key: 'refreshToken' 
+                  });
+                  console.log('[Settings] 🔍 Verification: RefreshToken in Preferences after save:', {
+                    found: !!verifyResult?.value,
+                    length: verifyResult?.value?.length,
+                    matches: verifyResult?.value === result.tokens.refreshToken,
+                  });
+                } else {
+                  console.log('[Settings] ⚠️ No refreshToken in result.tokens');
                 }
               } catch (e) {
                 console.error('[Settings] ❌ Failed to save tokens to Preferences:', e);
               }
+            } else {
+              console.log('[Settings] ⚠️ Not saving tokens to Preferences:', {
+                platform,
+                isAndroid: platform === 'android',
+                hasResultTokens: !!result.tokens,
+                hasCapacitor,
+                hasPreferencesPlugin: !!(hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences),
+              });
             }
             
             // Update NextAuth session
