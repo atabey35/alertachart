@@ -149,15 +149,26 @@ export default function SettingsPage() {
   // 🔥 CRITICAL: Android session restore on mount
   // Android WebView loses cookies when app is completely closed
   // Restore session using Preferences refreshToken
+  const restoreAttemptedRef = useRef(false);
+  const restoreInProgressRef = useRef(false);
+  
   useEffect(() => {
     const restoreAndroidSession = async () => {
       if (typeof window === 'undefined') return;
+      
+      // Prevent multiple restore attempts
+      if (restoreAttemptedRef.current || restoreInProgressRef.current) {
+        console.log('[Settings] ⏭️ Restore already attempted or in progress, skipping');
+        return;
+      }
       
       const hasCapacitor = !!(window as any).Capacitor;
       const platform = hasCapacitor ? (window as any).Capacitor?.getPlatform?.() : 'web';
       
       // Only for Android
       if (platform === 'android') {
+        // Set in-progress flag only when we actually start restore
+        restoreInProgressRef.current = true;
         console.log('[Settings] 🔍 Android restore check:', {
           platform,
           hasCapacitor,
@@ -190,6 +201,7 @@ export default function SettingsPage() {
             hasUser: !!user,
             userEmail: user.email,
           });
+          restoreInProgressRef.current = false;
           return;
         }
         
@@ -258,6 +270,7 @@ export default function SettingsPage() {
             
             if (!savedEmail) {
               console.log('[Settings] ℹ️ No saved email and no token in Preferences, user never logged in');
+              restoreInProgressRef.current = false;
               return; // No saved email, user never logged in
             }
             
@@ -316,6 +329,9 @@ export default function SettingsPage() {
           if (response.ok) {
             const result = await response.json();
             console.log('[Settings] ✅ Session restored successfully:', result);
+            
+            // Mark restore as attempted (successful)
+            restoreAttemptedRef.current = true;
             
             // 🔥 CRITICAL: Android - Save tokens to Preferences if returned
             // Android uses Preferences instead of cookies (cookies unreliable)
@@ -384,10 +400,20 @@ export default function SettingsPage() {
           } else {
             const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
             console.log('[Settings] ⚠️ Session restore failed:', response.status, errorData);
+            // Mark restore as attempted even on failure (to prevent infinite retries)
+            restoreAttemptedRef.current = true;
           }
         } catch (error) {
-          console.error('[Settings] ❌ Error restoring session:', error);
+          console.error('[Settings] ❌ Error during restore:', error);
+          // Mark restore as attempted even on error (to prevent infinite retries)
+          restoreAttemptedRef.current = true;
+        } finally {
+          // Always reset in-progress flag
+          restoreInProgressRef.current = false;
         }
+      } else {
+        // Not Android platform, no restore needed
+        console.log('[Settings] ℹ️ Not Android platform, skipping restore');
       }
     };
     
