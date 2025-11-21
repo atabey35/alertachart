@@ -864,17 +864,17 @@ export default function SettingsPage() {
           
           // 🔥 CRITICAL: Initialize plugin before signIn
           // Plugin must be initialized with clientId and scopes before signIn can be called
-          // 🔥 CRITICAL: Platform-specific client ID kullanılmalı
-          // Android: Android client ID
-          // iOS: iOS client ID (Web client ID custom scheme URI'leri desteklemez)
+          // 🔥 CRITICAL: Android'de Web client ID kullanılmalı (Android client ID değil!)
+          // Plugin, clientId'yi serverClientId gibi kullanıyor ve Web client ID bekliyor
           const platform = typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown';
           const clientId = platform === 'ios' 
-            ? '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com' // iOS client ID
-            : '776781271347-fgnaoenplt1lnnmjivcagc013fa01ch1.apps.googleusercontent.com'; // Android client ID
+            ? '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com' // iOS client ID (değişmedi)
+            : '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com'; // Android: Web client ID kullan
           
           console.log('[Settings] 🔧 Initializing GoogleAuth plugin...');
           console.log('[Settings] Platform:', platform);
           console.log('[Settings] Using Client ID:', clientId);
+          console.log('[Settings] ⚠️ Note: Android uses Web client ID, not Android client ID');
           try {
             await GoogleAuth.initialize({
               clientId: clientId,
@@ -893,11 +893,28 @@ export default function SettingsPage() {
             result = await GoogleAuth.signIn();
           } catch (signInError: any) {
             console.error('[Settings] ❌ GoogleAuth.signIn() error:', signInError);
-            // Check if it's a configuration error
-            if (signInError.message?.includes('nil') || signInError.message?.includes('Optional')) {
-              throw new Error('Google Auth is not properly configured. Please check GoogleService-Info.plist and capacitor.config.ts');
+            console.error('[Settings] Error details:', {
+              message: signInError.message,
+              code: signInError.code,
+              stack: signInError.stack,
+              name: signInError.name,
+            });
+            
+            // Provide user-friendly error messages based on error code
+            let errorMessage = 'Google Sign-In failed';
+            if (signInError.code === '10' || signInError.message?.includes('10')) {
+              errorMessage = 'Google Sign-In configuration error. Please check SHA-1 fingerprint in Google Cloud Console. Error code: 10 (DEVELOPER_ERROR)';
+            } else if (signInError.code === '12500') {
+              errorMessage = 'Google Sign-In was cancelled';
+            } else if (signInError.code === '7') {
+              errorMessage = 'Network error. Please check your internet connection.';
+            } else if (signInError.message?.includes('nil') || signInError.message?.includes('Optional')) {
+              errorMessage = 'Google Auth is not properly configured. Please check GoogleService-Info.plist and capacitor.config.ts';
+            } else if (signInError.message) {
+              errorMessage = `Google Sign-In failed: ${signInError.message}`;
             }
-            throw signInError;
+            
+            throw new Error(errorMessage);
           }
           
           console.log('[Settings] ✅ Google Sign-In success:', {

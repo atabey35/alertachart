@@ -241,6 +241,14 @@ public class MainActivity extends BridgeActivity {
         }
     }
     
+    // 🔥 CRITICAL: Override onActivityResult for older Android versions (< API 30)
+    // This ensures Google Auth plugin can handle activity results properly
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        android.util.Log.d("MainActivity", "onActivityResult called: requestCode=" + requestCode + ", resultCode=" + resultCode);
+    }
+    
     private void createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationManager notificationManager = getSystemService(NotificationManager.class);

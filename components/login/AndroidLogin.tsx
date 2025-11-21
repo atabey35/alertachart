@@ -73,14 +73,16 @@ export default function AndroidLogin() {
           console.log('[AndroidLogin] ✅ GoogleAuth plugin is available');
           
           // Initialize plugin
-          // 🔥 CRITICAL: Android'de Android client ID kullanılmalı
-          const androidClientId = '776781271347-fgnaoenplt1lnnmjivcagc013fa01ch1.apps.googleusercontent.com';
+          // 🔥 CRITICAL: Android'de Web client ID kullanılmalı (Android client ID değil!)
+          // Plugin, clientId'yi serverClientId gibi kullanıyor ve Web client ID bekliyor
+          const webClientId = '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com';
           
           console.log('[AndroidLogin] 🔧 Initializing GoogleAuth plugin...');
-          console.log('[AndroidLogin] Using Android Client ID:', androidClientId);
+          console.log('[AndroidLogin] Using Web Client ID:', webClientId);
+          console.log('[AndroidLogin] ⚠️ Note: Plugin uses clientId as serverClientId, must be Web client ID');
           try {
             await GoogleAuth.initialize({
-              clientId: androidClientId,
+              clientId: webClientId, // Web client ID kullan (Android client ID değil!)
               scopes: ['profile', 'email'],
             });
             console.log('[AndroidLogin] ✅ GoogleAuth plugin initialized successfully');
@@ -103,10 +105,24 @@ export default function AndroidLogin() {
             console.error('[AndroidLogin] ❌ GoogleAuth.signIn() error:', signInError);
             console.error('[AndroidLogin] Error details:', {
               message: signInError.message,
+              code: signInError.code,
               stack: signInError.stack,
               name: signInError.name,
             });
-            throw new Error(`Google Sign-In failed: ${signInError.message || 'Unknown error'}`);
+            
+            // Provide user-friendly error messages based on error code
+            let errorMessage = 'Google Sign-In failed';
+            if (signInError.code === '10' || signInError.message?.includes('10')) {
+              errorMessage = 'Google Sign-In configuration error. Please check SHA-1 fingerprint in Google Cloud Console. Error code: 10 (DEVELOPER_ERROR)';
+            } else if (signInError.code === '12500') {
+              errorMessage = 'Google Sign-In was cancelled';
+            } else if (signInError.code === '7') {
+              errorMessage = 'Network error. Please check your internet connection.';
+            } else if (signInError.message) {
+              errorMessage = `Google Sign-In failed: ${signInError.message}`;
+            }
+            
+            throw new Error(errorMessage);
           }
           
           if (result && result.authentication) {
