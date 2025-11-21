@@ -127,26 +127,38 @@ export default function Home() {
       const isWebContext = !((window as any).Capacitor) || platform === 'web';
       
       if (isWebContext) {
-        console.log('[Web Auth] 🧹 Cleaning stale NextAuth cookies before login...');
+        console.log('[Web Auth] 🧹 Cleaning stale cookies before login...');
         console.log('[Web Auth] Platform:', platform, 'hasCapacitor:', !!((window as any).Capacitor));
         
-        // Clear all NextAuth-related cookies
+        // Clear all NextAuth-related cookies + Google state cookies
+        // This is critical for Safari which doesn't auto-clear stale cookies
         const cookiesToClear = [
+          // NextAuth cookies
           'next-auth.session-token',
           'next-auth.csrf-token',
           'next-auth.callback-url',
           '__Secure-next-auth.session-token',
           '__Secure-next-auth.csrf-token',
           '__Secure-next-auth.callback-url',
+          // Google Identity Services state cookie (causes Safari login issues)
+          'g_state',
+          // Google Analytics cookies (Safari ITP compatibility)
+          '_ga',
+          '_ga_S5GPGS5B15',
+          '_ga_Y9LZHKV3RQ',
+          '_ga_ZPKSVPSBL2',
         ];
         
         cookiesToClear.forEach(cookieName => {
+          // Try multiple domain variations to ensure deletion
           document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
           document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
           document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+          // Also try without domain (for Safari)
+          document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None; Secure`;
         });
         
-        console.log('[Web Auth] ✅ Stale cookies cleared');
+        console.log('[Web Auth] ✅ Stale cookies cleared (including g_state for Safari)');
       }
     }
   }, [showLoginScreen, status]);
