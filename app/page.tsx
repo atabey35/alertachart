@@ -78,6 +78,10 @@ export default function Home() {
   // This ensures database changes are reflected immediately
   const hasPremiumAccessValue: boolean = userPlan?.hasPremiumAccess ?? hasPremiumAccess(fullUser) ?? false;
 
+  // Ref to track Google Identity Services initialization
+  const googleInitializedRef = useRef(false);
+  const googleInitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
   // Capacitor ve iPad kontrolü
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -113,15 +117,57 @@ export default function Home() {
     }
   }, []);
 
+  // 🔥 CRITICAL: Clean old/stale NextAuth cookies before showing login screen
+  // This prevents "Only one navigator.credentials.get request may be outstanding" error
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !isCapacitor && showLoginScreen && status === 'unauthenticated') {
+      console.log('[Web Auth] Cleaning stale NextAuth cookies before login...');
+      
+      // Clear all NextAuth-related cookies
+      const cookiesToClear = [
+        'next-auth.session-token',
+        'next-auth.csrf-token',
+        'next-auth.callback-url',
+        '__Secure-next-auth.session-token',
+        '__Secure-next-auth.csrf-token',
+        '__Secure-next-auth.callback-url',
+      ];
+      
+      cookiesToClear.forEach(cookieName => {
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=${window.location.hostname}`;
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.${window.location.hostname}`;
+        document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+      });
+      
+      console.log('[Web Auth] ✅ Stale cookies cleared');
+    }
+  }, [showLoginScreen, isCapacitor, status]);
+
   // Google Identity Services (GIS) initialization for web
   useEffect(() => {
     if (typeof window !== 'undefined' && !isCapacitor && showLoginScreen) {
+      // Prevent multiple initializations
+      if (googleInitializedRef.current) {
+        console.log('[Web Auth] Google Identity Services already initialized, skipping');
+        return;
+      }
+
+      // Cancel any previous credential requests to prevent "outstanding request" error
+      try {
+        if ((window as any).google?.accounts?.id?.cancel) {
+          (window as any).google.accounts.id.cancel();
+          console.log('[Web Auth] Cancelled previous credential request');
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+
       // Wait for Google Identity Services to load
       const initGoogleSignIn = () => {
         const googleButtonElement = document.getElementById('google-signin-button');
         if (!googleButtonElement) {
           // Element not ready yet, retry
-          setTimeout(initGoogleSignIn, 100);
+          googleInitTimeoutRef.current = setTimeout(initGoogleSignIn, 100);
           return;
         }
 
@@ -143,6 +189,7 @@ export default function Home() {
                 const result = await handleGoogleWebLogin(response.credential);
                 if (result.success) {
                   setShowLoginScreen(false);
+                  googleInitializedRef.current = false; // Reset for next login
                   // Refresh page to update session
                   window.location.reload();
                 } else {
@@ -168,7 +215,8 @@ export default function Home() {
                 width: '100%',
               }
             );
-            console.log('[Web Auth] Google button rendered successfully');
+            console.log('[Web Auth] ✅ Google button rendered successfully');
+            googleInitializedRef.current = true; // Mark as initialized
           } catch (error: any) {
             // Suppress origin not allowed errors
             if (error?.message?.includes('origin is not allowed')) {
@@ -179,14 +227,22 @@ export default function Home() {
           }
         } else {
           // Retry after a short delay
-          setTimeout(initGoogleSignIn, 100);
+          googleInitTimeoutRef.current = setTimeout(initGoogleSignIn, 100);
         }
       };
 
       // Start initialization after a short delay to ensure DOM is ready
-      setTimeout(initGoogleSignIn, 200);
+      googleInitTimeoutRef.current = setTimeout(initGoogleSignIn, 200);
+
+      // Cleanup function
+      return () => {
+        if (googleInitTimeoutRef.current) {
+          clearTimeout(googleInitTimeoutRef.current);
+          googleInitTimeoutRef.current = null;
+        }
+      };
     }
-  }, [showLoginScreen, isCapacitor]);
+  }, [showLoginScreen, isCapacitor, status]);
 
 
   // Initialize safe area listener for native app
@@ -1171,18 +1227,21 @@ export default function Home() {
   );
   const shouldShowLoginScreen = isWeb && showLoginScreen && !user && status !== 'authenticated';
 
-  // Debug logging
-  if (showLoginScreen) {
-    console.log('[Login Screen] showLoginScreen:', showLoginScreen);
-    console.log('[Login Screen] isWeb:', isWeb);
-    console.log('[Login Screen] user:', user);
-    console.log('[Login Screen] status:', status);
-    console.log('[Login Screen] shouldShowLoginScreen:', shouldShowLoginScreen);
-  }
+  // Debug logging (only when state changes)
+  useEffect(() => {
+    if (showLoginScreen) {
+      console.log('[Login Screen] State check:', {
+        showLoginScreen,
+        isWeb,
+        user: user?.email || null,
+        status,
+        shouldShowLoginScreen
+      });
+    }
+  }, [showLoginScreen, isWeb, user, status, shouldShowLoginScreen]);
 
   // If web and user clicked login button, show login screen
   if (shouldShowLoginScreen) {
-    console.log('[Login Screen] Rendering login screen');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4 fixed inset-0 z-[9999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
         <div className="max-w-md w-full text-center">
