@@ -16,28 +16,34 @@ const getSql = () => {
  * Called when app opens and session is missing but refresh token exists
  */
 export async function POST(request: NextRequest) {
+  console.log('[restore-session] 🔍 POST request received');
+  
   try {
     // Get refresh token from cookies OR request body (for Preferences-based restore)
     let refreshToken = request.cookies.get('refreshToken')?.value;
+    console.log('[restore-session] 🔍 RefreshToken from cookies:', refreshToken ? 'found' : 'not found');
     
     // If not in cookies, try to get from request body (for Capacitor Preferences restore)
     if (!refreshToken) {
       try {
         const body = await request.json();
         refreshToken = body.refreshToken;
+        console.log('[restore-session] 🔍 RefreshToken from body:', refreshToken ? 'found' : 'not found');
       } catch (e) {
+        console.log('[restore-session] ⚠️ Failed to parse request body:', e);
         // Body might be empty or not JSON, that's okay
       }
     }
     
     if (!refreshToken) {
+      console.log('[restore-session] ❌ No refresh token found in cookies or body');
       return NextResponse.json(
         { error: 'No refresh token found' },
         { status: 401 }
       );
     }
     
-    console.log('[restore-session] Attempting to restore session from refresh token');
+    console.log('[restore-session] ✅ Attempting to restore session from refresh token');
     
     // Fetch user info from backend using the refresh token
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:3002';
