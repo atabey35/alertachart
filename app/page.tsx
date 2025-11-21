@@ -217,6 +217,11 @@ export default function Home() {
                 setLoginLoading(false);
               }
             },
+            // 🔥 CRITICAL: Disable automatic "One Tap" prompts
+            // These cause "Only one navigator.credentials.get request may be outstanding" errors
+            auto_select: false,
+            cancel_on_tap_outside: false,
+            itp_support: false,
           });
 
           // Render Google Sign-In button
@@ -228,11 +233,22 @@ export default function Home() {
                 theme: 'outline',
                 size: 'large',
                 text: 'signin_with',
-                width: '100%',
+                width: 400, // Fixed width instead of '100%' to avoid GSI warning
               }
             );
             console.log('[Web Auth] ✅ Google button rendered successfully');
             googleInitializedRef.current = true; // Mark as initialized
+            
+            // 🔥 CRITICAL: Cancel any automatic One Tap prompts
+            // This prevents "navigator.credentials.get" from being called automatically
+            setTimeout(() => {
+              try {
+                (window as any).google.accounts.id.cancel();
+                console.log('[Web Auth] ✅ One Tap auto-prompt cancelled');
+              } catch (e) {
+                // Ignore errors
+              }
+            }, 100);
           } catch (error: any) {
             // Suppress origin not allowed errors
             if (error?.message?.includes('origin is not allowed')) {
