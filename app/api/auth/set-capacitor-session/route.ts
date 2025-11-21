@@ -120,35 +120,45 @@ export async function POST(request: NextRequest) {
       user: userData 
     });
     
-    // Set access token cookie (15 minutes - httpOnly + secure)
-    response.cookies.set('accessToken', accessToken, {
+    // 🔥 CRITICAL: Set cookies with Android WebView-compatible flags
+    // Android WebView requires specific cookie settings for persistence
+    const cookieOptions = {
       httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
+      secure: true, // Always secure in production
+      sameSite: 'lax' as const, // 'lax' works better than 'none' for same-domain
       path: '/',
+      // Note: domain is not set (defaults to current domain)
+      // Setting domain to '.alertachart.com' can cause issues with Android WebView
+    };
+    
+    // Set access token cookie (15 minutes)
+    response.cookies.set('accessToken', accessToken, {
+      ...cookieOptions,
       maxAge: 900, // 15 minutes
     });
     
-    // Set refresh token cookie (7 days - httpOnly + secure)
+    // Set refresh token cookie (7 days)
     response.cookies.set('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      path: '/',
+      ...cookieOptions,
       maxAge: 604800, // 7 days
     });
     
     // 🔥 CRITICAL: Set NextAuth session token cookie
     if (nextAuthToken) {
       response.cookies.set('next-auth.session-token', nextAuthToken, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax',
-        path: '/',
+        ...cookieOptions,
         maxAge: 30 * 24 * 60 * 60, // 30 days
       });
       console.log('[set-capacitor-session] NextAuth session cookie set successfully');
     }
+    
+    console.log('[set-capacitor-session] Cookie flags:', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      hasDomain: false, // Not setting domain for Android compatibility
+    });
     
     console.log('[set-capacitor-session] All cookies set successfully');
     

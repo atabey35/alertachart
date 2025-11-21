@@ -188,9 +188,20 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // 🔥 CRITICAL: Check if request came from Android (has refreshToken in body)
+    // 🔥 CRITICAL: Detect Android from User-Agent
     // Android uses Preferences, not cookies, so we need to return tokens in response
-    const isAndroidRequest = !!refreshToken && !request.cookies.get('refreshToken')?.value;
+    const userAgent = request.headers.get('user-agent') || '';
+    const isAndroid = userAgent.includes('Android') || userAgent.includes('Dalvik');
+    const hasRefreshTokenInBody = !!refreshToken && !request.cookies.get('refreshToken')?.value;
+    const isAndroidRequest = isAndroid || hasRefreshTokenInBody;
+    
+    console.log('[restore-session] Platform detection:', {
+      userAgent: userAgent.substring(0, 100),
+      isAndroid,
+      hasRefreshTokenInBody,
+      isAndroidRequest,
+      hasCookies: !!request.cookies.get('refreshToken')?.value,
+    });
     
     // Create response with tokens for Android
     const responseData: any = { 
@@ -198,54 +209,71 @@ export async function POST(request: NextRequest) {
       user: userData 
     };
     
-    // Android: Return tokens in response (will be saved to Preferences on client)
+    // 🔥 CRITICAL: Always return tokens for Android (even if cookies exist)
+    // Android WebView cookies are unreliable, so we always use Preferences
     if (isAndroidRequest && (newAccessToken || refreshToken)) {
       responseData.tokens = {
         accessToken: newAccessToken || null,
         refreshToken: refreshToken || null,
       };
-      console.log('[restore-session] Returning tokens for Android Preferences storage');
+      console.log('[restore-session] ✅ Returning tokens for Android Preferences storage', {
+        hasAccessToken: !!newAccessToken,
+        hasRefreshToken: !!refreshToken,
+      });
     }
     
     const response = NextResponse.json(responseData);
     
-    // Update access token cookie if we got a new one (for iOS/Web)
+    // 🔥 CRITICAL: Set cookies with Android WebView-compatible flags
+    // Android WebView requires specific cookie settings for persistence
+    const cookieOptions = {
+      httpOnly: true,
+      secure: true, // Always secure in production
+      sameSite: 'lax' as const, // 'lax' works better than 'none' for same-domain
+      path: '/',
+      // Note: domain is not set (defaults to current domain)
+      // Setting domain to '.alertachart.com' can cause issues with Android WebView
+    };
+    
+    // Update access token cookie if we got a new one
     if (newAccessToken) {
       response.cookies.set('accessToken', newAccessToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        path: '/',
+        ...cookieOptions,
         maxAge: 900, // 15 minutes
       });
+      console.log('[restore-session] ✅ AccessToken cookie set');
     }
     
-    // 🔥 CRITICAL: Set refreshToken cookie if it came from request body (Preferences restore)
-    // This ensures cookie is set even if it wasn't in cookies initially (for iOS/Web)
-    if (refreshToken && !request.cookies.get('refreshToken')?.value && !isAndroidRequest) {
+    // 🔥 CRITICAL: Set refreshToken cookie if it came from request body OR if Android
+    // This ensures cookie is set even if it wasn't in cookies initially
+    // For Android, we set cookie even if we return tokens (for redundancy)
+    if (refreshToken && (!request.cookies.get('refreshToken')?.value || isAndroidRequest)) {
       response.cookies.set('refreshToken', refreshToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax',
-        path: '/',
+        ...cookieOptions,
         maxAge: 604800, // 7 days
       });
-      console.log('[restore-session] RefreshToken cookie set from request body');
+      console.log('[restore-session] ✅ RefreshToken cookie set', {
+        fromBody: !request.cookies.get('refreshToken')?.value,
+        isAndroid: isAndroidRequest,
+      });
     }
     
     // Set NextAuth session token cookie
     if (nextAuthToken) {
-      // 🔥 CRITICAL: Use sameSite: 'lax' for Android and iOS compatibility
-      // Both platforms work with 'lax' when cookies are set from same domain
       response.cookies.set('next-auth.session-token', nextAuthToken, {
-        httpOnly: true,
-        secure: true,
-        sameSite: 'lax', // Works for both Android and iOS
-        path: '/',
+        ...cookieOptions,
         maxAge: 30 * 24 * 60 * 60, // 30 days
       });
-      console.log('[restore-session] NextAuth session cookie set successfully');
+      console.log('[restore-session] ✅ NextAuth session cookie set successfully');
     }
+    
+    console.log('[restore-session] Cookie flags applied:', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      hasDomain: false, // Not setting domain for Android compatibility
+    });
     
     console.log('[restore-session] Session restored successfully');
     
