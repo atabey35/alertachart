@@ -173,10 +173,12 @@ export default function AndroidLogin() {
                 throw new Error(`Failed to set session: ${sessionError.error || 'Unknown error'}`);
               }
               
-              // 🔥 CRITICAL: Save user email to localStorage for Android session restore
-              // Android WebView sometimes loses cookies when app goes to background
-              // This ensures session can be restored when app is reopened
+              // 🔥 CRITICAL: Save user email and refreshToken for Android session restore
+              // Android WebView loses cookies when app is completely closed (swipe away)
+              // Preferences persists even when app is closed, so we save refreshToken there
               const sessionData = await sessionResponse.json();
+              
+              // Save user email to localStorage
               if (sessionData?.user?.email && typeof window !== 'undefined') {
                 localStorage.setItem('user_email', sessionData.user.email);
                 console.log('[AndroidLogin] ✅ User email saved to localStorage for session restore:', sessionData.user.email);
@@ -192,6 +194,21 @@ export default function AndroidLogin() {
                   } catch (e) {
                     console.warn('[AndroidLogin] ⚠️ Could not extract email from token');
                   }
+                }
+              }
+              
+              // 🔥 CRITICAL: Save refreshToken to Capacitor Preferences (Android persistence)
+              // This allows session restore even when cookies are lost (app completely closed)
+              const Capacitor = (window as any).Capacitor;
+              if (Capacitor?.Plugins?.Preferences && data.tokens?.refreshToken) {
+                try {
+                  await Capacitor.Plugins.Preferences.set({ 
+                    key: 'refreshToken', 
+                    value: data.tokens.refreshToken 
+                  });
+                  console.log('[AndroidLogin] ✅ RefreshToken saved to Preferences for Android session restore');
+                } catch (e) {
+                  console.error('[AndroidLogin] ❌ Failed to save refreshToken to Preferences:', e);
                 }
               }
               

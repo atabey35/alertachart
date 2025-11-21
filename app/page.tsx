@@ -359,13 +359,28 @@ export default function Home() {
           
           console.log('[App] 🔄 Checking for session restore (status:', status, ')...');
           
-          // 🔥 CRITICAL: In iOS WebView, cookies are shared via WKWebsiteDataStore
-          // We can't read cookies from document.cookie in capacitor://localhost
-          // But cookies will be sent automatically with credentials: 'include'
-          // So we'll always try to restore - if cookie exists, it will work
-          
           // Check localStorage as a hint (but don't rely on it exclusively)
           const savedEmail = typeof window !== 'undefined' ? localStorage.getItem('user_email') : null;
+          
+          // 🔥 CRITICAL: Android - Get refreshToken from Capacitor Preferences
+          // Android WebView loses cookies when app is completely closed (swipe away)
+          // But refreshToken is stored in Capacitor Preferences which persists
+          let refreshTokenFromPreferences: string | null = null;
+          const platform = hasCapacitor ? (window as any).Capacitor?.getPlatform?.() : 'web';
+          
+          if (platform === 'android' && hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
+            try {
+              const prefsResult = await (window as any).Capacitor.Plugins.Preferences.get({ 
+                key: 'refreshToken' 
+              });
+              if (prefsResult?.value && prefsResult.value !== 'null' && prefsResult.value !== 'undefined') {
+                refreshTokenFromPreferences = prefsResult.value;
+                console.log('[App] ✅ RefreshToken found in Preferences (Android)');
+              }
+            } catch (e) {
+              console.log('[App] ⚠️ Could not get refreshToken from Preferences:', e);
+            }
+          }
           
           if (savedEmail) {
             console.log('[App] 📧 Saved email found:', savedEmail, '- attempting session restore...');
@@ -373,11 +388,19 @@ export default function Home() {
             console.log('[App] ℹ️ No saved email in localStorage, but attempting session restore anyway (cookies may exist)...');
           }
           
+          // 🔥 CRITICAL: Android - If refreshToken in Preferences, send it in body
+          // This works even when cookies are lost (app completely closed)
+          const requestBody = refreshTokenFromPreferences 
+            ? { refreshToken: refreshTokenFromPreferences }
+            : undefined;
+          
           // Always try to restore - cookies will be sent automatically if they exist
           // Use relative URL to work in both localhost and production
           const response = await fetch('/api/auth/restore-session', {
             method: 'POST',
-            credentials: 'include', // 🔥 CRITICAL: Include cookies (will work if cookies exist in WKWebsiteDataStore)
+            credentials: 'include', // Include cookies if they exist
+            headers: requestBody ? { 'Content-Type': 'application/json' } : {},
+            body: requestBody ? JSON.stringify(requestBody) : undefined,
           });
           
           if (response.ok) {
@@ -428,8 +451,17 @@ export default function Home() {
       };
       
       // Try to restore session after a short delay (wait for cookies to be available)
-      // Run immediately if status is unauthenticated, or after a delay if still loading
-      if (status === 'unauthenticated') {
+      // 🔥 CRITICAL: Android - If email exists in localStorage, restore immediately
+      // This handles the case where app was completely closed (swipe away)
+      const savedEmail = typeof window !== 'undefined' ? localStorage.getItem('user_email') : null;
+      const platform = hasCapacitor ? (window as any).Capacitor?.getPlatform?.() : 'web';
+      
+      if (platform === 'android' && savedEmail) {
+        // Android with saved email - restore immediately (app was closed, cookies lost)
+        console.log('[App] 📱 Android: Saved email found, restoring session immediately...');
+        setTimeout(restoreSession, 300); // Very short delay for WebView to be ready
+      } else if (status === 'unauthenticated') {
+        // Normal restore flow
         setTimeout(restoreSession, 1000);
       } else if (status === 'loading') {
         // Wait a bit longer if status is still loading
@@ -531,9 +563,32 @@ export default function Home() {
             // Wait a bit for WebView to be ready
             setTimeout(async () => {
               try {
+                // 🔥 CRITICAL: Android - Get refreshToken from Preferences
+                // Cookies may be lost when app is completely closed
+                let refreshTokenFromPreferences: string | null = null;
+                if (hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
+                  try {
+                    const prefsResult = await (window as any).Capacitor.Plugins.Preferences.get({ 
+                      key: 'refreshToken' 
+                    });
+                    if (prefsResult?.value && prefsResult.value !== 'null' && prefsResult.value !== 'undefined') {
+                      refreshTokenFromPreferences = prefsResult.value;
+                      console.log('[App] ✅ RefreshToken found in Preferences (Android resume)');
+                    }
+                  } catch (e) {
+                    console.log('[App] ⚠️ Could not get refreshToken from Preferences on resume');
+                  }
+                }
+                
+                const requestBody = refreshTokenFromPreferences 
+                  ? { refreshToken: refreshTokenFromPreferences }
+                  : undefined;
+                
                 const response = await fetch('/api/auth/restore-session', {
                   method: 'POST',
                   credentials: 'include',
+                  headers: requestBody ? { 'Content-Type': 'application/json' } : {},
+                  body: requestBody ? JSON.stringify(requestBody) : undefined,
                 });
                 if (response.ok) {
                   const result = await response.json();
