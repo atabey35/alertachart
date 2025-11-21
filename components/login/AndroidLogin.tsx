@@ -204,6 +204,7 @@ export default function AndroidLogin() {
               if (Capacitor?.Plugins?.Preferences && data.tokens) {
                 try {
                   // Save both accessToken and refreshToken
+                  // 🔥 CRITICAL: Await all Preferences operations to ensure they complete before redirect
                   if (data.tokens.accessToken) {
                     await Capacitor.Plugins.Preferences.set({ 
                       key: 'accessToken', 
@@ -220,14 +221,19 @@ export default function AndroidLogin() {
                   }
                 } catch (e) {
                   console.error('[AndroidLogin] ❌ Failed to save tokens to Preferences:', e);
+                  // Don't throw - continue with redirect even if Preferences save fails
+                  // Cookies are already set, so session will work
                 }
               }
               
-              console.log('[AndroidLogin] ✅ Session set successfully');
+              console.log('[AndroidLogin] ✅ All async operations completed (session, cookies, Preferences)');
               
-              // Redirect to home
+              // 🔥 CRITICAL FIX: Wait for all async operations to complete before redirect
+              // Use router.push() only - Next.js router will handle page update
+              // Don't use window.location.reload() as it causes race condition
+              // Session cookies are already set, NextAuth will detect them automatically
+              console.log('[AndroidLogin] 🔄 Redirecting to home page...');
               router.push('/');
-              window.location.reload();
             } else {
               throw new Error('No tokens received from backend');
             }
