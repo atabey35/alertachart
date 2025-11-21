@@ -18,7 +18,7 @@ export default function SettingsPage() {
   const [isCapacitor, setIsCapacitor] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState('');
-  const { data: session, status } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
 
   // User state
@@ -145,6 +145,71 @@ export default function SettingsPage() {
       });
     }
   }, []);
+
+  // 🔥 CRITICAL: Android session restore on mount
+  // Android WebView loses cookies when app is completely closed
+  // Restore session using Preferences refreshToken
+  useEffect(() => {
+    const restoreAndroidSession = async () => {
+      if (typeof window === 'undefined') return;
+      
+      const hasCapacitor = !!(window as any).Capacitor;
+      const platform = hasCapacitor ? (window as any).Capacitor?.getPlatform?.() : 'web';
+      
+      // Only for Android and when session is missing
+      if (platform === 'android' && (status === 'unauthenticated' || status === 'loading')) {
+        const savedEmail = localStorage.getItem('user_email');
+        if (!savedEmail) return; // No saved email, user never logged in
+        
+        console.log('[Settings] 📱 Android: Attempting session restore...');
+        
+        try {
+          // Get refreshToken from Preferences
+          let refreshTokenFromPreferences: string | null = null;
+          if (hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
+            try {
+              const prefsResult = await (window as any).Capacitor.Plugins.Preferences.get({ 
+                key: 'refreshToken' 
+              });
+              if (prefsResult?.value && prefsResult.value !== 'null' && prefsResult.value !== 'undefined') {
+                refreshTokenFromPreferences = prefsResult.value;
+                console.log('[Settings] ✅ RefreshToken found in Preferences');
+              }
+            } catch (e) {
+              console.log('[Settings] ⚠️ Could not get refreshToken from Preferences');
+            }
+          }
+          
+          if (!refreshTokenFromPreferences) {
+            console.log('[Settings] ⚠️ No refreshToken in Preferences, cannot restore');
+            return;
+          }
+          
+          // Restore session using Preferences refreshToken
+          const response = await fetch('/api/auth/restore-session', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refreshToken: refreshTokenFromPreferences }),
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            console.log('[Settings] ✅ Session restored successfully');
+            // Update NextAuth session
+            await update();
+          } else {
+            console.log('[Settings] ⚠️ Session restore failed:', response.status);
+          }
+        } catch (error) {
+          console.error('[Settings] ❌ Error restoring session:', error);
+        }
+      }
+    };
+    
+    // Small delay to ensure Capacitor is ready
+    setTimeout(restoreAndroidSession, 500);
+  }, [status, update]);
 
   // Fetch user data
   useEffect(() => {

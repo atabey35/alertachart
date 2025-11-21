@@ -185,11 +185,12 @@ export async function POST(request: NextRequest) {
     
     // Set NextAuth session token cookie
     if (nextAuthToken) {
-      // 🔥 CRITICAL: Use sameSite: 'none' and secure: true for iOS WebView compatibility
+      // 🔥 CRITICAL: Use sameSite: 'lax' for Android and iOS compatibility
+      // Both platforms work with 'lax' when cookies are set from same domain
       response.cookies.set('next-auth.session-token', nextAuthToken, {
         httpOnly: true,
-        secure: true, // Always secure for iOS
-        sameSite: 'none', // Required for cross-site requests in iOS WebView
+        secure: true,
+        sameSite: 'lax', // Works for both Android and iOS
         path: '/',
         maxAge: 30 * 24 * 60 * 60, // 30 days
       });
