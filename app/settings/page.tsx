@@ -219,11 +219,20 @@ export default function SettingsPage() {
                 isUndefined: prefsResult?.value === 'undefined',
               });
               
-              if (prefsResult?.value && prefsResult.value !== 'null' && prefsResult.value !== 'undefined') {
+              if (prefsResult?.value && 
+                  prefsResult.value !== 'null' && 
+                  prefsResult.value !== 'undefined' &&
+                  prefsResult.value.trim().length > 0) {
                 refreshTokenFromPreferences = prefsResult.value;
-                console.log('[Settings] ✅ RefreshToken found in Preferences');
+                console.log('[Settings] ✅ RefreshToken found in Preferences', {
+                  length: refreshTokenFromPreferences.length,
+                  preview: `${refreshTokenFromPreferences.substring(0, 20)}...`,
+                });
               } else {
-                console.log('[Settings] ⚠️ RefreshToken in Preferences is null/undefined/empty');
+                console.log('[Settings] ⚠️ RefreshToken in Preferences is null/undefined/empty/invalid', {
+                  value: prefsResult?.value,
+                  type: typeof prefsResult?.value,
+                });
               }
             } catch (e) {
               console.error('[Settings] ❌ Error reading Preferences:', e);
@@ -250,17 +259,30 @@ export default function SettingsPage() {
           }
           
           // Restore session using Preferences refreshToken
+          if (!refreshTokenFromPreferences || refreshTokenFromPreferences.trim().length === 0) {
+            console.log('[Settings] ❌ Cannot restore: refreshToken is empty or invalid');
+            return;
+          }
+          
           console.log('[Settings] 🔍 Calling restore-session API...', {
             hasRefreshToken: !!refreshTokenFromPreferences,
-            refreshTokenLength: refreshTokenFromPreferences?.length,
+            refreshTokenLength: refreshTokenFromPreferences.length,
+            refreshTokenPreview: `${refreshTokenFromPreferences.substring(0, 20)}...`,
             url: '/api/auth/restore-session',
+          });
+          
+          const requestBody = { refreshToken: refreshTokenFromPreferences };
+          console.log('[Settings] 🔍 Request body:', {
+            hasRefreshToken: !!requestBody.refreshToken,
+            refreshTokenLength: requestBody.refreshToken?.length,
+            bodyString: JSON.stringify(requestBody).substring(0, 100),
           });
           
           const response = await fetch('/api/auth/restore-session', {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken: refreshTokenFromPreferences }),
+            body: JSON.stringify(requestBody),
           });
           
           console.log('[Settings] 🔍 restore-session API response:', {

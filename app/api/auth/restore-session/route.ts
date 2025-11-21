@@ -26,12 +26,31 @@ export async function POST(request: NextRequest) {
     // If not in cookies, try to get from request body (for Capacitor Preferences restore)
     if (!refreshToken) {
       try {
-        const body = await request.json();
-        refreshToken = body.refreshToken;
-        console.log('[restore-session] 🔍 RefreshToken from body:', refreshToken ? 'found' : 'not found');
-      } catch (e) {
-        console.log('[restore-session] ⚠️ Failed to parse request body:', e);
-        // Body might be empty or not JSON, that's okay
+        // Check if request has body by reading it
+        const clonedRequest = request.clone();
+        const text = await clonedRequest.text();
+        
+        if (text && text.trim()) {
+          console.log('[restore-session] 🔍 Request body (raw):', text.length > 100 ? `${text.substring(0, 100)}...` : text);
+          const body = JSON.parse(text);
+          refreshToken = body.refreshToken;
+          console.log('[restore-session] 🔍 RefreshToken from body:', {
+            found: !!refreshToken,
+            isNull: refreshToken === null,
+            isUndefined: refreshToken === undefined,
+            type: typeof refreshToken,
+            length: refreshToken?.length,
+            preview: refreshToken ? `${refreshToken.substring(0, 20)}...` : 'none',
+          });
+        } else {
+          console.log('[restore-session] ⚠️ Request body is empty or whitespace');
+        }
+      } catch (e: any) {
+        console.error('[restore-session] ⚠️ Failed to parse request body:', {
+          error: e.message,
+          name: e.name,
+        });
+        // Body might be empty or not JSON, that's okay - continue without body token
       }
     }
     
