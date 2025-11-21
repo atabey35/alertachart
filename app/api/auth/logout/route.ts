@@ -60,6 +60,36 @@ export async function POST(request: NextRequest) {
       });
     }
     
+    // 🔥 CRITICAL: Clear NextAuth cookies (CSRF token, session token, etc.)
+    // NextAuth cookie names that need to be cleared
+    const nextAuthCookies = [
+      'next-auth.session-token',
+      'next-auth.csrf-token',
+      'next-auth.callback-url',
+      'next-auth.pkce.code_verifier',
+      'next-auth.state',
+      'next-auth.nonce',
+      '__Secure-next-auth.session-token',
+      '__Secure-next-auth.csrf-token',
+      '__Host-next-auth.csrf-token',
+    ];
+
+    // Clear each NextAuth cookie by setting it to expire in the past
+    nextAuthCookies.forEach(cookieName => {
+      // Clear with different SameSite and Secure combinations to ensure it works
+      const cookieOptions = [
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None; Secure`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict`,
+      ];
+      
+      cookieOptions.forEach(option => {
+        responseHeaders.append('Set-Cookie', option);
+      });
+    });
+    
+    console.log('[Next.js API] ✅ NextAuth cookies cleared in logout response');
+    
     return NextResponse.json(result, { 
       status: response.status,
       headers: responseHeaders,

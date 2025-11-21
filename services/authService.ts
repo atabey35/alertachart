@@ -243,6 +243,38 @@ class AuthService {
             console.error('[AuthService] Failed to remove refreshToken from Preferences:', e);
           }
         }
+
+        // 🔥 CRITICAL: Clear NextAuth cookies (CSRF token, session token, etc.)
+        // NextAuth cookie names that need to be cleared
+        const nextAuthCookies = [
+          'next-auth.session-token',
+          'next-auth.csrf-token',
+          'next-auth.callback-url',
+          'next-auth.pkce.code_verifier',
+          'next-auth.state',
+          'next-auth.nonce',
+          '__Secure-next-auth.session-token',
+          '__Secure-next-auth.csrf-token',
+          '__Host-next-auth.csrf-token',
+        ];
+
+        // Clear cookies by setting them to expire in the past
+        nextAuthCookies.forEach(cookieName => {
+          // Try multiple domain/path combinations to ensure cookie is cleared
+          const domains = ['', window.location.hostname, `.${window.location.hostname}`];
+          const paths = ['/', window.location.pathname];
+          
+          domains.forEach(domain => {
+            paths.forEach(path => {
+              // Set cookie with expired date
+              document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain}; SameSite=Lax; Secure`;
+              document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain}; SameSite=None; Secure`;
+              document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=${path}; domain=${domain}; SameSite=Strict`;
+            });
+          });
+        });
+        
+        console.log('[AuthService] ✅ NextAuth cookies cleared (CSRF token, session token, etc.)');
       }
 
       this.user = null;
