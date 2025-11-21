@@ -197,18 +197,29 @@ export default function AndroidLogin() {
                 }
               }
               
-              // 🔥 CRITICAL: Save refreshToken to Capacitor Preferences (Android persistence)
-              // This allows session restore even when cookies are lost (app completely closed)
+              // 🔥 CRITICAL: Save tokens to Capacitor Preferences (Android persistence)
+              // Android WebView loses cookies on some devices (Samsung, Xiaomi, Oppo)
+              // Store tokens in Preferences instead of relying on cookies
               const Capacitor = (window as any).Capacitor;
-              if (Capacitor?.Plugins?.Preferences && data.tokens?.refreshToken) {
+              if (Capacitor?.Plugins?.Preferences && data.tokens) {
                 try {
-                  await Capacitor.Plugins.Preferences.set({ 
-                    key: 'refreshToken', 
-                    value: data.tokens.refreshToken 
-                  });
-                  console.log('[AndroidLogin] ✅ RefreshToken saved to Preferences for Android session restore');
+                  // Save both accessToken and refreshToken
+                  if (data.tokens.accessToken) {
+                    await Capacitor.Plugins.Preferences.set({ 
+                      key: 'accessToken', 
+                      value: data.tokens.accessToken 
+                    });
+                    console.log('[AndroidLogin] ✅ AccessToken saved to Preferences');
+                  }
+                  if (data.tokens.refreshToken) {
+                    await Capacitor.Plugins.Preferences.set({ 
+                      key: 'refreshToken', 
+                      value: data.tokens.refreshToken 
+                    });
+                    console.log('[AndroidLogin] ✅ RefreshToken saved to Preferences');
+                  }
                 } catch (e) {
-                  console.error('[AndroidLogin] ❌ Failed to save refreshToken to Preferences:', e);
+                  console.error('[AndroidLogin] ❌ Failed to save tokens to Preferences:', e);
                 }
               }
               

@@ -163,13 +163,28 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Create response
-    const response = NextResponse.json({ 
+    // 🔥 CRITICAL: Check if request came from Android (has refreshToken in body)
+    // Android uses Preferences, not cookies, so we need to return tokens in response
+    const isAndroidRequest = !!refreshToken && !request.cookies.get('refreshToken')?.value;
+    
+    // Create response with tokens for Android
+    const responseData: any = { 
       success: true,
       user: userData 
-    });
+    };
     
-    // Update access token cookie if we got a new one
+    // Android: Return tokens in response (will be saved to Preferences on client)
+    if (isAndroidRequest && (newAccessToken || refreshToken)) {
+      responseData.tokens = {
+        accessToken: newAccessToken || null,
+        refreshToken: refreshToken || null,
+      };
+      console.log('[restore-session] Returning tokens for Android Preferences storage');
+    }
+    
+    const response = NextResponse.json(responseData);
+    
+    // Update access token cookie if we got a new one (for iOS/Web)
     if (newAccessToken) {
       response.cookies.set('accessToken', newAccessToken, {
         httpOnly: true,
@@ -181,8 +196,8 @@ export async function POST(request: NextRequest) {
     }
     
     // 🔥 CRITICAL: Set refreshToken cookie if it came from request body (Preferences restore)
-    // This ensures cookie is set even if it wasn't in cookies initially
-    if (refreshToken && !request.cookies.get('refreshToken')?.value) {
+    // This ensures cookie is set even if it wasn't in cookies initially (for iOS/Web)
+    if (refreshToken && !request.cookies.get('refreshToken')?.value && !isAndroidRequest) {
       response.cookies.set('refreshToken', refreshToken, {
         httpOnly: true,
         secure: true,

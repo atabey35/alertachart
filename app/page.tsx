@@ -407,6 +407,29 @@ export default function Home() {
             const result = await response.json();
             console.log('[App] ✅ Session restored successfully:', result);
             
+            // 🔥 CRITICAL: Android - Save tokens to Preferences if returned
+            // Android uses Preferences instead of cookies (cookies unreliable)
+            if (platform === 'android' && result.tokens && hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
+              try {
+                if (result.tokens.accessToken) {
+                  await (window as any).Capacitor.Plugins.Preferences.set({ 
+                    key: 'accessToken', 
+                    value: result.tokens.accessToken 
+                  });
+                  console.log('[App] ✅ AccessToken saved to Preferences (Android)');
+                }
+                if (result.tokens.refreshToken) {
+                  await (window as any).Capacitor.Plugins.Preferences.set({ 
+                    key: 'refreshToken', 
+                    value: result.tokens.refreshToken 
+                  });
+                  console.log('[App] ✅ RefreshToken saved to Preferences (Android)');
+                }
+              } catch (e) {
+                console.error('[App] ❌ Failed to save tokens to Preferences:', e);
+              }
+            }
+            
             // Save email to localStorage for future checks (if not already saved)
             if (result.user?.email && typeof window !== 'undefined' && !savedEmail) {
               localStorage.setItem('user_email', result.user.email);
@@ -593,6 +616,29 @@ export default function Home() {
                 if (response.ok) {
                   const result = await response.json();
                   console.log('[App] ✅ Session restored on Android app resume');
+                  
+                  // 🔥 CRITICAL: Android - Save tokens to Preferences if returned
+                  if (platform === 'android' && result.tokens && hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
+                    try {
+                      if (result.tokens.accessToken) {
+                        await (window as any).Capacitor.Plugins.Preferences.set({ 
+                          key: 'accessToken', 
+                          value: result.tokens.accessToken 
+                        });
+                        console.log('[App] ✅ AccessToken saved to Preferences on resume (Android)');
+                      }
+                      if (result.tokens.refreshToken) {
+                        await (window as any).Capacitor.Plugins.Preferences.set({ 
+                          key: 'refreshToken', 
+                          value: result.tokens.refreshToken 
+                        });
+                        console.log('[App] ✅ RefreshToken saved to Preferences on resume (Android)');
+                      }
+                    } catch (e) {
+                      console.error('[App] ❌ Failed to save tokens to Preferences on resume:', e);
+                    }
+                  }
+                  
                   if (result.user?.email) {
                     await update();
                   }

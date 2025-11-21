@@ -213,6 +213,29 @@ export default function SettingsPage() {
             const result = await response.json();
             console.log('[Settings] ✅ Session restored successfully:', result);
             
+            // 🔥 CRITICAL: Android - Save tokens to Preferences if returned
+            // Android uses Preferences instead of cookies (cookies unreliable)
+            if (platform === 'android' && result.tokens && hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
+              try {
+                if (result.tokens.accessToken) {
+                  await (window as any).Capacitor.Plugins.Preferences.set({ 
+                    key: 'accessToken', 
+                    value: result.tokens.accessToken 
+                  });
+                  console.log('[Settings] ✅ AccessToken saved to Preferences (Android)');
+                }
+                if (result.tokens.refreshToken) {
+                  await (window as any).Capacitor.Plugins.Preferences.set({ 
+                    key: 'refreshToken', 
+                    value: result.tokens.refreshToken 
+                  });
+                  console.log('[Settings] ✅ RefreshToken saved to Preferences (Android)');
+                }
+              } catch (e) {
+                console.error('[Settings] ❌ Failed to save tokens to Preferences:', e);
+              }
+            }
+            
             // Update NextAuth session
             try {
               await update();

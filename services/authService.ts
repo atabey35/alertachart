@@ -58,12 +58,30 @@ class AuthService {
   };
 
   /**
-   * Check authentication status using httpOnly cookies
+   * Check authentication status
+   * Android: Uses Preferences tokens (cookies are unreliable)
+   * iOS/Web: Uses httpOnly cookies
    */
   async checkAuth(): Promise<User | null> {
     try {
+      // 🔥 CRITICAL: Android - Get token from Preferences instead of cookies
+      // Android WebView loses cookies on some devices (Samsung, Xiaomi, Oppo)
+      const isAndroid = this.isAndroid();
+      let authHeaders: Record<string, string> = {};
+      
+      if (isAndroid) {
+        const accessToken = await this.getAccessTokenFromPreferences();
+        if (accessToken) {
+          authHeaders['Authorization'] = `Bearer ${accessToken}`;
+          console.log('[AuthService] ✅ Using Preferences accessToken for Android');
+        } else {
+          console.log('[AuthService] ⚠️ No accessToken in Preferences, trying cookies...');
+        }
+      }
+      
       const response = await fetch('/api/auth/me', {
-        credentials: 'include', // Send cookies
+        credentials: 'include', // Send cookies (for iOS/Web)
+        headers: authHeaders, // Send token header (for Android)
       });
       
       if (response.ok) {
@@ -71,12 +89,6 @@ class AuthService {
         this.user = data.user;
         this.notifyListeners();
         console.log('[AuthService] User authenticated:', this.user);
-        
-        // YENİ MİMARİ: Token yönetimi native'de yapılıyor
-        // Native app zaten /api/devices/register-native ile token'ı kaydediyor
-        // Login sonrası /api/devices/link ile cihaz kullanıcıya bağlanıyor
-        // Web tarafında token'a ihtiyaç yok
-        
         return this.user;
       } else if (response.status === 401) {
         // 401 is normal when user is not logged in - don't log as error
@@ -97,6 +109,54 @@ class AuthService {
       this.notifyListeners();
       return null;
     }
+  }
+  
+  /**
+   * Check if running on Android
+   */
+  private isAndroid(): boolean {
+    if (typeof window === 'undefined') return false;
+    const Capacitor = (window as any).Capacitor;
+    if (!Capacitor) return false;
+    return Capacitor.getPlatform?.() === 'android';
+  }
+  
+  /**
+   * Get access token from Capacitor Preferences (Android)
+   */
+  private async getAccessTokenFromPreferences(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+    const Capacitor = (window as any).Capacitor;
+    if (!Capacitor?.Plugins?.Preferences) return null;
+    
+    try {
+      const result = await Capacitor.Plugins.Preferences.get({ key: 'accessToken' });
+      if (result?.value && result.value !== 'null' && result.value !== 'undefined') {
+        return result.value;
+      }
+    } catch (e) {
+      console.warn('[AuthService] Failed to get accessToken from Preferences:', e);
+    }
+    return null;
+  }
+  
+  /**
+   * Get refresh token from Capacitor Preferences (Android)
+   */
+  private async getRefreshTokenFromPreferences(): Promise<string | null> {
+    if (typeof window === 'undefined') return null;
+    const Capacitor = (window as any).Capacitor;
+    if (!Capacitor?.Plugins?.Preferences) return null;
+    
+    try {
+      const result = await Capacitor.Plugins.Preferences.get({ key: 'refreshToken' });
+      if (result?.value && result.value !== 'null' && result.value !== 'undefined') {
+        return result.value;
+      }
+    } catch (e) {
+      console.warn('[AuthService] Failed to get refreshToken from Preferences:', e);
+    }
+    return null;
   }
 
   // Removed localStorage methods - using httpOnly cookies now
@@ -233,19 +293,23 @@ class AuthService {
         localStorage.removeItem('fcm_token');
         console.log('[AuthService] ✅ LocalStorage cleared');
         
-        // 🔥 CRITICAL: Clear refreshToken from Capacitor Preferences
+        // 🔥 CRITICAL: Clear tokens from Capacitor Preferences (Android)
+        // Android stores tokens in Preferences instead of cookies
         const Capacitor = (window as any).Capacitor;
         if (Capacitor?.Plugins?.Preferences) {
           try {
-            Capacitor.Plugins.Preferences.remove({ key: 'refreshToken' });
-            console.log('[AuthService] ✅ RefreshToken removed from Preferences');
+            // Clear both accessToken and refreshToken
+            await Capacitor.Plugins.Preferences.remove({ key: 'accessToken' });
+            await Capacitor.Plugins.Preferences.remove({ key: 'refreshToken' });
+            console.log('[AuthService] ✅ Tokens removed from Preferences (Android)');
           } catch (e) {
-            console.error('[AuthService] Failed to remove refreshToken from Preferences:', e);
+            console.error('[AuthService] Failed to remove tokens from Preferences:', e);
           }
         }
 
         // Note: httpOnly cookies (accessToken, refreshToken, next-auth.session-token) 
         // cannot be cleared from client-side. They are cleared server-side in /api/auth/logout
+        // But Android uses Preferences, not cookies, so we clear Preferences above
         // Non-httpOnly cookies (next-auth.csrf-token, etc.) are also cleared server-side
       }
 
@@ -320,11 +384,20 @@ class AuthService {
 
   /**
    * Get authorization header for API calls
-   * Note: With httpOnly cookies, no need for Authorization header
-   * Just use credentials: 'include' in fetch calls
+   * Android: Uses Preferences token (cookies unreliable)
+   * iOS/Web: Uses httpOnly cookies (no header needed)
    */
   async getAuthHeader(): Promise<Record<string, string>> {
-    // Cookies are sent automatically with credentials: 'include'
+    const isAndroid = this.isAndroid();
+    
+    if (isAndroid) {
+      const accessToken = await this.getAccessTokenFromPreferences();
+      if (accessToken) {
+        return { 'Authorization': `Bearer ${accessToken}` };
+      }
+    }
+    
+    // iOS/Web: Cookies are sent automatically with credentials: 'include'
     return {};
   }
 }

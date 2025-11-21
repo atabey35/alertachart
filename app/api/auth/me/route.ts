@@ -11,10 +11,21 @@ export async function GET(request: NextRequest) {
     // Forward cookies from request
     const cookies = request.headers.get('cookie') || '';
     
+    // 🔥 CRITICAL: Android - Forward Authorization header if present
+    // Android uses Preferences tokens instead of cookies (cookies unreliable)
+    const authHeader = request.headers.get('authorization');
+    
+    const headers: Record<string, string> = {};
+    if (cookies) {
+      headers['Cookie'] = cookies;
+    }
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+      console.log('[Next.js API] Forwarding Authorization header to backend (Android)');
+    }
+    
     const response = await fetch(`${backendUrl}/api/auth/me`, {
-      headers: {
-        'Cookie': cookies,
-      },
+      headers,
     });
     
     const result = await response.json();
