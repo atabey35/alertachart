@@ -433,7 +433,10 @@ export default function SettingsPage() {
     
     // Small delay to ensure Capacitor is ready
     setTimeout(restoreAndroidSession, 500);
-  }, [status, update, user]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // Only run once on mount - restoreAttemptedRef prevents multiple attempts
+  // Note: We don't depend on status/user because restoreAttemptedRef prevents re-runs
+  // If restore fails, user can refresh the page to try again
 
   // Fetch user data
   useEffect(() => {
