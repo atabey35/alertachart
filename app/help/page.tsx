@@ -419,21 +419,6 @@ export default function HelpCenter() {
           </div>
         </div>
 
-        {/* Footer Info */}
-        <div className="mt-16 pt-8 border-t border-gray-800 text-center text-gray-500 text-sm">
-          <p>
-            {language === 'tr' 
-              ? 'Hala yardıma mı ihtiyacınız var? ' 
-              : 'Still need help? '}
-            <a
-              href={`mailto:info@alertachart.com?subject=${encodeURIComponent('AlertaChart Destek Talebi')}&body=${encodeURIComponent('Merhaba AlertaChart ekibi,\n\n[Lütfen sorunuzu veya önerinizi buraya yazın]\n\n---\nCihaz: ' + (typeof navigator !== 'undefined' ? navigator.userAgent : ''))}`}
-              onClick={handleMailLink}
-              className="text-blue-400 hover:text-blue-300 transition-colors underline"
-            >
-              {language === 'tr' ? 'Destek ekibimize ulaşın' : 'Contact our support team'}
-            </a>
-          </p>
-        </div>
       </div>
 
       {/* Support Request Modal */}
