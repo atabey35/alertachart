@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Book, MessageCircle, Mail, ChevronRight, Search, ArrowLeft } from 'lucide-react';
-import { App } from '@capacitor/app';
 
 interface FAQItem {
   question: string;
@@ -204,26 +203,22 @@ export default function HelpCenter() {
   }, []);
   
   // Handle mail link - works for both web and Capacitor
-  const handleMailLink = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+  const handleMailLink = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const mailtoUrl = (e.currentTarget as HTMLAnchorElement).href;
     
-    if (isCapacitor) {
-      // On Capacitor, use App.openUrl() to open mailto: URL
-      // This works without native code changes!
-      try {
-        await App.openUrl({ url: mailtoUrl });
-      } catch (error) {
-        console.error('[Help] Error opening mail with App.openUrl:', error);
-        // Fallback: try window.open() which might work on some devices
-        try {
-          window.open(mailtoUrl, '_system');
-        } catch (fallbackError) {
-          console.error('[Help] Error with window.open fallback:', fallbackError);
-        }
+    // Try window.open() first (works on mobile with _system target)
+    // If that fails, fallback to location.href
+    try {
+      const opened = window.open(mailtoUrl, '_system');
+      // Check if window.open was blocked or failed
+      if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+        // Fallback to location.href
+        window.location.href = mailtoUrl;
       }
-    } else {
-      // On web, use standard mailto: behavior
+    } catch (error) {
+      // If window.open throws an error, use location.href
+      console.error('[Help] Error opening mail:', error);
       window.location.href = mailtoUrl;
     }
   };
