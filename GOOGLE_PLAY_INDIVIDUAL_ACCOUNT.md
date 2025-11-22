@@ -137,3 +137,4 @@ Eğer ileride şirket hesabına geçerseniz:
 
 **Sistem şu an çalışıyor ve güvenli!** 🎉
 
+

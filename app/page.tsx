@@ -2172,57 +2172,59 @@ export default function Home() {
           <span className="text-[10px] mt-1">{language === 'tr' ? 'Alarmlar' : 'Alerts'}</span>
         </button>
 
-        {user && (
-          <>
-            <button
-              onClick={() => {
-                if (hasPremiumAccessValue) {
-                  // Show AGGR in same app (iframe) - cookies work in same domain
-                  setMobileTab('aggr');
-                } else {
-                  setShowUpgradeModal(true);
-                }
-              }}
-              className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative cursor-pointer ${
-                mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'
-              }`}
-              style={{ pointerEvents: 'auto', zIndex: 101 }}
-            >
-              <div className="relative">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
-                {!hasPremiumAccessValue && (
-                  <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
-                )}
-              </div>
-              <span className="text-[10px] mt-1">Aggr</span>
-            </button>
-            <button
-              onClick={() => {
-                if (hasPremiumAccessValue) {
-                  setMobileTab('liquidations');
-                } else {
-                  setShowUpgradeModal(true);
-                }
-              }}
-              className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative cursor-pointer ${
-                mobileTab === 'liquidations' ? 'text-blue-400' : 'text-gray-500'
-              }`}
-              style={{ pointerEvents: 'auto', zIndex: 101 }}
-            >
-              <div className="relative">
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                {!hasPremiumAccessValue && (
-                  <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
-                )}
-              </div>
-              <span className="text-[10px] mt-1">Liquidations</span>
-            </button>
-          </>
-        )}
+        <button
+          onClick={() => {
+            if (!user) {
+              // Üye olmayan kullanıcıyı settings'e yönlendir
+              if (typeof window !== 'undefined') {
+                window.location.href = '/settings';
+              }
+            } else if (hasPremiumAccessValue) {
+              // Show AGGR in same app (iframe) - cookies work in same domain
+              setMobileTab('aggr');
+            } else {
+              setShowUpgradeModal(true);
+            }
+          }}
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative cursor-pointer ${
+            mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'
+          }`}
+          style={{ pointerEvents: 'auto', zIndex: 101 }}
+        >
+          <div className="relative">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            </svg>
+            <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
+          </div>
+          <span className="text-[10px] mt-1">Aggr</span>
+        </button>
+        <button
+          onClick={() => {
+            if (!user) {
+              // Üye olmayan kullanıcıyı settings'e yönlendir
+              if (typeof window !== 'undefined') {
+                window.location.href = '/settings';
+              }
+            } else if (hasPremiumAccessValue) {
+              setMobileTab('liquidations');
+            } else {
+              setShowUpgradeModal(true);
+            }
+          }}
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative cursor-pointer ${
+            mobileTab === 'liquidations' ? 'text-blue-400' : 'text-gray-500'
+          }`}
+          style={{ pointerEvents: 'auto', zIndex: 101 }}
+        >
+          <div className="relative">
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            </svg>
+            <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
+          </div>
+          <span className="text-[10px] mt-1">Liquidations</span>
+        </button>
 
         <button
           onClick={() => {

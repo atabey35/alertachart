@@ -78,3 +78,4 @@ Eğer Google Play Console'dan email aldıysanız:
 3. Menü yapısını ekran görüntüsü ile paylaşın
 4. Birlikte bulalım!
 
+

@@ -37,3 +37,4 @@ echo "   2. Google Cloud Console → APIs & Services → Credentials → OAuth 2
 echo ""
 echo "📖 See GOOGLE_AUTH_ERROR_10_FIX.md for detailed instructions"
 
+
