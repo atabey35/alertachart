@@ -18,10 +18,9 @@ const nextConfig = {
   
   // Remove React DevTools in production
   compiler: {
-    // TEMPORARILY DISABLED FOR DEBUGGING
-    // removeConsole: {
-    //   exclude: ['error', 'warn'], // Only keep errors and warnings
-    // },
+    removeConsole: {
+      exclude: ['error', 'warn'], // Only keep errors and warnings
+    },
     reactRemoveProperties: true, // Remove test IDs and data attributes
   },
   
