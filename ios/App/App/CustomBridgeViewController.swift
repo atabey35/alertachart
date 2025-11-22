@@ -304,26 +304,57 @@ class CustomBridgeViewController: CAPBridgeViewController {
 extension CustomBridgeViewController: WKNavigationDelegate {
     
     func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        // Allow all navigation actions to stay in WebView
-        // This prevents Safari from opening when WebViewController plugin loads URLs
-        let url = navigationAction.request.url
-        
-        // Log the navigation
-        if let urlString = url?.absoluteString {
-            print("[CustomBridgeViewController] 🔍 Navigation decision for: \(urlString)")
-            print("[CustomBridgeViewController] 🔍 Navigation type: \(navigationAction.navigationType.rawValue)")
-            
-            // Removed header injection - it was breaking WebView rendering
-            // Platform detection now uses User-Agent in Next.js
-            
-            // Always allow navigation in WebView - never open Safari
-            // This is critical for WebViewController plugin to work correctly
-            print("[CustomBridgeViewController] ✅ Allowing navigation in WebView (preventing Safari)")
+        // Handle special URL schemes (mailto:, tel:, etc.)
+        guard let url = navigationAction.request.url else {
             decisionHandler(.allow)
             return
         }
         
-        // Fallback: allow navigation
+        let urlString = url.absoluteString
+        print("[CustomBridgeViewController] 🔍 Navigation decision for: \(urlString)")
+        print("[CustomBridgeViewController] 🔍 Navigation type: \(navigationAction.navigationType.rawValue)")
+        
+        // Handle mailto: links with Mail app
+        if url.scheme == "mailto" {
+            if UIApplication.shared.canOpenURL(url) {
+                UIApplication.shared.open(url, options: [:]) { success in
+                    if success {
+                        print("[CustomBridgeViewController] ✉️ Opened mailto link: \(urlString)")
+                    } else {
+                        print("[CustomBridgeViewController] ❌ Failed to open mailto link")
+                    }
+                }
+                decisionHandler(.cancel) // Cancel WebView navigation
+                return
+            } else {
+                print("[CustomBridgeViewController] ⚠️ Cannot open mailto URL")
+                decisionHandler(.cancel)
+                return
+            }
+        }
+        
+        // Handle tel: links with Phone app
+        if url.scheme == "tel" {
+            if UIApplication.shared.canOpenURL(url) {
+                UIApplication.shared.open(url, options: [:]) { success in
+                    if success {
+                        print("[CustomBridgeViewController] 📞 Opened tel link: \(urlString)")
+                    } else {
+                        print("[CustomBridgeViewController] ❌ Failed to open tel link")
+                    }
+                }
+                decisionHandler(.cancel) // Cancel WebView navigation
+                return
+            } else {
+                print("[CustomBridgeViewController] ⚠️ Cannot open tel URL")
+                decisionHandler(.cancel)
+                return
+            }
+        }
+        
+        // Always allow navigation in WebView - never open Safari
+        // This is critical for WebViewController plugin to work correctly
+        print("[CustomBridgeViewController] ✅ Allowing navigation in WebView (preventing Safari)")
         decisionHandler(.allow)
     }
     

@@ -70,8 +70,33 @@ public class MainActivity extends BridgeActivity {
                 webView.setWebViewClient(new WebViewClient() {
                     @Override
                     public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                        // Always load URLs within WebView, never open external browser
                         String url = request.getUrl().toString();
+                        
+                        // Handle mailto: links with email app
+                        if (url.startsWith("mailto:")) {
+                            try {
+                                Intent intent = new Intent(Intent.ACTION_SENDTO, android.net.Uri.parse(url));
+                                view.getContext().startActivity(intent);
+                                android.util.Log.d("MainActivity", "✉️ Opened mailto link: " + url);
+                                return true;
+                            } catch (Exception e) {
+                                android.util.Log.e("MainActivity", "❌ Error opening mailto: " + e.getMessage());
+                                return false;
+                            }
+                        }
+                        
+                        // Handle tel: links with phone app
+                        if (url.startsWith("tel:")) {
+                            try {
+                                Intent intent = new Intent(Intent.ACTION_DIAL, android.net.Uri.parse(url));
+                                view.getContext().startActivity(intent);
+                                android.util.Log.d("MainActivity", "📞 Opened tel link: " + url);
+                                return true;
+                            } catch (Exception e) {
+                                android.util.Log.e("MainActivity", "❌ Error opening tel: " + e.getMessage());
+                                return false;
+                            }
+                        }
                         
                         // 🔥 CRITICAL: Redirect old domain to new domain
                         if (url.contains("alerta.kriptokirmizi.com")) {
@@ -81,6 +106,7 @@ public class MainActivity extends BridgeActivity {
                             return true;
                         }
                         
+                        // Always load URLs within WebView, never open external browser
                         view.loadUrl(url);
                         return true; // We handled the URL loading
                     }
@@ -90,6 +116,32 @@ public class MainActivity extends BridgeActivity {
                     public boolean shouldOverrideUrlLoading(WebView view, String url) {
                         // For older Android versions
                         
+                        // Handle mailto: links with email app
+                        if (url.startsWith("mailto:")) {
+                            try {
+                                Intent intent = new Intent(Intent.ACTION_SENDTO, android.net.Uri.parse(url));
+                                view.getContext().startActivity(intent);
+                                android.util.Log.d("MainActivity", "✉️ Opened mailto link: " + url);
+                                return true;
+                            } catch (Exception e) {
+                                android.util.Log.e("MainActivity", "❌ Error opening mailto: " + e.getMessage());
+                                return false;
+                            }
+                        }
+                        
+                        // Handle tel: links with phone app
+                        if (url.startsWith("tel:")) {
+                            try {
+                                Intent intent = new Intent(Intent.ACTION_DIAL, android.net.Uri.parse(url));
+                                view.getContext().startActivity(intent);
+                                android.util.Log.d("MainActivity", "📞 Opened tel link: " + url);
+                                return true;
+                            } catch (Exception e) {
+                                android.util.Log.e("MainActivity", "❌ Error opening tel: " + e.getMessage());
+                                return false;
+                            }
+                        }
+                        
                         // 🔥 CRITICAL: Redirect old domain to new domain
                         if (url.contains("alerta.kriptokirmizi.com")) {
                             String newUrl = url.replace("alerta.kriptokirmizi.com", "alertachart.com");
@@ -98,6 +150,7 @@ public class MainActivity extends BridgeActivity {
                             return true;
                         }
                         
+                        // Always load URLs within WebView, never open external browser
                         view.loadUrl(url);
                         return true; // We handled the URL loading
                     }
@@ -318,8 +371,33 @@ public class MainActivity extends BridgeActivity {
             webView.setWebViewClient(new WebViewClient() {
                 @Override
                 public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                    // Always load URLs within WebView, never open external browser
                     String url = request.getUrl().toString();
+                    
+                    // Handle mailto: links with email app
+                    if (url.startsWith("mailto:")) {
+                        try {
+                            Intent intent = new Intent(Intent.ACTION_SENDTO, android.net.Uri.parse(url));
+                            view.getContext().startActivity(intent);
+                            android.util.Log.d("MainActivity", "✉️ Opened mailto link: " + url);
+                            return true;
+                        } catch (Exception e) {
+                            android.util.Log.e("MainActivity", "❌ Error opening mailto: " + e.getMessage());
+                            return false;
+                        }
+                    }
+                    
+                    // Handle tel: links with phone app
+                    if (url.startsWith("tel:")) {
+                        try {
+                            Intent intent = new Intent(Intent.ACTION_DIAL, android.net.Uri.parse(url));
+                            view.getContext().startActivity(intent);
+                            android.util.Log.d("MainActivity", "📞 Opened tel link: " + url);
+                            return true;
+                        } catch (Exception e) {
+                            android.util.Log.e("MainActivity", "❌ Error opening tel: " + e.getMessage());
+                            return false;
+                        }
+                    }
                     
                     // 🔥 CRITICAL: Redirect old domain to new domain
                     if (url.contains("alerta.kriptokirmizi.com")) {
@@ -329,6 +407,7 @@ public class MainActivity extends BridgeActivity {
                         return true;
                     }
                     
+                    // Always load URLs within WebView, never open external browser
                     view.loadUrl(url);
                     return true; // We handled the URL loading
                 }
@@ -338,6 +417,32 @@ public class MainActivity extends BridgeActivity {
                 public boolean shouldOverrideUrlLoading(WebView view, String url) {
                     // For older Android versions
                     
+                    // Handle mailto: links with email app
+                    if (url.startsWith("mailto:")) {
+                        try {
+                            Intent intent = new Intent(Intent.ACTION_SENDTO, android.net.Uri.parse(url));
+                            view.getContext().startActivity(intent);
+                            android.util.Log.d("MainActivity", "✉️ Opened mailto link: " + url);
+                            return true;
+                        } catch (Exception e) {
+                            android.util.Log.e("MainActivity", "❌ Error opening mailto: " + e.getMessage());
+                            return false;
+                        }
+                    }
+                    
+                    // Handle tel: links with phone app
+                    if (url.startsWith("tel:")) {
+                        try {
+                            Intent intent = new Intent(Intent.ACTION_DIAL, android.net.Uri.parse(url));
+                            view.getContext().startActivity(intent);
+                            android.util.Log.d("MainActivity", "📞 Opened tel link: " + url);
+                            return true;
+                        } catch (Exception e) {
+                            android.util.Log.e("MainActivity", "❌ Error opening tel: " + e.getMessage());
+                            return false;
+                        }
+                    }
+                    
                     // 🔥 CRITICAL: Redirect old domain to new domain
                     if (url.contains("alerta.kriptokirmizi.com")) {
                         String newUrl = url.replace("alerta.kriptokirmizi.com", "alertachart.com");
@@ -346,6 +451,7 @@ public class MainActivity extends BridgeActivity {
                         return true;
                     }
                     
+                    // Always load URLs within WebView, never open external browser
                     view.loadUrl(url);
                     return true; // We handled the URL loading
                 }
