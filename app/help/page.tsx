@@ -328,10 +328,9 @@ export default function HelpCenter() {
           </a>
 
           {/* Support Requests */}
-          <a
-            href={`mailto:info@alertachart.com?subject=${encodeURIComponent('AlertaChart Destek Talebi')}&body=${encodeURIComponent('Merhaba AlertaChart ekibi,\n\n[Lütfen sorunuzu veya önerinizi buraya yazın]\n\n---\nCihaz: ' + (typeof navigator !== 'undefined' ? navigator.userAgent : ''))}`}
-            onClick={handleMailLink}
-            className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all group text-left block"
+          <button
+            onClick={() => setShowSupportModal(true)}
+            className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all group text-left w-full"
           >
             <div className="bg-green-500/10 w-14 h-14 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Mail className="w-7 h-7 text-green-400" />
@@ -344,7 +343,7 @@ export default function HelpCenter() {
                 ? 'Ekibimize sorularınızı iletin' 
                 : 'Manage your queries to our team'}
             </p>
-          </a>
+          </button>
         </div>
 
         {/* FAQ Section */}
