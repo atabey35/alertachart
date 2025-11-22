@@ -42,14 +42,21 @@ export async function POST(request: NextRequest) {
 
     // Get user session (optional - support requests can be anonymous)
     const session = await getServerSession(authOptions);
-    const userId = session?.user?.id || null;
     const userEmail = session?.user?.email || null;
-
-    // Get user agent for device info
-    const userAgent = request.headers.get('user-agent') || 'Unknown';
-
+    
     // Create support request in database
     const sql = getSql();
+    
+    // Get user ID from database if email exists
+    let userId: number | null = null;
+    if (userEmail) {
+      const users = await sql`
+        SELECT id FROM users WHERE email = ${userEmail} LIMIT 1
+      `;
+      if (users.length > 0) {
+        userId = users[0].id;
+      }
+    }
     
     // Ensure table exists (create if not exists)
     await sql`
