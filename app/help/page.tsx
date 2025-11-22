@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Book, MessageCircle, Mail, ChevronRight, Search, ArrowLeft } from 'lucide-react';
+import { Browser } from '@capacitor/browser';
 
 interface FAQItem {
   question: string;
@@ -138,6 +139,15 @@ export default function HelpCenter() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [language, setLanguage] = useState<'tr' | 'en'>('tr');
+  const [isCapacitor, setIsCapacitor] = useState(false);
+  
+  // Check if running in Capacitor
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const hasCapacitor = !!(window as any).Capacitor;
+      setIsCapacitor(hasCapacitor);
+    }
+  }, []);
   
   // Load language from localStorage
   useEffect(() => {
@@ -148,6 +158,23 @@ export default function HelpCenter() {
       }
     }
   }, []);
+  
+  // Handle mail link - works for both web and Capacitor
+  const handleMailLink = async (e: React.MouseEvent<HTMLAnchorElement>) => {
+    if (!isCapacitor) return; // Let browser handle it normally on web
+    
+    e.preventDefault();
+    const mailtoUrl = (e.currentTarget as HTMLAnchorElement).href;
+    
+    try {
+      // On Capacitor, use Browser plugin to open mailto: URL
+      await Browser.open({ url: mailtoUrl });
+    } catch (error) {
+      console.error('[Help] Error opening mail:', error);
+      // Fallback: try native window.location
+      window.location.href = mailtoUrl;
+    }
+  };
 
   // Arama ve kategori filtreleme
   const filteredFAQs = faqs.filter(faq => {
@@ -252,6 +279,7 @@ export default function HelpCenter() {
           {/* Support Requests */}
           <a
             href={`mailto:info@alertachart.com?subject=${encodeURIComponent('AlertaChart Destek Talebi')}&body=${encodeURIComponent('Merhaba AlertaChart ekibi,\n\n[Lütfen sorunuzu veya önerinizi buraya yazın]\n\n---\nCihaz: ' + (typeof navigator !== 'undefined' ? navigator.userAgent : ''))}`}
+            onClick={handleMailLink}
             className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all group text-left block"
           >
             <div className="bg-green-500/10 w-14 h-14 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
@@ -326,6 +354,7 @@ export default function HelpCenter() {
 
             <a
               href={`mailto:info@alertachart.com?subject=${encodeURIComponent('AlertaChart Destek Talebi')}&body=${encodeURIComponent('Merhaba AlertaChart ekibi,\n\n[Lütfen sorunuzu veya önerinizi buraya yazın]\n\n---\nCihaz: ' + (typeof navigator !== 'undefined' ? navigator.userAgent : ''))}`}
+              onClick={handleMailLink}
               className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-gray-800 rounded-lg p-6 hover:border-gray-700 transition-all group flex items-center justify-between"
             >
               <div className="flex items-center gap-4">
@@ -349,6 +378,7 @@ export default function HelpCenter() {
               : 'Still need help? '}
             <a
               href={`mailto:info@alertachart.com?subject=${encodeURIComponent('AlertaChart Destek Talebi')}&body=${encodeURIComponent('Merhaba AlertaChart ekibi,\n\n[Lütfen sorunuzu veya önerinizi buraya yazın]\n\n---\nCihaz: ' + (typeof navigator !== 'undefined' ? navigator.userAgent : ''))}`}
+              onClick={handleMailLink}
               className="text-blue-400 hover:text-blue-300 transition-colors underline"
             >
               {language === 'tr' ? 'Destek ekibimize ulaşın' : 'Contact our support team'}
