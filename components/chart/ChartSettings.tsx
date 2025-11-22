@@ -347,82 +347,82 @@ export default function ChartSettings({ isOpen, onClose, settings, onSave }: Cha
           </section>
 
           {/* Technical Indicators */}
-          <section className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-800/50">
-            <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-              <div className="w-1 h-5 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full"></div>
+          <section className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-3 border border-gray-800/50">
+            <h3 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+              <div className="w-0.5 h-4 bg-gradient-to-b from-cyan-500 to-blue-500 rounded-full"></div>
               Technical Indicators
             </h3>
-            <div className="space-y-4">
+            <div className="space-y-2">
               {/* RSI */}
-              <div className="space-y-3 p-4 bg-gradient-to-br from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
+              <div className="space-y-1.5 p-2 bg-gradient-to-br from-gray-800/50 to-gray-800/30 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
                 <label className="flex items-center justify-between cursor-pointer group">
-                  <span className="text-gray-300 font-semibold group-hover:text-white transition-colors">RSI (Relative Strength Index)</span>
+                  <span className="text-sm text-gray-300 font-semibold group-hover:text-white transition-colors">RSI</span>
                   <input
                     type="checkbox"
                     checked={localSettings.showRSI}
                     onChange={(e) => setLocalSettings({ ...localSettings, showRSI: e.target.checked })}
-                    className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-gray-900 cursor-pointer transition-all"
+                    className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-1 focus:ring-blue-500/50 cursor-pointer transition-all"
                   />
                 </label>
                 {localSettings.showRSI && (
-                  <label className="flex items-center justify-between p-2 bg-gray-900/30 rounded-lg">
-                    <span className="text-sm text-gray-400 font-medium">Period</span>
+                  <label className="flex items-center justify-between p-1 bg-gray-900/30 rounded">
+                    <span className="text-xs text-gray-400 font-medium">Period</span>
                     <input
                       type="number"
                       min="2"
                       max="100"
                       value={localSettings.rsiPeriod}
                       onChange={(e) => setLocalSettings({ ...localSettings, rsiPeriod: parseInt(e.target.value) || 14 })}
-                      className="w-20 px-3 py-1.5 text-sm bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                      className="w-12 px-1.5 py-0.5 text-xs bg-gray-800/50 border border-gray-700/50 rounded text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
                     />
                   </label>
                 )}
               </div>
 
               {/* MACD */}
-              <div className="space-y-3 p-4 bg-gradient-to-br from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
+              <div className="space-y-1.5 p-2 bg-gradient-to-br from-gray-800/50 to-gray-800/30 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
                 <label className="flex items-center justify-between cursor-pointer group">
-                  <span className="text-gray-300 font-semibold group-hover:text-white transition-colors">MACD</span>
+                  <span className="text-sm text-gray-300 font-semibold group-hover:text-white transition-colors">MACD</span>
                   <input
                     type="checkbox"
                     checked={localSettings.showMACD}
                     onChange={(e) => setLocalSettings({ ...localSettings, showMACD: e.target.checked })}
-                    className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-gray-900 cursor-pointer transition-all"
+                    className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-1 focus:ring-blue-500/50 cursor-pointer transition-all"
                   />
                 </label>
                 {localSettings.showMACD && (
-                  <div className="grid grid-cols-3 gap-3">
-                    <label className="space-y-1">
-                      <span className="text-xs text-gray-400 font-medium">Fast</span>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <label className="space-y-0.5">
+                      <span className="text-[10px] text-gray-400 font-medium">Fast</span>
                       <input
                         type="number"
                         min="2"
                         max="100"
                         value={localSettings.macdFast}
                         onChange={(e) => setLocalSettings({ ...localSettings, macdFast: parseInt(e.target.value) || 12 })}
-                        className="w-full px-3 py-1.5 text-sm bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="w-full px-1.5 py-0.5 text-xs bg-gray-800/50 border border-gray-700/50 rounded text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
                       />
                     </label>
-                    <label className="space-y-1">
-                      <span className="text-xs text-gray-400 font-medium">Slow</span>
+                    <label className="space-y-0.5">
+                      <span className="text-[10px] text-gray-400 font-medium">Slow</span>
                       <input
                         type="number"
                         min="2"
                         max="100"
                         value={localSettings.macdSlow}
                         onChange={(e) => setLocalSettings({ ...localSettings, macdSlow: parseInt(e.target.value) || 26 })}
-                        className="w-full px-3 py-1.5 text-sm bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="w-full px-1.5 py-0.5 text-xs bg-gray-800/50 border border-gray-700/50 rounded text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
                       />
                     </label>
-                    <label className="space-y-1">
-                      <span className="text-xs text-gray-400 font-medium">Signal</span>
+                    <label className="space-y-0.5">
+                      <span className="text-[10px] text-gray-400 font-medium">Signal</span>
                       <input
                         type="number"
                         min="2"
                         max="100"
                         value={localSettings.macdSignal}
                         onChange={(e) => setLocalSettings({ ...localSettings, macdSignal: parseInt(e.target.value) || 9 })}
-                        className="w-full px-3 py-1.5 text-sm bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="w-full px-1.5 py-0.5 text-xs bg-gray-800/50 border border-gray-700/50 rounded text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
                       />
                     </label>
                   </div>
@@ -430,31 +430,31 @@ export default function ChartSettings({ isOpen, onClose, settings, onSave }: Cha
               </div>
 
               {/* Bollinger Bands */}
-              <div className="space-y-3 p-4 bg-gradient-to-br from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
+              <div className="space-y-1.5 p-2 bg-gradient-to-br from-gray-800/50 to-gray-800/30 rounded-lg border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
                 <label className="flex items-center justify-between cursor-pointer group">
-                  <span className="text-gray-300 font-semibold group-hover:text-white transition-colors">Bollinger Bands</span>
+                  <span className="text-sm text-gray-300 font-semibold group-hover:text-white transition-colors">Bollinger</span>
                   <input
                     type="checkbox"
                     checked={localSettings.showBB}
                     onChange={(e) => setLocalSettings({ ...localSettings, showBB: e.target.checked })}
-                    className="w-5 h-5 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500/50 focus:ring-offset-2 focus:ring-offset-gray-900 cursor-pointer transition-all"
+                    className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-1 focus:ring-blue-500/50 cursor-pointer transition-all"
                   />
                 </label>
                 {localSettings.showBB && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="space-y-1">
-                      <span className="text-xs text-gray-400 font-medium">Period</span>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <label className="space-y-0.5">
+                      <span className="text-[10px] text-gray-400 font-medium">Period</span>
                       <input
                         type="number"
                         min="2"
                         max="100"
                         value={localSettings.bbPeriod}
                         onChange={(e) => setLocalSettings({ ...localSettings, bbPeriod: parseInt(e.target.value) || 20 })}
-                        className="w-full px-3 py-1.5 text-sm bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="w-full px-1.5 py-0.5 text-xs bg-gray-800/50 border border-gray-700/50 rounded text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
                       />
                     </label>
-                    <label className="space-y-1">
-                      <span className="text-xs text-gray-400 font-medium">Std Dev</span>
+                    <label className="space-y-0.5">
+                      <span className="text-[10px] text-gray-400 font-medium">Std Dev</span>
                       <input
                         type="number"
                         min="1"
@@ -462,7 +462,7 @@ export default function ChartSettings({ isOpen, onClose, settings, onSave }: Cha
                         step="0.1"
                         value={localSettings.bbStdDev}
                         onChange={(e) => setLocalSettings({ ...localSettings, bbStdDev: parseFloat(e.target.value) || 2 })}
-                        className="w-full px-3 py-1.5 text-sm bg-gray-800/50 border border-gray-700/50 rounded-lg text-white focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                        className="w-full px-1.5 py-0.5 text-xs bg-gray-800/50 border border-gray-700/50 rounded text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500/20 transition-all"
                       />
                     </label>
                   </div>
