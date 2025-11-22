@@ -85,11 +85,6 @@ const faqs: FAQItem[] = [
     answer: 'Şu anda Binance (Spot ve Futures), Bybit, OKX desteklenmektedir. Yakında daha fazla borsa eklenecek.',
     category: 'Data'
   },
-  {
-    question: 'Historical data ne kadar geriye gidiyor?',
-    answer: 'Binance API üzerinden en fazla 1000 mum (candle) verisi çekilebilir. 1 dakikalık grafik için ~16 saat, 1 saatlik grafik için ~41 gün geriye gidebilirsiniz.',
-    category: 'Data'
-  },
   // Billing
   {
     question: 'Premium üyelik avantajları nelerdir?',
