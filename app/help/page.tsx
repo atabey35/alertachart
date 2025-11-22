@@ -8,6 +8,8 @@ import { Browser } from '@capacitor/browser';
 interface FAQItem {
   question: string;
   answer: string;
+  questionEn: string;
+  answerEn: string;
   category: string;
 }
 
@@ -16,111 +18,153 @@ const faqs: FAQItem[] = [
   {
     question: 'Grafik üzerinde nasıl alarm kurabilirim?',
     answer: 'Grafik üzerinde istediğiniz fiyat seviyesine sağ tıklayın ve "Set Alert" seçeneğini seçin. Alternatif olarak, sağdaki Alerts panelinden de alarm kurabilirsiniz.',
+    questionEn: 'How can I set an alert on the chart?',
+    answerEn: 'Right-click on the desired price level on the chart and select "Set Alert". Alternatively, you can also set alerts from the Alerts panel on the right.',
     category: 'Chart'
   },
   {
     question: 'Çizim araçlarını nasıl kullanabilirim?',
     answer: 'Grafik altındaki araç çubuğundan çizim araçlarına erişebilirsiniz. Trend çizgisi, yatay çizgi, Fibonacci gibi birçok araç mevcuttur. Mobilde sağ alttaki mavi butona basarak araçlara ulaşabilirsiniz.',
+    questionEn: 'How can I use the drawing tools?',
+    answerEn: 'You can access drawing tools from the toolbar below the chart. Many tools are available such as trend lines, horizontal lines, Fibonacci, etc. On mobile, tap the blue button in the bottom right to access the tools.',
     category: 'Chart'
   },
   {
     question: 'Multi-chart layout nasıl kullanılır?',
     answer: 'Üst menüden 1x1, 1x2, 2x2 veya 3x3 grid düzenini seçebilirsiniz. Her bir grafikte farklı coin ve timeframe gösterebilirsiniz.',
+    questionEn: 'How do I use the multi-chart layout?',
+    answerEn: 'You can select 1x1, 1x2, 2x2, or 3x3 grid layout from the top menu. You can display different coins and timeframes on each chart.',
     category: 'Chart'
   },
   {
     question: 'Grafik göstergeleri (indicators) nasıl eklenir?',
     answer: 'Grafik üzerindeki ayarlar butonuna tıklayın. Indicators bölümünden RSI, MACD, EMA, SMA, Bollinger Bands gibi göstergeleri aktif edebilirsiniz.',
+    questionEn: 'How do I add chart indicators?',
+    answerEn: 'Click the settings button on the chart. You can activate indicators like RSI, MACD, EMA, SMA, Bollinger Bands from the Indicators section.',
     category: 'Chart'
   },
   // Trading
   {
     question: 'Spot ve Futures arasındaki fark nedir?',
     answer: 'Spot piyasada gerçek varlık alım satımı yapılırken, Futures\'da türev ürünler işlem görür. Üst menüden SPOT/FUTURES seçimi yapabilirsiniz.',
+    questionEn: 'What is the difference between Spot and Futures?',
+    answerEn: 'Spot market trades real assets, while Futures trades derivative products. You can select SPOT/FUTURES from the top menu.',
     category: 'Trading'
   },
   {
     question: 'Watchlist\'e nasıl coin eklerim?',
     answer: 'Watchlist panelindeki "+" butonuna tıklayın. Arama yaparak istediğiniz coin\'i bulun ve ekleyin. Ayrıca kategori filtreleri ile de coin bulabilirsiniz.',
+    questionEn: 'How do I add coins to the watchlist?',
+    answerEn: 'Click the "+" button in the watchlist panel. Search and find the coin you want and add it. You can also use category filters to find coins.',
     category: 'Trading'
   },
   {
     question: 'Gerçek zamanlı fiyat güncellemeleri nasıl çalışır?',
     answer: 'Binance WebSocket bağlantısı üzerinden gerçek zamanlı fiyat verileri alınır. Bağlantı durumunu grafik üzerindeki yeşil/kırmızı nokta ile görebilirsiniz.',
+    questionEn: 'How do real-time price updates work?',
+    answerEn: 'Real-time price data is received through Binance WebSocket connection. You can see the connection status with the green/red dot on the chart.',
     category: 'Trading'
   },
   // Alerts
   {
     question: 'Alarmlarım nasıl bildiriliyor?',
     answer: 'Premium üyeler için push notification (mobil bildirim) ve backend üzerinden otomatik takip. Free kullanıcılar için uygulama açık olduğunda bildirim.',
+    questionEn: 'How are my alerts notified?',
+    answerEn: 'For premium members: push notifications (mobile) and automatic tracking via backend. For free users: notifications when the app is open.',
     category: 'Alerts'
   },
   {
     question: 'Kaç tane alarm kurabilirim?',
     answer: 'Free plan: 5 alarm. Premium plan: Sınırsız alarm kurabilirsiniz.',
+    questionEn: 'How many alerts can I set?',
+    answerEn: 'Free plan: 5 alerts. Premium plan: Unlimited alerts.',
     category: 'Alerts'
   },
   {
     question: 'Alarmlarım otomatik takip ediliyor mu?',
     answer: 'Premium üyeler için evet! Backend sunucumuz 7/24 fiyatları takip eder ve alarm tetiklendiğinde push notification gönderir. Uygulama kapalı olsa bile bildirim alırsınız.',
+    questionEn: 'Are my alerts automatically monitored?',
+    answerEn: 'Yes for premium members! Our backend server monitors prices 24/7 and sends push notifications when alerts trigger. You receive notifications even when the app is closed.',
     category: 'Alerts'
   },
   {
     question: 'Alarm geçmişini görebilir miyim?',
     answer: 'Evet, Alerts panelinde geçmiş alarmlarınızı ve tetiklenme durumlarını görebilirsiniz.',
+    questionEn: 'Can I see alert history?',
+    answerEn: 'Yes, you can see your past alerts and trigger statuses in the Alerts panel.',
     category: 'Alerts'
   },
   // Data
   {
     question: 'Liquidation verileri nereden geliyor?',
     answer: 'Binance Futures piyasasından gerçek zamanlı liquidation verileri alınır. Premium özellik olarak Liquidations sekmesinden detaylı istatistiklere ulaşabilirsiniz.',
+    questionEn: 'Where does liquidation data come from?',
+    answerEn: 'Real-time liquidation data is received from Binance Futures market. As a premium feature, you can access detailed statistics from the Liquidations tab.',
     category: 'Data'
   },
   {
     question: 'AGGR nedir?',
     answer: 'AGGR (Aggregate Trades), farklı borsalardan toplanan işlem verilerini bir arada gösteren gelişmiş bir analiz aracıdır. Premium özellik olarak sunulmaktadır.',
+    questionEn: 'What is AGGR?',
+    answerEn: 'AGGR (Aggregate Trades) is an advanced analysis tool that displays aggregated trade data from different exchanges. It is offered as a premium feature.',
     category: 'Data'
   },
   {
     question: 'Hangi borsalar destekleniyor?',
     answer: 'Şu anda Binance (Spot ve Futures), Bybit, OKX desteklenmektedir. Yakında daha fazla borsa eklenecek.',
+    questionEn: 'Which exchanges are supported?',
+    answerEn: 'Currently Binance (Spot and Futures), Bybit, and OKX are supported. More exchanges will be added soon.',
     category: 'Data'
   },
   // Billing
   {
     question: 'Premium üyelik avantajları nelerdir?',
     answer: 'Sınırsız alarm, otomatik fiyat takibi (7/24 backend), push notifications, Liquidations dashboard, AGGR menüsü, tüm timeframe\'lere erişim ve reklamsız deneyim.',
+    questionEn: 'What are the premium membership benefits?',
+    answerEn: 'Unlimited alerts, automatic price tracking (24/7 backend), push notifications, Liquidations dashboard, AGGR menu, access to all timeframes, and ad-free experience.',
     category: 'Billing'
   },
   {
     question: 'Ücretsiz deneme süresi var mı?',
     answer: 'Evet! İlk kayıt olduğunuzda 3 gün ücretsiz premium deneme süresi kazanırsınız.',
+    questionEn: 'Is there a free trial period?',
+    answerEn: 'Yes! You get 3 days of free premium trial when you first register.',
     category: 'Billing'
   },
   {
     question: 'Aboneliği nasıl iptal edebilirim?',
     answer: 'iOS: App Store > Abonelikler. Android: Google Play > Abonelikler. Buradan aboneliğinizi yönetebilirsiniz.',
+    questionEn: 'How can I cancel my subscription?',
+    answerEn: 'iOS: App Store > Subscriptions. Android: Google Play > Subscriptions. You can manage your subscription from there.',
     category: 'Billing'
   },
   {
     question: 'Ödeme yöntemleri nelerdir?',
     answer: 'iOS için Apple In-App Purchase, Android için Google Play Billing kullanılır. Kredi kartı, banka kartı ve App Store/Play Store bakiyesi ile ödeme yapabilirsiniz.',
+    questionEn: 'What are the payment methods?',
+    answerEn: 'Apple In-App Purchase for iOS, Google Play Billing for Android. You can pay with credit card, debit card, and App Store/Play Store balance.',
     category: 'Billing'
   },
   // Genel
   {
     question: 'Uygulama hangi cihazlarda çalışır?',
     answer: 'iOS (iPhone/iPad), Android telefonlar ve web tarayıcılar (Chrome, Safari, Firefox) desteklenmektedir.',
+    questionEn: 'Which devices does the app work on?',
+    answerEn: 'iOS (iPhone/iPad), Android phones, and web browsers (Chrome, Safari, Firefox) are supported.',
     category: 'Chart'
   },
   {
     question: 'Çizimlerim ve ayarlarım kaydediliyor mu?',
     answer: 'Evet! Tüm çizimleriniz, alarm ayarlarınız ve grafik tercihleri cihazınızda (localStorage) kaydedilir.',
+    questionEn: 'Are my drawings and settings saved?',
+    answerEn: 'Yes! All your drawings, alert settings, and chart preferences are saved on your device (localStorage).',
     category: 'Chart'
   },
   {
     question: 'İnternet bağlantısı olmadan kullanabilir miyim?',
     answer: 'Hayır, gerçek zamanlı fiyat verileri için internet bağlantısı gereklidir. Ancak önceden yüklenmiş grafikler görüntülenebilir.',
+    questionEn: 'Can I use it without an internet connection?',
+    answerEn: 'No, internet connection is required for real-time price data. However, previously loaded charts can be viewed.',
     category: 'Chart'
   },
 ];
@@ -178,8 +222,10 @@ export default function HelpCenter() {
 
   // Arama ve kategori filtreleme
   const filteredFAQs = faqs.filter(faq => {
-    const matchesSearch = faq.question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         faq.answer.toLowerCase().includes(searchQuery.toLowerCase());
+    const question = language === 'tr' ? faq.question : faq.questionEn;
+    const answer = language === 'tr' ? faq.answer : faq.answerEn;
+    const matchesSearch = question.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         answer.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || faq.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -319,11 +365,11 @@ export default function HelpCenter() {
                   className="bg-gray-900 border border-gray-800 rounded-lg p-5 hover:border-gray-700 transition-all group"
                 >
                   <summary className="cursor-pointer flex items-center justify-between text-lg font-medium group-hover:text-blue-400 transition-colors">
-                    <span>{faq.question}</span>
+                    <span>{language === 'tr' ? faq.question : faq.questionEn}</span>
                     <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-blue-400 transition-transform group-open:rotate-90" />
                   </summary>
                   <div className="mt-4 pt-4 border-t border-gray-800 text-gray-400 leading-relaxed">
-                    {faq.answer}
+                    {language === 'tr' ? faq.answer : faq.answerEn}
                   </div>
                 </details>
               ))}
