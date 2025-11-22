@@ -147,15 +147,6 @@ export default function HelpCenter() {
     return matchesSearch && matchesCategory;
   });
 
-  // Mail gönderimi
-  const handleSupportRequest = () => {
-    const subject = encodeURIComponent('AlertaChart Destek Talebi');
-    const body = encodeURIComponent(
-      'Merhaba AlertaChart ekibi,\n\n[Lütfen sorunuzu veya önerinizi buraya yazın]\n\n---\nCihaz: ' + navigator.userAgent
-    );
-    window.location.href = `mailto:info@alertachart.com?subject=${subject}&body=${body}`;
-  };
-
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Header */}
@@ -249,9 +240,9 @@ export default function HelpCenter() {
           </a>
 
           {/* Support Requests */}
-          <button
-            onClick={handleSupportRequest}
-            className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all group text-left"
+          <a
+            href={`mailto:info@alertachart.com?subject=${encodeURIComponent('AlertaChart Destek Talebi')}&body=${encodeURIComponent('Merhaba AlertaChart ekibi,\n\n[Lütfen sorunuzu veya önerinizi buraya yazın]\n\n---\nCihaz: ' + (typeof navigator !== 'undefined' ? navigator.userAgent : ''))}`}
+            className="bg-gray-900 border border-gray-800 rounded-xl p-6 hover:border-gray-700 transition-all group text-left block"
           >
             <div className="bg-green-500/10 w-14 h-14 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
               <Mail className="w-7 h-7 text-green-400" />
@@ -264,7 +255,7 @@ export default function HelpCenter() {
                 ? 'Ekibimize sorularınızı iletin' 
                 : 'Manage your queries to our team'}
             </p>
-          </button>
+          </a>
         </div>
 
         {/* FAQ Section */}
@@ -323,9 +314,9 @@ export default function HelpCenter() {
               <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
             </a>
 
-            <button
-              onClick={handleSupportRequest}
-              className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-gray-800 rounded-lg p-6 hover:border-gray-700 transition-all group flex items-center justify-between text-left"
+            <a
+              href={`mailto:info@alertachart.com?subject=${encodeURIComponent('AlertaChart Destek Talebi')}&body=${encodeURIComponent('Merhaba AlertaChart ekibi,\n\n[Lütfen sorunuzu veya önerinizi buraya yazın]\n\n---\nCihaz: ' + (typeof navigator !== 'undefined' ? navigator.userAgent : ''))}`}
+              className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-gray-800 rounded-lg p-6 hover:border-gray-700 transition-all group flex items-center justify-between"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
@@ -336,7 +327,7 @@ export default function HelpCenter() {
                 </span>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
-            </button>
+            </a>
           </div>
         </div>
 
@@ -346,12 +337,12 @@ export default function HelpCenter() {
             {language === 'tr' 
               ? 'Hala yardıma mı ihtiyacınız var? ' 
               : 'Still need help? '}
-            <button
-              onClick={handleSupportRequest}
+            <a
+              href={`mailto:info@alertachart.com?subject=${encodeURIComponent('AlertaChart Destek Talebi')}&body=${encodeURIComponent('Merhaba AlertaChart ekibi,\n\n[Lütfen sorunuzu veya önerinizi buraya yazın]\n\n---\nCihaz: ' + (typeof navigator !== 'undefined' ? navigator.userAgent : ''))}`}
               className="text-blue-400 hover:text-blue-300 transition-colors underline"
             >
               {language === 'tr' ? 'Destek ekibimize ulaşın' : 'Contact our support team'}
-            </button>
+            </a>
           </p>
         </div>
       </div>
