@@ -1443,7 +1443,7 @@ export default function Home() {
           <div className={`flex items-center justify-between gap-2 lg:gap-4 ${isIPad ? 'hidden' : ''}`}>
             <div className="flex items-center gap-2 lg:gap-6">
               <div className="flex items-center gap-2">
-                <img src="/icon.png" alt="Alerta Chart Logo" className="w-6 h-6 lg:w-10 lg:h-10 rounded-lg" />
+                <img src="/icon.png" alt="Alerta Chart Logo" className="hidden lg:block w-10 h-10 rounded-lg" />
                 <h1 className="text-sm lg:text-2xl font-bold text-blue-500 whitespace-nowrap hidden sm:block">ALERTA CHART</h1>
               </div>
               <div className="hidden lg:flex items-center gap-3 text-sm text-gray-400">
