@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Book, MessageCircle, Mail, ChevronRight, Search, ArrowLeft } from 'lucide-react';
 
@@ -137,7 +137,17 @@ export default function HelpCenter() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [language] = useState<'tr' | 'en'>('tr'); // Dil desteği için
+  const [language, setLanguage] = useState<'tr' | 'en'>('tr');
+  
+  // Load language from localStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedLanguage = localStorage.getItem('language') as 'tr' | 'en' | null;
+      if (savedLanguage) {
+        setLanguage(savedLanguage);
+      }
+    }
+  }, []);
 
   // Arama ve kategori filtreleme
   const filteredFAQs = faqs.filter(faq => {
@@ -151,14 +161,14 @@ export default function HelpCenter() {
     <div className="min-h-screen bg-[#0a0a0a] text-white">
       {/* Header */}
       <div className="bg-gradient-to-b from-gray-900 to-[#0a0a0a] border-b border-gray-800">
-        <div className="max-w-6xl mx-auto px-4 py-8">
+        <div className="max-w-6xl mx-auto px-4 py-8 pt-12">
           {/* Back Button */}
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors"
+            className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors mt-4"
           >
             <ArrowLeft className="w-5 h-5" />
-            <span>Geri</span>
+            <span>{language === 'tr' ? 'Geri' : 'Back'}</span>
           </button>
 
           {/* Title */}
