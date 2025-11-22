@@ -1714,10 +1714,10 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4">
+    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4 pt-12">
       <div className="max-w-md mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-4">
           <button
             onClick={() => router.push('/')}
             className="p-2 text-gray-400 hover:text-white transition"
