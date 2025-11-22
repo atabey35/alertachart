@@ -7,6 +7,8 @@ PODS:
     - AppAuth/Core
   - Capacitor (7.4.4):
     - CapacitorCordova
+  - CapacitorApp (7.1.0):
+    - Capacitor
   - CapacitorBrowser (7.0.2):
     - Capacitor
   - CapacitorCommunityAppleSignIn (7.1.0):
@@ -143,6 +145,7 @@ PODS:
 
 DEPENDENCIES:
   - "Capacitor (from `../../node_modules/@capacitor/ios`)"
+  - "CapacitorApp (from `../../node_modules/@capacitor/app`)"
   - "CapacitorBrowser (from `../../node_modules/@capacitor/browser`)"
   - "CapacitorCommunityAppleSignIn (from `../../node_modules/@capacitor-community/apple-sign-in`)"
   - "CapacitorCordova (from `../../node_modules/@capacitor/ios`)"
@@ -177,6 +180,8 @@ SPEC REPOS:
 EXTERNAL SOURCES:
   Capacitor:
     :path: "../../node_modules/@capacitor/ios"
+  CapacitorApp:
+    :path: "../../node_modules/@capacitor/app"
   CapacitorBrowser:
     :path: "../../node_modules/@capacitor/browser"
   CapacitorCommunityAppleSignIn:
@@ -197,6 +202,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AppAuth: d4f13a8fe0baf391b2108511793e4b479691fb73
   Capacitor: 358dd1c3fdd71d969547b17e159fd8a7736cb45f
+  CapacitorApp: 26587c2ce485d88ddb39adb21cac64f8e481afe3
   CapacitorBrowser: 22541e48442de44dc629c214388290d6eecc6ae9
   CapacitorCommunityAppleSignIn: 271cb2860576fd2961508bbfa7a82117d93eadca
   CapacitorCordova: bf648a636f3c153f652d312ae145fb508b6ffced
@@ -221,6 +227,6 @@ SPEC CHECKSUMS:
   nanopb: fad817b59e0457d11a5dfbde799381cd727c1275
   PromisesObjC: f5707f49cb48b9636751c5b2e7d227e43fba9f47
 
-PODFILE CHECKSUM: 47738095b8d1f8f155c96f7bc3cf280c8a9f940f
+PODFILE CHECKSUM: 5c37c17a8ec61b65f7aa066f7d26e6f943c526c1
 
 COCOAPODS: 1.16.2
