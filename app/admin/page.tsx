@@ -16,6 +16,11 @@ export default function AdminPage() {
   const [password, setPassword] = useState('');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
+  
+  // Support requests state
+  const [activeTab, setActiveTab] = useState<'broadcast' | 'support'>('broadcast');
+  const [supportRequests, setSupportRequests] = useState<any[]>([]);
+  const [loadingSupport, setLoadingSupport] = useState(false);
 
   // Check if already logged in (from sessionStorage)
   useEffect(() => {
@@ -24,6 +29,29 @@ export default function AdminPage() {
       setIsLoggedIn(true);
     }
   }, []);
+
+  // Fetch support requests
+  const fetchSupportRequests = async () => {
+    setLoadingSupport(true);
+    try {
+      const response = await fetch('/api/admin/support-requests?password=' + encodeURIComponent(loginPassword || sessionStorage.getItem('adminPassword') || ''));
+      const data = await response.json();
+      if (response.ok) {
+        setSupportRequests(data.requests || []);
+      }
+    } catch (error) {
+      console.error('Error fetching support requests:', error);
+    } finally {
+      setLoadingSupport(false);
+    }
+  };
+
+  // Load support requests when tab is active
+  useEffect(() => {
+    if (isLoggedIn && activeTab === 'support') {
+      fetchSupportRequests();
+    }
+  }, [isLoggedIn, activeTab]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +72,7 @@ export default function AdminPage() {
 
       if (response.ok) {
         sessionStorage.setItem('adminLoggedIn', 'true');
+        sessionStorage.setItem('adminPassword', loginPassword);
         setIsLoggedIn(true);
       } else {
         setLoginError(data.error || 'Giriş başarısız!');
@@ -235,8 +264,34 @@ export default function AdminPage() {
           </button>
         </div>
 
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6">
+          <button
+            onClick={() => setActiveTab('broadcast')}
+            className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === 'broadcast'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            📢 Bildirim Gönder
+          </button>
+          <button
+            onClick={() => setActiveTab('support')}
+            className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === 'support'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            💬 Destek Talepleri
+          </button>
+        </div>
+
         {/* Main Card */}
         <div className="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
+          {activeTab === 'broadcast' ? (
+            <>
           {/* Quick Messages */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -386,6 +441,89 @@ export default function AdminPage() {
               <div>• Emoji ve başlık bildirimde görünecek</div>
             </div>
           </div>
+            </>
+          ) : (
+            <>
+              {/* Support Requests Tab */}
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-xl font-semibold text-white">Destek Talepleri</h2>
+                <button
+                  onClick={fetchSupportRequests}
+                  disabled={loadingSupport}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 text-white text-sm rounded-lg transition-colors"
+                >
+                  {loadingSupport ? 'Yükleniyor...' : '🔄 Yenile'}
+                </button>
+              </div>
+
+              {loadingSupport ? (
+                <div className="text-center py-12">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-gray-400">Yükleniyor...</p>
+                </div>
+              ) : supportRequests.length === 0 ? (
+                <div className="text-center py-12">
+                  <p className="text-gray-400">Henüz destek talebi yok</p>
+                </div>
+              ) : (
+                <div className="space-y-4 max-h-[600px] overflow-y-auto">
+                  {supportRequests.map((request) => (
+                    <div
+                      key={request.id}
+                      className="bg-gray-900 border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded">
+                              {request.topic === 'general' ? 'Genel' :
+                               request.topic === 'technical' ? 'Teknik' :
+                               request.topic === 'billing' ? 'Ödeme' :
+                               request.topic === 'feature' ? 'Özellik' :
+                               request.topic === 'bug' ? 'Hata' : 'Diğer'}
+                            </span>
+                            <span className={`px-2 py-1 text-xs rounded ${
+                              request.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                              request.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
+                              request.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
+                              'bg-gray-500/20 text-gray-400'
+                            }`}>
+                              {request.status === 'pending' ? 'Beklemede' :
+                               request.status === 'in_progress' ? 'İşleniyor' :
+                               request.status === 'resolved' ? 'Çözüldü' : 'Kapatıldı'}
+                            </span>
+                          </div>
+                          {request.user_email && (
+                            <p className="text-sm text-gray-400 mb-1">
+                              📧 {request.user_email}
+                            </p>
+                          )}
+                          <p className="text-white text-sm whitespace-pre-wrap">
+                            {request.message}
+                          </p>
+                        </div>
+                        <div className="text-xs text-gray-500 ml-4">
+                          {new Date(request.created_at).toLocaleDateString('tr-TR', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                      </div>
+                      {request.admin_notes && (
+                        <div className="mt-3 pt-3 border-t border-gray-700">
+                          <p className="text-xs text-gray-500 mb-1">Admin Notları:</p>
+                          <p className="text-sm text-gray-400">{request.admin_notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
 
         {/* Back to Home */}

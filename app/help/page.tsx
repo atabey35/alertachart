@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Book, MessageCircle, Mail, ChevronRight, Search, ArrowLeft } from 'lucide-react';
+import SupportRequestModal from '@/components/SupportRequestModal';
 
 interface FAQItem {
   question: string;
@@ -183,6 +184,7 @@ export default function HelpCenter() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [language, setLanguage] = useState<'tr' | 'en'>('tr');
   const [isCapacitor, setIsCapacitor] = useState(false);
+  const [showSupportModal, setShowSupportModal] = useState(false);
   
   // Check if running in Capacitor
   useEffect(() => {
@@ -401,10 +403,9 @@ export default function HelpCenter() {
               <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
             </a>
 
-            <a
-              href={`mailto:info@alertachart.com?subject=${encodeURIComponent('AlertaChart Destek Talebi')}&body=${encodeURIComponent('Merhaba AlertaChart ekibi,\n\n[Lütfen sorunuzu veya önerinizi buraya yazın]\n\n---\nCihaz: ' + (typeof navigator !== 'undefined' ? navigator.userAgent : ''))}`}
-              onClick={handleMailLink}
-              className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-gray-800 rounded-lg p-6 hover:border-gray-700 transition-all group flex items-center justify-between"
+            <button
+              onClick={() => setShowSupportModal(true)}
+              className="bg-gradient-to-r from-green-900/20 to-blue-900/20 border border-gray-800 rounded-lg p-6 hover:border-gray-700 transition-all group flex items-center justify-between w-full text-left"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
@@ -415,7 +416,7 @@ export default function HelpCenter() {
                 </span>
               </div>
               <ChevronRight className="w-5 h-5 text-gray-500 group-hover:text-white transition-colors" />
-            </a>
+            </button>
           </div>
         </div>
 
@@ -435,6 +436,13 @@ export default function HelpCenter() {
           </p>
         </div>
       </div>
+
+      {/* Support Request Modal */}
+      <SupportRequestModal
+        isOpen={showSupportModal}
+        onClose={() => setShowSupportModal(false)}
+        language={language}
+      />
     </div>
   );
 }
