@@ -470,69 +470,69 @@ export default function ChartSettings({ isOpen, onClose, settings, onSave }: Cha
               </div>
 
               {/* Moving Averages (EMA) */}
-              <div className="space-y-3 p-4 bg-gradient-to-br from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
-                <div className="text-gray-300 font-semibold mb-3">Moving Averages (EMA)</div>
-                <div className="grid grid-cols-3 gap-3">
-                  <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
+              <div className="space-y-2 p-2 bg-gradient-to-br from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
+                <div className="text-gray-300 font-semibold mb-1.5 text-sm">EMA</div>
+                <div className="grid grid-cols-3 gap-2">
+                  <label className="flex items-center gap-1.5 p-1 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={localSettings.showMA50}
                       onChange={(e) => setLocalSettings({ ...localSettings, showMA50: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all"
+                      className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-1 focus:ring-blue-500/50 cursor-pointer transition-all"
                     />
-                    <span className="text-sm text-gray-400 group-hover:text-white transition-colors font-medium">MA 50</span>
+                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors font-medium">50</span>
                   </label>
-                  <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
+                  <label className="flex items-center gap-1.5 p-1 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={localSettings.showMA100}
                       onChange={(e) => setLocalSettings({ ...localSettings, showMA100: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all"
+                      className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-1 focus:ring-blue-500/50 cursor-pointer transition-all"
                     />
-                    <span className="text-sm text-gray-400 group-hover:text-white transition-colors font-medium">MA 100</span>
+                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors font-medium">100</span>
                   </label>
-                  <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
+                  <label className="flex items-center gap-1.5 p-1 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={localSettings.showMA200}
                       onChange={(e) => setLocalSettings({ ...localSettings, showMA200: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all"
+                      className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-1 focus:ring-blue-500/50 cursor-pointer transition-all"
                     />
-                    <span className="text-sm text-gray-400 group-hover:text-white transition-colors font-medium">MA 200</span>
+                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors font-medium">200</span>
                   </label>
                 </div>
               </div>
 
               {/* Simple Moving Averages (SMA) */}
-              <div className="space-y-3 p-4 bg-gradient-to-br from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
-                <div className="text-gray-300 font-semibold mb-3">Simple Moving Averages (SMA)</div>
-                <div className="grid grid-cols-3 gap-3">
-                  <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
+              <div className="space-y-2 p-2 bg-gradient-to-br from-gray-800/50 to-gray-800/30 rounded-xl border border-gray-700/50 hover:border-gray-600/50 transition-all duration-200">
+                <div className="text-gray-300 font-semibold mb-1.5 text-sm">SMA</div>
+                <div className="grid grid-cols-3 gap-2">
+                  <label className="flex items-center gap-1.5 p-1 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={localSettings.showSMA50}
                       onChange={(e) => setLocalSettings({ ...localSettings, showSMA50: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-600 focus:ring-2 focus:ring-green-500/50 cursor-pointer transition-all"
+                      className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-green-600 focus:ring-1 focus:ring-green-500/50 cursor-pointer transition-all"
                     />
-                    <span className="text-sm text-gray-400 group-hover:text-white transition-colors font-medium">SMA 50</span>
+                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors font-medium">50</span>
                   </label>
-                  <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
+                  <label className="flex items-center gap-1.5 p-1 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={localSettings.showSMA100}
                       onChange={(e) => setLocalSettings({ ...localSettings, showSMA100: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-600 focus:ring-2 focus:ring-green-500/50 cursor-pointer transition-all"
+                      className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-green-600 focus:ring-1 focus:ring-green-500/50 cursor-pointer transition-all"
                     />
-                    <span className="text-sm text-gray-400 group-hover:text-white transition-colors font-medium">SMA 100</span>
+                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors font-medium">100</span>
                   </label>
-                  <label className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
+                  <label className="flex items-center gap-1.5 p-1 rounded-lg hover:bg-gray-800/30 transition-colors cursor-pointer group">
                     <input
                       type="checkbox"
                       checked={localSettings.showSMA200}
                       onChange={(e) => setLocalSettings({ ...localSettings, showSMA200: e.target.checked })}
-                      className="w-4 h-4 rounded border-gray-600 bg-gray-700 text-green-600 focus:ring-2 focus:ring-green-500/50 cursor-pointer transition-all"
+                      className="w-3 h-3 rounded border-gray-600 bg-gray-700 text-green-600 focus:ring-1 focus:ring-green-500/50 cursor-pointer transition-all"
                     />
-                    <span className="text-sm text-gray-400 group-hover:text-white transition-colors font-medium">SMA 200</span>
+                    <span className="text-xs text-gray-400 group-hover:text-white transition-colors font-medium">200</span>
                   </label>
                 </div>
               </div>
