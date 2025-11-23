@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
       // Request body might be empty, that's okay
     }
     
-    const backendUrl = process.env.BACKEND_URL || 'http://localhost:3002';
+    const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
     
     // Forward cookies from request to backend
     const cookies = request.headers.get('cookie') || '';
@@ -84,10 +84,11 @@ export async function POST(request: NextRequest) {
       const isHttpOnly = cookieName === 'accessToken' || cookieName === 'refreshToken';
       
       // Clear with different SameSite and Secure combinations to ensure it works
+      // Include domain=.alertachart.com for subdomain cookie clearing
       const cookieOptions = [
-        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure${isHttpOnly ? '; HttpOnly' : ''}`,
-        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None; Secure${isHttpOnly ? '; HttpOnly' : ''}`,
-        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict${isHttpOnly ? '; HttpOnly' : ''}`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.alertachart.com; SameSite=Lax; Secure${isHttpOnly ? '; HttpOnly' : ''}`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.alertachart.com; SameSite=None; Secure${isHttpOnly ? '; HttpOnly' : ''}`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.alertachart.com; SameSite=Strict${isHttpOnly ? '; HttpOnly' : ''}`,
       ];
       
       cookieOptions.forEach(option => {
@@ -96,6 +97,15 @@ export async function POST(request: NextRequest) {
     });
     
     console.log('[Next.js API] ✅ All auth cookies cleared in logout response (NextAuth + accessToken + refreshToken)');
+    
+    // Set CORS headers
+    const origin = request.headers.get('origin') || '';
+    const allowedOrigins = ['https://alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
+    
+    if (allowedOrigins.includes(origin)) {
+      responseHeaders.set('Access-Control-Allow-Origin', origin);
+      responseHeaders.set('Access-Control-Allow-Credentials', 'true');
+    }
     
     return NextResponse.json(result, { 
       status: response.status,

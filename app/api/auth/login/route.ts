@@ -1,47 +1,51 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 /**
- * GET /api/auth/me
- * Proxy to backend auth me endpoint
+ * POST /api/auth/login
+ * Proxy to backend auth login endpoint
  */
-export async function GET(request: NextRequest) {
+export async function POST(request: NextRequest) {
   try {
     const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
+    
+    // Get request body
+    const body = await request.json();
     
     // Forward cookies from request
     const cookies = request.headers.get('cookie') || '';
     
-    // 🔥 CRITICAL: Android - Forward Authorization header if present
-    // Android uses Preferences tokens instead of cookies (cookies unreliable)
-    const authHeader = request.headers.get('authorization');
-    
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
     if (cookies) {
       headers['Cookie'] = cookies;
     }
-    if (authHeader) {
-      headers['Authorization'] = authHeader;
-      console.log('[Next.js API] Forwarding Authorization header to backend (Android)');
-    }
     
-    const response = await fetch(`${backendUrl}/api/auth/me`, {
+    const response = await fetch(`${backendUrl}/api/auth/login`, {
+      method: 'POST',
       headers,
+      body: JSON.stringify(body),
     });
     
     const result = await response.json();
     
-    // 401 is normal when user is not logged in - don't log as error
-    if (response.status === 401) {
-      return NextResponse.json(result, { status: 401 });
+    // Create response
+    const nextResponse = NextResponse.json(result, { status: response.status });
+    
+    // Forward set-cookie headers from backend
+    const setCookieHeaders = response.headers.getSetCookie();
+    if (setCookieHeaders && setCookieHeaders.length > 0) {
+      setCookieHeaders.forEach(cookie => {
+        // Update cookie domain to .alertachart.com for subdomain sharing
+        const updatedCookie = cookie.replace(/domain=[^;]+/, 'domain=.alertachart.com');
+        nextResponse.headers.append('Set-Cookie', updatedCookie);
+      });
     }
     
-    // Create response with CORS headers
+    // Set CORS headers
     const origin = request.headers.get('origin') || '';
     const allowedOrigins = ['https://alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
     
-    const nextResponse = NextResponse.json(result, { status: response.status });
-    
-    // Set CORS headers
     if (allowedOrigins.includes(origin)) {
       nextResponse.headers.set('Access-Control-Allow-Origin', origin);
       nextResponse.headers.set('Access-Control-Allow-Credentials', 'true');
@@ -49,9 +53,9 @@ export async function GET(request: NextRequest) {
     
     return nextResponse;
   } catch (error: any) {
-    console.error('[Next.js API] Error proxying auth me:', error);
+    console.error('[Next.js API] Error proxying auth login:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to get user info' },
+      { error: error.message || 'Failed to login' },
       { status: 500 }
     );
   }
@@ -67,9 +71,10 @@ export async function OPTIONS(request: NextRequest) {
   if (allowedOrigins.includes(origin)) {
     response.headers.set('Access-Control-Allow-Origin', origin);
     response.headers.set('Access-Control-Allow-Credentials', 'true');
-    response.headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    response.headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
     response.headers.set('Access-Control-Allow-Headers', 'Content-Type');
   }
   
   return response;
 }
+
