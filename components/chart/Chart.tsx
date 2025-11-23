@@ -4215,6 +4215,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                   const isDrawingMode = activeTool !== 'none';
                   return (
                   <div
+                    key={`drawing-overlay-${activeTool}`} // Force re-render when activeTool changes
                     className="absolute inset-0"
                     style={{ 
                       cursor: isDrawingMode ? 'crosshair' : 'default', 
@@ -4227,7 +4228,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                       userSelect: 'none',
                     }}
                     onMouseDown={(e) => {
-                      if (isDrawingMode && activeTool === 'brush') {
+                      // Always check activeTool directly (not isDrawingMode) for reliability
+                      if (activeTool !== 'none' && activeTool === 'brush') {
+                        e.preventDefault();
                         e.stopPropagation();
                         handleBrushStart(e.clientX, e.clientY);
                       }
@@ -4235,45 +4238,45 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     }}
                     onTouchStart={(e) => {
                       // Mobile touch start for drawing tools
-                      if (e.touches.length === 1) {
-                        if (isDrawingMode) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          
-                          const touch = e.touches[0];
-                          
-                          if (activeTool === 'brush') {
-                            handleBrushStart(touch.clientX, touch.clientY);
-                          } else {
-                            // For other tools, set first point immediately for live preview
-                            const rect = containerRef.current?.getBoundingClientRect();
-                            if (rect && chartRef.current && seriesRef.current) {
-                              const x = touch.clientX - rect.left;
-                              const y = touch.clientY - rect.top;
-                              const timeScale = chartRef.current.timeScale();
-                              const time = timeScale.coordinateToTime(x as any);
-                              const price = seriesRef.current.coordinateToPrice(y);
-                              
-                              if (time && price !== null) {
-                                const point = { time, price };
-                                // Store in both state and ref for immediate access
-                                setTempDrawing(point);
-                                touchStartDrawingPointRef.current = point;
-                                // Also trigger preview immediately
-                                handleMouseMoveForPreview(touch.clientX, touch.clientY);
-                              }
+                      // Always check activeTool directly for reliability
+                      if (e.touches.length === 1 && activeTool !== 'none') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const touch = e.touches[0];
+                        
+                        if (activeTool === 'brush') {
+                          handleBrushStart(touch.clientX, touch.clientY);
+                        } else {
+                          // For other tools, set first point immediately for live preview
+                          const rect = containerRef.current?.getBoundingClientRect();
+                          if (rect && chartRef.current && seriesRef.current) {
+                            const x = touch.clientX - rect.left;
+                            const y = touch.clientY - rect.top;
+                            const timeScale = chartRef.current.timeScale();
+                            const time = timeScale.coordinateToTime(x as any);
+                            const price = seriesRef.current.coordinateToPrice(y);
+                            
+                            if (time && price !== null) {
+                              const point = { time, price };
+                              // Store in both state and ref for immediate access
+                              setTempDrawing(point);
+                              touchStartDrawingPointRef.current = point;
+                              // Also trigger preview immediately
+                              handleMouseMoveForPreview(touch.clientX, touch.clientY);
                             }
                           }
-                          // Clear any long-press timer
-                          if (longPressTimerRef.current) {
-                            clearTimeout(longPressTimerRef.current);
-                            longPressTimerRef.current = null;
-                          }
+                        }
+                        // Clear any long-press timer
+                        if (longPressTimerRef.current) {
+                          clearTimeout(longPressTimerRef.current);
+                          longPressTimerRef.current = null;
                         }
                       }
                     }}
                     onMouseMove={(e) => {
-                      if (isDrawingMode) {
+                      // Always check activeTool directly for reliability
+                      if (activeTool !== 'none') {
                         if (activeTool === 'brush' && isDrawingBrush) {
                           handleBrushMove(e.clientX, e.clientY);
                         } else {
@@ -4299,46 +4302,48 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     }}
                     onTouchMove={(e) => {
                       // Mobile touch move for live preview and brush drawing
-                      if (e.touches.length === 1) {
-                        if (isDrawingMode) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          
-                          const touch = e.touches[0];
-                          
-                          if (activeTool === 'brush' && isDrawingBrush) {
-                            handleBrushMove(touch.clientX, touch.clientY);
-                          } else if (activeTool !== 'brush') {
-                            // Always show live preview when drawing tool is active
-                            // Even if tempDrawing is not set yet, try to set it
-                            if (!tempDrawing) {
-                              const rect = containerRef.current?.getBoundingClientRect();
-                              if (rect && chartRef.current && seriesRef.current) {
-                                const x = touch.clientX - rect.left;
-                                const y = touch.clientY - rect.top;
-                                const timeScale = chartRef.current.timeScale();
-                                const time = timeScale.coordinateToTime(x as any);
-                                const price = seriesRef.current.coordinateToPrice(y);
-                                
-                                if (time && price !== null) {
-                                  setTempDrawing({ time, price });
-                                }
+                      // Always check activeTool directly for reliability
+                      if (e.touches.length === 1 && activeTool !== 'none') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const touch = e.touches[0];
+                        
+                        if (activeTool === 'brush' && isDrawingBrush) {
+                          handleBrushMove(touch.clientX, touch.clientY);
+                        } else if (activeTool !== 'brush') {
+                          // Always show live preview when drawing tool is active
+                          // Even if tempDrawing is not set yet, try to set it
+                          if (!tempDrawing) {
+                            const rect = containerRef.current?.getBoundingClientRect();
+                            if (rect && chartRef.current && seriesRef.current) {
+                              const x = touch.clientX - rect.left;
+                              const y = touch.clientY - rect.top;
+                              const timeScale = chartRef.current.timeScale();
+                              const time = timeScale.coordinateToTime(x as any);
+                              const price = seriesRef.current.coordinateToPrice(y);
+                              
+                              if (time && price !== null) {
+                                setTempDrawing({ time, price });
                               }
                             }
-                            // Show live preview
-                            handleMouseMoveForPreview(touch.clientX, touch.clientY);
                           }
+                          // Show live preview
+                          handleMouseMoveForPreview(touch.clientX, touch.clientY);
                         }
                       }
                     }}
                     onMouseUp={(e) => {
                       if (activeTool === 'brush' && isDrawingBrush) {
+                        e.preventDefault();
                         e.stopPropagation();
                         handleBrushEnd();
                       }
                     }}
                     onClick={(e) => {
-                      if (isDrawingMode && activeTool !== 'brush') {
+                      // Always check activeTool directly for reliability
+                      if (activeTool !== 'none' && activeTool !== 'brush') {
+                        e.preventDefault();
                         e.stopPropagation();
                         handleChartClickForDrawing(e.clientX, e.clientY);
                       }
@@ -4346,7 +4351,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                     }}
                     onTouchEnd={(e) => {
                       // Mobile touch support for drawing tools
-                      if (e.changedTouches.length === 1 && isDrawingMode) {
+                      // Always check activeTool directly for reliability
+                      if (e.changedTouches.length === 1 && activeTool !== 'none') {
                         e.preventDefault();
                         e.stopPropagation();
                         

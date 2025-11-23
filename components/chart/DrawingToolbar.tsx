@@ -282,9 +282,14 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
               <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
                 {/* Cursor/Select Tool */}
                 <button
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     onToolChange('none');
                     setIsMobileExpanded(false);
+                  }}
+                  onTouchStart={(e) => {
+                    e.stopPropagation();
                   }}
                   className={`flex-shrink-0 flex flex-col items-center justify-center gap-1 p-3 rounded-xl transition-all active:scale-95 w-16 ${
                     activeTool === 'none'
@@ -303,9 +308,16 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
                   category.tools.map((tool) => (
                     <button
                       key={tool.id}
-                      onClick={() => {
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        // Force tool change - ensure it always works
                         onToolChange(tool.id);
                         setIsMobileExpanded(false);
+                      }}
+                      onTouchStart={(e) => {
+                        // Prevent event bubbling on touch
+                        e.stopPropagation();
                       }}
                       className={`flex-shrink-0 flex flex-col items-center justify-center gap-1 p-3 rounded-xl transition-all active:scale-95 w-16 ${
                         activeTool === tool.id

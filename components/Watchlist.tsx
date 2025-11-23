@@ -345,7 +345,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     setTouchStartY(touch.clientY);
     setTouchCurrentY(touch.clientY);
     setDraggingSymbol(symbol);
-    setIsDragging(true);
+    // Don't set isDragging yet - wait until we actually move
+    setIsDragging(false);
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
@@ -354,35 +355,60 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     const touch = e.touches[0];
     const deltaY = touch.clientY - (touchStartY || 0);
     
-    // Only prevent default if we're actually dragging (moved more than 10px)
-    if (Math.abs(deltaY) > 10) {
+    // Start dragging if moved more than 15px (prevents accidental drags)
+    if (Math.abs(deltaY) > 15) {
+      if (!isDragging) {
+        setIsDragging(true);
+      }
+      // Prevent scrolling and other default behaviors
       e.preventDefault();
+      e.stopPropagation();
     }
     
     setTouchCurrentY(touch.clientY);
     
-    // Find which item we're over using elementFromPoint
-    const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (elementBelow) {
-      const itemElement = elementBelow.closest('[data-symbol]') as HTMLElement;
-      if (itemElement) {
-        const symbolBelow = itemElement.getAttribute('data-symbol');
-        if (symbolBelow && symbolBelow !== draggingSymbol) {
-          setDragOverSymbol(symbolBelow);
+    // Better element detection: check all watchlist items
+    if (isDragging || Math.abs(deltaY) > 15) {
+      // Get all watchlist items
+      const allItems = Array.from(document.querySelectorAll('[data-symbol]')) as HTMLElement[];
+      
+      // Find the item that contains the touch point
+      let targetSymbol: string | null = null;
+      for (const item of allItems) {
+        const rect = item.getBoundingClientRect();
+        if (
+          touch.clientX >= rect.left &&
+          touch.clientX <= rect.right &&
+          touch.clientY >= rect.top &&
+          touch.clientY <= rect.bottom
+        ) {
+          const symbolBelow = item.getAttribute('data-symbol');
+          if (symbolBelow && symbolBelow !== draggingSymbol) {
+            targetSymbol = symbolBelow;
+            break;
+          }
         }
+      }
+      
+      if (targetSymbol) {
+        setDragOverSymbol(targetSymbol);
+      } else {
+        setDragOverSymbol(null);
       }
     }
   };
 
   const handleTouchEnd = () => {
-    if (draggingSymbol && dragOverSymbol && draggingSymbol !== dragOverSymbol) {
+    // Only reorder if we were actually dragging (not just a tap)
+    if (isDragging && draggingSymbol && dragOverSymbol && draggingSymbol !== dragOverSymbol) {
       reorderWatchlist(draggingSymbol, dragOverSymbol);
     }
     setTouchStartY(null);
     setTouchCurrentY(null);
     setDraggingSymbol(null);
     setDragOverSymbol(null);
-    setTimeout(() => setIsDragging(false), 100);
+    // Delay to prevent click event after drag
+    setTimeout(() => setIsDragging(false), 200);
   };
 
   const handleTouchCancel = () => {
@@ -671,12 +697,26 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
             </button>
             <button
               onClick={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
-                if (confirm(`Remove category "${cat}"?`)) {
+                // Direct removal on mobile, confirm on desktop
+                const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+                if (isMobile) {
                   removeCategory(cat);
+                } else {
+                  if (confirm(`Remove category "${cat}"?`)) {
+                    removeCategory(cat);
+                  }
                 }
               }}
-              className="absolute right-1 top-1/2 -translate-y-1/2 opacity-100 md:opacity-0 md:group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all duration-200 hover:scale-110 active:scale-95 z-10"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+              }}
+              onTouchStart={(e) => {
+                e.stopPropagation();
+              }}
+              className="absolute right-1 top-1/2 -translate-y-1/2 opacity-100 md:opacity-0 md:group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all duration-200 hover:scale-110 active:scale-95 z-10 touch-none"
               title="Remove category"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -779,6 +819,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   else watchlistItemRefs.current.delete(symbol);
                 }}
                 onClick={() => {
+                  // Prevent click if we just finished dragging
                   if (isDragging) return;
                   onSymbolClick(symbol);
                 }}
@@ -791,8 +832,13 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                     e.preventDefault();
                     setContextMenu({ x: e.clientX, y: e.clientY, symbol });
                   }}
-                draggable
+                draggable={typeof window !== 'undefined' && window.innerWidth >= 768}
                 onDragStart={(e) => {
+                  // Only allow drag on desktop
+                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                    e.preventDefault();
+                    return;
+                  }
                   setDraggingSymbol(symbol);
                   setIsDragging(true);
                   e.dataTransfer.effectAllowed = 'move';
@@ -811,17 +857,36 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   setDragOverSymbol(null);
                   setDraggingSymbol(null);
                   // Delay to avoid triggering click after drop
-                  setTimeout(() => setIsDragging(false), 0);
+                  setTimeout(() => setIsDragging(false), 200);
                 }}
                 onDragEnd={() => {
                   setDragOverSymbol(null);
                   setDraggingSymbol(null);
-                  setTimeout(() => setIsDragging(false), 0);
+                  setTimeout(() => setIsDragging(false), 200);
                 }}
-                onTouchStart={(e) => handleTouchStart(e, symbol)}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleTouchEnd}
-                onTouchCancel={handleTouchCancel}
+                onTouchStart={(e) => {
+                  // Only handle touch if not clicking on interactive elements
+                  const target = e.target as HTMLElement;
+                  if (target.closest('button') || target.closest('select')) {
+                    return;
+                  }
+                  handleTouchStart(e, symbol);
+                }}
+                onTouchMove={(e) => {
+                  if (draggingSymbol) {
+                    handleTouchMove(e);
+                  }
+                }}
+                onTouchEnd={(e) => {
+                  if (draggingSymbol) {
+                    handleTouchEnd();
+                  }
+                }}
+                onTouchCancel={(e) => {
+                  if (draggingSymbol) {
+                    handleTouchCancel();
+                  }
+                }}
                 className={`group relative border-b border-gray-800/30 px-3 py-1.5 md:py-2.5 cursor-pointer transition-all duration-300 ${
                   isActive 
                     ? 'bg-gradient-to-r from-blue-900/50 via-blue-900/40 to-blue-900/20 border-l-4 border-l-blue-500 shadow-xl shadow-blue-500/20' 
