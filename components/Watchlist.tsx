@@ -46,6 +46,9 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [draggingSymbol, setDraggingSymbol] = useState<string | null>(null);
   const [dragOverSymbol, setDragOverSymbol] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [touchStartY, setTouchStartY] = useState<number | null>(null);
+  const [touchCurrentY, setTouchCurrentY] = useState<number | null>(null);
+  const watchlistItemRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; symbol: string } | null>(null);
   const [symbolsWithAlerts, setSymbolsWithAlerts] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
@@ -336,6 +339,60 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     localStorage.setItem(storageKey, JSON.stringify(updated));
   };
 
+  // Touch event handlers for mobile drag & drop
+  const handleTouchStart = (e: React.TouchEvent, symbol: string) => {
+    const touch = e.touches[0];
+    setTouchStartY(touch.clientY);
+    setTouchCurrentY(touch.clientY);
+    setDraggingSymbol(symbol);
+    setIsDragging(true);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (touchStartY === null || !draggingSymbol) return;
+    
+    const touch = e.touches[0];
+    const deltaY = touch.clientY - (touchStartY || 0);
+    
+    // Only prevent default if we're actually dragging (moved more than 10px)
+    if (Math.abs(deltaY) > 10) {
+      e.preventDefault();
+    }
+    
+    setTouchCurrentY(touch.clientY);
+    
+    // Find which item we're over using elementFromPoint
+    const elementBelow = document.elementFromPoint(touch.clientX, touch.clientY);
+    if (elementBelow) {
+      const itemElement = elementBelow.closest('[data-symbol]') as HTMLElement;
+      if (itemElement) {
+        const symbolBelow = itemElement.getAttribute('data-symbol');
+        if (symbolBelow && symbolBelow !== draggingSymbol) {
+          setDragOverSymbol(symbolBelow);
+        }
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (draggingSymbol && dragOverSymbol && draggingSymbol !== dragOverSymbol) {
+      reorderWatchlist(draggingSymbol, dragOverSymbol);
+    }
+    setTouchStartY(null);
+    setTouchCurrentY(null);
+    setDraggingSymbol(null);
+    setDragOverSymbol(null);
+    setTimeout(() => setIsDragging(false), 100);
+  };
+
+  const handleTouchCancel = () => {
+    setTouchStartY(null);
+    setTouchCurrentY(null);
+    setDraggingSymbol(null);
+    setDragOverSymbol(null);
+    setIsDragging(false);
+  };
+
   const toggleFavorite = (symbol: string) => {
     const newFavorites = new Set(favorites);
     if (newFavorites.has(symbol)) {
@@ -370,6 +427,9 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   };
 
   const removeCategory = (category: string) => {
+    // Save current scroll position
+    const scrollPosition = categoryScrollRef.current?.scrollLeft || 0;
+    
     // Remove category from list
     const newCategories = categories.filter(c => c !== category);
     setCategories(newCategories);
@@ -389,6 +449,13 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     if (selectedFilter === category) {
       setSelectedFilter('ALL');
     }
+    
+    // Restore scroll position after DOM update using requestAnimationFrame for better reliability
+    requestAnimationFrame(() => {
+      if (categoryScrollRef.current) {
+        categoryScrollRef.current.scrollLeft = scrollPosition;
+      }
+    });
   };
 
   const formatPrice = (price: number) => {
@@ -399,6 +466,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   };
 
   const formatVolume = (volume: number) => {
+    if (volume >= 1000000000) return `${(volume / 1000000000).toFixed(1)}B`;
     if (volume >= 1000000) return `${(volume / 1000000).toFixed(1)}M`;
     if (volume >= 1000) return `${(volume / 1000).toFixed(1)}K`;
     return volume.toFixed(0);
@@ -477,54 +545,54 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-16 bg-gradient-to-b from-blue-500 to-blue-600 rounded-r opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" />
       </div>
       {/* Header */}
-      <div className="border-b border-gray-800/50 bg-gradient-to-r from-gray-900/50 to-gray-900/30 backdrop-blur-sm p-4 flex items-center justify-between shadow-sm">
+      <div className="border-b border-gray-800/50 bg-gradient-to-r from-gray-900/50 to-gray-900/30 backdrop-blur-sm p-2 md:p-4 flex items-center justify-between shadow-sm">
         <div>
-          <h3 className="text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+          <h3 className="text-sm md:text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
             Watchlist
           </h3>
-          <p className="text-[10px] text-gray-400 mt-1 font-medium">
+          <p className="text-[9px] md:text-[10px] text-gray-400 mt-0.5 md:mt-1 font-medium">
             {marketType === 'futures' ? 'Futures' : 'Spot'}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 md:gap-2">
           <button
             onClick={() => {
               const shareLink = generateWatchlistShareLink();
               navigator.clipboard.writeText(shareLink);
               alert('Watchlist link copied to clipboard!');
             }}
-            className="p-2 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+            className="p-1.5 md:p-2 text-gray-400 hover:text-green-400 hover:bg-green-500/10 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
             title="Share Watchlist"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
           </button>
           <button
             onClick={() => setShowSettings(true)}
-            className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+            className="p-1.5 md:p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
             title="Watchlist Settings"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
             </svg>
           </button>
           <button
             onClick={() => setShowSymbolSearchModal(true)}
-            className="p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+            className="p-1.5 md:p-2 text-gray-400 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
             title="Add Symbol"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
             </svg>
           </button>
           <button
             onClick={() => setIsCollapsed(true)}
-            className="p-2 text-gray-400 hover:text-gray-300 hover:bg-gray-800/50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
+            className="p-1.5 md:p-2 text-gray-400 hover:text-gray-300 hover:bg-gray-800/50 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95"
             title="Collapse"
           >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-3.5 h-3.5 md:w-4 md:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
@@ -568,10 +636,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       )}
 
       {/* Category Filters */}
-      <div ref={categoryScrollRef} className="border-b border-gray-800/50 px-3 py-2.5 flex flex-nowrap gap-2 overflow-x-auto bg-gradient-to-r from-gray-900/50 to-gray-900/30 backdrop-blur-sm scrollbar-thin shadow-sm">
+      <div ref={categoryScrollRef} className="border-b border-gray-800/50 px-2 md:px-3 py-1.5 md:py-2.5 flex flex-nowrap gap-1.5 md:gap-2 overflow-x-auto bg-gradient-to-r from-gray-900/50 to-gray-900/30 backdrop-blur-sm scrollbar-thin shadow-sm" style={{ scrollBehavior: 'auto' }}>
         <button
           onClick={() => setSelectedFilter('ALL')}
-          className={`text-xs px-3 py-1.5 rounded-lg transition-all duration-200 whitespace-nowrap font-medium ${
+          className={`text-[10px] md:text-xs px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all duration-200 whitespace-nowrap font-medium ${
             selectedFilter === 'ALL' 
               ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30' 
               : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
@@ -581,7 +649,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         </button>
         <button
           onClick={() => setSelectedFilter('FAVORITES')}
-          className={`text-xs px-3 py-1.5 rounded-lg transition-all duration-200 whitespace-nowrap font-medium ${
+          className={`text-[10px] md:text-xs px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all duration-200 whitespace-nowrap font-medium ${
             selectedFilter === 'FAVORITES' 
               ? 'bg-gradient-to-r from-yellow-600 to-yellow-700 text-white shadow-lg shadow-yellow-500/30' 
               : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
@@ -593,7 +661,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           <div key={cat} className="relative group">
             <button
               onClick={() => setSelectedFilter(cat)}
-              className={`text-xs px-3 py-1.5 pr-7 rounded-lg transition-all duration-200 whitespace-nowrap font-medium ${
+              className={`text-[10px] md:text-xs px-2 md:px-3 py-1 md:py-1.5 pr-7 md:pr-7 rounded-lg transition-all duration-200 whitespace-nowrap font-medium ${
                 selectedFilter === cat 
                   ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30' 
                   : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
@@ -608,7 +676,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   removeCategory(cat);
                 }
               }}
-              className="absolute right-1 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all duration-200 hover:scale-110"
+              className="absolute right-1 top-1/2 -translate-y-1/2 opacity-100 md:opacity-0 md:group-hover:opacity-100 text-red-400 hover:text-red-300 transition-all duration-200 hover:scale-110 active:scale-95 z-10"
               title="Remove category"
             >
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -665,7 +733,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                 }
               }, 10);
             }}
-            className="text-xs px-3 py-1.5 bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70 rounded-lg transition-all duration-200 whitespace-nowrap font-medium active:scale-95"
+            className="text-[10px] md:text-xs px-2 md:px-3 py-1 md:py-1.5 bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70 rounded-lg transition-all duration-200 whitespace-nowrap font-medium active:scale-95"
             title="Add new category"
           >
             + Category
@@ -705,6 +773,11 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
             return (
               <div
                 key={symbol}
+                data-symbol={symbol}
+                ref={(el) => {
+                  if (el) watchlistItemRefs.current.set(symbol, el);
+                  else watchlistItemRefs.current.delete(symbol);
+                }}
                 onClick={() => {
                   if (isDragging) return;
                   onSymbolClick(symbol);
@@ -745,17 +818,23 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   setDraggingSymbol(null);
                   setTimeout(() => setIsDragging(false), 0);
                 }}
-                className={`group relative border-b border-gray-800/30 px-3 py-2.5 cursor-pointer transition-all duration-300 ${
+                onTouchStart={(e) => handleTouchStart(e, symbol)}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchCancel}
+                className={`group relative border-b border-gray-800/30 px-3 py-1.5 md:py-2.5 cursor-pointer transition-all duration-300 ${
                   isActive 
                     ? 'bg-gradient-to-r from-blue-900/50 via-blue-900/40 to-blue-900/20 border-l-4 border-l-blue-500 shadow-xl shadow-blue-500/20' 
                     : 'hover:bg-gradient-to-r hover:from-gray-800/50 hover:via-gray-800/30 hover:to-gray-800/10 hover:border-l-2 hover:border-l-gray-700/50'
                 } ${dragOverSymbol === symbol ? 'ring-2 ring-blue-500/60 bg-blue-900/30 scale-[1.02]' : ''} ${
+                  draggingSymbol === symbol ? 'opacity-50 scale-[0.98] shadow-lg z-50' : ''
+                } ${
                   data?.priceFlash === 'up' ? 'bg-green-500/10 animate-pulse' : data?.priceFlash === 'down' ? 'bg-red-500/10 animate-pulse' : ''
                 }`}
               >
-                <div className="flex items-center justify-between mb-1.5">
-                  <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                    <span className="text-gray-600 hover:text-blue-400 cursor-grab active:cursor-grabbing select-none text-sm transition-all duration-200 hover:scale-110">
+                <div className="flex items-center justify-between mb-0.5 md:mb-1.5">
+                  <div className="flex items-center gap-1 md:gap-1.5 flex-1 min-w-0">
+                    <span className="text-gray-600 hover:text-blue-400 cursor-grab active:cursor-grabbing select-none text-xs md:text-sm transition-all duration-200 hover:scale-110">
                       ☰
                     </span>
                     <button
@@ -766,7 +845,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                       className="p-0.5 hover:scale-110 transition-all duration-200 active:scale-95"
                       title={favorites.has(symbol) ? "Remove from favorites" : "Add to favorites"}
                     >
-                      <svg className={`w-3.5 h-3.5 transition-all duration-200 ${favorites.has(symbol) ? 'fill-yellow-400 text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.5)]' : 'text-gray-600 hover:text-yellow-500'}`} fill={favorites.has(symbol) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className={`w-3 h-3 md:w-3.5 md:h-3.5 transition-all duration-200 ${favorites.has(symbol) ? 'fill-yellow-400 text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.5)]' : 'text-gray-600 hover:text-yellow-500'}`} fill={favorites.has(symbol) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                       </svg>
                     </button>
@@ -799,26 +878,26 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                             <img 
                               src={`/logos/${baseAsset.toLowerCase()}.png`}
                               alt={baseAsset}
-                              className="relative w-5 h-5 rounded-full ring-2 ring-gray-700/50 shadow-md group-hover/logo:ring-blue-500/50 transition-all duration-200 group-hover/logo:scale-110"
+                              className="relative w-4 h-4 md:w-5 md:h-5 rounded-full ring-2 ring-gray-700/50 shadow-md group-hover/logo:ring-blue-500/50 transition-all duration-200 group-hover/logo:scale-110"
                               onError={(e) => {
                                 e.currentTarget.style.display = 'none';
                               }}
                             />
                             {hasAlert && (
-                              <div className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full ring-2 ring-gray-900 animate-pulse shadow-lg shadow-blue-500/50"></div>
+                              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 md:w-2.5 md:h-2.5 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full ring-2 ring-gray-900 animate-pulse shadow-lg shadow-blue-500/50"></div>
                             )}
                           </div>
-                          <div className="flex items-baseline gap-1 min-w-0">
-                            <span className="font-mono text-sm font-bold text-white truncate group-hover:text-blue-300 transition-colors duration-200">
+                          <div className="flex items-baseline gap-0.5 md:gap-1 min-w-0">
+                            <span className="font-mono text-xs md:text-sm font-bold text-white truncate group-hover:text-blue-300 transition-colors duration-200">
                               {baseAsset}
                             </span>
-                            <span className="text-[10px] text-gray-500 font-medium">
+                            <span className="text-[9px] md:text-[10px] text-gray-500 font-medium">
                               /{quoteAsset}
                             </span>
                           </div>
                           {hasAlert && (
                             <div className="relative">
-                              <svg className="w-3.5 h-3.5 text-blue-400 flex-shrink-0 drop-shadow-[0_0_4px_rgba(59,130,246,0.5)] animate-pulse" fill="currentColor" viewBox="0 0 24 24" aria-label="Active alerts" role="img">
+                              <svg className="w-3 h-3 md:w-3.5 md:h-3.5 text-blue-400 flex-shrink-0 drop-shadow-[0_0_4px_rgba(59,130,246,0.5)] animate-pulse" fill="currentColor" viewBox="0 0 24 24" aria-label="Active alerts" role="img">
                                 <title>Active alerts</title>
                                 <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6v-5a6 6 0 0 0-5-5.91V4a1 1 0 1 0-2 0v1.09A6 6 0 0 0 6 11v5l-2 2v1h16v-1l-2-2z" />
                               </svg>
@@ -828,7 +907,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                       );
                     })()}
                     {symbolCategories.has(symbol) && (
-                      <span className="text-[9px] px-2 py-0.5 bg-gradient-to-r from-blue-600/50 to-blue-700/50 text-blue-200 rounded-md font-semibold border border-blue-500/40 shadow-sm shadow-blue-500/20">
+                      <span className="text-[8px] md:text-[9px] px-1.5 md:px-2 py-0.5 bg-gradient-to-r from-blue-600/50 to-blue-700/50 text-blue-200 rounded-md font-semibold border border-blue-500/40 shadow-sm shadow-blue-500/20">
                         {symbolCategories.get(symbol)}
                       </span>
                     )}
@@ -866,9 +945,9 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                 
                 {data ? (
                   <>
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-baseline gap-1">
-                        <span className={`font-mono text-sm font-bold px-2 py-1 rounded-md transition-all duration-200 ${
+                    <div className="flex items-center justify-between mb-0.5 md:mb-1">
+                      <div className="flex items-baseline gap-0.5 md:gap-1">
+                        <span className={`font-mono text-xs md:text-sm font-bold px-1.5 md:px-2 py-0.5 md:py-1 rounded-md transition-all duration-200 ${
                           data.priceFlash === 'up' 
                             ? 'bg-gradient-to-br from-green-500/50 to-emerald-500/30 text-green-100 shadow-lg shadow-green-500/50 animate-flash-green' 
                             : data.priceFlash === 'down' 
@@ -878,7 +957,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                           ${formatPrice(data.price)}
                         </span>
                       </div>
-                      <span className={`text-xs font-bold px-2 py-1 rounded-md transition-all duration-200 ${
+                      <span className={`text-[10px] md:text-xs font-bold px-1.5 md:px-2 py-0.5 md:py-1 rounded-md transition-all duration-200 ${
                         data.change24h >= 0 
                           ? 'text-green-300 bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/30' 
                           : 'text-red-300 bg-gradient-to-br from-red-500/20 to-rose-500/10 border border-red-500/30'
@@ -886,17 +965,22 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                         {data.change24h >= 0 ? '↗' : '↘'} {data.change24h >= 0 ? '+' : ''}{data.change24h.toFixed(2)}%
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 text-[10px] text-gray-400">
-                      <svg className="w-2.5 h-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div className="flex items-center gap-1 md:gap-1.5 text-[9px] md:text-[10px] text-gray-400">
+                      <svg className="w-2 h-2 md:w-2.5 md:h-2.5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                       </svg>
                       <span className="font-medium">Vol:</span>
                       <span className="font-mono font-medium text-gray-300">{formatVolume(data.volume24h)}</span>
+                      {data.price && (
+                        <span className="font-mono font-medium text-gray-500">
+                          (${formatVolume(data.volume24h * data.price)})
+                        </span>
+                      )}
                     </div>
                   </>
                 ) : (
-                  <div className="flex items-center gap-2 text-gray-500 text-xs py-1">
-                    <svg className="animate-spin h-3 w-3 text-blue-400" fill="none" viewBox="0 0 24 24">
+                  <div className="flex items-center gap-2 text-gray-500 text-[10px] md:text-xs py-0.5 md:py-1">
+                    <svg className="animate-spin h-2.5 w-2.5 md:h-3 md:w-3 text-blue-400" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -910,12 +994,12 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-800/50 bg-gradient-to-r from-gray-900/50 via-gray-900/40 to-gray-900/50 backdrop-blur-sm p-4 text-center shadow-xl">
-        <div className="flex items-center justify-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
-          <div className="text-xs text-gray-400 font-semibold">
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 font-bold text-sm">{watchlist.length}</span>
-            <span className="ml-1">{watchlist.length === 1 ? 'symbol' : 'symbols'}</span>
+      <div className="border-t border-gray-800/50 bg-gradient-to-r from-gray-900/50 via-gray-900/40 to-gray-900/50 backdrop-blur-sm p-2 md:p-4 text-center shadow-xl">
+        <div className="flex items-center justify-center gap-1.5 md:gap-2">
+          <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
+          <div className="text-[10px] md:text-xs text-gray-400 font-semibold">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 font-bold text-xs md:text-sm">{watchlist.length}</span>
+            <span className="ml-0.5 md:ml-1">{watchlist.length === 1 ? 'symbol' : 'symbols'}</span>
           </div>
         </div>
       </div>
