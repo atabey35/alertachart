@@ -172,6 +172,68 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     onChange24hRef.current = onChange24h;
   }, [onConnectionChange, onPriceUpdate, onChange24h]);
 
+  /**
+   * Calculate and apply precision based on price
+   * This ensures price scale shows correct decimal places
+   * Must be defined before useEffects that use it
+   * Always applies precision (not just once) to handle indicator add/remove cases
+   */
+  const applyPrecision = () => {
+    if (!seriesRef.current) {
+      return;
+    }
+    
+    const bars = cacheRef.current?.getAllBars() || [];
+    if (bars.length === 0) {
+      return;
+    }
+    
+    const avgPrice = (bars[0].open + bars[0].close) / 2;
+    let precision = 2;
+    let minMove = 0.01;
+    
+    if (avgPrice < 0.001) {
+      // Very low price coins (e.g., SHIB)
+      precision = 8;
+      minMove = 0.00000001;
+    } else if (avgPrice < 0.01) {
+      // Low price coins
+      precision = 6;
+      minMove = 0.000001;
+    } else if (avgPrice < 0.1) {
+      // Medium-low price (e.g., DOGE)
+      precision = 5;
+      minMove = 0.00001;
+    } else if (avgPrice < 1) {
+      // Less than $1
+      precision = 4;
+      minMove = 0.0001;
+    } else if (avgPrice < 10) {
+      // $1-$10
+      precision = 3;
+      minMove = 0.001;
+    }
+    
+    // Only log on first application or when precision changes
+    if (!precisionSetRef.current) {
+      console.log(`[Chart] 🎯 Auto-precision for ${pair}:`, { avgPrice, precision, minMove });
+    }
+    
+    // Always apply precision to ensure it's correct after indicator add/remove
+    try {
+      seriesRef.current.applyOptions({
+        priceFormat: {
+          type: 'price',
+          precision,
+          minMove,
+        },
+      });
+      precisionSetRef.current = true;
+    } catch (error) {
+      console.error('[Chart] Error applying precision:', error);
+    }
+  };
+
   // Notify parent of connection status changes
   useEffect(() => {
     onConnectionChangeRef.current?.(wsConnected);
@@ -1210,6 +1272,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       sma50Ref.current = null;
       sma100Ref.current = null;
       sma200Ref.current = null;
+      precisionSetRef.current = false; // Reset precision flag when chart is recreated
       
       // Now safe to remove chart
       chart.remove();
@@ -1233,6 +1296,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         } catch (error) {
           return;
         }
+        
+        // Ensure precision is applied before updating indicators
+        // This fixes the issue where price scale shows 8 decimals after adding indicators
+        applyPrecision();
         
         const bars = cacheRef.current?.getAllBars() || [];
         if (bars.length > 20) {
@@ -2259,46 +2326,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
     
     // Auto-adjust precision based on price (only once per pair)
-    if (bars.length > 0 && !precisionSetRef.current) {
-      const avgPrice = (bars[0].open + bars[0].close) / 2;
-      let precision = 2;
-      let minMove = 0.01;
-      
-      if (avgPrice < 0.001) {
-        // Very low price coins (e.g., SHIB)
-        precision = 8;
-        minMove = 0.00000001;
-      } else if (avgPrice < 0.01) {
-        // Low price coins
-        precision = 6;
-        minMove = 0.000001;
-      } else if (avgPrice < 0.1) {
-        // Medium-low price (e.g., DOGE)
-        precision = 5;
-        minMove = 0.00001;
-      } else if (avgPrice < 1) {
-        // Less than $1
-        precision = 4;
-        minMove = 0.0001;
-      } else if (avgPrice < 10) {
-        // $1-$10
-        precision = 3;
-        minMove = 0.001;
-      }
-      
-      console.log(`[Chart] 🎯 Auto-precision for ${pair}:`, { avgPrice, precision, minMove });
-      
-      // Apply precision to series
-      seriesRef.current.applyOptions({
-        priceFormat: {
-          type: 'price',
-          precision,
-          minMove,
-        },
-      });
-      
-      precisionSetRef.current = true;
-    }
+    applyPrecision();
     
     // Convert to candle data and volume data, remove duplicates
     const candleMap = new Map<Time, CandlestickData>();
@@ -3870,9 +3898,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     >
       {/* OHLCV + Indicators Legend (TradingView-style) */}
       {legendData && showLegend && (
-        <div className="absolute top-10 left-2 z-10 bg-transparent px-2 py-1 text-xs font-mono pointer-events-none flex flex-col gap-0.5">
+        <div className="absolute top-10 left-2 z-10 bg-transparent px-2 py-1 text-xs font-mono pointer-events-none flex flex-col gap-0.5 max-w-[calc(100%-4rem)]">
           {/* OHLCV Data */}
-          <div className="flex items-center gap-3 bg-gray-900/80 px-2 py-1 rounded">
+          <div className="flex flex-wrap items-center gap-1.5 sm:gap-3 bg-gray-900/80 px-2 py-1 rounded">
             <span className="text-gray-400">O</span>
             <span className="text-white">{legendData.open.toFixed(legendData.open < 1 ? 6 : 2)}</span>
             <span className="text-gray-400">H</span>

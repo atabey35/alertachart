@@ -18,6 +18,7 @@ export default function SettingsPage() {
   const [isCapacitor, setIsCapacitor] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState('');
+  const logoutProcessingRef = useRef(false); // iOS double-tap prevention
   const { data: session, status, update } = useSession();
   const router = useRouter();
 
@@ -1620,11 +1621,14 @@ export default function SettingsPage() {
 
 
   const handleLogout = useCallback(async () => {
-    if (isLoggingOut) {
+    // iOS double-tap prevention: check both state and ref
+    if (isLoggingOut || logoutProcessingRef.current) {
       console.log('[Settings] Logout already running - ignoring duplicate tap');
       return;
     }
 
+    // Set both state and ref immediately to prevent double-tap
+    logoutProcessingRef.current = true;
     setLogoutError('');
     setIsLoggingOut(true);
 
@@ -1652,13 +1656,15 @@ export default function SettingsPage() {
       // Only reset on error if we're not redirecting
       if (!isCapacitor) {
         setIsLoggingOut(false);
+        logoutProcessingRef.current = false;
       }
     } finally {
       // Only reset if we're on web (not native app)
       // Native app'te redirect olacak, sayfa reload olacak, state zaten reset olacak
       if (!isCapacitor) {
         setIsLoggingOut(false);
-    }
+        logoutProcessingRef.current = false;
+      }
     }
   }, [isLoggingOut, status, isCapacitor, router, language]);
 
@@ -1908,9 +1914,25 @@ export default function SettingsPage() {
 
               {/* Logout Button */}
               <button
-                onClick={handleLogout}
-                disabled={isLoggingOut}
-                className="w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed"
+                onTouchStart={(e) => {
+                  // iOS: Prevent double-tap by handling touch event
+                  if (isLoggingOut || logoutProcessingRef.current) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    return;
+                  }
+                }}
+                onClick={(e) => {
+                  // Prevent default and stop propagation to avoid double-tap on iOS
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!isLoggingOut && !logoutProcessingRef.current) {
+                    handleLogout();
+                  }
+                }}
+                disabled={isLoggingOut || logoutProcessingRef.current}
+                className="w-full px-4 py-3 bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white rounded-xl font-bold transition-all duration-200 shadow-lg hover:shadow-xl active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
               >
                 <div className="flex items-center justify-center gap-2">
                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
