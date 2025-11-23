@@ -2095,7 +2095,7 @@ export default function Home() {
           {user ? (
             hasPremiumAccessValue ? (
               <iframe
-                src="https://data.kriptokirmizi.com"
+                src="https://data.alertachart.com?embed=true"
                 className="w-full h-full border-0"
                 title="Liquidations Dashboard"
                 allow="clipboard-write; clipboard-read"
