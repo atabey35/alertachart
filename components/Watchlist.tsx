@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from 'react';
 import SymbolSearchModal from './SymbolSearchModal';
 import alertService from '@/services/alertService';
 import websocketService from '@/services/websocketService';
+import { loadCategories, getCategories, type Category } from '@/utils/categories';
 
 interface WatchlistItem {
   symbol: string;
@@ -109,6 +110,9 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     if (savedBgColor) {
       setBackgroundColor(savedBgColor);
     }
+
+    // Load categories data (categories will be assigned when watchlist loads)
+    loadCategories().catch(console.error);
   }, []);
 
   // Handle resize
@@ -174,6 +178,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           localStorage.setItem(storageKey, JSON.stringify(symbols));
           // Clean URL after loading
           window.history.replaceState({}, '', window.location.pathname);
+          // Auto-assign categories to loaded symbols
+          loadCategories().then(() => {
+            assignCategoriesToSymbols(symbols);
+          }).catch(console.error);
           return;
         }
       }
@@ -182,13 +190,48 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     // Load from localStorage if no shared watchlist
     const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
     const savedWatchlist = localStorage.getItem(storageKey);
+    let symbolsToLoad: string[];
     if (savedWatchlist) {
-      setWatchlist(JSON.parse(savedWatchlist));
+      symbolsToLoad = JSON.parse(savedWatchlist);
     } else {
       // Default symbols
-      setWatchlist(['btcusdt', 'ethusdt', 'ethbtc', 'solusdt', 'bnbusdt', 'xrpusdt', 'adausdt']);
+      symbolsToLoad = ['btcusdt', 'ethusdt', 'ethbtc', 'solusdt', 'bnbusdt', 'xrpusdt', 'adausdt'];
     }
+    setWatchlist(symbolsToLoad);
+    
+    // Auto-assign categories to loaded symbols
+    loadCategories().then(() => {
+      assignCategoriesToSymbols(symbolsToLoad);
+    }).catch(console.error);
   }, [marketType]);
+
+  // Helper function to assign categories to symbols
+  const assignCategoriesToSymbols = (symbols: string[]) => {
+    const currentCategories = getCategories();
+    if (currentCategories.length === 0) return; // Categories not loaded yet
+    
+    const newSymbolCategories = new Map(symbolCategories);
+    let hasChanges = false;
+
+    symbols.forEach(symbol => {
+      // Only assign if symbol doesn't already have a category
+      if (!newSymbolCategories.has(symbol)) {
+        const symbolUpper = symbol.toUpperCase();
+        for (const category of currentCategories) {
+          if (category.coins.includes(symbolUpper)) {
+            newSymbolCategories.set(symbol, category.name);
+            hasChanges = true;
+            break;
+          }
+        }
+      }
+    });
+
+    if (hasChanges) {
+      setSymbolCategories(newSymbolCategories);
+      localStorage.setItem('watchlist-symbol-categories', JSON.stringify(Object.fromEntries(newSymbolCategories)));
+    }
+  };
 
   // Real-time price updates via WebSocket (Spot or Futures)
   useEffect(() => {
@@ -313,10 +356,30 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       setWatchlist(newWatchlist);
       const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
       localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
+      
+      // Auto-assign category from categories.json
+      const symbolUpper = symbol.toUpperCase();
+      const category = findCategoryForSymbol(symbolUpper);
+      if (category) {
+        setSymbolCategory(symbol, category);
+      }
     }
     setShowAddSymbol(false);
     setShowSymbolSearchModal(false);
     setSearchQuery('');
+  };
+
+  // Find category for a symbol from categories.json
+  const findCategoryForSymbol = (symbol: string): string | null => {
+    const categories = getCategories();
+    if (categories.length === 0) return null; // Categories not loaded yet
+    
+    for (const category of categories) {
+      if (category.coins.includes(symbol)) {
+        return category.name;
+      }
+    }
+    return null;
   };
 
   const removeSymbol = (symbol: string) => {
