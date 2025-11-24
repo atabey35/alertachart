@@ -29,8 +29,9 @@ const getSql = () => {
 };
 
 export async function POST(request: NextRequest) {
+  let data: any = null;
   try {
-    const data = await request.json();
+    data = await request.json();
     
     console.log('[Admin Blog API] Received data:', {
       title: data.title,
@@ -182,7 +183,11 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('[Admin Blog API] Error:', error);
     console.error('[Admin Blog API] Error stack:', error.stack);
-    console.error('[Admin Blog API] Request data:', JSON.stringify(data, null, 2));
+    if (data) {
+      console.error('[Admin Blog API] Request data:', JSON.stringify(data, null, 2));
+    } else {
+      console.error('[Admin Blog API] Request data: Could not parse request body');
+    }
     return NextResponse.json(
       { 
         error: 'Blog yazısı eklenirken bir hata oluştu.', 
