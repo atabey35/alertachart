@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
-import { existsSync } from 'fs';
+import { put } from '@vercel/blob';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,32 +33,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Dosyayı byte array'e çevir
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-
     // Unique dosya adı oluştur
     const timestamp = Date.now();
     const randomString = Math.random().toString(36).substring(2, 15);
     const fileExtension = file.name.split('.').pop() || 'jpg';
-    const fileName = `${timestamp}-${randomString}.${fileExtension}`;
+    const fileName = `uploads/${timestamp}-${randomString}.${fileExtension}`;
 
-    // Uploads klasörünü oluştur (yoksa)
-    const uploadsDir = join(process.cwd(), 'public', 'uploads');
-    if (!existsSync(uploadsDir)) {
-      await mkdir(uploadsDir, { recursive: true });
-    }
-
-    // Dosyayı kaydet
-    const filePath = join(uploadsDir, fileName);
-    await writeFile(filePath, buffer);
-
-    // Public URL'ini döndür
-    const publicUrl = `/uploads/${fileName}`;
+    // Vercel Blob Storage'a yükle
+    const blob = await put(fileName, file, {
+      access: 'public',
+      contentType: file.type,
+    });
 
     return NextResponse.json({
       success: true,
-      url: publicUrl,
+      url: blob.url,
     });
   } catch (error: any) {
     console.error('[Upload API] Error:', error);
