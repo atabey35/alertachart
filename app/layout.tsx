@@ -355,9 +355,25 @@ export default function RootLayout({
           }}
         />
 
-        {/* Google Identity Services (GIS) for Web OAuth */}
+        {/* Google Identity Services (GIS) for Web OAuth - ONLY for web, NOT for Android/iOS */}
         <Script
           src="https://accounts.google.com/gsi/client"
+          strategy="lazyOnload"
+          onLoad={() => {
+            // Only load on web (not Android/iOS native)
+            if (typeof window !== 'undefined') {
+              const isCapacitor = !!(window as any).Capacitor;
+              const platform = isCapacitor ? (window as any).Capacitor?.getPlatform?.() : 'web';
+              if (platform === 'android' || platform === 'ios') {
+                console.log('[Layout] ⏭️ Skipping Google Identity Services script (native platform:', platform + ')');
+                // Remove script to prevent ERR_BLOCKED_BY_ORB
+                const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
+                if (script) {
+                  script.remove();
+                }
+              }
+            }
+          }}
           strategy="beforeInteractive"
         />
         
