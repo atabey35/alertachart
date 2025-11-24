@@ -27,9 +27,6 @@ export default function AccountPage() {
   // 🔥 CRITICAL: Prevent infinite loops and duplicate API calls
   const userInitializedRef = useRef(false);
   const userPlanFetchingRef = useRef(false);
-  
-  // 🔥 CRITICAL: Prevent double navigation
-  const navigationProcessingRef = useRef<{ [key: string]: boolean }>({});
 
   // Load language from localStorage
   useEffect(() => {
@@ -362,61 +359,21 @@ export default function AccountPage() {
                 </h3>
                 <div className="space-y-3">
                   {/* Liquidations Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      // 🔥 CRITICAL: Prevent double execution
-                      const buttonId = 'liquidation-tracker';
-                      if (navigationProcessingRef.current[buttonId]) {
-                        console.log('[Account] ⚠️ Navigation already in progress, ignoring click');
-                        return;
-                      }
-                      
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (e.nativeEvent) {
-                        e.nativeEvent.stopImmediatePropagation();
-                      }
-                      
-                      if (hasPremiumAccessValue) {
-                        navigationProcessingRef.current[buttonId] = true;
-                        const url = 'https://data.alertachart.com/liquidation-tracker';
-                        
-                        // Use setTimeout to ensure window.open completes before any other code runs
-                        setTimeout(() => {
-                          try {
-                            const opened = window.open(url, '_blank', 'noopener,noreferrer');
-                            // Check if window.open was blocked or failed
-                            if (opened === null || opened === undefined) {
-                              // Popup was blocked, use fallback ONLY in this case
-                              console.log('[Account] Popup blocked, using fallback navigation');
-                              window.location.href = url;
-                            } else {
-                              // Successfully opened in new tab - ABSOLUTELY do nothing else
-                              console.log('[Account] ✅ Opened liquidation tracker in new tab - current page stays');
-                              // Reset flag after a delay
-                              setTimeout(() => {
-                                navigationProcessingRef.current[buttonId] = false;
-                              }, 1000);
-                            }
-                          } catch (error) {
-                            // Only use fallback if window.open throws an error
-                            console.error('[Account] Error opening liquidation tracker:', error);
-                            window.location.href = url;
-                            navigationProcessingRef.current[buttonId] = false;
-                          }
-                        }, 0);
-                      } else {
-                        setShowUpgradeModal(true);
-                      }
-                    }}
-                    className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
-                      hasPremiumAccessValue
-                        ? 'border-blue-500/50 bg-blue-500/10 hover:border-blue-500 hover:bg-blue-500/20'
-                        : 'border-gray-700 bg-[#0f0f0f] hover:border-gray-800 opacity-60'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between pointer-events-none">
+                  {hasPremiumAccessValue ? (
+                    <a
+                      href="https://data.alertachart.com/liquidation-tracker"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`w-full p-4 rounded-xl border-2 transition-all duration-200 block ${
+                        'border-blue-500/50 bg-blue-500/10 hover:border-blue-500 hover:bg-blue-500/20'
+                      }`}
+                      onClick={(e) => {
+                        // Only prevent default if we want to handle it manually, but with <a> tag and target="_blank", browser handles it correctly
+                        // Just ensure no other navigation happens
+                        e.stopPropagation();
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                           hasPremiumAccessValue
@@ -434,68 +391,49 @@ export default function AccountPage() {
                           </div>
                         </div>
                       </div>
-                      {!hasPremiumAccessValue && (
-                        <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">🔒</span>
-                      )}
                     </div>
-                  </button>
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="w-full p-4 rounded-xl border-2 transition-all duration-200 border-gray-700 bg-[#0f0f0f] hover:border-gray-800 opacity-60"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-[#151515]">
+                            <TrendingUp className="w-6 h-6 text-gray-500" />
+                          </div>
+                          <div className="text-left">
+                            <div className="text-white font-semibold">
+                              {language === 'tr' ? 'Liquidations Dashboard' : 'Liquidations Dashboard'}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {language === 'tr' ? 'Gerçek zamanlı liquidation verileri' : 'Real-time liquidation data'}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">🔒</span>
+                      </div>
+                    </button>
+                  )}
 
                   {/* Aggr Button */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      // 🔥 CRITICAL: Prevent double execution
-                      const buttonId = 'aggr';
-                      if (navigationProcessingRef.current[buttonId]) {
-                        console.log('[Account] ⚠️ Navigation already in progress, ignoring click');
-                        return;
-                      }
-                      
-                      e.preventDefault();
-                      e.stopPropagation();
-                      if (e.nativeEvent) {
-                        e.nativeEvent.stopImmediatePropagation();
-                      }
-                      
-                      if (hasPremiumAccessValue) {
-                        navigationProcessingRef.current[buttonId] = true;
-                        const url = 'https://aggr.alertachart.com';
-                        
-                        // Use setTimeout to ensure window.open completes before any other code runs
-                        setTimeout(() => {
-                          try {
-                            const opened = window.open(url, '_blank', 'noopener,noreferrer');
-                            // Check if window.open was blocked or failed
-                            if (opened === null || opened === undefined) {
-                              // Popup was blocked, use fallback ONLY in this case
-                              console.log('[Account] Popup blocked, using fallback navigation');
-                              window.location.href = url;
-                            } else {
-                              // Successfully opened in new tab - ABSOLUTELY do nothing else
-                              console.log('[Account] ✅ Opened aggr in new tab - current page stays');
-                              // Reset flag after a delay
-                              setTimeout(() => {
-                                navigationProcessingRef.current[buttonId] = false;
-                              }, 1000);
-                            }
-                          } catch (error) {
-                            // Only use fallback if window.open throws an error
-                            console.error('[Account] Error opening aggr:', error);
-                            window.location.href = url;
-                            navigationProcessingRef.current[buttonId] = false;
-                          }
-                        }, 0);
-                      } else {
-                        setShowUpgradeModal(true);
-                      }
-                    }}
-                    className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
-                      hasPremiumAccessValue
-                        ? 'border-blue-500/50 bg-blue-500/10 hover:border-blue-500 hover:bg-blue-500/20'
-                        : 'border-gray-700 bg-[#0f0f0f] hover:border-gray-800 opacity-60'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between pointer-events-none">
+                  {hasPremiumAccessValue ? (
+                    <a
+                      href="https://aggr.alertachart.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`w-full p-4 rounded-xl border-2 transition-all duration-200 block ${
+                        'border-blue-500/50 bg-blue-500/10 hover:border-blue-500 hover:bg-blue-500/20'
+                      }`}
+                      onClick={(e) => {
+                        // Only prevent default if we want to handle it manually, but with <a> tag and target="_blank", browser handles it correctly
+                        // Just ensure no other navigation happens
+                        e.stopPropagation();
+                      }}
+                    >
+                      <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                           hasPremiumAccessValue
@@ -513,11 +451,32 @@ export default function AccountPage() {
                           </div>
                         </div>
                       </div>
-                      {!hasPremiumAccessValue && (
-                        <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">🔒</span>
-                      )}
                     </div>
-                  </button>
+                    </a>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setShowUpgradeModal(true)}
+                      className="w-full p-4 rounded-xl border-2 transition-all duration-200 border-gray-700 bg-[#0f0f0f] hover:border-gray-800 opacity-60"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-[#151515]">
+                            <BarChart3 className="w-6 h-6 text-gray-500" />
+                          </div>
+                          <div className="text-left">
+                            <div className="text-white font-semibold">
+                              {language === 'tr' ? 'Aggr Trade' : 'Aggr Trade'}
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              {language === 'tr' ? 'Gelişmiş trading analizi' : 'Advanced trading analysis'}
+                            </div>
+                          </div>
+                        </div>
+                        <span className="text-xs px-2 py-1 bg-blue-500/20 text-blue-300 rounded">🔒</span>
+                      </div>
+                    </button>
+                  )}
                 </div>
               </div>
             )}
