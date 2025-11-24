@@ -6,6 +6,7 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSession, signOut, signIn } from 'next-auth/react';
+import { useSearchParams } from 'next/navigation';
 import Chart from '@/components/chart/Chart';
 import AlertsPanel from '@/components/AlertsPanel';
 import Watchlist from '@/components/Watchlist';
