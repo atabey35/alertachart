@@ -493,10 +493,6 @@ export default function Home() {
   // Web tarafında token'a ihtiyaç yok, sadece alarm tetiklendiğinde /api/alarms/notify çağrılıyor
   // Backend user_id'den cihazları bulur ve push token ile bildirim gönderir
 
-  // Ref to prevent multiple redirects
-  const redirectingRef = useRef(false);
-  const callbackProcessedRef = useRef(false);
-
   // Check URL params for login and handle callback redirects
   useEffect(() => {
     if (typeof window === 'undefined') return;
