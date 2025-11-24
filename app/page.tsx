@@ -26,6 +26,9 @@ import { getTimeframeForHuman } from '@/utils/helpers';
 import { initSafeAreaListener } from '@/utils/safeArea';
 import { hasPremiumAccess, isTrialActive, getTrialDaysRemaining, User } from '@/utils/premium';
 import { handleGoogleWebLogin, handleAppleWebLogin } from '@/utils/webAuth';
+import AndroidLogin from '@/components/login/AndroidLogin';
+import IOSLogin from '@/components/login/IOSLogin';
+import DefaultLogin from '@/components/login/DefaultLogin';
 
 interface ChartState {
   id: number;
@@ -1377,13 +1380,19 @@ export default function Home() {
     updateActiveChart({ pair: symbol });
   };
 
-  // WEB: Show login screen only if user explicitly clicks login button
-  // More reliable web detection: check if Capacitor exists AND if platform is actually web
+  // Platform detection
   const isWeb = typeof window !== 'undefined' && (
     !(window as any).Capacitor || 
     ((window as any).Capacitor && (window as any).Capacitor.getPlatform?.() === 'web')
   );
-  const shouldShowLoginScreen = isWeb && showLoginScreen && !user && status !== 'authenticated';
+  const isAndroid = typeof window !== 'undefined' && 
+    (window as any).Capacitor && 
+    (window as any).Capacitor.getPlatform?.() === 'android';
+  const isIOS = typeof window !== 'undefined' && 
+    (window as any).Capacitor && 
+    (window as any).Capacitor.getPlatform?.() === 'ios';
+  
+  const shouldShowLoginScreen = showLoginScreen && !user && status !== 'authenticated';
 
   // Debug logging (only when state changes)
   useEffect(() => {
@@ -1391,15 +1400,28 @@ export default function Home() {
       console.log('[Login Screen] State check:', {
         showLoginScreen,
         isWeb,
+        isAndroid,
+        isIOS,
         user: user?.email || null,
         status,
         shouldShowLoginScreen
       });
     }
-  }, [showLoginScreen, isWeb, user, status, shouldShowLoginScreen]);
+  }, [showLoginScreen, isWeb, isAndroid, isIOS, user, status, shouldShowLoginScreen]);
 
-  // If web and user clicked login button, show login screen
+  // If user clicked login button, show platform-specific login screen
   if (shouldShowLoginScreen) {
+    // Android: Use AndroidLogin component
+    if (isAndroid) {
+      return <AndroidLogin />;
+    }
+    
+    // iOS: Use IOSLogin component
+    if (isIOS) {
+      return <IOSLogin />;
+    }
+    
+    // Web: Use web login screen
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-900 via-gray-950 to-black p-4 fixed inset-0 z-[9999]" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}>
         <div className="max-w-md w-full text-center">
