@@ -238,7 +238,7 @@ public class MainActivity extends BridgeActivity {
             } else {
                 android.util.Log.w("MainActivity", "⚠️ Could not read server URL from config, using default");
                 // Fallback to default URL
-                String defaultUrl = "https://alertachart.com";
+                String defaultUrl = "https://www.alertachart.com";
                 String currentUrl = webView.getUrl();
                 if (currentUrl == null || currentUrl.contains("alerta.kriptokirmizi.com")) {
                     webView.loadUrl(defaultUrl);

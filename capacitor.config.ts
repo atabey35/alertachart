@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Alerta Chart',
   webDir: 'public', // Local login screen
   server: {
-    url: 'https://alertachart.com',
+    url: 'https://www.alertachart.com',
     cleartext: true, // Allow HTTP if needed
   },
   plugins: {
