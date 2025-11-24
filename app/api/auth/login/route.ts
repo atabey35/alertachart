@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     
     // Set CORS headers
     const origin = request.headers.get('origin') || '';
-    const allowedOrigins = ['https://alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
+    const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
     
     if (allowedOrigins.includes(origin)) {
       nextResponse.headers.set('Access-Control-Allow-Origin', origin);
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
 // Handle OPTIONS request for CORS preflight
 export async function OPTIONS(request: NextRequest) {
   const origin = request.headers.get('origin') || '';
-  const allowedOrigins = ['https://alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
+  const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
   
   const response = new NextResponse(null, { status: 204 });
   
