@@ -191,7 +191,7 @@ export default function AccountPage() {
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => router.push('/')}
+              onClick={() => window.location.href = '/'}
               className="p-2 text-gray-400 hover:text-white transition-colors rounded-lg hover:bg-[#0f0f0f]"
             >
               <ArrowLeft className="w-6 h-6" />
@@ -273,7 +273,7 @@ export default function AccountPage() {
                           : 'Sign in to access account settings'}
                       </p>
                       <button
-                        onClick={() => router.push('/')}
+                        onClick={() => window.location.href = '/'}
                         className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
                       >
                         {language === 'tr' ? 'Ana Sayfaya Dön' : 'Go to Home'}
