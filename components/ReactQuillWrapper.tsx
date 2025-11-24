@@ -29,7 +29,8 @@ export default function ReactQuillWrapper(props: ReactQuillWrapperProps) {
     if (typeof window !== 'undefined') {
       // ReactDOM'u yükle ve findDOMNode'u polyfill et
       import('react-dom').then((ReactDOM) => {
-        if (!ReactDOM.findDOMNode) {
+        const ReactDOMAny = ReactDOM as any;
+        if (!ReactDOMAny.findDOMNode) {
           const findDOMNodePolyfill = function(node: any) {
             if (!node) return null;
             
@@ -68,12 +69,11 @@ export default function ReactQuillWrapper(props: ReactQuillWrapperProps) {
             return null;
           };
           
-          (ReactDOM as any).findDOMNode = findDOMNodePolyfill;
+          ReactDOMAny.findDOMNode = findDOMNodePolyfill;
           
           // react_dom_1.default.findDOMNode için de polyfill (ReactQuill'in kullandığı format)
-          const ReactDOMDefault = ReactDOM as any;
-          if (ReactDOMDefault.default) {
-            ReactDOMDefault.default.findDOMNode = findDOMNodePolyfill;
+          if (ReactDOMAny.default) {
+            ReactDOMAny.default.findDOMNode = findDOMNodePolyfill;
           }
           
           // Module.exports formatı için de (CommonJS)
