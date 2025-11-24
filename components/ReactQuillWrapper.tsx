@@ -19,7 +19,6 @@ interface ReactQuillWrapperProps {
 
 export default function ReactQuillWrapper(props: ReactQuillWrapperProps) {
   const [isClient, setIsClient] = useState(false);
-  const quillRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -101,7 +100,6 @@ export default function ReactQuillWrapper(props: ReactQuillWrapperProps) {
     <div ref={containerRef}>
       <ReactQuill
         {...props}
-        ref={quillRef}
       />
     </div>
   );
