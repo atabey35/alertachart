@@ -6,7 +6,6 @@
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSession, signOut, signIn } from 'next-auth/react';
-import { useSearchParams } from 'next/navigation';
 import Chart from '@/components/chart/Chart';
 import AlertsPanel from '@/components/AlertsPanel';
 import Watchlist from '@/components/Watchlist';
@@ -485,6 +484,20 @@ export default function Home() {
   // Login sonrası native app /api/devices/link ile cihazı kullanıcıya bağlıyor
   // Web tarafında token'a ihtiyaç yok, sadece alarm tetiklendiğinde /api/alarms/notify çağrılıyor
   // Backend user_id'den cihazları bulur ve push token ile bildirim gönderir
+
+  // Check URL params for login
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const loginParam = params.get('login');
+      if (loginParam === 'true' && !user && status !== 'authenticated') {
+        setShowLoginScreen(true);
+        console.log('[App] Login screen opened from URL parameter');
+        // Clean URL after processing
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, [user, status]);
 
   // Load chart/watchlist from URL params (for sharing)
   useEffect(() => {
