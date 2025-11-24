@@ -12,14 +12,10 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 301); // 301 = Permanent Redirect (SEO için önemli)
   }
 
-  // www'den non-www'e redirect (301 Permanent Redirect - SEO için önemli)
-  // www.alertachart.com → alertachart.com
-  // Sadece alertachart.com domain'i için çalışır (subdomain'ler için değil)
-  if (hostname === 'www.alertachart.com') {
-    url.hostname = 'alertachart.com';
-    url.protocol = 'https';
-    return NextResponse.redirect(url, 301); // 301 = Permanent Redirect (SEO için önemli)
-  }
+  // NOT: www redirect'i middleware'de kaldırıldı
+  // Vercel Dashboard'da domain yapılandırması ile www ↔ non-www redirect yönetiliyor
+  // Middleware'de hem www → non-www hem de Vercel'in non-www → www redirect'i çakışıyordu
+  // Bu redirect loop'a neden oluyordu
 
   return NextResponse.next();
 }
