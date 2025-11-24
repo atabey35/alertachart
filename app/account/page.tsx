@@ -439,7 +439,7 @@ export default function AccountPage() {
                   <button
                     onClick={() => {
                       if (hasPremiumAccessValue) {
-                        window.open('https://data.alertachart.com', '_blank');
+                        window.open('https://data.alertachart.com/liquidation-tracker', '_blank');
                       } else {
                         setShowUpgradeModal(true);
                       }
