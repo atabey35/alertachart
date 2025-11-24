@@ -41,6 +41,15 @@ export default function AuthModal({ isOpen, onClose, onSuccess }: AuthModalProps
   // Google Identity Services (GIS) initialization for web
   useEffect(() => {
     if (typeof window !== 'undefined' && !isCapacitor && isOpen && googleButtonRef.current) {
+      // 🔥 CRITICAL: Double-check platform (Android/iOS should not reach here)
+      const isCapacitorCheck = !!(window as any).Capacitor;
+      const platform = isCapacitorCheck ? ((window as any).Capacitor?.getPlatform?.() || 'web') : 'web';
+      
+      if (platform === 'android' || platform === 'ios') {
+        console.log('[AuthModal] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
+        return; // Don't load script on native platforms
+      }
+      
       // Clear previous button
       if (googleButtonRef.current) {
         googleButtonRef.current.innerHTML = '';
