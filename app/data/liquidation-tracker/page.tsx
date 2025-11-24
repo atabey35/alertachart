@@ -26,7 +26,6 @@ export default function LiquidationTrackerPage() {
         const currentHost = window.location.hostname;
         if (currentHost === 'data.alertachart.com') {
           // Already on correct subdomain, don't redirect
-          console.log('[LiquidationTracker] Already on data.alertachart.com, skipping redirect');
           setIsAuthenticated(true);
           setLoading(false);
           return;
@@ -41,12 +40,10 @@ export default function LiquidationTrackerPage() {
         // User is authenticated, redirect to liquidation tracker
         // Only redirect if not already redirecting
         redirectingRef.current = true;
-        console.log('[LiquidationTracker] User authenticated, redirecting to data.alertachart.com');
         // Use replace instead of href to prevent back button issues
         window.location.replace('https://data.alertachart.com/liquidation-tracker?embed=true');
       }
     } catch (error) {
-      console.error('[LiquidationTracker] Auth check failed:', error);
       setIsAuthenticated(false);
       setLoading(false);
     } finally {
