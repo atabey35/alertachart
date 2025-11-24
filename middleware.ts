@@ -5,6 +5,12 @@ export function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const url = request.nextUrl.clone();
 
+  // 🔥 CRITICAL: OPTIONS requests (CORS preflight) should never be redirected
+  // Redirecting OPTIONS requests breaks CORS preflight checks
+  if (request.method === 'OPTIONS') {
+    return NextResponse.next();
+  }
+
   // Eski domain'den yeni domain'e redirect (301 Permanent Redirect - SEO için önemli)
   if (hostname.includes('alerta.kriptokirmizi.com')) {
     url.hostname = 'alertachart.com';
