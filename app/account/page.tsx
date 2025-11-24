@@ -27,6 +27,9 @@ export default function AccountPage() {
   // 🔥 CRITICAL: Prevent infinite loops and duplicate API calls
   const userInitializedRef = useRef(false);
   const userPlanFetchingRef = useRef(false);
+  
+  // 🔥 CRITICAL: Prevent double navigation
+  const navigationProcessingRef = useRef<{ [key: string]: boolean }>({});
 
   // Load language from localStorage
   useEffect(() => {
@@ -362,37 +365,50 @@ export default function AccountPage() {
                   <button
                     type="button"
                     onClick={(e) => {
+                      // 🔥 CRITICAL: Prevent double execution
+                      const buttonId = 'liquidation-tracker';
+                      if (navigationProcessingRef.current[buttonId]) {
+                        console.log('[Account] ⚠️ Navigation already in progress, ignoring click');
+                        return;
+                      }
+                      
                       e.preventDefault();
                       e.stopPropagation();
-                      e.nativeEvent.stopImmediatePropagation();
+                      if (e.nativeEvent) {
+                        e.nativeEvent.stopImmediatePropagation();
+                      }
+                      
                       if (hasPremiumAccessValue) {
+                        navigationProcessingRef.current[buttonId] = true;
                         const url = 'https://data.alertachart.com/liquidation-tracker';
-                        try {
-                          const opened = window.open(url, '_blank', 'noopener,noreferrer');
-                          // Check if window.open was blocked or failed
-                          if (opened === null || opened === undefined) {
-                            // Popup was blocked, use fallback ONLY in this case
-                            console.log('[Account] Popup blocked, using fallback navigation');
-                            setTimeout(() => {
+                        
+                        // Use setTimeout to ensure window.open completes before any other code runs
+                        setTimeout(() => {
+                          try {
+                            const opened = window.open(url, '_blank', 'noopener,noreferrer');
+                            // Check if window.open was blocked or failed
+                            if (opened === null || opened === undefined) {
+                              // Popup was blocked, use fallback ONLY in this case
+                              console.log('[Account] Popup blocked, using fallback navigation');
                               window.location.href = url;
-                            }, 100);
-                          } else {
-                            // Successfully opened in new tab - ABSOLUTELY do nothing else
-                            console.log('[Account] ✅ Opened liquidation tracker in new tab - current page stays');
-                            // Do NOT navigate current page - just return
-                            return false;
-                          }
-                        } catch (error) {
-                          // Only use fallback if window.open throws an error
-                          console.error('[Account] Error opening liquidation tracker:', error);
-                          setTimeout(() => {
+                            } else {
+                              // Successfully opened in new tab - ABSOLUTELY do nothing else
+                              console.log('[Account] ✅ Opened liquidation tracker in new tab - current page stays');
+                              // Reset flag after a delay
+                              setTimeout(() => {
+                                navigationProcessingRef.current[buttonId] = false;
+                              }, 1000);
+                            }
+                          } catch (error) {
+                            // Only use fallback if window.open throws an error
+                            console.error('[Account] Error opening liquidation tracker:', error);
                             window.location.href = url;
-                          }, 100);
-                        }
+                            navigationProcessingRef.current[buttonId] = false;
+                          }
+                        }, 0);
                       } else {
                         setShowUpgradeModal(true);
                       }
-                      return false;
                     }}
                     className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
                       hasPremiumAccessValue
@@ -400,7 +416,7 @@ export default function AccountPage() {
                         : 'border-gray-700 bg-[#0f0f0f] hover:border-gray-800 opacity-60'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between pointer-events-none">
                       <div className="flex items-center gap-3">
                         <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                           hasPremiumAccessValue
@@ -428,37 +444,50 @@ export default function AccountPage() {
                   <button
                     type="button"
                     onClick={(e) => {
+                      // 🔥 CRITICAL: Prevent double execution
+                      const buttonId = 'aggr';
+                      if (navigationProcessingRef.current[buttonId]) {
+                        console.log('[Account] ⚠️ Navigation already in progress, ignoring click');
+                        return;
+                      }
+                      
                       e.preventDefault();
                       e.stopPropagation();
-                      e.nativeEvent.stopImmediatePropagation();
+                      if (e.nativeEvent) {
+                        e.nativeEvent.stopImmediatePropagation();
+                      }
+                      
                       if (hasPremiumAccessValue) {
+                        navigationProcessingRef.current[buttonId] = true;
                         const url = 'https://aggr.alertachart.com';
-                        try {
-                          const opened = window.open(url, '_blank', 'noopener,noreferrer');
-                          // Check if window.open was blocked or failed
-                          if (opened === null || opened === undefined) {
-                            // Popup was blocked, use fallback ONLY in this case
-                            console.log('[Account] Popup blocked, using fallback navigation');
-                            setTimeout(() => {
+                        
+                        // Use setTimeout to ensure window.open completes before any other code runs
+                        setTimeout(() => {
+                          try {
+                            const opened = window.open(url, '_blank', 'noopener,noreferrer');
+                            // Check if window.open was blocked or failed
+                            if (opened === null || opened === undefined) {
+                              // Popup was blocked, use fallback ONLY in this case
+                              console.log('[Account] Popup blocked, using fallback navigation');
                               window.location.href = url;
-                            }, 100);
-                          } else {
-                            // Successfully opened in new tab - ABSOLUTELY do nothing else
-                            console.log('[Account] ✅ Opened aggr in new tab - current page stays');
-                            // Do NOT navigate current page - just return
-                            return false;
-                          }
-                        } catch (error) {
-                          // Only use fallback if window.open throws an error
-                          console.error('[Account] Error opening aggr:', error);
-                          setTimeout(() => {
+                            } else {
+                              // Successfully opened in new tab - ABSOLUTELY do nothing else
+                              console.log('[Account] ✅ Opened aggr in new tab - current page stays');
+                              // Reset flag after a delay
+                              setTimeout(() => {
+                                navigationProcessingRef.current[buttonId] = false;
+                              }, 1000);
+                            }
+                          } catch (error) {
+                            // Only use fallback if window.open throws an error
+                            console.error('[Account] Error opening aggr:', error);
                             window.location.href = url;
-                          }, 100);
-                        }
+                            navigationProcessingRef.current[buttonId] = false;
+                          }
+                        }, 0);
                       } else {
                         setShowUpgradeModal(true);
                       }
-                      return false;
                     }}
                     className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
                       hasPremiumAccessValue
@@ -466,7 +495,7 @@ export default function AccountPage() {
                         : 'border-gray-700 bg-[#0f0f0f] hover:border-gray-800 opacity-60'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between pointer-events-none">
                       <div className="flex items-center gap-3">
                         <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
                           hasPremiumAccessValue
