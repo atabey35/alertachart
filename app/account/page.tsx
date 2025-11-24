@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { User, Smartphone, LogOut, ArrowLeft, Settings, Bell, Shield, Globe, HelpCircle, Languages, BarChart3, Mail, Lock, Download, Trash2, Share2, CreditCard, Activity, Sparkles, TrendingUp } from 'lucide-react';
+import { User, Smartphone, ArrowLeft, Settings, Bell, Shield, Globe, HelpCircle, Languages, BarChart3, Mail, Lock, Download, Trash2, Share2, CreditCard, Activity, Sparkles, TrendingUp } from 'lucide-react';
 import PremiumBadge from '@/components/PremiumBadge';
 import TrialIndicator from '@/components/TrialIndicator';
 import UpgradeModal from '@/components/UpgradeModal';
@@ -22,7 +22,6 @@ export default function AccountPage() {
   } | null>(null);
   const [fullUser, setFullUser] = useState<UserType | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [language, setLanguage] = useState<'tr' | 'en'>('tr');
 
   // Load language from localStorage
@@ -173,17 +172,6 @@ export default function AccountPage() {
 
   const hasPremiumAccessValue: boolean = userPlan?.hasPremiumAccess ?? hasPremiumAccess(fullUser) ?? false;
 
-  const handleLogout = async () => {
-    if (isLoggingOut) return;
-    setIsLoggingOut(true);
-    try {
-      await signOut({ callbackUrl: '/' });
-    } catch (error) {
-      console.error('[Account] Logout error:', error);
-      setIsLoggingOut(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#0a0a0a]">
       <div className="max-w-6xl mx-auto px-4 py-8 lg:py-12">
@@ -299,23 +287,6 @@ export default function AccountPage() {
                 </div>
               )}
 
-              {/* Logout Button */}
-              {user && (
-                <div className="mt-6 pt-6 border-t border-gray-900">
-                  <button
-                    onClick={handleLogout}
-                    disabled={isLoggingOut}
-                    className="w-full px-4 py-3 bg-[#0f0f0f] hover:bg-red-600/20 border border-gray-900 hover:border-red-500/50 text-gray-300 hover:text-red-400 rounded-xl font-medium transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <LogOut className="w-5 h-5" />
-                    <span>
-                      {isLoggingOut
-                        ? language === 'tr' ? 'Çıkış yapılıyor...' : 'Logging out...'
-                        : language === 'tr' ? 'Çıkış Yap' : 'Logout'}
-                    </span>
-                  </button>
-                </div>
-              )}
             </div>
 
             {/* Subscription Info */}
