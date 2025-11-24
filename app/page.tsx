@@ -59,6 +59,7 @@ export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false); // Only for Capacitor email/password
   const [showLoginScreen, setShowLoginScreen] = useState(false); // Native login screen for web
   const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
+  const [callbackUrl, setCallbackUrl] = useState<string | null>(null); // Callback URL for redirect after login
   const { data: session, status, update } = useSession();
   const [isCapacitor, setIsCapacitor] = useState(false);
   const [isIPad, setIsIPad] = useState(false);
@@ -390,8 +391,11 @@ export default function Home() {
               if (result.success) {
                 setShowLoginScreen(false);
                 googleInitializedRef.current = false; // Reset for next login
-                // Refresh page to update session
-                window.location.reload();
+                // If there's a callback URL, it will be handled by the useEffect above
+                // Otherwise, refresh page to update session
+                if (!callbackUrl) {
+                  window.location.reload();
+                }
               } else {
                 setLoginError(result.error || 'Google login failed');
               }
@@ -490,14 +494,53 @@ export default function Home() {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
       const loginParam = params.get('login');
+      const callbackParam = params.get('callback');
+      
+      // If user is already authenticated and there's a callback URL, redirect immediately
+      if (loginParam === 'true' && callbackParam && (user || status === 'authenticated')) {
+        console.log('[App] User already authenticated, redirecting to callback:', callbackParam);
+        try {
+          const decodedCallback = decodeURIComponent(callbackParam);
+          window.location.href = decodedCallback;
+          return;
+        } catch (e) {
+          console.error('[App] Error decoding callback URL:', e);
+        }
+      }
+      
+      // If login param is true and user is not authenticated, show login screen
       if (loginParam === 'true' && !user && status !== 'authenticated') {
+        if (callbackParam) {
+          setCallbackUrl(callbackParam);
+        }
         setShowLoginScreen(true);
-        console.log('[App] Login screen opened from URL parameter');
-        // Clean URL after processing
-        window.history.replaceState({}, '', window.location.pathname);
+        console.log('[App] Login screen opened from URL parameter', callbackParam ? `with callback: ${callbackParam}` : '');
+        // Clean URL after processing (keep callback in URL for after login)
+        if (callbackParam) {
+          window.history.replaceState({}, '', `${window.location.pathname}?callback=${callbackParam}`);
+        } else {
+          window.history.replaceState({}, '', window.location.pathname);
+        }
       }
     }
   }, [user, status]);
+
+  // Handle callback redirect after successful login
+  useEffect(() => {
+    if (typeof window !== 'undefined' && callbackUrl && (user || status === 'authenticated')) {
+      console.log('[App] Login successful, redirecting to callback:', callbackUrl);
+      try {
+        const decodedCallback = decodeURIComponent(callbackUrl);
+        // Small delay to ensure session is fully established
+        setTimeout(() => {
+          window.location.href = decodedCallback;
+        }, 500);
+      } catch (e) {
+        console.error('[App] Error decoding callback URL:', e);
+        setCallbackUrl(null);
+      }
+    }
+  }, [user, status, callbackUrl]);
 
   // Load chart/watchlist from URL params (for sharing)
   useEffect(() => {

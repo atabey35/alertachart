@@ -15,6 +15,18 @@ export default function DefaultLogin() {
       .then(res => res.json())
       .then(data => {
         if (data?.user) {
+          // Check for callback URL in query params
+          const params = new URLSearchParams(window.location.search);
+          const callbackUrl = params.get('callback');
+          if (callbackUrl) {
+            try {
+              const decodedCallback = decodeURIComponent(callbackUrl);
+              window.location.href = decodedCallback;
+              return;
+            } catch (e) {
+              console.error('[DefaultLogin] Error decoding callback URL:', e);
+            }
+          }
           router.push('/');
         }
       })
@@ -33,7 +45,12 @@ export default function DefaultLogin() {
     setError('');
     
     try {
-      await signIn('google', { callbackUrl: '/' });
+      // Check for callback URL in query params
+      const params = new URLSearchParams(window.location.search);
+      const callbackUrl = params.get('callback');
+      const redirectUrl = callbackUrl ? decodeURIComponent(callbackUrl) : '/';
+      
+      await signIn('google', { callbackUrl: redirectUrl });
     } catch (err: any) {
       showError(err.message || 'Google sign-in failed');
       setLoading(false);
@@ -46,7 +63,13 @@ export default function DefaultLogin() {
     
     try {
       console.log('[DefaultLogin] 🌐 Web detected - using NextAuth signIn for Apple');
-      await signIn('apple', { callbackUrl: '/' });
+      
+      // Check for callback URL in query params
+      const params = new URLSearchParams(window.location.search);
+      const callbackUrl = params.get('callback');
+      const redirectUrl = callbackUrl ? decodeURIComponent(callbackUrl) : '/';
+      
+      await signIn('apple', { callbackUrl: redirectUrl });
     } catch (err: any) {
       console.error('[DefaultLogin] ❌ Apple login error:', err);
       console.error('[DefaultLogin] Error details:', {
