@@ -514,6 +514,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const drawingSeriesRef = useRef<Map<string, ISeriesApi<'Line'>>>(new Map());
   const horizontalLinesRef = useRef<Map<string, any>>(new Map()); // Store price lines for horizontal drawings
   const precisionSetRef = useRef<boolean>(false); // Track if precision has been set for current pair
+  const drawingsLoadedRef = useRef<boolean>(false); // Track if drawings have been loaded from localStorage
   
   // Update container size
   useEffect(() => {
@@ -557,24 +558,40 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   // Load drawings from localStorage on mount
   useEffect(() => {
     const storageKey = `drawings_${exchange}_${pair}`;
+    drawingsLoadedRef.current = false; // Reset flag when exchange/pair changes
     try {
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const loadedDrawings = JSON.parse(saved);
-        setDrawings(loadedDrawings);
-        // console.log('[Chart] Loaded drawings from localStorage:', loadedDrawings.length);
+        if (Array.isArray(loadedDrawings) && loadedDrawings.length > 0) {
+          setDrawings(loadedDrawings);
+          console.log('[Chart] ✅ Loaded drawings from localStorage:', loadedDrawings.length);
+        } else {
+          setDrawings([]);
+        }
+      } else {
+        setDrawings([]);
       }
+      drawingsLoadedRef.current = true; // Mark as loaded
     } catch (e) {
       console.error('[Chart] Failed to load drawings:', e);
+      setDrawings([]);
+      drawingsLoadedRef.current = true; // Mark as loaded even on error
     }
   }, [exchange, pair]);
   
-  // Save drawings to localStorage whenever they change
+  // Save drawings to localStorage whenever they change (only after initial load)
   useEffect(() => {
+    // Don't save if drawings haven't been loaded yet (prevents overwriting with empty array)
+    if (!drawingsLoadedRef.current) {
+      console.log('[Chart] ⏳ Skipping save - drawings not loaded yet');
+      return;
+    }
+    
     const storageKey = `drawings_${exchange}_${pair}`;
     try {
       localStorage.setItem(storageKey, JSON.stringify(drawings));
-      // console.log('[Chart] Saved drawings to localStorage:', drawings.length);
+      console.log('[Chart] 💾 Saved drawings to localStorage:', drawings.length);
     } catch (e) {
       console.error('[Chart] Failed to save drawings:', e);
     }
