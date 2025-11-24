@@ -3,11 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 
-// React 19 findDOMNode polyfill'i yükle
-if (typeof window !== 'undefined') {
-  import('@/lib/react-dom-polyfill');
-}
-
 // ReactQuill'i dynamic import ile yükle
 const ReactQuill = dynamic(() => import('react-quill'), { ssr: false });
 
