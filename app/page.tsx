@@ -247,6 +247,30 @@ export default function Home() {
         console.log('[Web Auth] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
         return;
       }
+      
+      // 🔥 CRITICAL: Load Google Identity Services script ONLY on web (not Android/iOS)
+      // This prevents ERR_BLOCKED_BY_ORB error on Android
+      const loadGoogleScript = () => {
+        // Check if script already loaded
+        if (document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+          console.log('[Web Auth] Google Identity Services script already loaded');
+          return;
+        }
+        
+        console.log('[Web Auth] ✅ Loading Google Identity Services script (web only)');
+        const script = document.createElement('script');
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onerror = () => {
+          console.error('[Web Auth] ❌ Failed to load Google Identity Services script');
+        };
+        document.head.appendChild(script);
+      };
+      
+      // Load script immediately for web
+      loadGoogleScript();
+      
       // Prevent multiple initializations
       if (googleInitializedRef.current) {
         console.log('[Web Auth] Google Identity Services already initialized, skipping');
@@ -1560,7 +1584,7 @@ export default function Home() {
                   </svg>
                 </button>
                 <div className="absolute top-full left-0 mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-2 min-w-[180px]">
-                  <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
                     <a 
                       href="https://t.me/kriptokirmizi" 
                       target="_blank" 
@@ -1572,7 +1596,7 @@ export default function Home() {
                       </svg>
                       <span>Telegram</span>
                     </a>
-                  </div>
+              </div>
                   <div className="flex items-center gap-2">
                     <a 
                       href="https://www.youtube.com/@kriptokirmizi" 
@@ -1660,8 +1684,8 @@ export default function Home() {
 
             {/* Right: User Icon + Auth Button - Hidden on mobile (available in bottom nav) */}
             <div className="hidden lg:flex items-center gap-2 lg:gap-3 flex-shrink-0">
-              {user ? (
-                <div className="flex items-center gap-2">
+                  {user ? (
+                    <div className="flex items-center gap-2">
                   <NotificationDropdown userEmail={user.email} />
                   <div className="relative">
                     <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm lg:text-base">
@@ -1670,51 +1694,51 @@ export default function Home() {
                     <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-black"></div>
                   </div>
                   <div className="hidden lg:flex flex-col items-start gap-0.5">
+                      <button
+                          onTouchStart={(e) => {
+                            if (isLoggingOut || logoutProcessingRef.current) {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              return;
+                            }
+                          }}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (!isLoggingOut && !logoutProcessingRef.current) {
+                              handleGlobalLogout();
+                            }
+                          }}
+                          disabled={isLoggingOut || logoutProcessingRef.current}
+                          className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation"
+                          style={{ WebkitTapHighlightColor: 'transparent' }}
+                      >
+                          {isLoggingOut ? 'Çıkış yapılıyor...' : 'Çıkış'}
+                      </button>
+                        {logoutError && (
+                          <span className="text-[10px] text-red-400">{logoutError}</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
                     <button
-                      onTouchStart={(e) => {
-                        if (isLoggingOut || logoutProcessingRef.current) {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          return;
-                        }
+                      onClick={() => {
+                        console.log('[Header] Giriş Yap butonuna tıklandı');
+                        const hasCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+                        const platform = hasCapacitor ? (window as any).Capacitor.getPlatform?.() : 'web';
+                        console.log('[Header] hasCapacitor:', hasCapacitor);
+                        console.log('[Header] platform:', platform);
+                        console.log('[Header] user:', user);
+                        console.log('[Header] status:', status);
+                        setShowLoginScreen(true);
+                        console.log('[Header] showLoginScreen set to true');
                       }}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        if (!isLoggingOut && !logoutProcessingRef.current) {
-                          handleGlobalLogout();
-                        }
-                      }}
-                      disabled={isLoggingOut || logoutProcessingRef.current}
-                      className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation"
-                      style={{ WebkitTapHighlightColor: 'transparent' }}
-                    >
-                      {isLoggingOut ? 'Çıkış yapılıyor...' : 'Çıkış'}
-                    </button>
-                    {logoutError && (
-                      <span className="text-[10px] text-red-400">{logoutError}</span>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <button
-                  onClick={() => {
-                    console.log('[Header] Giriş Yap butonuna tıklandı');
-                    const hasCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
-                    const platform = hasCapacitor ? (window as any).Capacitor.getPlatform?.() : 'web';
-                    console.log('[Header] hasCapacitor:', hasCapacitor);
-                    console.log('[Header] platform:', platform);
-                    console.log('[Header] user:', user);
-                    console.log('[Header] status:', status);
-                    setShowLoginScreen(true);
-                    console.log('[Header] showLoginScreen set to true');
-                  }}
                   className="px-3 py-1.5 text-xs lg:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition font-medium"
-                >
-                  Giriş Yap
-                </button>
-              )}
-            </div>
+                    >
+                      Giriş Yap
+                    </button>
+                  )}
+                </div>
             </div>
           </div>
 
@@ -1745,7 +1769,7 @@ export default function Home() {
             <button
               onClick={() => setShowSymbolSearch(true)}
               className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-300 hover:text-white transition-colors group"
-            >
+                  >
               <svg 
                 className="w-4 h-4 text-gray-500 group-hover:text-blue-400" 
                 fill="none" 
@@ -1753,7 +1777,7 @@ export default function Home() {
                 viewBox="0 0 24 24"
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-              </svg>
+                    </svg>
               <span>
                 {(() => {
                   const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
@@ -1779,24 +1803,24 @@ export default function Home() {
             {/* Timeframe buttons - Simple style without borders */}
             <div className="flex items-center gap-1">
               {FREE_TIMEFRAMES.map((tf) => (
-                <button
+              <button
                   key={tf}
                   onClick={() => updateActiveChart({ timeframe: tf })}
                   className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
                     activeChart.timeframe === tf
                       ? 'bg-blue-600 text-white'
                       : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  }`}
+                }`}
                 >
                   {getTimeframeForHuman(tf)}
-                </button>
+              </button>
               ))}
               {PREMIUM_TIMEFRAMES.map((tf) => {
                 const isPremium = hasPremiumAccessValue;
                 const isActive = activeChart.timeframe === tf;
-                
+
                 return (
-                  <button
+              <button
                     key={tf}
                     onClick={() => {
                       if (isPremium) {
@@ -1819,89 +1843,89 @@ export default function Home() {
                     {!isPremium && (
                       <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
                     )}
-                  </button>
+              </button>
                 );
               })}
             </div>
 
             {/* Layout selector - TradingView style - Hidden on mobile (available in settings) */}
-            <div className="hidden lg:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1">
-              <button
-                onClick={() => setLayout(1)}
-                className={`p-1.5 rounded transition-colors ${
+              <div className="hidden lg:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1">
+                <button
+                  onClick={() => setLayout(1)}
+                  className={`p-1.5 rounded transition-colors ${
                   layout === 1 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                }`}
-                title="Single Chart"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="3" y="3" width="18" height="18" rx="2"/>
-                </svg>
-              </button>
-              <button
-                onClick={() => setLayout(2)}
-                className={`p-1.5 rounded transition-colors ${
+                  }`}
+                  title="Single Chart"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => setLayout(2)}
+                  className={`p-1.5 rounded transition-colors ${
                   layout === 2 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                }`}
-                title="2 Charts"
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="3" y="3" width="8" height="18" rx="2"/>
-                  <rect x="13" y="3" width="8" height="18" rx="2"/>
-                </svg>
-              </button>
-              <button
-                onClick={() => {
-                  if (hasPremiumAccessValue) {
-                    setLayout(4);
-                  } else {
-                    setShowUpgradeModal(true);
-                  }
-                }}
-                className={`p-1.5 rounded transition-colors relative ${
+                  }`}
+                  title="2 Charts"
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="8" height="18" rx="2"/>
+                    <rect x="13" y="3" width="8" height="18" rx="2"/>
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    if (hasPremiumAccessValue) {
+                      setLayout(4);
+                    } else {
+                      setShowUpgradeModal(true);
+                    }
+                  }}
+                  className={`p-1.5 rounded transition-colors relative ${
                   layout === 4 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
-                title={hasPremiumAccessValue ? '2x2 Grid' : '2x2 Grid (Premium)'}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="3" y="3" width="8" height="8" rx="1"/>
-                  <rect x="13" y="3" width="8" height="8" rx="1"/>
-                  <rect x="3" y="13" width="8" height="8" rx="1"/>
-                  <rect x="13" y="13" width="8" height="8" rx="1"/>
-                </svg>
-                {!hasPremiumAccessValue && (
-                  <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
-                )}
-              </button>
-              <button
-                onClick={() => {
-                  if (hasPremiumAccessValue) {
-                    setLayout(9);
-                  } else {
-                    setShowUpgradeModal(true);
-                  }
-                }}
-                className={`p-1.5 rounded transition-colors relative ${
+                  } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
+                  title={hasPremiumAccessValue ? '2x2 Grid' : '2x2 Grid (Premium)'}
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="3" y="3" width="8" height="8" rx="1"/>
+                    <rect x="13" y="3" width="8" height="8" rx="1"/>
+                    <rect x="3" y="13" width="8" height="8" rx="1"/>
+                    <rect x="13" y="13" width="8" height="8" rx="1"/>
+                  </svg>
+                  {!hasPremiumAccessValue && (
+                    <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    if (hasPremiumAccessValue) {
+                      setLayout(9);
+                    } else {
+                      setShowUpgradeModal(true);
+                    }
+                  }}
+                  className={`p-1.5 rounded transition-colors relative ${
                   layout === 9 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
-                title={hasPremiumAccessValue ? '3x3 Grid' : '3x3 Grid (Premium)'}
-              >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <rect x="2" y="2" width="5" height="5" rx="0.5"/>
-                  <rect x="9" y="2" width="5" height="5" rx="0.5"/>
-                  <rect x="16" y="2" width="5" height="5" rx="0.5"/>
-                  <rect x="2" y="9" width="5" height="5" rx="0.5"/>
-                  <rect x="9" y="9" width="5" height="5" rx="0.5"/>
-                  <rect x="16" y="9" width="5" height="5" rx="0.5"/>
-                  <rect x="2" y="16" width="5" height="5" rx="0.5"/>
-                  <rect x="9" y="16" width="5" height="5" rx="0.5"/>
-                  <rect x="16" y="16" width="5" height="5" rx="0.5"/>
-                </svg>
-                {!hasPremiumAccessValue && (
-                  <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
-                )}
-              </button>
+                  } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
+                  title={hasPremiumAccessValue ? '3x3 Grid' : '3x3 Grid (Premium)'}
+                >
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                    <rect x="2" y="2" width="5" height="5" rx="0.5"/>
+                    <rect x="9" y="2" width="5" height="5" rx="0.5"/>
+                    <rect x="16" y="2" width="5" height="5" rx="0.5"/>
+                    <rect x="2" y="9" width="5" height="5" rx="0.5"/>
+                    <rect x="9" y="9" width="5" height="5" rx="0.5"/>
+                    <rect x="16" y="9" width="5" height="5" rx="0.5"/>
+                    <rect x="2" y="16" width="5" height="5" rx="0.5"/>
+                    <rect x="9" y="16" width="5" height="5" rx="0.5"/>
+                    <rect x="16" y="16" width="5" height="5" rx="0.5"/>
+                  </svg>
+                  {!hasPremiumAccessValue && (
+                    <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                  )}
+                </button>
+              </div>
             </div>
-          </div>
           )}
       </header>
 

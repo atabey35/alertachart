@@ -357,35 +357,8 @@ export default function RootLayout({
 
         {/* Google Identity Services (GIS) for Web OAuth - ONLY for web, NOT for Android/iOS */}
         {/* 🔥 CRITICAL: Android'de bu script ERR_BLOCKED_BY_ORB hatasına neden oluyor */}
-        {/* Script'i sadece web'de yüklemek için client-side kontrol yapıyoruz */}
-        <Script
-          id="google-gsi-loader"
-          strategy="afterInteractive"
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                if (typeof window === 'undefined') return;
-                
-                // Check if we're in native app (Android/iOS)
-                const isCapacitor = !!(window.Capacitor);
-                const platform = isCapacitor ? (window.Capacitor?.getPlatform?.() || 'web') : 'web';
-                
-                if (platform === 'android' || platform === 'ios') {
-                  console.log('[Layout] ⏭️ Skipping Google Identity Services script (native platform:', platform + ')');
-                  return; // Don't load script on native platforms
-                }
-                
-                // Only load on web
-                console.log('[Layout] ✅ Loading Google Identity Services script (web platform)');
-                const script = document.createElement('script');
-                script.src = 'https://accounts.google.com/gsi/client';
-                script.async = true;
-                script.defer = true;
-                document.head.appendChild(script);
-              })();
-            `,
-          }}
-        />
+        {/* Script'i sadece web'de yüklemek için - app/page.tsx'de dinamik olarak yüklenecek */}
+        {/* Script buradan kaldırıldı - sadece web'de app/page.tsx'de yüklenecek */}
         
         {/* Capacitor Runtime for Native Plugins */}
         <Script
