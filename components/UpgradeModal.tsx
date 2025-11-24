@@ -461,13 +461,13 @@ export default function UpgradeModal({
 
           {/* Error Message */}
           {error && (
-            <div className="mx-4 mb-3 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30">
+            <div className="mx-4 mb-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30">
               <p className="text-red-400 text-xs text-center">{error}</p>
             </div>
           )}
 
           {/* Action Buttons */}
-          <div className="px-4 pb-4 pt-2 space-y-2 border-t border-gray-800/60">
+          <div className="px-4 pb-4 pt-1 space-y-2 border-t border-gray-800/60 -mt-1">
             {/* Trial button - only for native apps (iOS/Android), not web */}
             {/* Double check: platform must be 'ios' or 'android', not 'web' */}
             {currentPlan === 'free' && !isTrial && (platform === 'ios' || platform === 'android') && (
