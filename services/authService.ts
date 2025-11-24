@@ -82,13 +82,18 @@ class AuthService {
       // 🔥 CRITICAL: For subdomains (data.alertachart.com, aggr.alertachart.com), 
       // use absolute URL to alertachart.com API endpoint
       // This ensures cookies are sent correctly across subdomains
-      const hostname = typeof window !== 'undefined' ? window.location.hostname : '';
-      const isSubdomain = hostname && hostname !== 'alertachart.com' && hostname !== 'www.alertachart.com' && hostname.includes('alertachart.com');
-      const apiUrl = isSubdomain 
-        ? `https://alertachart.com/api/auth/me` 
-        : '/api/auth/me';
-      
-      console.log('[AuthService] Checking auth:', { hostname, isSubdomain, apiUrl });
+      // BUT: Android WebView always uses relative URL (it's already on alertachart.com)
+      let apiUrl = '/api/auth/me';
+      if (!isAndroid && typeof window !== 'undefined') {
+        const hostname = window.location.hostname;
+        const isSubdomain = hostname && hostname !== 'alertachart.com' && hostname !== 'www.alertachart.com' && hostname.includes('alertachart.com');
+        if (isSubdomain) {
+          apiUrl = `https://alertachart.com/api/auth/me`;
+        }
+        console.log('[AuthService] Checking auth:', { hostname, isSubdomain, apiUrl, isAndroid });
+      } else {
+        console.log('[AuthService] Checking auth (Android):', { apiUrl, isAndroid });
+      }
       
       const response = await fetch(apiUrl, {
         credentials: 'include', // Send cookies (for iOS/Web) - CRITICAL for cross-subdomain requests
