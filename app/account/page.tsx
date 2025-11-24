@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { User, Smartphone, ArrowLeft, Settings, Bell, Shield, Globe, HelpCircle, Languages, BarChart3, Mail, Lock, Download, Trash2, Share2, CreditCard, Activity, Sparkles, TrendingUp } from 'lucide-react';
@@ -24,6 +24,10 @@ export default function AccountPage() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [language, setLanguage] = useState<'tr' | 'en'>('tr');
 
+  // 🔥 CRITICAL: Prevent infinite loops and duplicate API calls
+  const userInitializedRef = useRef(false);
+  const userPlanFetchingRef = useRef(false);
+
   // Load language from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -34,106 +38,49 @@ export default function AccountPage() {
     }
   }, []);
 
-  // Development mode: Auto-login with test@gmail.com
+  // 🔥 FIXED: Fetch user from session - only runs once per session change
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
-    const isDevelopment = window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1' ||
-                         window.location.hostname.includes('localhost');
-    
-    if (!isDevelopment) return;
-    
-    // Check if user is already set from session
-    if (user) return;
-    
-    // Auto-login in development mode
-    if (status === 'unauthenticated' || status === 'loading' || !session?.user) {
-      console.log('[Account Dev] 🧪 Development mode - Auto-logging in as test@gmail.com');
-      console.log('[Account Dev] Status:', status, 'Session:', session);
+    // Only process session if authenticated and we have session data
+    if (status === 'authenticated' && session?.user) {
+      // Only initialize if not already initialized
+      if (userInitializedRef.current) return;
       
-      fetch('/api/auth/dev-login', { method: 'POST' })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.user) {
-            console.log('[Account Dev] ✅ Test user logged in:', data.user);
-            const mockUser = {
-              id: data.user.id,
-              email: data.user.email,
-              name: data.user.name,
-            };
-            setUser(mockUser);
-            localStorage.setItem('user_email', data.user.email);
-            return fetch('/api/user/plan');
-          } else {
-            throw new Error('Dev login failed');
-          }
-        })
-        .then(res => res?.json())
-        .then(data => {
-          if (data) {
-            console.log('[Account Dev] User plan fetched:', data);
-            setUserPlan({
-              plan: data.plan || 'free',
-              isTrial: data.isTrial || false,
-              trialRemainingDays: data.trialDaysRemaining || 0,
-              expiryDate: data.expiryDate,
-              hasPremiumAccess: data.hasPremiumAccess || false,
-            });
-          }
-        })
-        .catch((err) => {
-          console.error('[Account Dev] Failed to auto-login:', err);
-          // Fallback: set default test user
-          const mockUser = {
-            id: 1,
-            email: 'test@gmail.com',
-            name: 'Test User',
-          };
-          setUser(mockUser);
-          localStorage.setItem('user_email', 'test@gmail.com');
-          setUserPlan({
-            plan: 'free',
-            isTrial: false,
-            trialRemainingDays: 0,
-            hasPremiumAccess: false,
-          });
-        });
-    }
-  }, [user, status, session]);
-
-  // Fetch user from session (only if not in development mode or if session exists)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    const isDevelopment = window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1' ||
-                         window.location.hostname.includes('localhost');
-    
-    // In development, only set from session if we don't have a user yet
-    if (isDevelopment && !user && session?.user) {
+      const sessionUserId = (session.user as any).id || 0;
+      const sessionEmail = session.user.email || '';
+      
+      userInitializedRef.current = true;
       setUser({
-        id: (session.user as any).id || 0,
-        email: session.user.email || '',
+        id: sessionUserId,
+        email: sessionEmail,
         name: session.user.name || undefined,
       });
-    } else if (!isDevelopment && session?.user) {
-      setUser({
-        id: (session.user as any).id || 0,
-        email: session.user.email || '',
-        name: session.user.name || undefined,
-      });
+    } else if (status === 'unauthenticated') {
+      // If unauthenticated, clear user (only if was previously authenticated)
+      if (userInitializedRef.current) {
+        userInitializedRef.current = false;
+        setUser(null);
+      }
     }
-  }, [session, user]);
+  }, [status, session]); // 🔥 No 'user' dependency to prevent infinite loop
 
-  // Fetch user plan
+  // 🔥 FIXED: Fetch user plan - only runs once per user change, with debouncing
   useEffect(() => {
     if (!user) {
       setUserPlan(null);
       setFullUser(null);
+      userPlanFetchingRef.current = false;
       return;
     }
 
+    // Prevent duplicate fetches
+    if (userPlanFetchingRef.current) {
+      console.log('[Account] ⚠️ User plan fetch already in progress, skipping...');
+      return;
+    }
+
+    userPlanFetchingRef.current = true;
     const fetchUserPlan = async () => {
       try {
         const response = await fetch(`/api/user/plan?t=${Date.now()}`, {
@@ -164,6 +111,11 @@ export default function AccountPage() {
         }
       } catch (error) {
         console.error('[Account] Error fetching user plan:', error);
+      } finally {
+        // Reset after a delay to allow for legitimate re-fetches
+        setTimeout(() => {
+          userPlanFetchingRef.current = false;
+        }, 1000);
       }
     };
 
@@ -673,22 +625,33 @@ export default function AccountPage() {
         onClose={() => setShowUpgradeModal(false)}
         onUpgrade={() => {
           setShowUpgradeModal(false);
-          // Refresh user plan after upgrade
-          if (user) {
-            fetch(`/api/user/plan?t=${Date.now()}`, {
-              cache: 'no-store',
-              headers: { 'Cache-Control': 'no-cache' },
-            })
-              .then(res => res.json())
-              .then(data => {
-                setUserPlan({
-                  plan: data.plan || 'free',
-                  isTrial: data.isTrial || false,
-                  trialRemainingDays: data.trialDaysRemaining || 0,
-                  expiryDate: data.expiryDate,
-                  hasPremiumAccess: data.hasPremiumAccess || false,
+          // Refresh user plan after upgrade (with delay to avoid conflicts)
+          if (user && !userPlanFetchingRef.current) {
+            userPlanFetchingRef.current = true;
+            setTimeout(() => {
+              fetch(`/api/user/plan?t=${Date.now()}`, {
+                cache: 'no-store',
+                headers: { 'Cache-Control': 'no-cache' },
+              })
+                .then(res => res.json())
+                .then(data => {
+                  setUserPlan({
+                    plan: data.plan || 'free',
+                    isTrial: data.isTrial || false,
+                    trialRemainingDays: data.trialDaysRemaining || 0,
+                    expiryDate: data.expiryDate,
+                    hasPremiumAccess: data.hasPremiumAccess || false,
+                  });
+                })
+                .catch((error) => {
+                  console.error('[Account] Error refreshing user plan after upgrade:', error);
+                })
+                .finally(() => {
+                  setTimeout(() => {
+                    userPlanFetchingRef.current = false;
+                  }, 1000);
                 });
-              });
+            }, 500); // Small delay to ensure upgrade is processed
           }
         }}
         currentPlan={userPlan?.plan || 'free'}
