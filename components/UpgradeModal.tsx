@@ -467,7 +467,7 @@ export default function UpgradeModal({
           )}
 
           {/* Action Buttons */}
-          <div className="px-4 pb-4 pt-1 space-y-2 border-t border-gray-800/60 -mt-1">
+          <div className="px-4 pb-4 pt-3 space-y-2 border-t border-gray-800/60">
             {/* Trial button - only for native apps (iOS/Android), not web */}
             {/* Double check: platform must be 'ios' or 'android', not 'web' */}
             {currentPlan === 'free' && !isTrial && (platform === 'ios' || platform === 'android') && (
