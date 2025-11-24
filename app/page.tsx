@@ -1420,7 +1420,18 @@ export default function Home() {
                 setLoginLoading(true);
                 setLoginError('');
                 try {
-                  // Check if GIS is loaded
+                  // 🔥 CRITICAL: Check platform FIRST - Android/iOS should use native plugin
+                  const isCapacitor = !!(window as any).Capacitor;
+                  const platform = isCapacitor ? ((window as any).Capacitor?.getPlatform?.() || 'web') : 'web';
+                  
+                  if (platform === 'android' || platform === 'ios') {
+                    console.log('[Web Auth] ⏭️ Native platform detected, skipping Google Identity Services');
+                    setLoginError('Native app: Please use native Google Sign-In button');
+                    setLoginLoading(false);
+                    return;
+                  }
+                  
+                  // Check if GIS is loaded (web only)
                   if ((window as any).google && (window as any).google.accounts && (window as any).google.accounts.id) {
                     // Try to use one-tap or prompt
                     const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 
