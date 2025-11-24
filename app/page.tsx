@@ -250,21 +250,43 @@ export default function Home() {
     // Android/iOS: NEVER load Google Identity Services script (use native plugin instead)
     if (platform === 'android' || platform === 'ios') {
       // Remove any existing Google Identity Services scripts (safety check)
-      const existingScripts = document.querySelectorAll('script[src*="accounts.google.com/gsi"], script[src*="gstatic.com"]');
-      existingScripts.forEach(script => {
-        console.log('[Web Auth] 🗑️ Removing Google Identity Services script from Android/iOS');
-        script.remove();
+      const removeGoogleScripts = () => {
+        const existingScripts = document.querySelectorAll('script[src*="accounts.google.com/gsi"], script[src*="gstatic.com"]');
+        existingScripts.forEach(script => {
+          console.log('[Web Auth] 🗑️ Removing Google Identity Services script from Android/iOS');
+          script.remove();
+        });
+      };
+      
+      // Remove immediately
+      removeGoogleScripts();
+      
+      // Use MutationObserver to watch for dynamically added scripts
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeName === 'SCRIPT') {
+              const script = node as HTMLScriptElement;
+              if (script.src && (script.src.includes('accounts.google.com/gsi') || script.src.includes('gstatic.com'))) {
+                console.log('[Web Auth] 🗑️ Blocking dynamically added Google script:', script.src);
+                script.remove();
+              }
+            }
+          });
+        });
       });
       
-      // Also remove any gstatic.com scripts that may have been loaded
-      const gstaticScripts = document.querySelectorAll('script[src*="gstatic.com"]');
-      gstaticScripts.forEach(script => {
-        console.log('[Web Auth] 🗑️ Removing gstatic.com script from Android/iOS');
-        script.remove();
-      });
+      // Start observing
+      observer.observe(document.head, { childList: true, subtree: true });
       
       console.log('[Web Auth] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
-      return; // Exit early - don't load script on native platforms
+      console.log('[Web Auth] 👀 MutationObserver active - blocking Google scripts');
+      
+      // Cleanup
+      return () => {
+        observer.disconnect();
+        removeGoogleScripts();
+      };
     }
     
     // Only proceed if we're on web AND showLoginScreen is true
