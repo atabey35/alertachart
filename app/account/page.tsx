@@ -439,7 +439,18 @@ export default function AccountPage() {
                   <button
                     onClick={() => {
                       if (hasPremiumAccessValue) {
-                        window.open('https://data.alertachart.com/liquidation-tracker', '_blank');
+                        try {
+                          const opened = window.open('https://data.alertachart.com/liquidation-tracker', '_blank', 'noopener,noreferrer');
+                          // Check if window.open was blocked or failed
+                          if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+                            // Fallback to location.href
+                            window.location.href = 'https://data.alertachart.com/liquidation-tracker';
+                          }
+                        } catch (error) {
+                          // If window.open throws an error, use location.href
+                          console.error('[Account] Error opening liquidation tracker:', error);
+                          window.location.href = 'https://data.alertachart.com/liquidation-tracker';
+                        }
                       } else {
                         setShowUpgradeModal(true);
                       }
@@ -478,7 +489,18 @@ export default function AccountPage() {
                   <button
                     onClick={() => {
                       if (hasPremiumAccessValue) {
-                        window.open('https://aggr.alertachart.com', '_blank');
+                        try {
+                          const opened = window.open('https://aggr.alertachart.com', '_blank', 'noopener,noreferrer');
+                          // Check if window.open was blocked or failed
+                          if (!opened || opened.closed || typeof opened.closed === 'undefined') {
+                            // Fallback to location.href
+                            window.location.href = 'https://aggr.alertachart.com';
+                          }
+                        } catch (error) {
+                          // If window.open throws an error, use location.href
+                          console.error('[Account] Error opening aggr:', error);
+                          window.location.href = 'https://aggr.alertachart.com';
+                        }
                       } else {
                         setShowUpgradeModal(true);
                       }

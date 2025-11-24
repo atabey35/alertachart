@@ -12,6 +12,14 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 301); // 301 = Permanent Redirect (SEO için önemli)
   }
 
+  // www'den non-www'e redirect (301 Permanent Redirect - SEO için önemli)
+  // www.alertachart.com → alertachart.com
+  if (hostname.startsWith('www.')) {
+    url.hostname = hostname.replace('www.', '');
+    url.protocol = 'https';
+    return NextResponse.redirect(url, 301); // 301 = Permanent Redirect (SEO için önemli)
+  }
+
   return NextResponse.next();
 }
 
