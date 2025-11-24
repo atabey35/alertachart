@@ -21,31 +21,60 @@ export async function GET(request: NextRequest) {
 
     const sql = getSql();
     
-    // Build query
-    let query = 'SELECT * FROM blog_posts WHERE 1=1';
-    const params: any[] = [];
-    let paramIndex = 1;
-
-    if (category) {
-      query += ` AND category = $${paramIndex}`;
-      params.push(category);
-      paramIndex++;
+    // Build query using template literals
+    let blogPosts;
+    
+    if (category && excludeId && limit) {
+      blogPosts = await sql`
+        SELECT * FROM blog_posts 
+        WHERE category = ${category} AND id != ${excludeId}
+        ORDER BY featured DESC, published_at DESC
+        LIMIT ${limit}
+      `;
+    } else if (category && excludeId) {
+      blogPosts = await sql`
+        SELECT * FROM blog_posts 
+        WHERE category = ${category} AND id != ${excludeId}
+        ORDER BY featured DESC, published_at DESC
+      `;
+    } else if (category && limit) {
+      blogPosts = await sql`
+        SELECT * FROM blog_posts 
+        WHERE category = ${category}
+        ORDER BY featured DESC, published_at DESC
+        LIMIT ${limit}
+      `;
+    } else if (excludeId && limit) {
+      blogPosts = await sql`
+        SELECT * FROM blog_posts 
+        WHERE id != ${excludeId}
+        ORDER BY featured DESC, published_at DESC
+        LIMIT ${limit}
+      `;
+    } else if (category) {
+      blogPosts = await sql`
+        SELECT * FROM blog_posts 
+        WHERE category = ${category}
+        ORDER BY featured DESC, published_at DESC
+      `;
+    } else if (excludeId) {
+      blogPosts = await sql`
+        SELECT * FROM blog_posts 
+        WHERE id != ${excludeId}
+        ORDER BY featured DESC, published_at DESC
+      `;
+    } else if (limit) {
+      blogPosts = await sql`
+        SELECT * FROM blog_posts 
+        ORDER BY featured DESC, published_at DESC
+        LIMIT ${limit}
+      `;
+    } else {
+      blogPosts = await sql`
+        SELECT * FROM blog_posts 
+        ORDER BY featured DESC, published_at DESC
+      `;
     }
-
-    if (excludeId) {
-      query += ` AND id != $${paramIndex}`;
-      params.push(excludeId);
-      paramIndex++;
-    }
-
-    query += ' ORDER BY featured DESC, published_at DESC';
-
-    if (limit) {
-      query += ` LIMIT $${paramIndex}`;
-      params.push(limit);
-    }
-
-    const blogPosts = await sql.unsafe(query, params);
 
     return NextResponse.json(blogPosts.map((post: any) => ({
       id: post.id.toString(),
