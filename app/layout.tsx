@@ -356,25 +356,35 @@ export default function RootLayout({
         />
 
         {/* Google Identity Services (GIS) for Web OAuth - ONLY for web, NOT for Android/iOS */}
+        {/* 🔥 CRITICAL: Android'de bu script ERR_BLOCKED_BY_ORB hatasına neden oluyor */}
+        {/* Script'i sadece web'de yüklemek için client-side kontrol yapıyoruz */}
         <Script
-          src="https://accounts.google.com/gsi/client"
-          strategy="lazyOnload"
-          onLoad={() => {
-            // Only load on web (not Android/iOS native)
-            if (typeof window !== 'undefined') {
-              const isCapacitor = !!(window as any).Capacitor;
-              const platform = isCapacitor ? (window as any).Capacitor?.getPlatform?.() : 'web';
-              if (platform === 'android' || platform === 'ios') {
-                console.log('[Layout] ⏭️ Skipping Google Identity Services script (native platform:', platform + ')');
-                // Remove script to prevent ERR_BLOCKED_BY_ORB
-                const script = document.querySelector('script[src="https://accounts.google.com/gsi/client"]');
-                if (script) {
-                  script.remove();
+          id="google-gsi-loader"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof window === 'undefined') return;
+                
+                // Check if we're in native app (Android/iOS)
+                const isCapacitor = !!(window.Capacitor);
+                const platform = isCapacitor ? (window.Capacitor?.getPlatform?.() || 'web') : 'web';
+                
+                if (platform === 'android' || platform === 'ios') {
+                  console.log('[Layout] ⏭️ Skipping Google Identity Services script (native platform:', platform + ')');
+                  return; // Don't load script on native platforms
                 }
-              }
-            }
+                
+                // Only load on web
+                console.log('[Layout] ✅ Loading Google Identity Services script (web platform)');
+                const script = document.createElement('script');
+                script.src = 'https://accounts.google.com/gsi/client';
+                script.async = true;
+                script.defer = true;
+                document.head.appendChild(script);
+              })();
+            `,
           }}
-          strategy="beforeInteractive"
         />
         
         {/* Capacitor Runtime for Native Plugins */}
