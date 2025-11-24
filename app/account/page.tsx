@@ -360,32 +360,39 @@ export default function AccountPage() {
                 <div className="space-y-3">
                   {/* Liquidations Button */}
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
                       if (hasPremiumAccessValue) {
+                        const url = 'https://data.alertachart.com/liquidation-tracker';
                         try {
-                          const opened = window.open('https://data.alertachart.com/liquidation-tracker', '_blank', 'noopener,noreferrer');
+                          const opened = window.open(url, '_blank', 'noopener,noreferrer');
                           // Check if window.open was blocked or failed
-                          // opened can be null if popup was blocked, or a Window object if successful
                           if (opened === null || opened === undefined) {
-                            // Popup was blocked, use fallback
+                            // Popup was blocked, use fallback ONLY in this case
                             console.log('[Account] Popup blocked, using fallback navigation');
-                            window.location.href = 'https://data.alertachart.com/liquidation-tracker';
+                            setTimeout(() => {
+                              window.location.href = url;
+                            }, 100);
                           } else {
-                            // Successfully opened in new tab - do NOT navigate current page
-                            console.log('[Account] ✅ Opened liquidation tracker in new tab');
-                            // Explicitly return to prevent any further execution
-                            return;
+                            // Successfully opened in new tab - ABSOLUTELY do nothing else
+                            console.log('[Account] ✅ Opened liquidation tracker in new tab - current page stays');
+                            // Do NOT navigate current page - just return
+                            return false;
                           }
                         } catch (error) {
-                          // If window.open throws an error, use location.href
+                          // Only use fallback if window.open throws an error
                           console.error('[Account] Error opening liquidation tracker:', error);
-                          window.location.href = 'https://data.alertachart.com/liquidation-tracker';
+                          setTimeout(() => {
+                            window.location.href = url;
+                          }, 100);
                         }
                       } else {
                         setShowUpgradeModal(true);
                       }
+                      return false;
                     }}
                     className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
                       hasPremiumAccessValue
@@ -419,32 +426,39 @@ export default function AccountPage() {
 
                   {/* Aggr Button */}
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
+                      e.nativeEvent.stopImmediatePropagation();
                       if (hasPremiumAccessValue) {
+                        const url = 'https://aggr.alertachart.com';
                         try {
-                          const opened = window.open('https://aggr.alertachart.com', '_blank', 'noopener,noreferrer');
+                          const opened = window.open(url, '_blank', 'noopener,noreferrer');
                           // Check if window.open was blocked or failed
-                          // opened can be null if popup was blocked, or a Window object if successful
                           if (opened === null || opened === undefined) {
-                            // Popup was blocked, use fallback
+                            // Popup was blocked, use fallback ONLY in this case
                             console.log('[Account] Popup blocked, using fallback navigation');
-                            window.location.href = 'https://aggr.alertachart.com';
+                            setTimeout(() => {
+                              window.location.href = url;
+                            }, 100);
                           } else {
-                            // Successfully opened in new tab - do NOT navigate current page
-                            console.log('[Account] ✅ Opened aggr in new tab');
-                            // Explicitly return to prevent any further execution
-                            return;
+                            // Successfully opened in new tab - ABSOLUTELY do nothing else
+                            console.log('[Account] ✅ Opened aggr in new tab - current page stays');
+                            // Do NOT navigate current page - just return
+                            return false;
                           }
                         } catch (error) {
-                          // If window.open throws an error, use location.href
+                          // Only use fallback if window.open throws an error
                           console.error('[Account] Error opening aggr:', error);
-                          window.location.href = 'https://aggr.alertachart.com';
+                          setTimeout(() => {
+                            window.location.href = url;
+                          }, 100);
                         }
                       } else {
                         setShowUpgradeModal(true);
                       }
+                      return false;
                     }}
                     className={`w-full p-4 rounded-xl border-2 transition-all duration-200 ${
                       hasPremiumAccessValue
