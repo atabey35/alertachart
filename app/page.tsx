@@ -239,6 +239,67 @@ export default function Home() {
     }
   }, [showLoginScreen, status]);
 
+  // 🔥 CRITICAL: Block Google Identity Services on Android/iOS IMMEDIATELY (before any other useEffect)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    const isCapacitor = !!(window as any).Capacitor;
+    const platform = isCapacitor ? ((window as any).Capacitor?.getPlatform?.() || 'web') : 'web';
+    
+    // Android/iOS: Block Google Identity Services scripts immediately
+    if (platform === 'android' || platform === 'ios') {
+      const removeGoogleScripts = () => {
+        const existingScripts = document.querySelectorAll('script[src*="accounts.google.com/gsi"], script[src*="gstatic.com"]');
+        existingScripts.forEach(script => {
+          console.log('[Web Auth] 🗑️ Removing Google Identity Services script from Android/iOS:', script.src);
+          script.remove();
+        });
+      };
+      
+      // Remove immediately (run multiple times to catch scripts loaded at different times)
+      removeGoogleScripts();
+      setTimeout(removeGoogleScripts, 0);
+      setTimeout(removeGoogleScripts, 100);
+      setTimeout(removeGoogleScripts, 500);
+      
+      // Use MutationObserver to watch for dynamically added scripts (observe entire document)
+      const observer = new MutationObserver((mutations) => {
+        mutations.forEach((mutation) => {
+          mutation.addedNodes.forEach((node) => {
+            if (node.nodeName === 'SCRIPT') {
+              const script = node as HTMLScriptElement;
+              if (script.src && (script.src.includes('accounts.google.com/gsi') || script.src.includes('gstatic.com'))) {
+                console.log('[Web Auth] 🗑️ Blocking dynamically added Google script:', script.src);
+                script.remove();
+                // Also prevent the script from executing by removing it from parent
+                if (script.parentNode) {
+                  script.parentNode.removeChild(script);
+                }
+              }
+            }
+          });
+        });
+      });
+      
+      // Start observing entire document (head and body)
+      observer.observe(document.documentElement, { 
+        childList: true, 
+        subtree: true,
+        attributes: false,
+        attributeOldValue: false
+      });
+      
+      console.log('[Web Auth] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
+      console.log('[Web Auth] 👀 MutationObserver active - blocking Google scripts from entire document');
+      
+      // Cleanup
+      return () => {
+        observer.disconnect();
+        removeGoogleScripts();
+      };
+    }
+  }, []); // Run immediately on mount, no dependencies
+
   // Google Identity Services (GIS) initialization for web
   useEffect(() => {
     // 🔥 CRITICAL: Check platform FIRST - BEFORE any other checks
@@ -249,44 +310,8 @@ export default function Home() {
     
     // Android/iOS: NEVER load Google Identity Services script (use native plugin instead)
     if (platform === 'android' || platform === 'ios') {
-      // Remove any existing Google Identity Services scripts (safety check)
-      const removeGoogleScripts = () => {
-        const existingScripts = document.querySelectorAll('script[src*="accounts.google.com/gsi"], script[src*="gstatic.com"]');
-        existingScripts.forEach(script => {
-          console.log('[Web Auth] 🗑️ Removing Google Identity Services script from Android/iOS');
-          script.remove();
-        });
-      };
-      
-      // Remove immediately
-      removeGoogleScripts();
-      
-      // Use MutationObserver to watch for dynamically added scripts
-      const observer = new MutationObserver((mutations) => {
-        mutations.forEach((mutation) => {
-          mutation.addedNodes.forEach((node) => {
-            if (node.nodeName === 'SCRIPT') {
-              const script = node as HTMLScriptElement;
-              if (script.src && (script.src.includes('accounts.google.com/gsi') || script.src.includes('gstatic.com'))) {
-                console.log('[Web Auth] 🗑️ Blocking dynamically added Google script:', script.src);
-                script.remove();
-              }
-            }
-          });
-        });
-      });
-      
-      // Start observing
-      observer.observe(document.head, { childList: true, subtree: true });
-      
       console.log('[Web Auth] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
-      console.log('[Web Auth] 👀 MutationObserver active - blocking Google scripts');
-      
-      // Cleanup
-      return () => {
-        observer.disconnect();
-        removeGoogleScripts();
-      };
+      return; // Exit early - don't load script on native platforms
     }
     
     // Only proceed if we're on web AND showLoginScreen is true
