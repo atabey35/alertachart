@@ -582,11 +582,57 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       case 'solid-gray':
         return 'bg-gray-900';
       case 'solid-dark':
-        return 'bg-gray-950';
+        return 'bg-black';
       case 'solid-blue':
         return 'bg-blue-950';
       default:
         return 'bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950';
+    }
+  };
+
+  const getHeaderBackgroundClass = () => {
+    switch (backgroundColor) {
+      case 'gradient-gray':
+        return 'bg-gradient-to-r from-gray-900/80 to-gray-900/50';
+      case 'gradient-blue':
+        return 'bg-gradient-to-r from-blue-950/80 to-blue-950/50';
+      case 'gradient-purple':
+        return 'bg-gradient-to-r from-purple-950/80 to-purple-950/50';
+      case 'gradient-green':
+        return 'bg-gradient-to-r from-green-950/80 to-green-950/50';
+      case 'gradient-orange':
+        return 'bg-gradient-to-r from-orange-950/80 to-orange-950/50';
+      case 'solid-gray':
+        return 'bg-gray-900/90';
+      case 'solid-dark':
+        return 'bg-black/90';
+      case 'solid-blue':
+        return 'bg-blue-950/90';
+      default:
+        return 'bg-gradient-to-r from-gray-900/80 to-gray-900/50';
+    }
+  };
+
+  const getFooterBackgroundClass = () => {
+    switch (backgroundColor) {
+      case 'gradient-gray':
+        return 'bg-gray-900/95';
+      case 'gradient-blue':
+        return 'bg-blue-950/95';
+      case 'gradient-purple':
+        return 'bg-purple-950/95';
+      case 'gradient-green':
+        return 'bg-green-950/95';
+      case 'gradient-orange':
+        return 'bg-orange-950/95';
+      case 'solid-gray':
+        return 'bg-gray-900/95';
+      case 'solid-dark':
+        return 'bg-black/95';
+      case 'solid-blue':
+        return 'bg-blue-950/95';
+      default:
+        return 'bg-gray-900/95';
     }
   };
 
@@ -634,7 +680,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-16 bg-gradient-to-b from-blue-500 to-blue-600 rounded-r opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" />
       </div>
       {/* Header */}
-      <div className="border-b border-gray-800/50 bg-gradient-to-r from-gray-900/50 to-gray-900/30 backdrop-blur-sm p-2 md:p-4 flex items-center justify-between shadow-sm">
+      <div className={`border-b border-gray-800/50 ${getHeaderBackgroundClass()} backdrop-blur-sm p-2 md:p-4 flex items-center justify-between shadow-sm`}>
         <div>
           <h3 className="text-sm md:text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
             Watchlist
@@ -690,7 +736,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
       {/* Add Symbol Input */}
       {showAddSymbol && (
-        <div className="p-3 border-b border-gray-800/50 bg-gray-900/30 backdrop-blur-sm">
+        <div className={`p-3 border-b border-gray-800/50 ${getHeaderBackgroundClass()} backdrop-blur-sm`}>
           <input
             type="text"
             value={searchQuery}
@@ -725,7 +771,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       )}
 
       {/* Category Filters */}
-      <div ref={categoryScrollRef} className="border-b border-gray-800/50 px-2 md:px-3 py-1.5 md:py-2.5 flex flex-nowrap gap-1.5 md:gap-2 overflow-x-auto bg-gradient-to-r from-gray-900/50 to-gray-900/30 backdrop-blur-sm scrollbar-thin shadow-sm" style={{ scrollBehavior: 'auto' }}>
+      <div ref={categoryScrollRef} className={`border-b border-gray-800/50 px-2 md:px-3 py-1.5 md:py-2.5 flex flex-nowrap gap-1.5 md:gap-2 overflow-x-auto ${getHeaderBackgroundClass()} backdrop-blur-sm scrollbar-thin shadow-sm`} style={{ scrollBehavior: 'auto' }}>
         <button
           onClick={() => setSelectedFilter('ALL')}
           className={`text-[10px] md:text-xs px-2 md:px-3 py-1 md:py-1.5 rounded-lg transition-all duration-200 whitespace-nowrap font-medium ${
@@ -1122,7 +1168,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       </div>
 
       {/* Footer */}
-      <div className="border-t border-gray-800/50 bg-gradient-to-r from-gray-900/50 via-gray-900/40 to-gray-900/50 backdrop-blur-sm p-2 md:p-4 text-center shadow-xl">
+      <div className={`border-t border-gray-800/50 ${getFooterBackgroundClass()} backdrop-blur-sm p-2 md:p-4 text-center shadow-xl`}>
         <div className="flex items-center justify-center gap-1.5 md:gap-2">
           <div className="w-1 h-1 md:w-1.5 md:h-1.5 rounded-full bg-blue-500 animate-pulse"></div>
           <div className="text-[10px] md:text-xs text-gray-400 font-semibold">

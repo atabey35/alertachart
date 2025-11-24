@@ -16,6 +16,7 @@ import UpgradeModal from '@/components/UpgradeModal';
 import PremiumBadge from '@/components/PremiumBadge';
 import TrialIndicator from '@/components/TrialIndicator';
 import DrawingToolbar, { DrawingTool } from '@/components/chart/DrawingToolbar';
+import NotificationDropdown from '@/components/NotificationDropdown';
 import alertService from '@/services/alertService';
 import { authService } from '@/services/authService';
 import { pushNotificationService } from '@/services/pushNotificationService';
@@ -82,6 +83,77 @@ export default function Home() {
   // Ref to track Google Identity Services initialization
   const googleInitializedRef = useRef(false);
   const googleInitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Development mode: Auto-login with test@gmail.com
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    
+    // Check if we're in development mode (client-side check)
+    const isDevelopment = window.location.hostname === 'localhost' || 
+                         window.location.hostname === '127.0.0.1' ||
+                         window.location.hostname.includes('localhost');
+    
+    if (!isDevelopment) return;
+    
+    // Only auto-login if user is not set and status is unauthenticated or loading
+    if (!user && (status === 'unauthenticated' || status === 'loading')) {
+      console.log('[Dev] 🧪 Development mode detected - Auto-logging in as test@gmail.com');
+      console.log('[Dev] Current status:', status, 'user:', user);
+      
+      // Call dev-login API to get/create test user
+      fetch('/api/auth/dev-login', { method: 'POST' })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success && data.user) {
+            console.log('[Dev] ✅ Test user logged in:', data.user);
+            const mockUser = {
+              id: data.user.id,
+              email: data.user.email,
+              name: data.user.name,
+            };
+            
+            // Set user immediately
+            setUser(mockUser);
+            localStorage.setItem('user_email', data.user.email);
+            
+            // Fetch user plan for test user
+            return fetch('/api/user/plan');
+          } else {
+            throw new Error('Dev login failed');
+          }
+        })
+        .then(res => res?.json())
+        .then(data => {
+          if (data) {
+            console.log('[Dev] User plan fetched:', data);
+            setUserPlan({
+              plan: data.plan || 'free',
+              isTrial: data.isTrial || false,
+              trialRemainingDays: data.trialRemainingDays || 0,
+              expiryDate: data.expiryDate,
+              hasPremiumAccess: data.hasPremiumAccess || false,
+            });
+          }
+        })
+        .catch((err) => {
+          console.error('[Dev] Failed to auto-login:', err);
+          // If API fails, set default user and plan
+          const mockUser = {
+            id: 1,
+            email: 'test@gmail.com',
+            name: 'Test User',
+          };
+          setUser(mockUser);
+          localStorage.setItem('user_email', 'test@gmail.com');
+          setUserPlan({
+            plan: 'free',
+            isTrial: false,
+            trialRemainingDays: 0,
+            hasPremiumAccess: false,
+          });
+        });
+    }
+  }, [user, status]);
 
   // Capacitor ve iPad kontrolü
   useEffect(() => {
@@ -1162,12 +1234,9 @@ export default function Home() {
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
       return 'calc(100vh - 200px)'; // Reduced margin for mobile/iPad (includes bottom nav)
     }
-    // Desktop (1024px+): original heights
-    if (layout === 1) return 'calc(100vh - 240px)'; // Single chart - full height minus header/footer
-    if (layout === 2) return 'calc(100vh - 240px)'; // 2 charts side by side - full height
-    if (layout === 4) return 'calc(100vh - 240px)'; // 2x2 grid - same total height, split into rows
-    if (layout === 9) return 'calc(100vh - 240px)'; // 3x3 grid - same total height, split into rows
-    return 'calc(100vh - 240px)';
+    // Desktop (1024px+): Use flex-1 to fill available space, don't use fixed calc
+    // The parent flex container will handle the height distribution
+    return '100%';
   };
 
   const handleGlobalLogout = useCallback(async () => {
@@ -1442,241 +1511,222 @@ export default function Home() {
 
   return (
     <main className="flex h-screen flex-col overflow-hidden">
-      {/* Header - Top section hidden on iPad, bottom section (timeframe/pair) visible */}
+      {/* Header - TradingView style - Top section hidden on iPad, bottom section (timeframe/pair) visible */}
       <header className="border-b border-gray-800 bg-black flex-shrink-0">
-        <div className="px-2 py-2 lg:px-6 lg:py-4">
-          {/* First row: Title and Selectors - Hidden on iPad */}
-          <div className={`flex items-center justify-between gap-2 lg:gap-4 ${isIPad ? 'hidden' : ''}`}>
-            <div className="flex items-center gap-2 lg:gap-6">
-              <div className="flex items-center gap-2">
-                <img src="/icon.png" alt="Alerta Chart Logo" className="invisible lg:visible w-6 h-6 lg:w-10 lg:h-10 rounded-lg" />
-                <h1 className="text-sm lg:text-2xl font-bold text-blue-500 whitespace-nowrap hidden sm:block">ALERTA CHART</h1>
-              </div>
-              <div className="hidden lg:flex items-center gap-3 text-sm text-gray-400">
-                <span className="text-gray-300 font-semibold">Powered by Kripto Kırmızı</span>
-                {/* Auth Button */}
-                <div className="ml-4">
-                  {user ? (
-                    <div className="flex items-center gap-2">
-                      <span className="text-gray-300 text-xs">{user.email}</span>
-                      <div className="flex flex-col items-start gap-0.5">
-                      <button
-                          onTouchStart={(e) => {
-                            // iOS: Prevent double-tap by handling touch event
-                            if (isLoggingOut || logoutProcessingRef.current) {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              return;
-                            }
-                          }}
-                          onClick={(e) => {
-                            // Prevent default and stop propagation to avoid double-tap on iOS
-                            e.preventDefault();
-                            e.stopPropagation();
-                            if (!isLoggingOut && !logoutProcessingRef.current) {
-                              handleGlobalLogout();
-                            }
-                          }}
-                          disabled={isLoggingOut || logoutProcessingRef.current}
-                          className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation"
-                          style={{ WebkitTapHighlightColor: 'transparent' }}
-                      >
-                          {isLoggingOut ? 'Çıkış yapılıyor...' : 'Çıkış'}
-                      </button>
-                        {logoutError && (
-                          <span className="text-[10px] text-red-400">{logoutError}</span>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        console.log('[Header] Giriş Yap butonuna tıklandı');
-                        const hasCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
-                        const platform = hasCapacitor ? (window as any).Capacitor.getPlatform?.() : 'web';
-                        console.log('[Header] hasCapacitor:', hasCapacitor);
-                        console.log('[Header] platform:', platform);
-                        console.log('[Header] user:', user);
-                        console.log('[Header] status:', status);
-                        // Web'de her zaman native login screen göster
-                        setShowLoginScreen(true);
-                        console.log('[Header] showLoginScreen set to true');
-                      }}
-                      className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded transition"
-                    >
-                      Giriş Yap
-                    </button>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <a 
-                    href="https://t.me/kriptokirmizi" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="p-1.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-600/50 rounded transition-colors"
-                    title="Telegram"
-                  >
-                    <svg className="w-3.5 h-3.5 text-blue-400 hover:text-blue-300" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
-                    </svg>
-                  </a>
-                  <a 
-                    href="https://www.youtube.com/@kriptokirmizi" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="p-1.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-600/50 rounded transition-colors"
-                    title="YouTube"
-                  >
-                    <svg className="w-3.5 h-3.5 text-red-400 hover:text-red-300" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                    </svg>
-                  </a>
-                  <a 
-                    href="https://x.com/alertachart" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="p-1.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-600/50 rounded transition-colors"
-                    title="X"
-                  >
-                    <svg className="w-3.5 h-3.5 text-gray-300 hover:text-gray-200" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                    </svg>
-                  </a>
-                  <a 
-                    href="https://instagram.com/alertachart" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="p-1.5 bg-gray-800/50 hover:bg-gray-700 border border-gray-600/50 rounded transition-colors"
-                    title="Instagram"
-                  >
-                    <svg className="w-3.5 h-3.5 text-pink-400 hover:text-pink-300" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                    </svg>
-                  </a>
-                </div>
-              </div>
+        <div className="px-2 py-2 lg:px-6 lg:py-3">
+          {/* Main Header Row - TradingView style */}
+          <div className={`flex items-center justify-between gap-4 ${isIPad ? 'hidden' : ''}`}>
+            {/* Left: Logo */}
+            <div className="flex items-center gap-2 lg:gap-3 flex-shrink-0">
+              <img src="/icon.png" alt="Alerta Chart Logo" className="w-6 h-6 lg:w-8 lg:h-8 rounded-lg" />
+              <h1 className="text-sm lg:text-xl font-bold text-white whitespace-nowrap hidden sm:block">ALERTA CHART</h1>
             </div>
 
-            {/* Layout and Chart selectors */}
-            <div className="hidden lg:flex items-center gap-2">
-              {/* Alerts toggle - Hidden on mobile (available in bottom menu) */}
+            {/* Center: Navigation Menu */}
+            <nav className="hidden lg:flex items-center gap-1 lg:gap-2 flex-1 justify-center">
               <button
                 onClick={() => setShowAlerts(!showAlerts)}
-                className={`p-1.5 rounded transition-colors ${
-                  showAlerts ? 'bg-red-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'
+                className={`px-3 py-1.5 text-sm rounded transition-colors ${
+                  showAlerts ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-900'
                 }`}
-                title="Toggle Alerts"
               >
-                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-                </svg>
+                Alerts
               </button>
-
-              {/* Watchlist toggle - Hidden on mobile (available in bottom menu) */}
               <button
                 onClick={() => setShowWatchlist(!showWatchlist)}
-                className={`p-1.5 rounded transition-colors ${
-                  showWatchlist ? 'bg-blue-600 text-white' : 'bg-gray-900 text-gray-400 hover:text-white'
+                className={`px-3 py-1.5 text-sm rounded transition-colors ${
+                  showWatchlist ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-900'
                 }`}
-                title="Toggle Watchlist"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
+                Watchlist
               </button>
-
-              {/* Layout selector - Hidden on mobile/iPad (available in settings) */}
-              <div className="hidden lg:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1">
-                <button
-                  onClick={() => setLayout(1)}
-                  className={`p-1.5 rounded transition-colors ${
-                    layout === 1 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                  title="Single Chart"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <button
+                onClick={() => window.location.href = '/blog'}
+                className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-900 rounded transition-colors"
+              >
+                News
+              </button>
+              <button
+                onClick={() => window.location.href = '/account'}
+                className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-900 rounded transition-colors"
+              >
+                Settings
+              </button>
+              <div className="relative group">
+                <button className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-900 rounded transition-colors flex items-center gap-1">
+                  Social Media
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
-                <button
-                  onClick={() => setLayout(2)}
-                  className={`p-1.5 rounded transition-colors ${
-                    layout === 2 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                  }`}
-                  title="2 Charts"
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="8" height="18" rx="2"/>
-                    <rect x="13" y="3" width="8" height="18" rx="2"/>
-                  </svg>
-                </button>
-                <button
-                  onClick={() => {
-                    if (hasPremiumAccessValue) {
-                      setLayout(4);
-                    } else {
-                      setShowUpgradeModal(true);
-                    }
-                  }}
-                  className={`p-1.5 rounded transition-colors relative ${
-                    layout === 4 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                  } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
-                  title={hasPremiumAccessValue ? '2x2 Grid' : '2x2 Grid (Premium)'}
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="8" height="8" rx="1"/>
-                    <rect x="13" y="3" width="8" height="8" rx="1"/>
-                    <rect x="3" y="13" width="8" height="8" rx="1"/>
-                    <rect x="13" y="13" width="8" height="8" rx="1"/>
-                  </svg>
-                  {!hasPremiumAccessValue && (
-                    <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
-                  )}
-                </button>
-                <button
-                  onClick={() => {
-                    if (hasPremiumAccessValue) {
-                      setLayout(9);
-                    } else {
-                      setShowUpgradeModal(true);
-                    }
-                  }}
-                  className={`p-1.5 rounded transition-colors relative ${
-                    layout === 9 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
-                  } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
-                  title={hasPremiumAccessValue ? '3x3 Grid' : '3x3 Grid (Premium)'}
-                >
-                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                    <rect x="2" y="2" width="5" height="5" rx="0.5"/>
-                    <rect x="9" y="2" width="5" height="5" rx="0.5"/>
-                    <rect x="16" y="2" width="5" height="5" rx="0.5"/>
-                    <rect x="2" y="9" width="5" height="5" rx="0.5"/>
-                    <rect x="9" y="9" width="5" height="5" rx="0.5"/>
-                    <rect x="16" y="9" width="5" height="5" rx="0.5"/>
-                    <rect x="2" y="16" width="5" height="5" rx="0.5"/>
-                    <rect x="9" y="16" width="5" height="5" rx="0.5"/>
-                    <rect x="16" y="16" width="5" height="5" rx="0.5"/>
-                  </svg>
-                  {!hasPremiumAccessValue && (
-                    <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
-                  )}
-                </button>
+                <div className="absolute top-full left-0 mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-2 min-w-[180px]">
+                  <div className="flex items-center gap-2">
+                    <a 
+                      href="https://t.me/kriptokirmizi" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-blue-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.894 8.221l-1.97 9.28c-.145.658-.537.818-1.084.508l-3-2.21-1.446 1.394c-.14.18-.357.295-.6.295-.002 0-.003 0-.005 0l.213-3.054 5.56-5.022c.24-.213-.054-.334-.373-.121l-6.869 4.326-2.96-.924c-.64-.203-.658-.64.135-.954l11.566-4.458c.538-.196 1.006.128.832.941z"/>
+                      </svg>
+                      <span>Telegram</span>
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a 
+                      href="https://www.youtube.com/@kriptokirmizi" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-red-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
+                      </svg>
+                      <span>YouTube</span>
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a 
+                      href="https://x.com/alertachart" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                      </svg>
+                      <span>X (Twitter)</span>
+                    </a>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <a 
+                      href="https://instagram.com/alertachart" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-pink-400" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
+                      </svg>
+                      <span>Instagram</span>
+                    </a>
+                  </div>
+                </div>
               </div>
+              <button
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.location.href = '/help';
+                  }
+                }}
+                className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-900 rounded transition-colors"
+              >
+                Yardım
+              </button>
+              <div className="relative group">
+                <button className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-900 rounded transition-colors flex items-center gap-1">
+                  Mobile App
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute top-full left-0 mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-2 min-w-[200px]">
+                  <a 
+                    href="https://apps.apple.com/tr/app/alerta-chart-tradesync/id6755160060?l=tr" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded transition-colors mb-1"
+                  >
+                    <svg className="w-5 h-5 text-gray-300" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                    </svg>
+                    <span>iOS App Store</span>
+                  </a>
+                  <a 
+                    href="https://play.google.com/store/apps/details?id=com.kriptokirmizi.alerta&hl=tr" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-green-400" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z"/>
+                    </svg>
+                    <span>Google Play</span>
+                  </a>
+                </div>
+              </div>
+            </nav>
 
+            {/* Right: User Icon + Auth Button - Hidden on mobile (available in bottom nav) */}
+            <div className="hidden lg:flex items-center gap-2 lg:gap-3 flex-shrink-0">
+              {user ? (
+                <div className="flex items-center gap-2">
+                  <NotificationDropdown userEmail={user.email} />
+                  <div className="relative">
+                    <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold text-sm lg:text-base">
+                      {user.email?.[0]?.toUpperCase() || 'U'}
+                    </div>
+                    <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-black"></div>
+                  </div>
+                  <div className="hidden lg:flex flex-col items-start gap-0.5">
+                    <button
+                      onTouchStart={(e) => {
+                        if (isLoggingOut || logoutProcessingRef.current) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          return;
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (!isLoggingOut && !logoutProcessingRef.current) {
+                          handleGlobalLogout();
+                        }
+                      }}
+                      disabled={isLoggingOut || logoutProcessingRef.current}
+                      className="px-3 py-1 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded transition disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation"
+                      style={{ WebkitTapHighlightColor: 'transparent' }}
+                    >
+                      {isLoggingOut ? 'Çıkış yapılıyor...' : 'Çıkış'}
+                    </button>
+                    {logoutError && (
+                      <span className="text-[10px] text-red-400">{logoutError}</span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <button
+                  onClick={() => {
+                    console.log('[Header] Giriş Yap butonuna tıklandı');
+                    const hasCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+                    const platform = hasCapacitor ? (window as any).Capacitor.getPlatform?.() : 'web';
+                    console.log('[Header] hasCapacitor:', hasCapacitor);
+                    console.log('[Header] platform:', platform);
+                    console.log('[Header] user:', user);
+                    console.log('[Header] status:', status);
+                    setShowLoginScreen(true);
+                    console.log('[Header] showLoginScreen set to true');
+                  }}
+                  className="px-3 py-1.5 text-xs lg:text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition font-medium"
+                >
+                  Giriş Yap
+                </button>
+              )}
+            </div>
             </div>
           </div>
 
-          {/* Second row: Market Type + Timeframe selector + Pair Selector */}
-          {/* MOBİL & TABLET (iPad): Sadece grafik sekmesinde göster, DESKTOP: Her zaman göster */}
-          {/* iPad'de bu kısım görünür (timeframe ve pair selector) */}
+          {/* Second row: Market Type + Timeframes + Layout + Symbol Search - TradingView style */}
           {(mobileTab === 'chart' || typeof window === 'undefined' || window.innerWidth >= 1024 || isIPad) && (
-          <div className="flex items-center gap-2 mt-3 overflow-x-auto scrollbar-hide">
-            {/* Market Type Toggle (Spot/Futures) - Hidden on mobile/iPad (available in settings) */}
-            <div className="hidden lg:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1 mr-2">
+          <div className="flex items-center gap-2 lg:gap-3 mt-2 pb-2 border-b border-gray-800 overflow-x-auto scrollbar-hide">
+            {/* Market Type Toggle (Spot/Futures) - Hidden on mobile (available in settings) */}
+            <div className="hidden lg:flex items-center gap-1 flex-shrink-0">
               <button
                 onClick={() => setMarketType('spot')}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                  marketType === 'spot' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  marketType === 'spot' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`}
               >
                 Spot
@@ -1684,67 +1734,17 @@ export default function Home() {
               <button
                 onClick={() => setMarketType('futures')}
                 className={`px-3 py-1.5 text-xs font-medium rounded transition-colors ${
-                  marketType === 'futures' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+                  marketType === 'futures' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
                 }`}
               >
                 Futures
               </button>
             </div>
 
-            {/* Timeframe buttons */}
-            <div className="flex gap-1 items-center">
-              {/* Free timeframes */}
-              {FREE_TIMEFRAMES.map((tf) => (
-                <button
-                  key={tf}
-                  onClick={() => updateActiveChart({ timeframe: tf })}
-                  className={`px-2 py-1 lg:px-3 lg:py-2 text-[10px] lg:text-sm rounded whitespace-nowrap flex-shrink-0 ${
-                    activeChart.timeframe === tf
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-900 text-gray-400 hover:bg-gray-800'
-                  }`}
-                >
-                  {getTimeframeForHuman(tf)}
-                </button>
-              ))}
-              
-              {/* Premium timeframes */}
-              {PREMIUM_TIMEFRAMES.map((tf) => {
-                const isPremium = hasPremiumAccessValue;
-                const isActive = activeChart.timeframe === tf;
-                
-                return (
-                  <button
-                    key={tf}
-                    onClick={() => {
-                      if (isPremium) {
-                        updateActiveChart({ timeframe: tf });
-                      } else {
-                        setShowUpgradeModal(true);
-                      }
-                    }}
-                    className={`px-2 py-1 md:px-3 md:py-2 text-[10px] md:text-sm rounded whitespace-nowrap flex-shrink-0 relative ${
-                      isActive
-                        ? 'bg-blue-600 text-white'
-                        : isPremium
-                        ? 'bg-gray-900 text-gray-400 hover:bg-gray-800'
-                        : 'bg-gray-900/50 text-gray-500 opacity-60'
-                    }`}
-                    title={isPremium ? getTimeframeForHuman(tf) : `${getTimeframeForHuman(tf)} (Premium)`}
-                  >
-                    {getTimeframeForHuman(tf)}
-                    {!isPremium && (
-                      <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
             {/* Symbol Search Button */}
             <button
               onClick={() => setShowSymbolSearch(true)}
-              className="ml-2 flex items-center gap-2 bg-gray-900 border border-gray-700 rounded px-3 py-1.5 lg:py-2 text-xs lg:text-sm hover:border-blue-500 hover:bg-gray-800 transition-colors group"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm text-gray-300 hover:text-white transition-colors group"
             >
               <svg 
                 className="w-4 h-4 text-gray-500 group-hover:text-blue-400" 
@@ -1754,7 +1754,7 @@ export default function Home() {
               >
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <span className="hidden lg:inline text-gray-300 group-hover:text-white">
+              <span>
                 {(() => {
                   const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
                   let baseAsset = activeChart.pair.toUpperCase();
@@ -1775,24 +1775,142 @@ export default function Home() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
             </button>
-            
-            {/* Pair count indicator */}
-            {!loadingPairs && (
-              <div className="hidden lg:block text-xs text-gray-500 whitespace-nowrap ml-2">
-                {pairs.length} pairs
-              </div>
-            )}
+
+            {/* Timeframe buttons - Simple style without borders */}
+            <div className="flex items-center gap-1">
+              {FREE_TIMEFRAMES.map((tf) => (
+                <button
+                  key={tf}
+                  onClick={() => updateActiveChart({ timeframe: tf })}
+                  className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${
+                    activeChart.timeframe === tf
+                      ? 'bg-blue-600 text-white'
+                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                  }`}
+                >
+                  {getTimeframeForHuman(tf)}
+                </button>
+              ))}
+              {PREMIUM_TIMEFRAMES.map((tf) => {
+                const isPremium = hasPremiumAccessValue;
+                const isActive = activeChart.timeframe === tf;
+                
+                return (
+                  <button
+                    key={tf}
+                    onClick={() => {
+                      if (isPremium) {
+                        updateActiveChart({ timeframe: tf });
+                      } else {
+                        setShowUpgradeModal(true);
+                      }
+                    }}
+                    className={`px-2.5 py-1 text-xs font-medium rounded transition-colors relative ${
+                      isActive
+                        ? 'bg-blue-600 text-white'
+                        : isPremium
+                        ? 'text-gray-400 hover:text-white hover:bg-gray-800'
+                        : 'text-gray-500 opacity-60 cursor-not-allowed'
+                    }`}
+                    disabled={!isPremium}
+                    title={isPremium ? getTimeframeForHuman(tf) : `${getTimeframeForHuman(tf)} (Premium)`}
+                  >
+                    {getTimeframeForHuman(tf)}
+                    {!isPremium && (
+                      <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Layout selector - TradingView style - Hidden on mobile (available in settings) */}
+            <div className="hidden lg:flex items-center gap-1 bg-gray-900 border border-gray-700 rounded p-1">
+              <button
+                onClick={() => setLayout(1)}
+                className={`p-1.5 rounded transition-colors ${
+                  layout === 1 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+                title="Single Chart"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="18" height="18" rx="2"/>
+                </svg>
+              </button>
+              <button
+                onClick={() => setLayout(2)}
+                className={`p-1.5 rounded transition-colors ${
+                  layout === 2 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                }`}
+                title="2 Charts"
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="8" height="18" rx="2"/>
+                  <rect x="13" y="3" width="8" height="18" rx="2"/>
+                </svg>
+              </button>
+              <button
+                onClick={() => {
+                  if (hasPremiumAccessValue) {
+                    setLayout(4);
+                  } else {
+                    setShowUpgradeModal(true);
+                  }
+                }}
+                className={`p-1.5 rounded transition-colors relative ${
+                  layout === 4 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
+                title={hasPremiumAccessValue ? '2x2 Grid' : '2x2 Grid (Premium)'}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="3" y="3" width="8" height="8" rx="1"/>
+                  <rect x="13" y="3" width="8" height="8" rx="1"/>
+                  <rect x="3" y="13" width="8" height="8" rx="1"/>
+                  <rect x="13" y="13" width="8" height="8" rx="1"/>
+                </svg>
+                {!hasPremiumAccessValue && (
+                  <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                )}
+              </button>
+              <button
+                onClick={() => {
+                  if (hasPremiumAccessValue) {
+                    setLayout(9);
+                  } else {
+                    setShowUpgradeModal(true);
+                  }
+                }}
+                className={`p-1.5 rounded transition-colors relative ${
+                  layout === 9 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
+                title={hasPremiumAccessValue ? '3x3 Grid' : '3x3 Grid (Premium)'}
+              >
+                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                  <rect x="2" y="2" width="5" height="5" rx="0.5"/>
+                  <rect x="9" y="2" width="5" height="5" rx="0.5"/>
+                  <rect x="16" y="2" width="5" height="5" rx="0.5"/>
+                  <rect x="2" y="9" width="5" height="5" rx="0.5"/>
+                  <rect x="9" y="9" width="5" height="5" rx="0.5"/>
+                  <rect x="16" y="9" width="5" height="5" rx="0.5"/>
+                  <rect x="2" y="16" width="5" height="5" rx="0.5"/>
+                  <rect x="9" y="16" width="5" height="5" rx="0.5"/>
+                  <rect x="16" y="16" width="5" height="5" rx="0.5"/>
+                </svg>
+                {!hasPremiumAccessValue && (
+                  <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                )}
+              </button>
+            </div>
           </div>
           )}
-        </div>
       </header>
 
       {/* Main Content - Charts + Alerts + Watchlist */}
-      <div className={`flex flex-1 overflow-hidden relative ${
-        isCapacitor ? 'pb-[104px]' : '' // 56px (tab bar) + 48px (Android nav bar padding)
+      <div className={`flex flex-1 overflow-hidden relative min-h-0 ${
+        isCapacitor && typeof window !== 'undefined' && window.innerWidth < 1024 ? 'pb-[104px]' : '' // Only on mobile/tablet: 56px (tab bar) + 48px (Android nav bar padding)
       }`}>
         {/* MOBILE & TABLET (iPad): Chart Tab (full screen) */}
-        <div className={`${mobileTab === 'chart' || (!isIPad && typeof window !== 'undefined' && window.innerWidth >= 1024) ? 'flex' : 'hidden'} ${isIPad ? '' : 'lg:flex'} flex-1 overflow-hidden relative`}>
+        <div className={`${mobileTab === 'chart' || (!isIPad && typeof window !== 'undefined' && window.innerWidth >= 1024) ? 'flex' : 'hidden'} ${isIPad ? '' : 'lg:flex'} flex-1 overflow-hidden relative min-h-0`}>
           {/* Drawing Toolbar Toggle Button (Always visible on Desktop, hidden on iPad) */}
           <button
             onClick={() => setShowDrawingToolbar(!showDrawingToolbar)}
@@ -1825,11 +1943,10 @@ export default function Home() {
             </div>
           )}
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden min-h-0">
             <div 
-              className={`grid ${getGridClass()} bg-gray-950`} 
+              className={`grid ${getGridClass()} bg-gray-950 h-full`} 
               style={{ 
-                height: getGridHeight(),
                 overflow: 'hidden', // Always prevent charts from overlapping
                 // Mobile-specific grid fixes with minimal gaps
                 ...(typeof window !== 'undefined' && window.innerWidth < 768 ? {
@@ -2330,8 +2447,8 @@ export default function Home() {
       />
 
 
-      {/* Footer - Desktop Only */}
-      <footer className="hidden md:block border-t border-gray-800 bg-black px-2 py-0.5 text-[9px] text-gray-500">
+      {/* Footer - Desktop Only - Minimal height */}
+      <footer className="hidden lg:block border-t border-gray-800 bg-black px-2 py-1 text-[10px] text-gray-500 flex-shrink-0">
         <div className="flex flex-wrap items-center justify-center gap-1.5 md:gap-3">
           <span className="whitespace-nowrap">{layout === 1 ? 'Single' : layout === 2 ? '1x2' : layout === 4 ? '2x2' : '3x3'}</span>
           <span className="whitespace-nowrap">{activeChart.pair.toUpperCase()}</span>

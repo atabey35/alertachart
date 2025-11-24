@@ -29,6 +29,7 @@
     "@neondatabase/serverless": "^0.9.0",
     "eventemitter3": "^5.0.1",
     "expo-server-sdk": "^3.10.0",
+    "framer-motion": "^12.23.24",
     "html2canvas": "^1.4.1",
     "jsonwebtoken": "^9.0.2",
     "lightweight-charts": "^4.2.0",
@@ -38,6 +39,7 @@
     "next-auth": "^4.24.5",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-quill": "^2.0.0",
     "ws": "^8.18.0"
   },
   "devDependencies": {
@@ -50,7 +52,9 @@
     "concurrently": "^9.1.0",
     "eslint": "^9.0.0",
     "eslint-config-next": "^15.0.0",
+    "patch-package": "^8.0.1",
     "postcss": "^8.4.0",
+    "postinstall-postinstall": "^2.1.0",
     "tailwindcss": "^3.4.0",
     "typescript": "^5.6.0"
   }

@@ -1,4 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { neon } from '@neondatabase/serverless';
+
+const getSql = () => {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL is not set');
+  }
+  return neon(process.env.DATABASE_URL);
+};
 
 /**
  * POST /api/admin/broadcast
@@ -66,6 +74,34 @@ export async function POST(request: NextRequest) {
     }
     
     if (response.ok) {
+      // Save notification to database for all users
+      try {
+        const sql = getSql();
+        const users = await sql`SELECT id FROM users`;
+        
+        if (users.length > 0) {
+          const notificationValues = users.map((u: any) => ({
+            user_id: u.id,
+            title,
+            message,
+            is_read: false,
+          }));
+          
+          // Insert notifications in batch
+          for (const notif of notificationValues) {
+            await sql`
+              INSERT INTO notifications (user_id, title, message, is_read)
+              VALUES (${notif.user_id}, ${notif.title}, ${notif.message}, ${notif.is_read})
+            `;
+          }
+          
+          console.log(`[Broadcast] Saved ${notificationValues.length} notifications to database`);
+        }
+      } catch (dbError: any) {
+        console.error('[Broadcast] Error saving to database:', dbError);
+        // Don't fail the request if database save fails
+      }
+      
       return NextResponse.json(result);
     } else {
       console.error('[Next.js API] Backend returned error:', {

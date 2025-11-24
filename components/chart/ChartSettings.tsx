@@ -73,7 +73,7 @@ export const DEFAULT_SETTINGS: ChartSettingsType = {
   wickDownColor: '#ef5350',
   volumeUpColor: '#26a69a80',
   volumeDownColor: '#ef535080',
-  backgroundColor: '#0a0a0a',
+  backgroundColor: '#000000',
   textColor: '#d1d4dc',
   showCrosshair: true,
   showTimeScale: true,

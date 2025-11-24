@@ -44,9 +44,15 @@ interface ChartProps {
   hideToolbar?: boolean; // Hide internal toolbar for multi-chart layout
   externalActiveTool?: DrawingTool; // Use external tool state for multi-chart
   layout?: 1 | 2 | 4 | 9; // Layout type: 1=single, 2=dual, 4=quad, 9=nine
+  onTimeframeChange?: (timeframe: number) => void; // Callback for timeframe change
+  onLayoutChange?: (layout: 1 | 2 | 4 | 9) => void; // Callback for layout change
+  currentLayout?: 1 | 2 | 4 | 9; // Current layout for display
+  showTimeframeSelector?: boolean; // Show timeframe selector in chart
+  showLayoutSelector?: boolean; // Show layout selector in chart
+  hasPremiumAccess?: boolean; // Premium access for premium timeframes
 }
 
-export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, onChange24h, marketType = 'spot', loadDelay = 0, hideToolbar = false, externalActiveTool, layout = 1 }: ChartProps) {
+export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, onChange24h, marketType = 'spot', loadDelay = 0, hideToolbar = false, externalActiveTool, layout = 1, onTimeframeChange, onLayoutChange, currentLayout = 1, showTimeframeSelector = false, showLayoutSelector = false, hasPremiumAccess = false }: ChartProps) {
   // Detect iOS/Apple devices
   const isIOS = typeof window !== 'undefined' && (
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -1338,7 +1344,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         width: rsiContainerRef.current.clientWidth,
         height: rsiContainerRef.current.clientHeight - 25, // Account for header
         layout: {
-          background: { color: '#0a0a0a' },
+          background: { color: '#000000' },
           textColor: '#d1d5db',
         },
         grid: {
@@ -1571,7 +1577,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         width: macdContainerRef.current.clientWidth,
         height: macdContainerRef.current.clientHeight - 25, // Account for header
         layout: {
-          background: { color: '#0a0a0a' },
+          background: { color: '#000000' },
           textColor: '#d1d5db',
         },
         grid: {

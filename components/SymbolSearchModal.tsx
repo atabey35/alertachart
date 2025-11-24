@@ -167,7 +167,7 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
           <div>
             <h2 className="text-xl font-semibold text-white">Symbol Search</h2>
             <p className="text-xs text-gray-500 mt-0.5">
-              {marketType === 'futures' ? 'Binance Futures' : 'Binance Spot'} • All Trading Pairs
+              {marketType === 'futures' ? 'Binance Futures' : 'Binance Spot'} • {symbols.length} pairs
             </p>
           </div>
           <button

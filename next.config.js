@@ -63,6 +63,17 @@ const nextConfig = {
       '@capacitor-community/in-app-purchase': false,
     };
     
+    // React 19 findDOMNode polyfill for ReactQuill
+    if (!isServer) {
+      config.plugins = config.plugins || [];
+      const webpack = require('webpack');
+      config.plugins.push(
+        new webpack.ProvidePlugin({
+          'react-dom': ['react-dom', 'default'],
+        })
+      );
+    }
+    
     // Production optimizations
     if (!dev && !isServer) {
       config.optimization = {

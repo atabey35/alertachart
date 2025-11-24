@@ -367,6 +367,18 @@ export default function RootLayout({
           strategy="beforeInteractive"
         />
         
+        {/* React 19 findDOMNode Polyfill for ReactQuill */}
+        <Script id="react-finddomnode-polyfill" strategy="beforeInteractive">
+          {`
+            (function() {
+              if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+                // ReactQuill için findDOMNode polyfill - React 19'da yok
+                window.__REACT_DOM_FIND_NODE_POLYFILL__ = true;
+              }
+            })();
+          `}
+        </Script>
+        
         {/* 🔥 CRITICAL: Override window.location.reload() for Capacitor */}
         <Script id="capacitor-reload-override" strategy="afterInteractive">
           {`

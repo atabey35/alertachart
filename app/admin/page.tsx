@@ -2,6 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
+import ReactQuillWrapper from '@/components/ReactQuillWrapper';
+import 'react-quill/dist/quill.snow.css'; // Quill editör stilleri
 
 export default function AdminPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -18,9 +20,44 @@ export default function AdminPage() {
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   
   // Support requests state
-  const [activeTab, setActiveTab] = useState<'broadcast' | 'support'>('broadcast');
+  const [activeTab, setActiveTab] = useState<'broadcast' | 'support' | 'news' | 'blog'>('broadcast');
   const [supportRequests, setSupportRequests] = useState<any[]>([]);
   const [loadingSupport, setLoadingSupport] = useState(false);
+  
+  // News state
+  const [newsTitle, setNewsTitle] = useState('');
+  const [newsSummary, setNewsSummary] = useState('');
+  const [newsContent, setNewsContent] = useState('');
+  const [newsCategory, setNewsCategory] = useState<'crypto' | 'finance'>('crypto');
+  const [newsSource, setNewsSource] = useState('Alerta Chart');
+  const [newsAuthor, setNewsAuthor] = useState('');
+  const [newsUrl, setNewsUrl] = useState('');
+  const [newsArticles, setNewsArticles] = useState<any[]>([]);
+  const [loadingNews, setLoadingNews] = useState(false);
+  const [creatingNews, setCreatingNews] = useState(false);
+  
+  // Blog state
+  const [blogPosts, setBlogPosts] = useState<any[]>([]);
+  const [loadingBlogPosts, setLoadingBlogPosts] = useState(false);
+  const [addBlogPostOpen, setAddBlogPostOpen] = useState(false);
+  const [addBlogPostForm, setAddBlogPostForm] = useState({
+    title: '',
+    slug: '',
+    excerpt: '',
+    content: '',
+    coverImage: '',
+    category: '',
+    author: '',
+    authorImage: '',
+    readTime: '5',
+    featured: false
+  });
+  const [addBlogPostMsg, setAddBlogPostMsg] = useState('');
+  const [addBlogPostLoading, setAddBlogPostLoading] = useState(false);
+  const [deleteBlogPostLoading, setDeleteBlogPostLoading] = useState<string | null>(null);
+  const [deleteBlogPostError, setDeleteBlogPostError] = useState('');
+  const [imageUploading, setImageUploading] = useState(false);
+  const [authorImageUploading, setAuthorImageUploading] = useState(false);
 
   // Check if already logged in (from sessionStorage)
   useEffect(() => {
@@ -50,6 +87,29 @@ export default function AdminPage() {
   useEffect(() => {
     if (isLoggedIn && activeTab === 'support') {
       fetchSupportRequests();
+    }
+  }, [isLoggedIn, activeTab]);
+
+  // Fetch blog posts
+  const fetchBlogPosts = async () => {
+    setLoadingBlogPosts(true);
+    try {
+      const response = await fetch(`/api/admin-blog`);
+      const data = await response.json();
+      if (response.ok) {
+        setBlogPosts(data || []);
+      }
+    } catch (error) {
+      console.error('Error fetching blog posts:', error);
+    } finally {
+      setLoadingBlogPosts(false);
+    }
+  };
+
+  // Load blog posts when tab is active
+  useEffect(() => {
+    if (isLoggedIn && activeTab === 'blog') {
+      fetchBlogPosts();
     }
   }, [isLoggedIn, activeTab]);
 
@@ -150,6 +210,217 @@ export default function AdminPage() {
       });
     } finally {
       setSending(false);
+    }
+  };
+
+  // Create slug from title
+  const createSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .replace(/ğ/g, 'g')
+      .replace(/ü/g, 'u')
+      .replace(/ş/g, 's')
+      .replace(/ı/g, 'i')
+      .replace(/ö/g, 'o')
+      .replace(/ç/g, 'c')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)/g, '');
+  };
+
+  // Create blog post
+  const handleAddBlogPost = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAddBlogPostLoading(true);
+    setAddBlogPostMsg('');
+
+    try {
+      const formData = { ...addBlogPostForm };
+      if (!formData.slug.trim()) {
+        formData.slug = createSlug(formData.title);
+      }
+
+      const response = await fetch('/api/admin-blog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          readTime: parseInt(formData.readTime, 10) || 5,
+        }),
+      });
+
+      // Response'u kontrol et
+      if (!response.ok) {
+        const errorText = await response.text();
+        let errorData: any = {};
+        try {
+          errorData = errorText ? JSON.parse(errorText) : {};
+        } catch (parseErr) {
+          console.error('Error parsing error response:', parseErr, 'Raw text:', errorText);
+          errorData = { error: errorText || `HTTP ${response.status}: ${response.statusText}` };
+        }
+        const errorMsg = errorData.error || errorData.details || errorData.message || `HTTP ${response.status}: ${response.statusText}`;
+        setAddBlogPostMsg(`Hata: ${errorMsg}`);
+        console.error('Blog yazısı ekleme hatası:', {
+          status: response.status,
+          statusText: response.statusText,
+          errorData,
+          rawText: errorText,
+        });
+        return;
+      }
+      
+      // Başarılı response'u parse et
+      const responseText = await response.text();
+      let data;
+      
+      if (!responseText || responseText.trim() === '') {
+        console.error('Boş response alındı');
+        setAddBlogPostMsg('Sunucudan boş yanıt alındı.');
+        return;
+      }
+      
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON parse hatası:', parseError, 'Response:', responseText);
+        setAddBlogPostMsg('Sunucudan geçersiz yanıt alındı.');
+        return;
+      }
+      
+      // Başarılı
+      setAddBlogPostMsg('Blog yazısı başarıyla eklendi!');
+      setAddBlogPostForm({
+        title: '',
+        slug: '',
+        excerpt: '',
+        content: '',
+        coverImage: '',
+        category: '',
+        author: '',
+        authorImage: '',
+        readTime: '5',
+        featured: false
+      });
+      setAddBlogPostOpen(false);
+      fetchBlogPosts();
+    } catch (error: any) {
+      setAddBlogPostMsg('Bir hata oluştu: ' + (error.message || 'Bilinmeyen hata'));
+      console.error('Blog yazısı eklenirken hata:', error);
+    } finally {
+      setAddBlogPostLoading(false);
+    }
+  };
+
+  // Delete blog post
+  const handleDeleteBlogPost = async (id: string) => {
+    if (!confirm('Bu blog yazısını silmek istediğinize emin misiniz? Bu işlem geri alınamaz.')) return;
+    setDeleteBlogPostLoading(id);
+    setDeleteBlogPostError('');
+    try {
+      const response = await fetch('/api/admin-blog', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      if (response.ok) {
+        fetchBlogPosts();
+      } else {
+        setDeleteBlogPostError('Blog yazısı silinemedi. Lütfen tekrar deneyin.');
+      }
+    } catch (error) {
+      setDeleteBlogPostError('Bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setDeleteBlogPostLoading(null);
+    }
+  };
+
+  // Görsel yükleme işleyicileri
+  const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    setImageUploading(true);
+    
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      // Response'u text olarak al, sonra JSON'a çevir
+      const responseText = await response.text();
+      let result;
+      
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON parse hatası:', parseError, 'Response:', responseText);
+        throw new Error('Sunucudan geçersiz yanıt alındı.');
+      }
+      
+      if (result.success) {
+        // Başarılı yükleme, URL'yi forma ekle
+        setAddBlogPostForm({
+          ...addBlogPostForm,
+          coverImage: result.url
+        });
+      } else {
+        // Hata durumunda kullanıcıya bildir
+        alert(`Görsel yükleme hatası: ${result.error || 'Bilinmeyen hata'}`);
+      }
+    } catch (error: any) {
+      console.error('Görsel yükleme hatası:', error);
+      alert(`Görsel yüklenirken bir hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+    } finally {
+      setImageUploading(false);
+    }
+  };
+
+  // Yazar görseli yükleme işleyicisi
+  const handleAuthorImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    
+    const file = e.target.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    setAuthorImageUploading(true);
+    
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      // Response'u text olarak al, sonra JSON'a çevir
+      const responseText = await response.text();
+      let result;
+      
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('JSON parse hatası:', parseError, 'Response:', responseText);
+        throw new Error('Sunucudan geçersiz yanıt alındı.');
+      }
+      
+      if (result.success) {
+        // Başarılı yükleme, URL'yi forma ekle
+        setAddBlogPostForm({
+          ...addBlogPostForm,
+          authorImage: result.url
+        });
+      } else {
+        // Hata durumunda kullanıcıya bildir
+        alert(`Görsel yükleme hatası: ${result.error || 'Bilinmeyen hata'}`);
+      }
+    } catch (error: any) {
+      console.error('Yazar görseli yükleme hatası:', error);
+      alert(`Görsel yüklenirken bir hata oluştu: ${error.message || 'Bilinmeyen hata'}`);
+    } finally {
+      setAuthorImageUploading(false);
     }
   };
 
@@ -275,6 +546,26 @@ export default function AdminPage() {
             }`}
           >
             📢 Bildirim Gönder
+          </button>
+          <button
+            onClick={() => setActiveTab('news')}
+            className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === 'news'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            📰 Haber Yönetimi
+          </button>
+          <button
+            onClick={() => setActiveTab('blog')}
+            className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
+              activeTab === 'blog'
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
+            }`}
+          >
+            📝 Blog Yönetimi
           </button>
           <button
             onClick={() => setActiveTab('support')}
@@ -442,7 +733,7 @@ export default function AdminPage() {
             </div>
           </div>
             </>
-          ) : (
+          ) : activeTab === 'support' ? (
             <>
               {/* Support Requests Tab */}
               <div className="mb-4 flex items-center justify-between">
@@ -523,7 +814,311 @@ export default function AdminPage() {
                 </div>
               )}
             </>
-          )}
+          ) : activeTab === 'blog' ? (
+            <>
+              {/* Blog Management */}
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-xl font-bold text-white">Blog Yazıları</h2>
+                <button
+                  onClick={() => setAddBlogPostOpen(!addBlogPostOpen)}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  {addBlogPostOpen ? 'İptal' : '+ Yeni Blog Yazısı'}
+                </button>
+              </div>
+
+              {/* Add Blog Post Form */}
+              {addBlogPostOpen && (
+                <form onSubmit={handleAddBlogPost} className="bg-[#0f0f0f] rounded-xl border border-gray-900 p-6 mb-6">
+                  <h3 className="text-lg font-bold text-white mb-4">Yeni Blog Yazısı</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-white text-sm font-medium mb-1">Başlık</label>
+                        <input
+                          type="text"
+                          value={addBlogPostForm.title}
+                          onChange={(e) => setAddBlogPostForm({...addBlogPostForm, title: e.target.value})}
+                          className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-white text-sm font-medium mb-1">
+                          Slug (Boş bırakılırsa otomatik oluşturulur)
+                        </label>
+                        <input
+                          type="text"
+                          value={addBlogPostForm.slug}
+                          onChange={(e) => setAddBlogPostForm({...addBlogPostForm, slug: e.target.value})}
+                          className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-white text-sm font-medium mb-1">Kategori</label>
+                        <input
+                          type="text"
+                          value={addBlogPostForm.category}
+                          onChange={(e) => setAddBlogPostForm({...addBlogPostForm, category: e.target.value})}
+                          className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                          required
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-white text-sm font-medium mb-1">Yazar</label>
+                        <input
+                          type="text"
+                          value={addBlogPostForm.author}
+                          onChange={(e) => setAddBlogPostForm({...addBlogPostForm, author: e.target.value})}
+                          className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                          required
+                        />
+                      </div>
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1">Kapak Görseli</label>
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={addBlogPostForm.coverImage}
+                            onChange={(e) => setAddBlogPostForm({...addBlogPostForm, coverImage: e.target.value})}
+                            placeholder="Görsel URL'si veya yükleme yapabilirsiniz"
+                            className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="coverImageUpload" className="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded text-sm transition duration-300">
+                            Görsel Yükle
+                          </label>
+                          <input
+                            id="coverImageUpload"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={handleCoverImageUpload}
+                          />
+                        </div>
+                      </div>
+                      {imageUploading && (
+                        <div className="mt-2 text-indigo-300 text-sm flex items-center">
+                          <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Görsel yükleniyor...
+                        </div>
+                      )}
+                      {addBlogPostForm.coverImage && (
+                        <div className="mt-2">
+                          <img 
+                            src={addBlogPostForm.coverImage.startsWith('/') ? addBlogPostForm.coverImage : addBlogPostForm.coverImage} 
+                            alt="Kapak görseli önizleme" 
+                            className="h-24 object-cover rounded" 
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1">Yazar Görseli</label>
+                      <div className="flex items-center space-x-3">
+                        <div className="flex-1">
+                          <input
+                            type="text"
+                            value={addBlogPostForm.authorImage}
+                            onChange={(e) => setAddBlogPostForm({...addBlogPostForm, authorImage: e.target.value})}
+                            placeholder="Görsel URL'si veya yükleme yapabilirsiniz"
+                            className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="authorImageUpload" className="cursor-pointer bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-4 rounded text-sm transition duration-300">
+                            Görsel Yükle
+                          </label>
+                          <input
+                            id="authorImageUpload"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            className="hidden"
+                            onChange={handleAuthorImageUpload}
+                          />
+                        </div>
+                      </div>
+                      {authorImageUploading && (
+                        <div className="mt-2 text-indigo-300 text-sm flex items-center">
+                          <svg className="animate-spin h-4 w-4 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          Görsel yükleniyor...
+                        </div>
+                      )}
+                      {addBlogPostForm.authorImage && (
+                        <div className="mt-2">
+                          <img 
+                            src={addBlogPostForm.authorImage.startsWith('/') ? addBlogPostForm.authorImage : addBlogPostForm.authorImage} 
+                            alt="Yazar görseli önizleme" 
+                            className="h-12 w-12 object-cover rounded-full" 
+                          />
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">Okuma Süresi (dakika) *</label>
+                      <input
+                        type="number"
+                        value={addBlogPostForm.readTime}
+                        onChange={(e) => setAddBlogPostForm({...addBlogPostForm, readTime: e.target.value})}
+                        className="w-full px-4 py-3 bg-[#0a0a0a] border border-gray-900 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        min="1"
+                        required
+                      />
+                    </div>
+                    <div className="flex items-center pt-8">
+                      <input
+                        type="checkbox"
+                        id="featured"
+                        checked={addBlogPostForm.featured}
+                        onChange={(e) => setAddBlogPostForm({...addBlogPostForm, featured: e.target.checked})}
+                        className="w-4 h-4 text-blue-600 bg-[#0a0a0a] border-gray-900 rounded focus:ring-blue-500"
+                      />
+                      <label htmlFor="featured" className="ml-2 text-sm font-medium text-gray-300">Öne Çıkarılan</label>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-white text-sm font-medium mb-1">Özet</label>
+                    <ReactQuillWrapper
+                      theme="snow"
+                      value={addBlogPostForm.excerpt}
+                      onChange={(excerpt: string) => setAddBlogPostForm({...addBlogPostForm, excerpt})}
+                      className="bg-[#1a1a23] text-white rounded"
+                      modules={{
+                        toolbar: [
+                          ['bold', 'italic', 'underline'],
+                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                          ['link']
+                        ],
+                      }}
+                      style={{ height: '150px', marginBottom: '20px' }}
+                    />
+                  </div>
+
+                  <div className="mb-4">
+                    <label className="block text-white text-sm font-medium mb-1">İçerik</label>
+                    <ReactQuillWrapper
+                      theme="snow"
+                      value={addBlogPostForm.content}
+                      onChange={(content: string) => setAddBlogPostForm({...addBlogPostForm, content})}
+                      className="bg-[#1a1a23] text-white rounded"
+                      modules={{
+                        toolbar: [
+                          [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
+                          ['bold', 'italic', 'underline', 'strike'],
+                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                          [{ 'color': [] }, { 'background': [] }],
+                          [{ 'align': [] }],
+                          ['link', 'image', 'video'],
+                          ['blockquote', 'code-block'],
+                          [{ 'script': 'sub'}, { 'script': 'super' }],
+                          [{ 'indent': '-1'}, { 'indent': '+1' }],
+                          [{ 'table': [] }],
+                          ['clean']
+                        ],
+                      }}
+                      style={{ height: '500px', marginBottom: '100px' }}
+                    />
+                  </div>
+
+                  {addBlogPostMsg && (
+                    <div className={`p-2 rounded mb-4 ${addBlogPostMsg.includes("hata") ? "bg-red-500" : "bg-green-500"} text-white`}>
+                      {addBlogPostMsg}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={addBlogPostLoading}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2 px-6 rounded text-sm transition duration-300 disabled:opacity-50"
+                  >
+                    {addBlogPostLoading ? "Ekleniyor..." : "Blog Yazısını Ekle"}
+                  </button>
+                </form>
+              )}
+
+              {loadingBlogPosts ? (
+                <p>Blog yazıları yükleniyor...</p>
+              ) : (
+                <div>
+                  {deleteBlogPostError && (
+                    <div className="bg-red-500 text-white p-2 rounded mb-2">{deleteBlogPostError}</div>
+                  )}
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full bg-[#1a1a23] rounded-lg overflow-hidden">
+                      <thead className="bg-[#25252d]">
+                        <tr>
+                          <th className="py-2 px-4 text-left text-xs font-medium text-gray-300 tracking-wider">
+                            Başlık
+                          </th>
+                          <th className="py-2 px-4 text-left text-xs font-medium text-gray-300 tracking-wider">
+                            Slug
+                          </th>
+                          <th className="py-2 px-4 text-left text-xs font-medium text-gray-300 tracking-wider">
+                            Kategori
+                          </th>
+                          <th className="py-2 px-4 text-left text-xs font-medium text-gray-300 tracking-wider">
+                            Yazar
+                          </th>
+                          <th className="py-2 px-4 text-left text-xs font-medium text-gray-300 tracking-wider">
+                            Tarih
+                          </th>
+                          <th className="py-2 px-4 text-left text-xs font-medium text-gray-300 tracking-wider">
+                            İşlem
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-[#25252d]">
+                        {blogPosts.map((post) => (
+                          <tr key={post.id}>
+                            <td className="py-2 px-4 text-sm text-white">{post.title}</td>
+                            <td className="py-2 px-4 text-sm text-white">{post.slug}</td>
+                            <td className="py-2 px-4 text-sm text-white">{post.category}</td>
+                            <td className="py-2 px-4 text-sm text-white">{post.author}</td>
+                            <td className="py-2 px-4 text-sm text-white">
+                              {new Date(post.publishedAt).toLocaleDateString('tr-TR')}
+                            </td>
+                            <td className="py-2 px-4 text-sm space-x-2">
+                              <a 
+                                href={`/blog/${post.slug}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-indigo-400 hover:text-indigo-300"
+                              >
+                                Görüntüle
+                              </a>
+                              <button
+                                onClick={() => handleDeleteBlogPost(post.id)}
+                                disabled={deleteBlogPostLoading !== null}
+                                className="text-red-400 hover:text-red-300"
+                              >
+                                {deleteBlogPostLoading === post.id ? "Siliniyor..." : "Sil"}
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                        {blogPosts.length === 0 && (
+                          <tr>
+                            <td colSpan={6} className="py-4 px-4 text-center text-sm">
+                              Henüz blog yazısı bulunmamaktadır.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </>
+          ) : null}
         </div>
 
         {/* Back to Home */}

@@ -26,8 +26,12 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
+    // Development mode: Auto-login with test@gmail.com
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const userEmail = session?.user?.email || (isDevelopment ? 'test@gmail.com' : null);
+    
     // Unauthenticated requests return free plan
-    if (!session?.user?.email) {
+    if (!userEmail) {
       return NextResponse.json({ 
         plan: 'free', 
         isPremium: false,
@@ -38,9 +42,28 @@ export async function GET(request: NextRequest) {
       }, { status: 200 });
     }
     
+    // Development mode: test@gmail.com için manuel premium döndür (database'e bağlanmadan)
+    if (isDevelopment && userEmail === 'test@gmail.com') {
+      const oneYearFromNow = new Date();
+      oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
+      
+      return NextResponse.json({
+        plan: 'premium',
+        isPremium: true,
+        isTrial: false,
+        hasPremiumAccess: true,
+        trialDaysRemaining: 0,
+        expiryDate: oneYearFromNow.toISOString(),
+        trialStartedAt: null,
+        trialEndedAt: null,
+        subscriptionStartedAt: new Date().toISOString(),
+        subscriptionPlatform: 'development',
+      });
+    }
+    
     // Get user from database
     const sql = getSql();
-    const users = await sql`
+    let users = await sql`
       SELECT 
         id,
         email,
@@ -53,9 +76,40 @@ export async function GET(request: NextRequest) {
         subscription_platform,
         subscription_id
       FROM users
-      WHERE email = ${session.user.email}
+      WHERE email = ${userEmail}
       LIMIT 1
     `;
+    
+    // Development mode: Create test user if doesn't exist
+    if (isDevelopment && users.length === 0 && userEmail === 'test@gmail.com') {
+      console.log('[Dev] 🧪 Creating test user: test@gmail.com');
+      try {
+        await sql`
+          INSERT INTO users (email, name, plan, provider, provider_user_id)
+          VALUES (${userEmail}, 'Test User', 'free', 'development', 'dev-test-user')
+          ON CONFLICT (email) DO NOTHING
+        `;
+        // Fetch again
+        users = await sql`
+          SELECT 
+            id,
+            email,
+            name,
+            plan,
+            expiry_date,
+            trial_started_at,
+            trial_ended_at,
+            subscription_started_at,
+            subscription_platform,
+            subscription_id
+          FROM users
+          WHERE email = ${userEmail}
+          LIMIT 1
+        `;
+      } catch (error) {
+        console.error('[Dev] Failed to create test user:', error);
+      }
+    }
     
     if (users.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
