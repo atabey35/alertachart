@@ -239,14 +239,18 @@ export default function Home() {
   // Google Identity Services (GIS) initialization for web
   useEffect(() => {
     if (typeof window !== 'undefined' && showLoginScreen) {
-      // Check if we're in web context (pure web OR Capacitor with platform=web)
-      const platform = (window as any).Capacitor?.getPlatform?.() || 'web';
-      const isWebContext = !((window as any).Capacitor) || platform === 'web';
+      // 🔥 CRITICAL: Check platform FIRST before doing anything
+      const isCapacitor = !!(window as any).Capacitor;
+      const platform = isCapacitor ? ((window as any).Capacitor?.getPlatform?.() || 'web') : 'web';
       
-      if (!isWebContext) {
+      // Android/iOS: Don't load Google Identity Services script (use native plugin instead)
+      if (platform === 'android' || platform === 'ios') {
         console.log('[Web Auth] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
-        return;
+        return; // Exit early - don't load script on native platforms
       }
+      
+      // Only proceed if we're on web
+      console.log('[Web Auth] ✅ Web platform detected, loading Google Identity Services script');
       
       // 🔥 CRITICAL: Load Google Identity Services script ONLY on web (not Android/iOS)
       // This prevents ERR_BLOCKED_BY_ORB error on Android
