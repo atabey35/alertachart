@@ -14,8 +14,9 @@ export function middleware(request: NextRequest) {
 
   // www'den non-www'e redirect (301 Permanent Redirect - SEO için önemli)
   // www.alertachart.com → alertachart.com
-  if (hostname.startsWith('www.')) {
-    url.hostname = hostname.replace('www.', '');
+  // Sadece alertachart.com domain'i için çalışır (subdomain'ler için değil)
+  if (hostname === 'www.alertachart.com') {
+    url.hostname = 'alertachart.com';
     url.protocol = 'https';
     return NextResponse.redirect(url, 301); // 301 = Permanent Redirect (SEO için önemli)
   }
