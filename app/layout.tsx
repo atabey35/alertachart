@@ -316,39 +316,35 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
 
-        {/* Suppress Google Sign-In console errors globally */}
+        {/* Disable all console logs globally for security */}
         <Script
-          id="suppress-gsi-errors"
+          id="disable-console-logs"
           strategy="beforeInteractive"
           dangerouslySetInnerHTML={{
             __html: `
               (function() {
                 if (typeof window !== 'undefined') {
-                  // Suppress console.error for Google Sign-In errors
-                  const originalError = console.error;
-                  console.error = function(...args) {
-                    const message = args[0]?.toString() || '';
-                    // Suppress Google Sign-In origin errors
-                    if (message.includes('GSI_LOGGER') || 
-                        message.includes('origin is not allowed') ||
-                        message.includes('The given origin is not allowed') ||
-                        args.some(arg => arg?.toString?.()?.includes('GSI_LOGGER'))) {
-                      return; // Suppress these errors
-                    }
-                    originalError.apply(console, args);
-                  };
-                  
-                  // Also suppress unhandled errors from Google Sign-In
-                  window.addEventListener('error', function(e) {
-                    if (e.message && (
-                      e.message.includes('GSI_LOGGER') ||
-                      e.message.includes('origin is not allowed') ||
-                      e.message.includes('The given origin is not allowed')
-                    )) {
-                      e.preventDefault();
-                      return false;
-                    }
-                  }, true);
+                  // Disable all console methods for security
+                  const noop = function() {};
+                  console.log = noop;
+                  console.error = noop;
+                  console.warn = noop;
+                  console.info = noop;
+                  console.debug = noop;
+                  console.trace = noop;
+                  console.table = noop;
+                  console.group = noop;
+                  console.groupEnd = noop;
+                  console.groupCollapsed = noop;
+                  console.time = noop;
+                  console.timeEnd = noop;
+                  console.timeLog = noop;
+                  console.count = noop;
+                  console.countReset = noop;
+                  console.assert = noop;
+                  console.dir = noop;
+                  console.dirxml = noop;
+                  console.clear = noop;
                 }
               })();
             `,

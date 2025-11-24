@@ -5,7 +5,11 @@
 - **Team ID**: `P6NB9T5SQ9`
 - **Bundle ID**: `com.kriptokirmizi.alerta`
 - **Service ID**: `com.kriptokirmizi.alerta.signin`
-- **Redirect URI**: `https://alertachart.com/auth/mobile-callback`
+- **Redirect URIs**: 
+  - `https://alertachart.com/api/auth/callback/apple`
+  - `https://www.alertachart.com/api/auth/callback/apple`
+  - `https://alertachart.com/auth/mobile-callback`
+  - `https://www.alertachart.com/auth/mobile-callback`
 
 ---
 
@@ -45,10 +49,17 @@
 **Primary App ID** bölümünde:
 1. **Select a primary App ID** dropdown'ından `com.kriptokirmizi.alerta` seçin
 2. **Domains and Subdomains** bölümünde:
-   - **Website URLs** altında **+** butonuna tıklayın
-   - **Domain**: `alertachart.com` yazın
-   - **Return URLs** altında **+** butonuna tıklayın
-   - **Return URL**: `https://alertachart.com/auth/mobile-callback` yazın
+   
+   **Website URLs (Domain'ler):**
+   - **+** butonuna tıklayın → **Domain**: `alertachart.com` yazın
+   - **+** butonuna tıklayın → **Domain**: `www.alertachart.com` yazın
+   
+   **Return URLs (Callback URL'leri):**
+   - **+** butonuna tıklayın → **Return URL**: `https://alertachart.com/api/auth/callback/apple` yazın
+   - **+** butonuna tıklayın → **Return URL**: `https://www.alertachart.com/api/auth/callback/apple` yazın
+   - **+** butonuna tıklayın → **Return URL**: `https://alertachart.com/auth/mobile-callback` yazın
+   - **+** butonuna tıklayın → **Return URL**: `https://www.alertachart.com/auth/mobile-callback` yazın
+   
 3. **Save** butonuna tıklayın
 4. Ana sayfaya dönmek için **Continue** → **Save** butonuna tıklayın
 
@@ -69,7 +80,11 @@ Aşağıdakilerin hepsi doğru olmalı:
 - [ ] Service ID'de **Sign In with Apple** aktif
 - [ ] Primary App ID olarak `com.kriptokirmizi.alerta` seçili
 - [ ] Domain: `alertachart.com` eklenmiş
+- [ ] Domain: `www.alertachart.com` eklenmiş
+- [ ] Return URL: `https://alertachart.com/api/auth/callback/apple` eklenmiş
+- [ ] Return URL: `https://www.alertachart.com/api/auth/callback/apple` eklenmiş
 - [ ] Return URL: `https://alertachart.com/auth/mobile-callback` eklenmiş
+- [ ] Return URL: `https://www.alertachart.com/auth/mobile-callback` eklenmiş
 - [ ] Bundle ID `com.kriptokirmizi.alerta` mevcut
 - [ ] Bundle ID'de **Sign In with Apple** capability aktif
 

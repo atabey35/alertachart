@@ -316,7 +316,7 @@ export default function Home() {
     
     // Android/iOS: NEVER load Google Identity Services script (use native plugin instead)
     if (platform === 'android' || platform === 'ios') {
-      console.log('[Web Auth] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
+        console.log('[Web Auth] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
       return; // Exit early - don't load script on native platforms
     }
     
@@ -351,120 +351,120 @@ export default function Home() {
     // Load script immediately for web
     loadGoogleScript();
     
-    // Prevent multiple initializations
-    if (googleInitializedRef.current) {
-      console.log('[Web Auth] Google Identity Services already initialized, skipping');
-      return;
-    }
-
-    // Cancel any previous credential requests to prevent "outstanding request" error
-    try {
-      if ((window as any).google?.accounts?.id?.cancel) {
-        (window as any).google.accounts.id.cancel();
-        console.log('[Web Auth] Cancelled previous credential request');
-      }
-    } catch (e) {
-      // Ignore errors
-    }
-
-    // Wait for Google Identity Services to load
-    const initGoogleSignIn = () => {
-      const googleButtonElement = document.getElementById('google-signin-button');
-      if (!googleButtonElement) {
-        // Element not ready yet, retry
-        googleInitTimeoutRef.current = setTimeout(initGoogleSignIn, 100);
+      // Prevent multiple initializations
+      if (googleInitializedRef.current) {
+        console.log('[Web Auth] Google Identity Services already initialized, skipping');
         return;
       }
 
-      if ((window as any).google && (window as any).google.accounts) {
-        const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 
-          '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com';
-        
-        // Clear previous button
-        googleButtonElement.innerHTML = '';
-        
-        (window as any).google.accounts.id.initialize({
-          client_id: googleClientId,
-          callback: async (response: any) => {
-            console.log('[Web Auth] Google Sign-In response:', response);
-            setLoginLoading(true);
-            setLoginError('');
-            
-            try {
-              const result = await handleGoogleWebLogin(response.credential);
-              if (result.success) {
-                setShowLoginScreen(false);
-                googleInitializedRef.current = false; // Reset for next login
+      // Cancel any previous credential requests to prevent "outstanding request" error
+      try {
+        if ((window as any).google?.accounts?.id?.cancel) {
+          (window as any).google.accounts.id.cancel();
+          console.log('[Web Auth] Cancelled previous credential request');
+        }
+      } catch (e) {
+        // Ignore errors
+      }
+
+      // Wait for Google Identity Services to load
+      const initGoogleSignIn = () => {
+        const googleButtonElement = document.getElementById('google-signin-button');
+        if (!googleButtonElement) {
+          // Element not ready yet, retry
+          googleInitTimeoutRef.current = setTimeout(initGoogleSignIn, 100);
+          return;
+        }
+
+        if ((window as any).google && (window as any).google.accounts) {
+          const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || 
+            '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com';
+          
+          // Clear previous button
+          googleButtonElement.innerHTML = '';
+          
+          (window as any).google.accounts.id.initialize({
+            client_id: googleClientId,
+            callback: async (response: any) => {
+              console.log('[Web Auth] Google Sign-In response:', response);
+              setLoginLoading(true);
+              setLoginError('');
+              
+              try {
+                const result = await handleGoogleWebLogin(response.credential);
+                if (result.success) {
+                  setShowLoginScreen(false);
+                  googleInitializedRef.current = false; // Reset for next login
                 // If there's a callback URL, it will be handled by the useEffect above
                 // Otherwise, refresh page to update session
                 if (!callbackUrl) {
                   window.location.reload();
                 }
-              } else {
-                setLoginError(result.error || 'Google login failed');
+                } else {
+                  setLoginError(result.error || 'Google login failed');
+                }
+              } catch (error: any) {
+                setLoginError(error.message || 'Google login failed');
+              } finally {
+                setLoginLoading(false);
               }
-            } catch (error: any) {
-              setLoginError(error.message || 'Google login failed');
-            } finally {
-              setLoginLoading(false);
-            }
-          },
-          // 🔥 CRITICAL: Disable automatic "One Tap" prompts
-          // These cause "Only one navigator.credentials.get request may be outstanding" errors
-          auto_select: false,
-          cancel_on_tap_outside: false,
-          itp_support: false,
-        });
+            },
+            // 🔥 CRITICAL: Disable automatic "One Tap" prompts
+            // These cause "Only one navigator.credentials.get request may be outstanding" errors
+            auto_select: false,
+            cancel_on_tap_outside: false,
+            itp_support: false,
+          });
 
-        // Render Google Sign-In button
-        try {
-          (window as any).google.accounts.id.renderButton(
-            googleButtonElement,
-            {
-              type: 'standard',
-              theme: 'outline',
-              size: 'large',
-              text: 'signin_with',
-              width: 400, // Fixed width instead of '100%' to avoid GSI warning
+          // Render Google Sign-In button
+          try {
+            (window as any).google.accounts.id.renderButton(
+              googleButtonElement,
+              {
+                type: 'standard',
+                theme: 'outline',
+                size: 'large',
+                text: 'signin_with',
+                width: 400, // Fixed width instead of '100%' to avoid GSI warning
+              }
+            );
+            console.log('[Web Auth] ✅ Google button rendered successfully');
+            googleInitializedRef.current = true; // Mark as initialized
+            
+            // 🔥 CRITICAL: Cancel any automatic One Tap prompts
+            // This prevents "navigator.credentials.get" from being called automatically
+            setTimeout(() => {
+              try {
+                (window as any).google.accounts.id.cancel();
+                console.log('[Web Auth] ✅ One Tap auto-prompt cancelled');
+              } catch (e) {
+                // Ignore errors
+              }
+            }, 100);
+          } catch (error: any) {
+            // Suppress origin not allowed errors
+            if (error?.message?.includes('origin is not allowed')) {
+              console.warn('[Web Auth] Google Sign-In not configured for this origin');
+            } else {
+              console.error('[Web Auth] Failed to render Google button:', error);
             }
-          );
-          console.log('[Web Auth] ✅ Google button rendered successfully');
-          googleInitializedRef.current = true; // Mark as initialized
-          
-          // 🔥 CRITICAL: Cancel any automatic One Tap prompts
-          // This prevents "navigator.credentials.get" from being called automatically
-          setTimeout(() => {
-            try {
-              (window as any).google.accounts.id.cancel();
-              console.log('[Web Auth] ✅ One Tap auto-prompt cancelled');
-            } catch (e) {
-              // Ignore errors
-            }
-          }, 100);
-        } catch (error: any) {
-          // Suppress origin not allowed errors
-          if (error?.message?.includes('origin is not allowed')) {
-            console.warn('[Web Auth] Google Sign-In not configured for this origin');
-          } else {
-            console.error('[Web Auth] Failed to render Google button:', error);
           }
+        } else {
+          // Retry after a short delay
+          googleInitTimeoutRef.current = setTimeout(initGoogleSignIn, 100);
         }
-      } else {
-        // Retry after a short delay
-        googleInitTimeoutRef.current = setTimeout(initGoogleSignIn, 100);
-      }
-    };
+      };
 
-    // Start initialization after a short delay to ensure DOM is ready
-    googleInitTimeoutRef.current = setTimeout(initGoogleSignIn, 200);
+      // Start initialization after a short delay to ensure DOM is ready
+      googleInitTimeoutRef.current = setTimeout(initGoogleSignIn, 200);
 
-    // Cleanup function
-    return () => {
-      if (googleInitTimeoutRef.current) {
-        clearTimeout(googleInitTimeoutRef.current);
-        googleInitTimeoutRef.current = null;
-      }
-    };
+      // Cleanup function
+      return () => {
+        if (googleInitTimeoutRef.current) {
+          clearTimeout(googleInitTimeoutRef.current);
+          googleInitTimeoutRef.current = null;
+        }
+      };
   }, [showLoginScreen, status]);
 
 

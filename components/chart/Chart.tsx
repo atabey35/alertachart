@@ -154,7 +154,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         if (saved) {
           const parsed = JSON.parse(saved);
           const merged = { ...DEFAULT_SETTINGS, ...parsed };
-          console.log('[Chart] 📂 Loaded settings from localStorage:', merged);
           setChartSettings(merged); // Update state (for re-render)
           chartSettingsRef.current = merged; // ✅ Update ref immediately (for updateIndicators)
         }
@@ -222,7 +221,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     
     // Only log on first application or when precision changes
     if (!precisionSetRef.current) {
-      console.log(`[Chart] 🎯 Auto-precision for ${pair}:`, { avgPrice, precision, minMove });
     }
     
     // Always apply precision to ensure it's correct after indicator add/remove
@@ -471,7 +469,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       handleScale: !isDrawing,
     });
     
-    console.log('[Chart] 🔒 Chart interaction:', isDrawing ? 'LOCKED (drawing mode)' : 'UNLOCKED');
   }, [activeTool]);
 
   // Handle toolbar dragging (mouse/touch)
@@ -563,18 +560,20 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const saved = localStorage.getItem(storageKey);
       if (saved) {
         const loadedDrawings = JSON.parse(saved);
-        if (Array.isArray(loadedDrawings) && loadedDrawings.length > 0) {
+        if (Array.isArray(loadedDrawings)) {
+          // Always set drawings, even if empty (preserves localStorage state)
           setDrawings(loadedDrawings);
-          console.log('[Chart] ✅ Loaded drawings from localStorage:', loadedDrawings.length);
         } else {
+          // Invalid data, set empty array
           setDrawings([]);
         }
       } else {
+        // No saved data, set empty array
         setDrawings([]);
       }
       drawingsLoadedRef.current = true; // Mark as loaded
     } catch (e) {
-      console.error('[Chart] Failed to load drawings:', e);
+      // Error parsing, set empty array
       setDrawings([]);
       drawingsLoadedRef.current = true; // Mark as loaded even on error
     }
@@ -584,16 +583,28 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   useEffect(() => {
     // Don't save if drawings haven't been loaded yet (prevents overwriting with empty array)
     if (!drawingsLoadedRef.current) {
-      console.log('[Chart] ⏳ Skipping save - drawings not loaded yet');
       return;
     }
     
     const storageKey = `drawings_${exchange}_${pair}`;
     try {
+      // Check if we're saving an empty array and if localStorage already has data
+      // This prevents overwriting existing drawings with empty array on mount/refresh
+      const existingData = localStorage.getItem(storageKey);
+      if (drawings.length === 0 && existingData) {
+        const existingDrawings = JSON.parse(existingData);
+        // If localStorage has drawings but we're trying to save empty array, skip save
+        // This only happens if user explicitly cleared drawings (handled by handleClearAllDrawings)
+        if (Array.isArray(existingDrawings) && existingDrawings.length > 0) {
+          return; // Don't overwrite existing drawings with empty array
+        }
+      }
+      
+      // Save drawings state to localStorage after initial load
+      // This ensures user actions (add/remove/clear) are persisted
       localStorage.setItem(storageKey, JSON.stringify(drawings));
-      console.log('[Chart] 💾 Saved drawings to localStorage:', drawings.length);
     } catch (e) {
-      console.error('[Chart] Failed to save drawings:', e);
+      // Silent fail in production
     }
   }, [drawings, exchange, pair]);
   
@@ -2976,7 +2987,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Save to localStorage
     if (typeof window !== 'undefined') {
       localStorage.setItem('chartSettings', JSON.stringify(newSettings));
-      console.log('[Chart] ✅ Settings saved to localStorage');
     }
     
     
@@ -2987,7 +2997,6 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    * Drawing Tools Handlers
    */
   const handleToolChange = (tool: DrawingTool) => {
-    console.log('🎨 Tool changed to:', tool);
     setActiveTool(tool);
     setTempDrawing(null);
     setPreviewDrawing(null);
@@ -3006,8 +3015,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     });
     horizontalLinesRef.current.clear();
     
+    // Clear drawings state
     setDrawings([]);
     setSelectedDrawingId(null);
+    
+    // Explicitly clear localStorage for this exchange/pair
+    const storageKey = `drawings_${exchange}_${pair}`;
+    try {
+      localStorage.removeItem(storageKey);
+    } catch (e) {
+      // Silent fail
+    }
   };
 
   const handleDrawingDoubleClick = (drawing: Drawing) => {
@@ -3015,10 +3033,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   };
 
   const handleUpdateDrawing = (updatedDrawing: Drawing) => {
-    console.log('🔄 Updating drawing:', updatedDrawing.id, 'fillColor:', updatedDrawing.fillColor);
     setDrawings(prev => {
       const updated = prev.map(d => d.id === updatedDrawing.id ? updatedDrawing : d);
-      console.log('🔄 Updated drawings array:', updated);
       return updated;
     });
     setEditingDrawing(null);
@@ -3549,11 +3565,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         text: activeTool === 'text' ? 'Text' : undefined
       };
       
-      console.log('✅ Single-point drawing created:', newDrawing);
       
       setDrawings(prev => {
         const updated = [...prev, newDrawing];
-        console.log('📊 Drawings after add:', updated);
         return updated;
       });
       // Auto-switch to cursor mode after drawing
@@ -3653,11 +3667,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           extendRight: activeTool === 'trend'
         };
         
-        console.log('✅ 2-point drawing created:', newDrawing);
         
         setDrawings(prev => {
           const updated = [...prev, newDrawing];
-          console.log('📊 Drawings after add:', updated);
           return updated;
         });
         setTempDrawing(null);
