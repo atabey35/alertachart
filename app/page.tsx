@@ -250,9 +250,10 @@ export default function Home() {
     if (platform === 'android' || platform === 'ios') {
       const removeGoogleScripts = () => {
         const existingScripts = document.querySelectorAll('script[src*="accounts.google.com/gsi"], script[src*="gstatic.com"]');
-        existingScripts.forEach(script => {
-          console.log('[Web Auth] 🗑️ Removing Google Identity Services script from Android/iOS:', script.src);
-          script.remove();
+        existingScripts.forEach((script) => {
+          const scriptElement = script as HTMLScriptElement;
+          console.log('[Web Auth] 🗑️ Removing Google Identity Services script from Android/iOS:', scriptElement.src);
+          scriptElement.remove();
         });
       };
       
