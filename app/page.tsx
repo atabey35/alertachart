@@ -238,42 +238,54 @@ export default function Home() {
 
   // Google Identity Services (GIS) initialization for web
   useEffect(() => {
-    if (typeof window !== 'undefined' && showLoginScreen) {
-      // 🔥 CRITICAL: Check platform FIRST before doing anything
-      const isCapacitor = !!(window as any).Capacitor;
-      const platform = isCapacitor ? ((window as any).Capacitor?.getPlatform?.() || 'web') : 'web';
-      
-      // Android/iOS: Don't load Google Identity Services script (use native plugin instead)
-      if (platform === 'android' || platform === 'ios') {
-        console.log('[Web Auth] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
-        return; // Exit early - don't load script on native platforms
+    // 🔥 CRITICAL: Check platform FIRST - BEFORE any other checks
+    if (typeof window === 'undefined') return;
+    
+    const isCapacitor = !!(window as any).Capacitor;
+    const platform = isCapacitor ? ((window as any).Capacitor?.getPlatform?.() || 'web') : 'web';
+    
+    // Android/iOS: NEVER load Google Identity Services script (use native plugin instead)
+    if (platform === 'android' || platform === 'ios') {
+      // Remove any existing Google Identity Services scripts (safety check)
+      const existingScripts = document.querySelectorAll('script[src*="accounts.google.com/gsi"]');
+      existingScripts.forEach(script => {
+        console.log('[Web Auth] 🗑️ Removing Google Identity Services script from Android/iOS');
+        script.remove();
+      });
+      console.log('[Web Auth] ⏭️ Skipping Google Identity Services (native platform:', platform + ')');
+      return; // Exit early - don't load script on native platforms
+    }
+    
+    // Only proceed if we're on web AND showLoginScreen is true
+    if (!showLoginScreen) {
+      return; // Don't load script if login screen is not shown
+    }
+    
+    // Only proceed if we're on web
+    console.log('[Web Auth] ✅ Web platform detected, loading Google Identity Services script');
+    
+    // 🔥 CRITICAL: Load Google Identity Services script ONLY on web (not Android/iOS)
+    // This prevents ERR_BLOCKED_BY_ORB error on Android
+    const loadGoogleScript = () => {
+      // Check if script already loaded
+      if (document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
+        console.log('[Web Auth] Google Identity Services script already loaded');
+        return;
       }
       
-      // Only proceed if we're on web
-      console.log('[Web Auth] ✅ Web platform detected, loading Google Identity Services script');
-      
-      // 🔥 CRITICAL: Load Google Identity Services script ONLY on web (not Android/iOS)
-      // This prevents ERR_BLOCKED_BY_ORB error on Android
-      const loadGoogleScript = () => {
-        // Check if script already loaded
-        if (document.querySelector('script[src="https://accounts.google.com/gsi/client"]')) {
-          console.log('[Web Auth] Google Identity Services script already loaded');
-          return;
-        }
-        
-        console.log('[Web Auth] ✅ Loading Google Identity Services script (web only)');
-        const script = document.createElement('script');
-        script.src = 'https://accounts.google.com/gsi/client';
-        script.async = true;
-        script.defer = true;
-        script.onerror = () => {
-          console.error('[Web Auth] ❌ Failed to load Google Identity Services script');
-        };
-        document.head.appendChild(script);
+      console.log('[Web Auth] ✅ Loading Google Identity Services script (web only)');
+      const script = document.createElement('script');
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onerror = () => {
+        console.error('[Web Auth] ❌ Failed to load Google Identity Services script');
       };
-      
-      // Load script immediately for web
-      loadGoogleScript();
+      document.head.appendChild(script);
+    };
+    
+    // Load script immediately for web
+    loadGoogleScript();
       
       // Prevent multiple initializations
       if (googleInitializedRef.current) {
