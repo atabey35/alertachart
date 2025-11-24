@@ -397,7 +397,7 @@ export default function UpgradeModal({
   return (
     <>
       <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 safe-area-inset">
-        <div className="relative w-full max-w-md bg-gradient-to-br from-gray-950 via-black to-gray-950 rounded-2xl shadow-2xl border border-blue-500/20 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(90vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))' }}>
+        <div className="relative w-full max-w-md bg-gradient-to-br from-gray-950 via-black to-gray-950 rounded-2xl shadow-2xl border border-blue-500/20 overflow-hidden flex flex-col" style={{ maxHeight: 'calc(100vh - 2rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))', height: 'auto' }}>
           {/* Close Button */}
           <button
             onClick={onClose}
@@ -407,8 +407,8 @@ export default function UpgradeModal({
             <X className="w-4 h-4" />
           </button>
 
-          {/* Header */}
-          <div className="relative pt-8 pb-5 px-6 bg-gradient-to-b from-blue-600/20 via-blue-500/10 to-transparent border-b border-blue-500/20">
+          {/* Header - Fixed */}
+          <div className="relative pt-8 pb-4 px-6 bg-gradient-to-b from-blue-600/20 via-blue-500/10 to-transparent border-b border-blue-500/20 flex-shrink-0">
             <div className="text-center">
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-500 mb-3 shadow-lg shadow-blue-500/40 border border-blue-400/30">
                 <Sparkles className="w-8 h-8 text-white" />
@@ -422,8 +422,8 @@ export default function UpgradeModal({
             </div>
           </div>
 
-          {/* Features List - Compact Grid */}
-          <div className="px-4 py-4 flex-1">
+          {/* Features List - Scrollable */}
+          <div className="px-4 py-3 flex-1 overflow-y-auto min-h-0" style={{ maxHeight: 'calc(100vh - 400px)' }}>
             <div className="grid grid-cols-1 gap-2.5">
               {premiumFeatures.map((feature, index) => {
                 const IconComponent = feature.icon;
@@ -459,15 +459,15 @@ export default function UpgradeModal({
             </div>
           </div>
 
-          {/* Error Message */}
+          {/* Error Message - Fixed */}
           {error && (
-            <div className="mx-4 mb-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30">
+            <div className="mx-4 mb-2 p-2.5 rounded-lg bg-red-500/10 border border-red-500/30 flex-shrink-0">
               <p className="text-red-400 text-xs text-center">{error}</p>
             </div>
           )}
 
-          {/* Action Buttons */}
-          <div className="px-4 pb-4 pt-3 space-y-2 border-t border-gray-800/60">
+          {/* Action Buttons - Fixed at bottom */}
+          <div className="px-4 pb-4 pt-3 space-y-2 border-t border-gray-800/60 bg-gradient-to-br from-gray-950 via-black to-gray-950 flex-shrink-0">
             {/* Trial button - only for native apps (iOS/Android), not web */}
             {/* Double check: platform must be 'ios' or 'android', not 'web' */}
             {currentPlan === 'free' && !isTrial && (platform === 'ios' || platform === 'android') && (
