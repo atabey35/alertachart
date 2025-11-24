@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
 
@@ -8,26 +8,51 @@ export default function LiquidationTrackerPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const redirectingRef = useRef(false); // Prevent multiple redirects
+  const hasCheckedRef = useRef(false); // Prevent multiple auth checks
 
   useEffect(() => {
+    // Only check once
+    if (hasCheckedRef.current) return;
+    hasCheckedRef.current = true;
+    
     checkAuth();
   }, []);
 
   const checkAuth = async () => {
     try {
+      // Check if we're already on the correct subdomain
+      if (typeof window !== 'undefined') {
+        const currentHost = window.location.hostname;
+        if (currentHost === 'data.alertachart.com') {
+          // Already on correct subdomain, don't redirect
+          console.log('[LiquidationTracker] Already on data.alertachart.com, skipping redirect');
+          setIsAuthenticated(true);
+          setLoading(false);
+          return;
+        }
+      }
+
       setLoading(true);
       const user = await authService.checkAuth();
       setIsAuthenticated(!!user);
       
-      if (user) {
+      if (user && !redirectingRef.current) {
         // User is authenticated, redirect to liquidation tracker
-        window.location.href = 'https://data.alertachart.com/liquidation-tracker?embed=true';
+        // Only redirect if not already redirecting
+        redirectingRef.current = true;
+        console.log('[LiquidationTracker] User authenticated, redirecting to data.alertachart.com');
+        // Use replace instead of href to prevent back button issues
+        window.location.replace('https://data.alertachart.com/liquidation-tracker?embed=true');
       }
     } catch (error) {
       console.error('[LiquidationTracker] Auth check failed:', error);
       setIsAuthenticated(false);
-    } finally {
       setLoading(false);
+    } finally {
+      if (!redirectingRef.current) {
+        setLoading(false);
+      }
     }
   };
 

@@ -87,6 +87,10 @@ export default function Home() {
   // Ref to track Google Identity Services initialization
   const googleInitializedRef = useRef(false);
   const googleInitTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Refs to prevent multiple redirects and callback processing
+  const redirectingRef = useRef(false);
+  const callbackProcessedRef = useRef(false);
 
   // Development mode: Auto-login with test@gmail.com
   useEffect(() => {
@@ -489,56 +493,80 @@ export default function Home() {
   // Web tarafında token'a ihtiyaç yok, sadece alarm tetiklendiğinde /api/alarms/notify çağrılıyor
   // Backend user_id'den cihazları bulur ve push token ile bildirim gönderir
 
-  // Check URL params for login
+  // Ref to prevent multiple redirects
+  const redirectingRef = useRef(false);
+  const callbackProcessedRef = useRef(false);
+
+  // Check URL params for login and handle callback redirects
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      const loginParam = params.get('login');
-      const callbackParam = params.get('callback');
+    if (typeof window === 'undefined') return;
+    
+    // Prevent multiple redirects
+    if (redirectingRef.current) return;
+    
+    const params = new URLSearchParams(window.location.search);
+    const loginParam = params.get('login');
+    const callbackParam = params.get('callback');
+    
+    // If user is already authenticated and there's a callback URL, redirect immediately
+    if (loginParam === 'true' && callbackParam && (user || status === 'authenticated')) {
+      if (callbackProcessedRef.current) return; // Already processed
+      callbackProcessedRef.current = true;
+      redirectingRef.current = true;
       
-      // If user is already authenticated and there's a callback URL, redirect immediately
-      if (loginParam === 'true' && callbackParam && (user || status === 'authenticated')) {
-        console.log('[App] User already authenticated, redirecting to callback:', callbackParam);
-        try {
-          const decodedCallback = decodeURIComponent(callbackParam);
-          window.location.href = decodedCallback;
-          return;
-        } catch (e) {
-          console.error('[App] Error decoding callback URL:', e);
-        }
+      console.log('[App] User already authenticated, redirecting to callback:', callbackParam);
+      try {
+        const decodedCallback = decodeURIComponent(callbackParam);
+        // Use replace to prevent back button issues
+        window.location.replace(decodedCallback);
+        return;
+      } catch (e) {
+        console.error('[App] Error decoding callback URL:', e);
+        redirectingRef.current = false;
+        callbackProcessedRef.current = false;
       }
-      
-      // If login param is true and user is not authenticated, show login screen
-      if (loginParam === 'true' && !user && status !== 'authenticated') {
-        if (callbackParam) {
-          setCallbackUrl(callbackParam);
-        }
-        setShowLoginScreen(true);
-        console.log('[App] Login screen opened from URL parameter', callbackParam ? `with callback: ${callbackParam}` : '');
-        // Clean URL after processing (keep callback in URL for after login)
-        if (callbackParam) {
-          window.history.replaceState({}, '', `${window.location.pathname}?callback=${callbackParam}`);
-        } else {
-          window.history.replaceState({}, '', window.location.pathname);
-        }
+    }
+    
+    // If login param is true and user is not authenticated, show login screen
+    if (loginParam === 'true' && !user && status !== 'authenticated') {
+      if (callbackParam) {
+        setCallbackUrl(callbackParam);
+      }
+      setShowLoginScreen(true);
+      console.log('[App] Login screen opened from URL parameter', callbackParam ? `with callback: ${callbackParam}` : '');
+      // Clean URL after processing (keep callback in URL for after login)
+      if (callbackParam) {
+        window.history.replaceState({}, '', `${window.location.pathname}?callback=${callbackParam}`);
+      } else {
+        window.history.replaceState({}, '', window.location.pathname);
       }
     }
   }, [user, status]);
 
-  // Handle callback redirect after successful login
+  // Handle callback redirect after successful login (only if callbackUrl is set from state)
   useEffect(() => {
-    if (typeof window !== 'undefined' && callbackUrl && (user || status === 'authenticated')) {
-      console.log('[App] Login successful, redirecting to callback:', callbackUrl);
-      try {
-        const decodedCallback = decodeURIComponent(callbackUrl);
-        // Small delay to ensure session is fully established
-        setTimeout(() => {
-          window.location.href = decodedCallback;
-        }, 500);
-      } catch (e) {
-        console.error('[App] Error decoding callback URL:', e);
-        setCallbackUrl(null);
-      }
+    if (typeof window === 'undefined') return;
+    if (redirectingRef.current) return; // Already redirecting
+    if (!callbackUrl) return; // No callback URL set
+    if (!user && status !== 'authenticated') return; // Not authenticated yet
+    
+    // Prevent duplicate processing
+    if (callbackProcessedRef.current) return;
+    callbackProcessedRef.current = true;
+    redirectingRef.current = true;
+    
+    console.log('[App] Login successful, redirecting to callback:', callbackUrl);
+    try {
+      const decodedCallback = decodeURIComponent(callbackUrl);
+      // Small delay to ensure session is fully established, then use replace
+      setTimeout(() => {
+        window.location.replace(decodedCallback);
+      }, 500);
+    } catch (e) {
+      console.error('[App] Error decoding callback URL:', e);
+      setCallbackUrl(null);
+      redirectingRef.current = false;
+      callbackProcessedRef.current = false;
     }
   }, [user, status, callbackUrl]);
 
