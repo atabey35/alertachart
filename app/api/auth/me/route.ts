@@ -8,16 +8,34 @@ export async function GET(request: NextRequest) {
   try {
     const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
     
-    // Forward cookies from request
-    const cookies = request.headers.get('cookie') || '';
+    // 🔥 CRITICAL: Get cookies from both sources (headers and cookies object)
+    // This ensures cookies are read correctly across subdomains (www.alertachart.com, data.alertachart.com)
+    const cookieHeader = request.headers.get('cookie') || '';
+    const cookiesObj = request.cookies;
+    
+    // Build cookie string from cookies object (more reliable for subdomain sharing)
+    let cookieString = cookieHeader;
+    if (cookiesObj && cookiesObj.size > 0) {
+      const cookiePairs: string[] = [];
+      cookiesObj.getAll().forEach((cookie) => {
+        cookiePairs.push(`${cookie.name}=${cookie.value}`);
+      });
+      if (cookiePairs.length > 0) {
+        cookieString = cookiePairs.join('; ');
+        // Also append header cookies if they exist
+        if (cookieHeader) {
+          cookieString = `${cookieString}; ${cookieHeader}`;
+        }
+      }
+    }
     
     // 🔥 CRITICAL: Android - Forward Authorization header if present
     // Android uses Preferences tokens instead of cookies (cookies unreliable)
     const authHeader = request.headers.get('authorization');
     
     const headers: Record<string, string> = {};
-    if (cookies) {
-      headers['Cookie'] = cookies;
+    if (cookieString) {
+      headers['Cookie'] = cookieString;
     }
     if (authHeader) {
       headers['Authorization'] = authHeader;
