@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { neon } from '@neondatabase/serverless';
 import { encode } from 'next-auth/jwt';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
 
 // Lazy initialization to avoid build-time errors
 const getSql = () => {
@@ -19,6 +21,12 @@ export async function POST(request: NextRequest) {
   console.log('[restore-session] 🔍 POST request received');
   
   try {
+    // 🔥 CRITICAL: Check NextAuth session first
+    // If NextAuth session exists but refreshToken doesn't, we can still restore backend session
+    const session = await getServerSession(authOptions);
+    const hasNextAuthSession = !!session?.user?.email;
+    console.log('[restore-session] 🔍 NextAuth session:', hasNextAuthSession ? `found (${session.user.email})` : 'not found');
+    
     // Get refresh token from cookies OR request body (for Preferences-based restore)
     let refreshToken = request.cookies.get('refreshToken')?.value;
     console.log('[restore-session] 🔍 RefreshToken from cookies:', refreshToken ? 'found' : 'not found');
