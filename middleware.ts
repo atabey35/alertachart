@@ -64,11 +64,15 @@ export const config = {
      * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
+     * - _next/webpack-hmr (webpack hot module replacement)
      * - assets/ (static assets from Vite/build tools)
      * - static/ (static files)
-     * - favicon.ico and other static file extensions
+     * - favicon.ico
+     * 
+     * Note: Static file extensions (.css, .js, etc.) are handled in the middleware function itself
+     * because Next.js matcher doesn't support capturing groups in regex
      */
-    '/((?!api|_next/static|_next/image|_next/webpack-hmr|assets|static|favicon.ico|.*\\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$).*)',
+    '/((?!api|_next/static|_next/image|_next/webpack-hmr|assets|static|favicon\\.ico).*)',
   ],
 };
 
