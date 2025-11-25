@@ -4,6 +4,18 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const url = request.nextUrl.clone();
+  const pathname = request.nextUrl.pathname;
+
+  // 🔥 CRITICAL: Static assets should never be processed by middleware
+  // This prevents MIME type errors (CSS/JS files being served as HTML)
+  if (
+    pathname.startsWith('/_next/') ||
+    pathname.startsWith('/assets/') ||
+    pathname.startsWith('/static/') ||
+    pathname.match(/\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$/i)
+  ) {
+    return NextResponse.next();
+  }
 
   // 🔥 CRITICAL: OPTIONS requests (CORS preflight) should never be redirected
   // Redirecting OPTIONS requests breaks CORS preflight checks
@@ -52,9 +64,11 @@ export const config = {
      * - api (API routes)
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - assets/ (static assets from Vite/build tools)
+     * - static/ (static files)
+     * - favicon.ico and other static file extensions
      */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    '/((?!api|_next/static|_next/image|_next/webpack-hmr|assets|static|favicon.ico|.*\\.(ico|png|jpg|jpeg|gif|svg|css|js|woff|woff2|ttf|eot)$).*)',
   ],
 };
 
