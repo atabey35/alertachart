@@ -48,18 +48,14 @@ export async function GET(request: NextRequest) {
     
     const result = await response.json();
     
-    // 401 is normal when user is not logged in - don't log as error
-    if (response.status === 401) {
-      return NextResponse.json(result, { status: 401 });
-    }
-    
-    // Create response with CORS headers
+    // Create response with CORS headers (ALWAYS set CORS, even for 401)
     const origin = request.headers.get('origin') || '';
     const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
     
     const nextResponse = NextResponse.json(result, { status: response.status });
     
-    // Set CORS headers
+    // 🔥 CRITICAL: Set CORS headers for ALL responses (including 401)
+    // This is required for subdomain requests to work
     if (allowedOrigins.includes(origin)) {
       nextResponse.headers.set('Access-Control-Allow-Origin', origin);
       nextResponse.headers.set('Access-Control-Allow-Credentials', 'true');
