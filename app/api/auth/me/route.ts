@@ -119,7 +119,7 @@ export async function GET(request: NextRequest) {
             
             // Create response with restored cookies
             const origin = request.headers.get('origin') || '';
-            const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
+            const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
             
             const nextResponse = NextResponse.json(retryResult, { status: retryResponse.status });
             
@@ -147,7 +147,7 @@ export async function GET(request: NextRequest) {
     
     // Create response with CORS headers (ALWAYS set CORS, even for 401)
     const origin = request.headers.get('origin') || '';
-    const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
+    const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
     
     const nextResponse = NextResponse.json(result, { status: response.status });
     
@@ -164,7 +164,7 @@ export async function GET(request: NextRequest) {
     
     // 🔥 CRITICAL: Set CORS headers even for error responses
     const origin = request.headers.get('origin') || '';
-    const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
+    const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
     
     const errorResponse = NextResponse.json(
       { error: error.message || 'Failed to get user info' },

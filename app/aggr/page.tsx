@@ -24,7 +24,7 @@ export default function AggrPage() {
       // Check if we're already on the correct subdomain
       if (typeof window !== 'undefined') {
         const currentHost = window.location.hostname;
-        if (currentHost === 'aggr.alertachart.com') {
+        if (currentHost === 'aggr.alertachart.com' || currentHost === 'www.aggr.alertachart.com') {
           // Already on correct subdomain, don't redirect
           console.log('[Aggr] Already on aggr.alertachart.com, skipping redirect');
           setIsAuthenticated(true);

@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
     
     // Set CORS headers
     const origin = request.headers.get('origin') || '';
-    const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
+    const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
     
     if (allowedOrigins.includes(origin)) {
       responseHeaders.set('Access-Control-Allow-Origin', origin);

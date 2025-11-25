@@ -62,78 +62,132 @@ export async function POST(request: NextRequest) {
       }
     }
     
-    if (!refreshToken) {
-      console.log('[restore-session] ❌ No refresh token found in cookies or body');
-      return NextResponse.json(
+    if (!refreshToken && !hasNextAuthSession) {
+      console.log('[restore-session] ❌ No refresh token found in cookies or body, and no NextAuth session');
+      
+      // Set CORS headers even for 401 responses
+      const origin = request.headers.get('origin') || '';
+      const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
+      
+      const errorResponse = NextResponse.json(
         { error: 'No refresh token found' },
         { status: 401 }
       );
+      
+      if (allowedOrigins.includes(origin)) {
+        errorResponse.headers.set('Access-Control-Allow-Origin', origin);
+        errorResponse.headers.set('Access-Control-Allow-Credentials', 'true');
+      }
+      
+      return errorResponse;
     }
     
-    console.log('[restore-session] ✅ Attempting to restore session from refresh token');
+    // 🔥 CRITICAL: If NextAuth session exists but refreshToken doesn't, use NextAuth session to restore
+    // This happens when user is logged in on www.alertachart.com but visits subdomain (aggr.alertachart.com)
+    // In this case, we'll skip backend token refresh and directly use NextAuth session email
+    const shouldUseNextAuthOnly = !refreshToken && hasNextAuthSession && session?.user?.email;
     
-    // Fetch user info from backend using the refresh token
+    if (shouldUseNextAuthOnly) {
+      console.log('[restore-session] ✅ NextAuth session found, using it to restore backend session (no refreshToken)');
+      // Skip backend token refresh, go directly to database lookup
+    } else {
+      console.log('[restore-session] ✅ Attempting to restore session from refresh token');
+    }
+    
+    // Fetch user info from backend using the refresh token (if available)
     const backendUrl = process.env.BACKEND_URL || 'http://localhost:3002';
     let userData = null;
     let userEmail = null;
     let newAccessToken = null;
     
     try {
-      // Try to get user info with refresh token
-      const userResponse = await fetch(`${backendUrl}/api/auth/me`, {
-        headers: {
-          'Cookie': `refreshToken=${refreshToken}`,
-        },
-      });
-      
-      if (userResponse.ok) {
-        const result = await userResponse.json();
-        userData = result.user;
-        userEmail = userData?.email;
-        console.log('[restore-session] User data fetched:', userEmail);
-      } else {
-        // If /api/auth/me fails, try to refresh the token
-        const refreshResponse = await fetch(`${backendUrl}/api/auth/refresh`, {
-          method: 'POST',
+      // Only try backend if we have refreshToken
+      if (refreshToken && !shouldUseNextAuthOnly) {
+        // Try to get user info with refresh token
+        const userResponse = await fetch(`${backendUrl}/api/auth/me`, {
           headers: {
-            'Content-Type': 'application/json',
             'Cookie': `refreshToken=${refreshToken}`,
           },
-          body: JSON.stringify({ refreshToken }),
         });
-        
-        if (refreshResponse.ok) {
-          const refreshResult = await refreshResponse.json();
-          newAccessToken = refreshResult.accessToken;
-          
-          // Now try to get user info with new access token
-          const userResponse2 = await fetch(`${backendUrl}/api/auth/me`, {
+      
+        if (userResponse.ok) {
+          const result = await userResponse.json();
+          userData = result.user;
+          userEmail = userData?.email;
+          console.log('[restore-session] User data fetched:', userEmail);
+        } else {
+          // If /api/auth/me fails, try to refresh the token
+          const refreshResponse = await fetch(`${backendUrl}/api/auth/refresh`, {
+            method: 'POST',
             headers: {
-              'Cookie': `accessToken=${newAccessToken}; refreshToken=${refreshToken}`,
+              'Content-Type': 'application/json',
+              'Cookie': `refreshToken=${refreshToken}`,
             },
+            body: JSON.stringify({ refreshToken }),
           });
           
-          if (userResponse2.ok) {
-            const result = await userResponse2.json();
-            userData = result.user;
-            userEmail = userData?.email;
-            console.log('[restore-session] User data fetched after token refresh:', userEmail);
+          if (refreshResponse.ok) {
+            const refreshResult = await refreshResponse.json();
+            newAccessToken = refreshResult.accessToken;
+            
+            // Now try to get user info with new access token
+            const userResponse2 = await fetch(`${backendUrl}/api/auth/me`, {
+              headers: {
+                'Cookie': `accessToken=${newAccessToken}; refreshToken=${refreshToken}`,
+              },
+            });
+            
+            if (userResponse2.ok) {
+              const result = await userResponse2.json();
+              userData = result.user;
+              userEmail = userData?.email;
+              console.log('[restore-session] User data fetched after token refresh:', userEmail);
+            }
           }
         }
       }
     } catch (e) {
       console.error('[restore-session] Failed to fetch user data:', e);
-      return NextResponse.json(
+      
+      // Set CORS headers even for error responses
+      const origin = request.headers.get('origin') || '';
+      const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
+      
+      const errorResponse = NextResponse.json(
         { error: 'Failed to restore session' },
         { status: 500 }
       );
+      
+      if (allowedOrigins.includes(origin)) {
+        errorResponse.headers.set('Access-Control-Allow-Origin', origin);
+        errorResponse.headers.set('Access-Control-Allow-Credentials', 'true');
+      }
+      
+      return errorResponse;
+    }
+    
+    // 🔥 CRITICAL: If userEmail is not found from backend but NextAuth session exists, use NextAuth email
+    if (!userEmail && hasNextAuthSession && session?.user?.email) {
+      userEmail = session.user.email;
+      console.log('[restore-session] ✅ Using email from NextAuth session:', userEmail);
     }
     
     if (!userEmail) {
-      return NextResponse.json(
+      // Set CORS headers even for 404 responses
+      const origin = request.headers.get('origin') || '';
+      const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
+      
+      const errorResponse = NextResponse.json(
         { error: 'User not found' },
         { status: 404 }
       );
+      
+      if (allowedOrigins.includes(origin)) {
+        errorResponse.headers.set('Access-Control-Allow-Origin', origin);
+        errorResponse.headers.set('Access-Control-Allow-Credentials', 'true');
+      }
+      
+      return errorResponse;
     }
     
     // Create NextAuth session
@@ -183,17 +237,41 @@ export async function POST(request: NextRequest) {
         console.log('[restore-session] NextAuth token created for:', userEmail);
       } else {
         console.warn('[restore-session] User not found in database:', userEmail);
-        return NextResponse.json(
+        
+        // Set CORS headers even for 404 responses
+        const origin = request.headers.get('origin') || '';
+        const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
+        
+        const errorResponse = NextResponse.json(
           { error: 'User not found' },
           { status: 404 }
         );
+        
+        if (allowedOrigins.includes(origin)) {
+          errorResponse.headers.set('Access-Control-Allow-Origin', origin);
+          errorResponse.headers.set('Access-Control-Allow-Credentials', 'true');
+        }
+        
+        return errorResponse;
       }
     } catch (e) {
       console.error('[restore-session] Failed to create NextAuth session:', e);
-      return NextResponse.json(
+      
+      // Set CORS headers even for error responses
+      const origin = request.headers.get('origin') || '';
+      const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
+      
+      const errorResponse = NextResponse.json(
         { error: 'Failed to create session' },
         { status: 500 }
       );
+      
+      if (allowedOrigins.includes(origin)) {
+        errorResponse.headers.set('Access-Control-Allow-Origin', origin);
+        errorResponse.headers.set('Access-Control-Allow-Credentials', 'true');
+      }
+      
+      return errorResponse;
     }
     
     // 🔥 CRITICAL: ALWAYS return tokens in response for Android reliability
@@ -289,13 +367,34 @@ export async function POST(request: NextRequest) {
     
     console.log('[restore-session] Session restored successfully');
     
+    // Set CORS headers for successful response
+    const origin = request.headers.get('origin') || '';
+    const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
+    
+    if (allowedOrigins.includes(origin)) {
+      response.headers.set('Access-Control-Allow-Origin', origin);
+      response.headers.set('Access-Control-Allow-Credentials', 'true');
+    }
+    
     return response;
   } catch (error: any) {
     console.error('[restore-session] Error:', error);
-    return NextResponse.json(
+    
+    // Set CORS headers even for error responses
+    const origin = request.headers.get('origin') || '';
+    const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
+    
+    const errorResponse = NextResponse.json(
       { error: error.message || 'Failed to restore session' },
       { status: 500 }
     );
+    
+    if (allowedOrigins.includes(origin)) {
+      errorResponse.headers.set('Access-Control-Allow-Origin', origin);
+      errorResponse.headers.set('Access-Control-Allow-Credentials', 'true');
+    }
+    
+    return errorResponse;
   }
 }
 
