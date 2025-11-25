@@ -25,11 +25,20 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { deviceId, platform } = body;
+    const { deviceId, platform, subscriptionId, productId } = body;
     
     if (!deviceId) {
       return NextResponse.json(
         { error: 'Device ID required' },
+        { status: 400 }
+      );
+    }
+    
+    // 🔥 CRITICAL: For iOS/Android, subscriptionId is required (subscription started via native SDK)
+    // For web, subscriptionId is optional (can be started later)
+    if ((platform === 'ios' || platform === 'android') && !subscriptionId) {
+      return NextResponse.json(
+        { error: 'Subscription ID required for mobile platforms' },
         { status: 400 }
       );
     }
@@ -124,6 +133,11 @@ export async function POST(request: NextRequest) {
     const trialEnd = new Date(now);
     trialEnd.setDate(trialEnd.getDate() + 3); // 3 gün
     
+    // Calculate expiry date (trial bitince otomatik subscription başlayacak)
+    // Apple/Google will auto-renew after trial, so set expiry to 1 month from trial end
+    const expiryDate = new Date(trialEnd);
+    expiryDate.setMonth(expiryDate.getMonth() + 1); // 1 month after trial ends
+    
     // Trial attempt kaydet
     await sql`
       INSERT INTO trial_attempts (
@@ -145,7 +159,9 @@ export async function POST(request: NextRequest) {
       )
     `;
     
-    // User'ı premium yap (trial başladı)
+    // 🔥 CRITICAL: User'ı premium yap (trial başladı)
+    // subscriptionId varsa kaydet (Apple/Google subscription)
+    // expiry_date set et (trial bitince otomatik subscription başlayacak)
     await sql`
       UPDATE users
       SET 
@@ -153,18 +169,23 @@ export async function POST(request: NextRequest) {
         trial_started_at = ${now.toISOString()},
         trial_ended_at = ${trialEnd.toISOString()},
         subscription_started_at = ${now.toISOString()},
+        subscription_platform = ${platform || null},
+        subscription_id = ${subscriptionId || null},
+        expiry_date = ${expiryDate.toISOString()},
         updated_at = NOW()
       WHERE id = ${user.id}
     `;
     
-    console.log(`[Trial] Started for user ${user.id}, device ${deviceId}, IP ${ipAddress}`);
+    console.log(`[Trial] Started for user ${user.id}, device ${deviceId}, IP ${ipAddress}, subscriptionId: ${subscriptionId || 'none'}`);
     
     return NextResponse.json({
       success: true,
       trialStartedAt: now.toISOString(),
       trialEndsAt: trialEnd.toISOString(),
+      expiryDate: expiryDate.toISOString(),
       trialDaysRemaining: 3,
-      message: '3 günlük trial başladı!'
+      subscriptionId: subscriptionId || null,
+      message: '3 günlük trial başladı! Trial bitince otomatik olarak premium üyeliğe geçilecek.'
     });
     
   } catch (error: any) {

@@ -191,6 +191,76 @@ export default function UpgradeModal({
     try {
       console.log('[UpgradeModal] 🚀 Starting trial with deviceId:', deviceId, 'platform:', platform);
       
+      // 🔥 CRITICAL: For Android/iOS, start subscription via native SDK first
+      // Google Play / App Store will handle free trial automatically
+      let subscriptionId: string | null = null;
+      let productId: string | null = null;
+      
+      if (platform === 'android') {
+        // Android: Use Google Play Billing
+        try {
+          const Capacitor = (window as any).Capacitor;
+          if (Capacitor?.Plugins?.InAppPurchase) {
+            // Product ID from Google Play Console (your existing subscription)
+            productId = 'premium_monthly'; // Update this to your actual product ID
+            
+            console.log('[UpgradeModal] 📱 Starting Google Play subscription:', productId);
+            
+            // Start subscription (Google Play will show free trial automatically)
+            const purchaseResult = await Capacitor.Plugins.InAppPurchase.purchase({
+              productId: productId,
+              productType: 'subscription', // Important: subscription type
+            });
+            
+            if (purchaseResult && purchaseResult.transactionId) {
+              subscriptionId = purchaseResult.transactionId;
+              console.log('[UpgradeModal] ✅ Google Play subscription started:', subscriptionId);
+            } else {
+              throw new Error('Subscription purchase failed');
+            }
+          } else {
+            throw new Error('In-App Purchase plugin not available');
+          }
+        } catch (error: any) {
+          console.error('[UpgradeModal] ❌ Google Play subscription error:', error);
+          setError(error.message || 'Google Play aboneliği başlatılamadı. Lütfen tekrar deneyin.');
+          setLoading(false);
+          return;
+        }
+      } else if (platform === 'ios') {
+        // iOS: Use App Store In-App Purchase
+        try {
+          const Capacitor = (window as any).Capacitor;
+          if (Capacitor?.Plugins?.InAppPurchase) {
+            // Product ID from App Store Connect
+            productId = 'com.kriptokirmizi.alerta.premium.monthly'; // Update this to your actual product ID
+            
+            console.log('[UpgradeModal] 📱 Starting App Store subscription:', productId);
+            
+            // Start subscription (App Store will show free trial automatically)
+            const purchaseResult = await Capacitor.Plugins.InAppPurchase.purchase({
+              productId: productId,
+              productType: 'subscription', // Important: subscription type
+            });
+            
+            if (purchaseResult && purchaseResult.transactionId) {
+              subscriptionId = purchaseResult.transactionId;
+              console.log('[UpgradeModal] ✅ App Store subscription started:', subscriptionId);
+            } else {
+              throw new Error('Subscription purchase failed');
+            }
+          } else {
+            throw new Error('In-App Purchase plugin not available');
+          }
+        } catch (error: any) {
+          console.error('[UpgradeModal] ❌ App Store subscription error:', error);
+          setError(error.message || 'App Store aboneliği başlatılamadı. Lütfen tekrar deneyin.');
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Now send subscription info to backend
       const response = await fetch('/api/subscription/start-trial', {
         method: 'POST',
         headers: {
@@ -199,6 +269,8 @@ export default function UpgradeModal({
         body: JSON.stringify({
           deviceId,
           platform,
+          subscriptionId, // Google Play / App Store subscription ID
+          productId, // Product ID
         }),
       });
 
