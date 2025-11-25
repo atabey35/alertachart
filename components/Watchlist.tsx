@@ -682,7 +682,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       {/* Header */}
       <div className={`border-b border-gray-800/50 ${getHeaderBackgroundClass()} backdrop-blur-sm p-2 md:p-4 flex items-center justify-between shadow-sm`}>
         <div>
-          <h3 className="text-sm md:text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400">
+          <h3 className="text-sm md:text-base font-bold text-blue-400">
             Watchlist
           </h3>
           <p className="text-[9px] md:text-[10px] text-gray-400 mt-0.5 md:mt-1 font-medium">
