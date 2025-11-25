@@ -168,7 +168,7 @@ export default function PrivacyPage() {
       {/* Footer */}
       <footer className="border-t border-gray-800 bg-black mt-12">
         <div className="container mx-auto px-4 py-6 text-center text-gray-500 text-sm">
-          <p>&copy; 2025 Alerta Chart - Kripto Kırmızı. Tüm hakları saklıdır.</p>
+          <p>&copy; 2025 Alerta Chart. Tüm hakları saklıdır.</p>
         </div>
       </footer>
     </div>
