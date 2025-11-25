@@ -31,12 +31,19 @@ export function middleware(request: NextRequest) {
   }
 
   // Subdomain routing: aggr.alertachart.com → /aggr
+  // 🔥 CRITICAL: aggr.alertachart.com is a separate deployment (kkaggr-main Vue.js project)
+  // Static assets (/assets/, etc.) should be handled by that deployment, not this middleware
+  // This middleware only handles the root path redirect
   if (hostname.includes('aggr.alertachart.com')) {
     const pathname = request.nextUrl.pathname;
+    // Only rewrite root path, let all other paths (including /assets/) pass through
+    // This allows the separate deployment to handle static assets
     if (pathname === '/' || pathname === '') {
       url.pathname = '/aggr';
       return NextResponse.rewrite(url);
     }
+    // For all other paths on aggr subdomain, let them pass through (handled by separate deployment)
+    return NextResponse.next();
   }
 
   // Subdomain routing: data.alertachart.com/liquidation-tracker → /data/liquidation-tracker
