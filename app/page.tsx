@@ -513,8 +513,13 @@ export default function Home() {
       console.log('[App] User already authenticated, redirecting to callback:', callbackParam);
       try {
         const decodedCallback = decodeURIComponent(callbackParam);
+        // 🔥 CRITICAL: Sanitize callback URL - remove nested callback params
+        const callbackUrl = new URL(decodedCallback);
+        callbackUrl.searchParams.delete('callback'); // Remove nested callback
+        const sanitizedCallback = callbackUrl.toString();
+        
         // Use replace to prevent back button issues
-        window.location.replace(decodedCallback);
+        window.location.replace(sanitizedCallback);
         return;
       } catch (e) {
         console.error('[App] Error decoding callback URL:', e);
@@ -554,9 +559,14 @@ export default function Home() {
     console.log('[App] Login successful, redirecting to callback:', callbackUrl);
     try {
       const decodedCallback = decodeURIComponent(callbackUrl);
+      // 🔥 CRITICAL: Sanitize callback URL - remove nested callback params
+      const callbackUrlObj = new URL(decodedCallback);
+      callbackUrlObj.searchParams.delete('callback'); // Remove nested callback
+      const sanitizedCallback = callbackUrlObj.toString();
+      
       // Small delay to ensure session is fully established, then use replace
       setTimeout(() => {
-        window.location.replace(decodedCallback);
+        window.location.replace(sanitizedCallback);
       }, 500);
     } catch (e) {
       console.error('[App] Error decoding callback URL:', e);
