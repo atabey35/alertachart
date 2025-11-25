@@ -58,7 +58,7 @@ export default function PrivacyPage() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4 mt-8">1. Genel Bilgi</h2>
             <p className="text-gray-300 leading-relaxed">
-              Alerta Kripto Kırmızı (&quot;biz&quot;, &quot;uygulama&quot; veya &quot;site&quot;), kullanıcıların kripto para fiyatlarını 
+              Alerta Chart (&quot;biz&quot;, &quot;uygulama&quot; veya &quot;site&quot;), kullanıcıların kripto para fiyatlarını 
               izlemelerine, alarm oluşturup takip listeleri yönetmelerine yardımcı olan bir platformdur. 
               Bu gizlilik politikası, kullanıcılarımızın gizliliğini korumak amacıyla hazırlanmıştır.
             </p>

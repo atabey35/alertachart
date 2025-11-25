@@ -215,6 +215,7 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                 android.util.Log.d("InAppPurchase", "[PURCHASE] ✅ Product found: " + productDetails.getProductId());
                 
                 // Get the subscription offer token (7.x API requirement)
+                // Prefer base plan offer (usually the first one) which includes free trial
                 List<ProductDetails.SubscriptionOfferDetails> offersList = productDetails.getSubscriptionOfferDetails();
                 if (offersList == null || offersList.isEmpty()) {
                     android.util.Log.e("InAppPurchase", "[PURCHASE] ❌ No subscription offers found");
@@ -225,7 +226,19 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                     return;
                 }
                 
+                // Log all offers for debugging
+                for (int i = 0; i < offersList.size(); i++) {
+                    ProductDetails.SubscriptionOfferDetails offer = offersList.get(i);
+                    List<ProductDetails.PricingPhase> phases = offer.getPricingPhases().getPricingPhaseList();
+                    android.util.Log.d("InAppPurchase", "[PURCHASE] Offer " + i + " has " + phases.size() + " pricing phases");
+                    for (ProductDetails.PricingPhase phase : phases) {
+                        android.util.Log.d("InAppPurchase", "[PURCHASE] Phase: " + phase.getPriceAmountMicros() + " " + phase.getPriceCurrencyCode() + " / " + phase.getBillingPeriod());
+                    }
+                }
+                
+                // Use base plan offer (first offer) - this should include free trial if configured
                 String offerToken = offersList.get(0).getOfferToken();
+                android.util.Log.d("InAppPurchase", "[PURCHASE] Using offer token: " + offerToken);
                 
                 List<BillingFlowParams.ProductDetailsParams> productDetailsParamsList = Collections.singletonList(
                     BillingFlowParams.ProductDetailsParams.newBuilder()

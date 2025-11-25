@@ -58,7 +58,7 @@ export default function PrivacyPageEN() {
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4 mt-8">1. General Information</h2>
             <p className="text-gray-300 leading-relaxed">
-              Alerta Kripto Kırmızı (&quot;we&quot;, &quot;app&quot;, or &quot;site&quot;) is a platform that helps users monitor cryptocurrency prices, 
+              Alerta Chart (&quot;we&quot;, &quot;app&quot;, or &quot;site&quot;) is a platform that helps users monitor cryptocurrency prices, 
               create alerts, and manage watchlists. This privacy policy has been prepared to protect the privacy of our users.
             </p>
           </section>
