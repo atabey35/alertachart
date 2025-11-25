@@ -13,7 +13,7 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Alerta Chart - Free TradingView Alternative | Real-time Crypto Charts & Technical Analysis',
+  title: 'Alerta Chart - Professional Crypto Charting Platform | Real-time Charts & Technical Analysis',
   description: 'Alerta Chart - Free professional crypto charting platform. All TradingView PRO features FREE: Multiple charts (2x2, 4x4, 9x9), RSI, MACD, Bollinger Bands, EMA, SMA, Price Alerts, Drawing Tools, Real-time BTC/ETH/SOL data. No subscription needed!',
   keywords: [
     // Primary brand keywords
@@ -180,7 +180,7 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://alertachart.com',
-    title: 'Alerta Chart - Free TradingView Alternative for Crypto Trading',
+    title: 'Alerta Chart - Professional Crypto Charting Platform',
     description: 'Alerta Chart - Professional crypto charting with ALL premium features FREE. Multiple charts, advanced indicators (RSI, MACD, Bollinger Bands), price alerts, drawing tools. Real-time Bitcoin, Ethereum, Solana data. No subscription needed!',
     siteName: 'Alerta Chart',
     images: [
@@ -194,7 +194,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Alerta Chart - Free TradingView Alternative',
+    title: 'Alerta Chart - Professional Crypto Charting Platform',
     description: 'Alerta Chart - Professional crypto charts with ALL premium features FREE. Multiple layouts, RSI, MACD, Bollinger Bands, price alerts & more! No subscription needed!',
     images: ['/icon.png'],
     creator: '@alertachart',
@@ -212,6 +212,20 @@ export const metadata: Metadata = {
   },
   verification: {
     google: 'your-google-verification-code', // Google Search Console'dan alacaksınız
+  },
+  icons: {
+    icon: [
+      { url: '/icon.png', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
+      { url: '/icon.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon.png', type: 'image/png', sizes: '96x96' },
+      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/icon.png', type: 'image/png', sizes: '16x16' },
+    ],
+    apple: [
+      { url: '/icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/icon.png',
   },
 };
 
