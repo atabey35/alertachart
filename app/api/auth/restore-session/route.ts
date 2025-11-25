@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
     // If NextAuth session exists but refreshToken doesn't, we can still restore backend session
     const session = await getServerSession(authOptions);
     const hasNextAuthSession = !!session?.user?.email;
-    console.log('[restore-session] 🔍 NextAuth session:', hasNextAuthSession ? `found (${session.user.email})` : 'not found');
+    console.log('[restore-session] 🔍 NextAuth session:', hasNextAuthSession ? `found (${session?.user?.email || 'unknown'})` : 'not found');
     
     // Get refresh token from cookies OR request body (for Preferences-based restore)
     let refreshToken = request.cookies.get('refreshToken')?.value;
