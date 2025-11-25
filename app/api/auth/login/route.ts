@@ -54,10 +54,22 @@ export async function POST(request: NextRequest) {
     return nextResponse;
   } catch (error: any) {
     console.error('[Next.js API] Error proxying auth login:', error);
-    return NextResponse.json(
+    
+    // 🔥 CRITICAL: Set CORS headers even for error responses
+    const origin = request.headers.get('origin') || '';
+    const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
+    
+    const errorResponse = NextResponse.json(
       { error: error.message || 'Failed to login' },
       { status: 500 }
     );
+    
+    if (allowedOrigins.includes(origin)) {
+      errorResponse.headers.set('Access-Control-Allow-Origin', origin);
+      errorResponse.headers.set('Access-Control-Allow-Credentials', 'true');
+    }
+    
+    return errorResponse;
   }
 }
 
