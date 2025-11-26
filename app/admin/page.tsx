@@ -193,10 +193,16 @@ export default function AdminPage() {
       if (response.ok) {
         setResult({ 
           success: true, 
-          message: `✅ Bildirim ${data.sent} cihaza gönderildi!` 
+          message: `✅ Bildirim ${data.sent || data.notificationsSaved || 0} kullanıcıya gönderildi!` 
         });
         setTitle('');
         setMessage('');
+        
+        // Trigger notification refresh event for all open tabs
+        // This will immediately refresh notifications in header
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('notification-refresh'));
+        }
       } else {
         setResult({ 
           success: false, 

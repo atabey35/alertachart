@@ -95,7 +95,12 @@ export async function POST(request: NextRequest) {
         // Don't fail the request if database save fails
       }
       
-      return NextResponse.json(result);
+      // Return success with notification count
+      return NextResponse.json({
+        ...result,
+        notificationsSaved: notificationValues?.length || 0,
+        message: `Bildirim ${notificationValues?.length || 0} kullanıcıya kaydedildi ve push notification gönderildi.`
+      });
     } else {
       console.error('[Next.js API] Backend returned error:', {
         status: response.status,

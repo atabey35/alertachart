@@ -45,10 +45,22 @@ export default function NotificationDropdown({ userEmail }: NotificationDropdown
   useEffect(() => {
     if (userEmail) {
       fetchNotifications();
-      // Poll every 30 seconds
-      const interval = setInterval(fetchNotifications, 30000);
+      // Poll every 10 seconds (daha hızlı güncelleme için)
+      const interval = setInterval(fetchNotifications, 10000);
       return () => clearInterval(interval);
     }
+  }, [userEmail]);
+
+  // Listen for custom event to refresh notifications immediately
+  useEffect(() => {
+    const handleNotificationRefresh = () => {
+      fetchNotifications();
+    };
+    
+    window.addEventListener('notification-refresh', handleNotificationRefresh);
+    return () => {
+      window.removeEventListener('notification-refresh', handleNotificationRefresh);
+    };
   }, [userEmail]);
 
   // Close dropdown when clicking outside
