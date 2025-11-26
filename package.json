@@ -10,6 +10,7 @@
     "worker:build": "tsc workers/aggregator.ts --outDir public/workers --lib es2020,webworker --target es2020",
     "dev:all": "concurrently \"npm run dev\" \"npm run worker:build -- --watch\"",
     "migrate:premium": "node scripts/run-migration.js",
+    "migrate:railway": "node scripts/migrate-to-railway.cjs",
     "test:api": "bash tests/api-test-suite.sh",
     "test:premium": "echo 'Premium utility tests - Run manually with test framework'"
   },
