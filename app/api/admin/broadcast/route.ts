@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
     
     if (response.ok) {
       // Save notification to database for all users
+      let notificationsSaved = 0;
       try {
         const sql = getSql();
         const users = await sql`SELECT id FROM users`;
@@ -88,7 +89,8 @@ export async function POST(request: NextRequest) {
             `;
           }
           
-          console.log(`[Broadcast] Saved ${notificationValues.length} notifications to database`);
+          notificationsSaved = notificationValues.length;
+          console.log(`[Broadcast] Saved ${notificationsSaved} notifications to database`);
         }
       } catch (dbError: any) {
         console.error('[Broadcast] Error saving to database:', dbError);
@@ -98,8 +100,8 @@ export async function POST(request: NextRequest) {
       // Return success with notification count
       return NextResponse.json({
         ...result,
-        notificationsSaved: notificationValues?.length || 0,
-        message: `Bildirim ${notificationValues?.length || 0} kullanıcıya kaydedildi ve push notification gönderildi.`
+        notificationsSaved,
+        message: `Bildirim ${notificationsSaved} kullanıcıya kaydedildi ve push notification gönderildi.`
       });
     } else {
       console.error('[Next.js API] Backend returned error:', {
