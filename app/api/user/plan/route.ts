@@ -22,6 +22,16 @@ export async function GET(request: NextRequest) {
     const isDevelopment = process.env.NODE_ENV === 'development';
     const userEmail = session?.user?.email || (isDevelopment ? 'test@gmail.com' : null);
     
+    // Debug logging
+    if (!userEmail) {
+      console.log('[User Plan API] ⚠️ No user email in session:', {
+        hasSession: !!session,
+        hasUser: !!session?.user,
+        userEmail: session?.user?.email,
+        sessionKeys: session?.user ? Object.keys(session.user) : [],
+      });
+    }
+    
     // Unauthenticated requests return free plan
     if (!userEmail) {
       return NextResponse.json({ 
