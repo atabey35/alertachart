@@ -1,12 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
-
-const getSql = () => {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not set');
-  }
-  return neon(process.env.DATABASE_URL);
-};
+import { getSql } from '@/lib/db';
 
 /**
  * POST /api/auth/dev-premium

@@ -1,14 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
-import { neon } from '@neondatabase/serverless';
-
-const getSql = () => {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not set');
-  }
-  return neon(process.env.DATABASE_URL);
-};
+import { getSql } from '@/lib/db';
 
 /**
  * GET /api/notifications

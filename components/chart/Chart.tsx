@@ -562,11 +562,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         const loadedDrawings = JSON.parse(saved);
         if (Array.isArray(loadedDrawings)) {
           // Always set drawings, even if empty (preserves localStorage state)
-          setDrawings(loadedDrawings);
+        setDrawings(loadedDrawings);
         } else {
           // Invalid data, set empty array
           setDrawings([]);
-        }
+      }
       } else {
         // No saved data, set empty array
         setDrawings([]);

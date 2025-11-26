@@ -4,16 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { getSql } from '@/lib/db';
 import { authService } from '@/services/authService';
-
-// Lazy initialization to avoid build-time errors
-const getSql = () => {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL is not set');
-  }
-  return neon(process.env.DATABASE_URL);
-};
 
 /**
  * POST /api/subscription/webhook

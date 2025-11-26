@@ -1,32 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { neon } from '@neondatabase/serverless';
+import { getSql } from '@/lib/db';
 
 export const dynamic = 'force-dynamic';
-
-const getSql = () => {
-  const dbUrl = process.env.DATABASE_URL;
-  
-  if (!dbUrl) {
-    console.error('[Admin Blog API] DATABASE_URL is not set');
-    throw new Error('DATABASE_URL is not set');
-  }
-  
-  // DATABASE_URL formatını kontrol et
-  if (!dbUrl.startsWith('postgresql://') && !dbUrl.startsWith('postgres://')) {
-    console.error('[Admin Blog API] Invalid DATABASE_URL format:', dbUrl.substring(0, 20) + '...');
-    throw new Error('Invalid DATABASE_URL format');
-  }
-  
-  console.log('[Admin Blog API] Connecting to database...');
-  
-  try {
-    const sql = neon(dbUrl);
-    return sql;
-  } catch (error: any) {
-    console.error('[Admin Blog API] Neon connection error:', error);
-    throw new Error('Veritabanı bağlantısı kurulamadı: ' + error.message);
-  }
-};
 
 export async function POST(request: NextRequest) {
   let data: any = null;
