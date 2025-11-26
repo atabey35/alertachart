@@ -79,17 +79,86 @@ async function migrateTable(neonSql, railwaySql, tableName) {
     const columns = Object.keys(data[0]);
     console.log(`   📋 Columns: ${columns.join(', ')}`);
     
-    // Insert data into Railway (batch insert for better performance)
+    // For tables with foreign keys, validate references exist in Railway
+    if (tableName === 'devices' || tableName === 'price_alerts' || tableName === 'alarm_subscriptions' || 
+        tableName === 'alarms' || tableName === 'trial_attempts' || tableName === 'support_requests' ||
+        tableName === 'user_sessions') {
+      console.log(`   🔍 Validating foreign keys for ${tableName}...`);
+      
+      // Get all valid user_ids from Railway
+      const validUsers = await railwaySql`SELECT id FROM users`;
+      const validUserIds = new Set(validUsers.map(u => u.id));
+      
+      // For tables that reference devices, also get valid device_ids
+      let validDeviceIds = null;
+      if (tableName === 'price_alerts' || tableName === 'alarm_subscriptions') {
+        const validDevices = await railwaySql`SELECT device_id FROM devices`;
+        validDeviceIds = new Set(validDevices.map(d => d.device_id));
+      }
+      
+      // Filter out rows with invalid foreign keys
+      const validData = data.filter(row => {
+        // Check user_id foreign key (if exists and not null)
+        if (row.user_id !== null && row.user_id !== undefined) {
+          if (!validUserIds.has(row.user_id)) {
+            return false;
+          }
+        }
+        
+        // Check device_id foreign key (if exists and not null)
+        if (validDeviceIds && row.device_id !== null && row.device_id !== undefined) {
+          if (!validDeviceIds.has(row.device_id)) {
+            return false;
+          }
+        }
+        
+        return true;
+      });
+      
+      if (validData.length < data.length) {
+        const skipped = data.length - validData.length;
+        console.log(`   ⚠️  Skipping ${skipped} rows with invalid foreign keys`);
+      }
+      
+      // Use filtered data
+      const dataToMigrate = validData;
+      
+      if (dataToMigrate.length === 0) {
+        console.log(`   ⚠️  No valid rows to migrate after foreign key validation`);
+        return 0;
+      }
+      
+      // Insert data into Railway
+      const batchSize = 100;
+      let inserted = 0;
+      
+      for (let i = 0; i < dataToMigrate.length; i += batchSize) {
+        const batch = dataToMigrate.slice(i, i + batchSize);
+        
+        // Use postgres batch insert
+        await railwaySql.begin(async sql => {
+          for (const row of batch) {
+            const values = columns.map(col => row[col]);
+            const placeholders = columns.map((_, i) => `$${i + 1}`).join(', ');
+            const query = `INSERT INTO ${tableName} (${columns.join(', ')}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`;
+            await sql.unsafe(query, values);
+          }
+        });
+        
+        inserted += batch.length;
+        console.log(`   ✅ Inserted ${inserted}/${dataToMigrate.length} rows...`);
+      }
+      
+      console.log(`   ✅ Table ${tableName} migrated successfully (${inserted} rows)`);
+      return inserted;
+    }
+    
+    // For other tables, normal migration
     const batchSize = 100;
     let inserted = 0;
     
     for (let i = 0; i < data.length; i += batchSize) {
       const batch = data.slice(i, i + batchSize);
-      
-      // Build INSERT query with ON CONFLICT DO NOTHING to avoid duplicates
-      const values = batch.map(row => {
-        return columns.map(col => row[col]);
-      });
       
       // Use postgres batch insert
       await railwaySql.begin(async sql => {
