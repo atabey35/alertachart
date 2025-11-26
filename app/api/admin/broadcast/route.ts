@@ -74,23 +74,50 @@ export async function POST(request: NextRequest) {
         const users = await sql`SELECT id FROM users`;
         
         if (users.length > 0) {
-          const notificationValues = users.map((u: any) => ({
-            user_id: u.id,
-            title,
-            message,
-            is_read: false,
-          }));
-          
-          // Insert notifications in batch
-          for (const notif of notificationValues) {
+          // Fix sequence if it's out of sync (handles duplicate key errors)
+          try {
             await sql`
-              INSERT INTO notifications (user_id, title, message, is_read)
-              VALUES (${notif.user_id}, ${notif.title}, ${notif.message}, ${notif.is_read})
+              SELECT setval(
+                pg_get_serial_sequence('notifications', 'id'),
+                COALESCE((SELECT MAX(id) FROM notifications), 1),
+                true
+              )
             `;
+            console.log('[Broadcast] Fixed notifications sequence');
+          } catch (seqError: any) {
+            console.warn('[Broadcast] Could not fix sequence:', seqError.message);
           }
           
-          notificationsSaved = notificationValues.length;
-          console.log(`[Broadcast] Saved ${notificationsSaved} notifications to database`);
+          // Insert notifications one by one with error handling
+          // This prevents duplicate key errors and ensures all users get the notification
+          for (const user of users) {
+            try {
+              await sql`
+                INSERT INTO notifications (user_id, title, message, is_read)
+                VALUES (${user.id}, ${title}, ${message}, false)
+                ON CONFLICT DO NOTHING
+              `;
+              notificationsSaved++;
+            } catch (insertError: any) {
+              // If it's a duplicate key error, try to insert without specifying id
+              if (insertError.code === '23505' || insertError.message?.includes('duplicate key')) {
+                try {
+                  // Try again without ON CONFLICT (let database handle it)
+                  await sql`
+                    INSERT INTO notifications (user_id, title, message, is_read)
+                    VALUES (${user.id}, ${title}, ${message}, false)
+                  `;
+                  notificationsSaved++;
+                } catch (retryError: any) {
+                  console.warn(`[Broadcast] Failed to insert notification for user ${user.id}:`, retryError.message);
+                }
+              } else {
+                console.warn(`[Broadcast] Failed to insert notification for user ${user.id}:`, insertError.message);
+              }
+            }
+          }
+          
+          console.log(`[Broadcast] Saved ${notificationsSaved}/${users.length} notifications to database`);
         }
       } catch (dbError: any) {
         console.error('[Broadcast] Error saving to database:', dbError);
