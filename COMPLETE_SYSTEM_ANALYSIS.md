@@ -6,18 +6,20 @@
 - **Platform**: Next.js 15 (Vercel Pro - $20/ay)
 - **Domain**: `www.alertachart.com`
 - **Özellikler**: Charting platform, watchlist, alerts, user management
-- **API Endpoints**: ~35 endpoint
+- **API Endpoints**: ~35 endpoint (frontend API routes)
 - **Static Assets**: Chart libraries, images, fonts
+- **Backend API**: Railway backend'e proxy yapıyor
 
 ### 2. **Backend: alertachart-backend**
-- **Platform**: Next.js (Vercel Pro - $20/ay) veya Railway
+- **Platform**: Next.js (Railway - $5-20/ay)
 - **Domain**: `alertachart-backend-production.up.railway.app`
 - **Özellikler**: Auth, push notifications, price alerts, database
 - **API Endpoints**: ~15-20 endpoint
 - **Database**: Neon PostgreSQL
+- **Not**: Frontend'den API çağrıları buraya yönlendiriliyor
 
 ### 3. **Data Platform: data.alertachart.com**
-- **Platform**: Next.js (Railway)
+- **Platform**: Next.js (Railway - $5-20/ay)
 - **Domain**: `data.alertachart.com`
 - **Proje**: kkterminal-main
 - **Özellikler**: Liquidation tracker, whale alerts, market data
@@ -25,7 +27,7 @@
 - **Real-time**: WebSocket connections
 
 ### 4. **Aggr Platform: aggr.alertachart.com**
-- **Platform**: Vue.js + Vite (Railway)
+- **Platform**: Vue.js + Vite (Railway - $5-20/ay)
 - **Domain**: `aggr.alertachart.com`
 - **Proje**: kkaggr-main
 - **Özellikler**: Aggregated exchange trades, real-time trading data
@@ -37,17 +39,16 @@
 ## 💰 Maliyet Analizi
 
 ### Vercel Pro Paketi ($20/ay)
-**Her proje için:**
+**Sadece Frontend için:**
 - **Edge Requests**: 10M/ay
 - **Data Transfer**: 1 TB/ay
 - **Build Minutes**: Unlimited (concurrent builds)
 - **Serverless Function Execution**: 1,000 GB-hours/ay
 - **Included Usage Credits**: $20/ay
 
-**Toplam Vercel Maliyeti:**
+**Vercel Maliyeti:**
 - Frontend: $20/ay
-- Backend: $20/ay (eğer Vercel'de ise)
-- **Toplam**: $40/ay (2 proje)
+- **Toplam**: $20/ay (sadece frontend)
 
 ### Railway Paketi
 **Hobby Plan ($5/ay) veya Pro Plan ($20/ay):**
@@ -57,9 +58,10 @@
 - **Resources**: 512MB RAM (Hobby) / 8GB RAM (Pro)
 
 **Toplam Railway Maliyeti:**
+- Backend: $5-20/ay
 - Data Platform: $5-20/ay
 - Aggr Platform: $5-20/ay
-- **Toplam**: $10-40/ay (2 proje)
+- **Toplam**: $15-60/ay (3 proje)
 
 ### Neon PostgreSQL
 - **Free Tier**: 0.5GB storage, limited compute
@@ -81,12 +83,12 @@
 - **Build Frequency**: ~150-300/ay ✅
 - **Sonuç**: ✅ **YETERLİ**
 
-#### Backend (Vercel Pro veya Railway)
+#### Backend (Railway)
 - **API Calls**: ~50K-100K/ay
 - **Database Queries**: ~30K-50K/ay
 - **Push Notifications**: ~5K-10K/ay
 - **Bandwidth**: ~5-10GB/ay ✅
-- **Sonuç**: ✅ **YETERLİ**
+- **Sonuç**: ✅ **YETERLİ** (Hobby plan yeterli)
 
 #### Data Platform (data.alertachart.com - Railway)
 - **Page Views**: ~10K-20K/ay
@@ -103,10 +105,10 @@
 - **Sonuç**: ✅ **YETERLİ** (Hobby plan yeterli)
 
 **Toplam Maliyet (100 kullanıcı):**
-- Vercel: $40/ay (Frontend + Backend)
-- Railway: $10/ay (Data + Aggr - Hobby plan)
+- Vercel: $20/ay (Frontend)
+- Railway: $15/ay (Backend + Data + Aggr - Hobby plan)
 - Neon: $19/ay (Scale plan)
-- **Toplam**: **$69/ay** ✅
+- **Toplam**: **$54/ay** ✅
 
 ---
 
@@ -119,12 +121,12 @@
 - **Build Frequency**: ~300-600/ay ✅
 - **Sonuç**: ⚠️ **SINIRDA** (Optimizasyon gerekli)
 
-#### Backend (Vercel Pro veya Railway)
+#### Backend (Railway)
 - **API Calls**: ~500K-1M/ay
 - **Database Queries**: ~300K-500K/ay
 - **Push Notifications**: ~50K-100K/ay
 - **Bandwidth**: ~50-100GB/ay ✅
-- **Sonuç**: ✅ **YETERLİ** (Railway Pro önerilir)
+- **Sonuç**: ⚠️ **SINIRDA** (Pro plan önerilir)
 
 #### Data Platform (data.alertachart.com - Railway)
 - **Page Views**: ~100K-200K/ay
@@ -141,11 +143,11 @@
 - **Sonuç**: ✅ **YETERLİ** (Hobby plan yeterli)
 
 **Toplam Maliyet (1,000 kullanıcı):**
-- Vercel: $40/ay (Frontend + Backend)
-- Railway: $40/ay (Data Pro + Aggr Hobby)
+- Vercel: $20/ay (Frontend)
+- Railway: $45/ay (Backend Pro + Data Pro + Aggr Hobby)
 - Neon: $19/ay (Scale plan)
-- **Toplam**: **$99/ay** ⚠️
-- **Optimizasyon ile**: $79/ay (Data Hobby yeterli olabilir)
+- **Toplam**: **$84/ay** ⚠️
+- **Optimizasyon ile**: $64/ay (Backend Hobby yeterli olabilir)
 
 **Optimizasyon Gerekli:**
 1. Frontend: Static asset caching, API response caching
@@ -163,39 +165,38 @@
 - **Build Frequency**: ~600-1,500/ay ✅
 - **Sonuç**: ❌ **YETERSİZ** (Enterprise plan gerekli)
 
-#### Backend (Vercel Pro veya Railway)
+#### Backend (Railway)
 - **API Calls**: ~5M-10M/ay
 - **Database Queries**: ~3M-5M/ay
 - **Push Notifications**: ~500K-1M/ay
-- **Bandwidth**: ~500GB-1TB/ay ⚠️
-- **Sonuç**: ⚠️ **SINIRDA** (Railway Pro + scaling gerekli)
+- **Bandwidth**: ~500GB-1TB/ay ✅ (Unlimited)
+- **Sonuç**: ⚠️ **SINIRDA** (Pro plan + scaling gerekli)
 
 #### Data Platform (data.alertachart.com - Railway)
 - **Page Views**: ~1M-2M/ay
 - **API Calls**: ~2M-4M/ay
 - **WebSocket Connections**: ~10,000-20,000 concurrent
-- **Bandwidth**: ~200-500GB/ay ✅
+- **Bandwidth**: ~200-500GB/ay ✅ (Unlimited)
 - **Sonuç**: ⚠️ **SINIRDA** (Pro plan + scaling gerekli)
 
 #### Aggr Platform (aggr.alertachart.com - Railway)
 - **Page Views**: ~500K-1M/ay
 - **Static Assets**: ~100-200GB/ay ✅
 - **WebSocket**: Client-side
-- **Bandwidth**: ~100-200GB/ay ✅
+- **Bandwidth**: ~100-200GB/ay ✅ (Unlimited)
 - **Sonuç**: ✅ **YETERLİ** (Pro plan önerilir)
 
 **Toplam Maliyet (10,000 kullanıcı):**
-- Vercel: **Enterprise Plan** (custom pricing - ~$200-500/ay tahmin)
-- Railway: $60/ay (Data Pro + Aggr Pro + scaling)
+- Vercel: **Enterprise Plan** (custom pricing - ~$200-500/ay tahmin) - Edge requests limit aşımı
+- Railway: $60/ay (Backend Pro + Data Pro + Aggr Pro)
 - Neon: $69/ay (Pro plan - 50GB)
-- **Toplam**: **~$329-569/ay** ❌
+- **Toplam**: **~$329-629/ay** ❌
 
-**Alternatif Çözüm:**
-- **Hybrid Approach**: Static assets Vercel, API Railway
-- Vercel: $20/ay (sadece static assets)
-- Railway: $80/ay (tüm API'ler)
-- Neon: $69/ay
-- **Toplam**: **~$169/ay** ✅ (daha uygun)
+**Alternatif Çözüm (Önerilen):**
+- **Vercel Pro**: $20/ay (sadece static assets - edge requests azalır)
+- **Railway**: $60/ay (Backend Pro + Data Pro + Aggr Pro)
+- **Neon**: $69/ay (Pro plan)
+- **Toplam**: **~$149/ay** ✅ (daha uygun)
 
 ---
 
@@ -204,12 +205,12 @@
 ### 100 Kullanıcı İçin
 ```
 Frontend: Vercel Pro ($20/ay)
-Backend: Vercel Pro ($20/ay) veya Railway Hobby ($5/ay)
+Backend: Railway Hobby ($5/ay)
 Data: Railway Hobby ($5/ay)
 Aggr: Railway Hobby ($5/ay)
 Database: Neon Scale ($19/ay)
 ─────────────────────────────
-Toplam: $69/ay (Vercel backend) veya $54/ay (Railway backend)
+Toplam: $54/ay ✅
 ```
 
 ### 1,000 Kullanıcı İçin
@@ -220,13 +221,14 @@ Data: Railway Pro ($20/ay) - WebSocket scaling
 Aggr: Railway Hobby ($5/ay)
 Database: Neon Scale ($19/ay)
 ─────────────────────────────
-Toplam: $84/ay
+Toplam: $84/ay ⚠️
 ```
 
 **Optimizasyon ile:**
 - Frontend caching → Edge requests %30-40 azalır
 - API response caching → Database queries %50 azalır
 - WebSocket pooling → Connection overhead azalır
+- **Optimize edilmiş toplam**: $64/ay (Backend Hobby yeterli olabilir)
 
 ### 10,000 Kullanıcı İçin
 ```
@@ -237,17 +239,16 @@ Data: Railway Pro ($20/ay)
 Aggr: Railway Pro ($20/ay)
 Database: Neon Pro ($69/ay)
 ─────────────────────────────
-Toplam: ~$329-629/ay
+Toplam: ~$329-629/ay ❌
 
-Seçenek 2: Hybrid (Önerilen)
-Frontend Static: Vercel Pro ($20/ay)
-Frontend API: Railway Pro ($20/ay)
+Seçenek 2: Optimize Edilmiş (Önerilen)
+Frontend: Vercel Pro ($20/ay) - Sadece static assets
 Backend: Railway Pro ($20/ay)
 Data: Railway Pro ($20/ay)
 Aggr: Railway Pro ($20/ay)
 Database: Neon Pro ($69/ay)
 ─────────────────────────────
-Toplam: ~$169/ay ✅ (Daha uygun)
+Toplam: ~$149/ay ✅ (Daha uygun)
 ```
 
 ---
@@ -353,12 +354,12 @@ Toplam: ~$169/ay ✅ (Daha uygun)
 
 | Kullanıcı | Frontend | Backend | Data | Aggr | Database | Toplam/ay | Sonuç |
 |-----------|----------|---------|------|------|----------|-----------|-------|
-| **100** | Vercel Pro | Vercel Pro | Railway Hobby | Railway Hobby | Neon Scale | $69 | ✅ Yeterli |
+| **100** | Vercel Pro | Railway Hobby | Railway Hobby | Railway Hobby | Neon Scale | $54 | ✅ Yeterli |
 | **1,000** | Vercel Pro* | Railway Pro | Railway Pro | Railway Hobby | Neon Scale | $84 | ⚠️ Optimize gerekli |
-| **10,000** | Hybrid** | Railway Pro | Railway Pro | Railway Pro | Neon Pro | $169 | ✅ Hybrid önerilir |
+| **10,000** | Vercel Pro** | Railway Pro | Railway Pro | Railway Pro | Neon Pro | $149 | ✅ Optimize edilmiş |
 
 *Optimizasyon ile
-**Static assets Vercel, API Railway
+**Static assets optimize edilmiş, edge requests azaltılmış
 
 ---
 
