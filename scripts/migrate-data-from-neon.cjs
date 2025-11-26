@@ -19,7 +19,27 @@ const RAILWAY_DB_URL = process.env.RAILWAY_DB_URL ||
 
 if (!NEON_DB_URL) {
   console.error('❌ NEON_DB_URL environment variable is required!');
-  console.error('Usage: NEON_DB_URL="postgresql://..." RAILWAY_DB_URL="postgresql://..." node scripts/migrate-data-from-neon.cjs');
+  console.error('');
+  console.error('Usage:');
+  console.error('  export NEON_DB_URL="postgresql://user:password@ep-xxx-xxx.us-east-2.aws.neon.tech/neondb?sslmode=require"');
+  console.error('  export RAILWAY_DB_URL="postgresql://postgres:password@railway-host:port/railway"');
+  console.error('  node scripts/migrate-data-from-neon.cjs');
+  console.error('');
+  console.error('Neon connection string\'ini nereden bulacaksın:');
+  console.error('  1. Neon Console → Projeni seç');
+  console.error('  2. Connection Details → Connection string');
+  process.exit(1);
+}
+
+// Validate connection strings
+if (NEON_DB_URL.includes('user:password') || NEON_DB_URL.includes('ep-xxx-xxx')) {
+  console.error('❌ NEON_DB_URL placeholder değerler içeriyor!');
+  console.error('');
+  console.error('Gerçek Neon connection string\'ini kullanmalısın:');
+  console.error('  Neon Console → Project → Connection Details → Connection string');
+  console.error('');
+  console.error('Örnek format:');
+  console.error('  postgresql://alerta_user:abc123@ep-cool-darkness-123456.us-east-2.aws.neon.tech/alerta?sslmode=require');
   process.exit(1);
 }
 
