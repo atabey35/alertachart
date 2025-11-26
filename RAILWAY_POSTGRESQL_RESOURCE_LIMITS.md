@@ -155,17 +155,48 @@ Memory: 8-16 GB
 
 ## 💰 Maliyet Tahminleri
 
-### Railway PostgreSQL Resource Limits Maliyeti
+### Railway Pro Plan Fiyatlandırması
+
+**Pro Plan: $20/ay kullanım kredisi içerir**
 
 Railway'de resource limits'e göre fiyatlandırma yapılır:
+- **vCPU başına**: ~$20/ay
+- **GB RAM başına**: ~$10/ay
 
-| CPU | Memory | Tahmini Maliyet (Aylık) |
-|-----|--------|------------------------|
-| 1-2 vCPU | 2-4 GB | $5-10/ay |
-| 2-4 vCPU | 4-8 GB | $10-20/ay |
-| 4-8 vCPU | 8-16 GB | $20-40/ay |
+### Resource Limits Maliyeti (Pro Plan - $20 kredi dahil)
 
-**Not:** Railway'de resource limits'e göre fiyatlandırma yapılır. Daha fazla CPU ve memory = daha yüksek maliyet.
+| CPU | Memory | Hesaplama | Toplam Maliyet | $20 Kredi Sonrası |
+|-----|--------|-----------|----------------|-------------------|
+| 1 vCPU | 2 GB | $20 + $20 = $40 | **$40/ay** | **+$20/ay** ⚠️ |
+| 1 vCPU | 1 GB | $20 + $10 = $30 | **$30/ay** | **+$10/ay** ⚠️ |
+| 0.5 vCPU | 1 GB | $10 + $10 = $20 | **$20/ay** | **$0/ay** ✅ |
+| 0.5 vCPU | 0.5 GB | $10 + $5 = $15 | **$15/ay** | **-$5/ay** ✅ |
+
+**⚠️ ÖNEMLİ:** Pro Plan'ın $20/ay kredisi var, ama resource limits'e göre ek ücret ödeniyor!
+
+### $20 Kotasını Geçmemek İçin Öneriler
+
+#### 100 Kullanıcı (Kotayı Geçmemek İçin)
+- **CPU**: **0.5-1 vCPU** ✅
+- **Memory**: **1-2 GB** ✅
+- **Toplam Maliyet**: $15-30/ay
+- **$20 Kredi Sonrası**: -$5 ile +$10/ay arası
+
+#### 1,000 Kullanıcı (Kotayı Geçmemek İçin)
+- **CPU**: **1 vCPU** ✅
+- **Memory**: **2 GB** ✅
+- **Toplam Maliyet**: $30/ay
+- **$20 Kredi Sonrası**: **+$10/ay** ⚠️
+
+**Alternatif:** Başlangıçta 0.5 vCPU + 1 GB ile başla, gerektiğinde artır.
+
+#### 10,000 Kullanıcı (Kotayı Geçmemek İçin)
+- **CPU**: **1-2 vCPU** ⚠️
+- **Memory**: **2-4 GB** ⚠️
+- **Toplam Maliyet**: $40-80/ay
+- **$20 Kredi Sonrası**: **+$20-60/ay** ⚠️
+
+**Not:** 10,000 kullanıcı için $20 kotasını geçmemek zor. Optimizasyon yap veya daha yüksek plan düşün.
 
 ---
 
@@ -211,23 +242,33 @@ Railway'de resource limits'e göre fiyatlandırma yapılır:
 
 ## 🎯 Sonuç ve Öneriler
 
-### 100 Kullanıcı
-- **CPU**: 1-2 vCPU
-- **Memory**: 2-4 GB
+### 100 Kullanıcı ($20 Kotasını Geçmemek İçin)
+- **CPU**: **0.5-1 vCPU** ✅
+- **Memory**: **1-2 GB** ✅
 - **Connection Pool**: 20 (yeterli)
-- **Plan**: Hobby ($5/ay) veya Pro ($20/ay)
+- **Plan**: Pro ($20/ay)
+- **Toplam Maliyet**: $15-30/ay
+- **$20 Kredi Sonrası**: -$5 ile +$10/ay
 
-### 1,000 Kullanıcı
-- **CPU**: 2-4 vCPU
-- **Memory**: 4-8 GB
+### 1,000 Kullanıcı ($20 Kotasını Geçmemek İçin)
+- **CPU**: **1 vCPU** ✅
+- **Memory**: **2 GB** ✅
+- **Connection Pool**: 20 (yeterli)
+- **Plan**: Pro ($20/ay)
+- **Toplam Maliyet**: $30/ay
+- **$20 Kredi Sonrası**: **+$10/ay** ⚠️
+
+**Alternatif:** Başlangıçta 0.5 vCPU + 1 GB ile başla, performansı izle.
+
+### 10,000 Kullanıcı ($20 Kotasını Geçmemek İçin)
+- **CPU**: **1-2 vCPU** ⚠️
+- **Memory**: **2-4 GB** ⚠️
 - **Connection Pool**: 20-30
-- **Plan**: Pro ($20/ay) önerilir
+- **Plan**: Pro ($20/ay)
+- **Toplam Maliyet**: $40-80/ay
+- **$20 Kredi Sonrası**: **+$20-60/ay** ⚠️
 
-### 10,000 Kullanıcı
-- **CPU**: 4-8 vCPU
-- **Memory**: 8-16 GB
-- **Connection Pool**: 30-50
-- **Plan**: Pro ($20/ay) veya Enterprise
+**Not:** 10,000 kullanıcı için $20 kotasını geçmemek zor. Optimizasyon yap veya daha yüksek plan düşün.
 
 ---
 
