@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 /**
- * Missing Coin Logos Download Script
+ * Missing Coin Logos Download Script - Optimized Version
  * 
  * Bu script eksik coin logolarını missing-icons.json dosyasından okuyup indirir
- * Kullanım: node scripts/download-missing-logos.js
+ * Kullanım: node scripts/download-missing-logos-fast.js
  */
 
 const fs = require('fs');
@@ -16,9 +16,8 @@ const MISSING_ICONS_FILE = path.join(__dirname, '../missing-icons.json');
 
 // CoinGecko API base URL
 const COINGECKO_API = 'https://api.coingecko.com/api/v3';
-const COINGECKO_IMAGE = 'https://assets.coingecko.com/coins/images';
 
-// Symbol mapping (özel durumlar için) - CoinGecko ID'leri
+// Symbol mapping (CoinGecko ID'leri)
 const SYMBOL_MAPPING = {
   'fxs': 'frax-share',
   'floki': 'floki-inu',
@@ -129,90 +128,59 @@ const SYMBOL_MAPPING = {
 
 // CoinGecko coin list cache
 let coinGeckoList = null;
-let lastCoinGeckoRequest = 0;
-const COINGECKO_RATE_LIMIT = 2000; // 2 saniye bekle
+let coinGeckoAvailable = false;
 
 /**
- * HTTP GET request with retry
+ * HTTP GET request (basit versiyon)
  */
-function httpGet(url, retries = 3) {
+function httpGet(url) {
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith('https') ? https : http;
-    let attempt = 0;
     
-    const makeRequest = () => {
-      attempt++;
-      
-      // Rate limiting için bekle
-      const now = Date.now();
-      if (now - lastCoinGeckoRequest < COINGECKO_RATE_LIMIT) {
-        const waitTime = COINGECKO_RATE_LIMIT - (now - lastCoinGeckoRequest);
-        setTimeout(() => makeRequest(), waitTime);
-        return;
-      }
-      lastCoinGeckoRequest = Date.now();
-      
-      const request = protocol.get(url, {
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        },
-        timeout: 30000
-      }, (res) => {
-        let data = '';
-        res.on('data', (chunk) => { data += chunk; });
-        res.on('end', () => {
-          if (res.statusCode === 200) {
-            resolve(data);
-          } else if (res.statusCode === 429 && attempt < retries) {
-            // Rate limit, bekle ve tekrar dene
-            const retryAfter = parseInt(res.headers['retry-after'] || '60');
-            console.log(`⏳ Rate limit, ${retryAfter} saniye bekleniyor...`);
-            setTimeout(() => makeRequest(), retryAfter * 1000);
-          } else {
-            reject(new Error(`HTTP ${res.statusCode}`));
-          }
-        });
-      });
-      
-      request.on('error', (err) => {
-        if (attempt < retries) {
-          setTimeout(() => makeRequest(), 2000 * attempt);
+    const request = protocol.get(url, {
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      timeout: 20000
+    }, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          resolve(data);
         } else {
-          reject(err);
+          reject(new Error(`HTTP ${res.statusCode}`));
         }
       });
-      
-      request.on('timeout', () => {
-        request.destroy();
-        if (attempt < retries) {
-          setTimeout(() => makeRequest(), 2000 * attempt);
-        } else {
-          reject(new Error('Timeout'));
-        }
-      });
-    };
+    });
     
-    makeRequest();
+    request.on('error', reject);
+    request.on('timeout', () => {
+      request.destroy();
+      reject(new Error('Timeout'));
+    });
   });
 }
 
 /**
- * CoinGecko coin list'ini cache'le
+ * CoinGecko coin list'ini cache'le (sadece bir kez)
  */
 async function getCoinGeckoList() {
   if (coinGeckoList) {
     return coinGeckoList;
   }
   
+  if (!coinGeckoAvailable) {
+    return null;
+  }
+  
   try {
-    console.log('📡 CoinGecko coin list yükleniyor...');
     const data = await httpGet(`${COINGECKO_API}/coins/list?include_platform=false`);
     coinGeckoList = JSON.parse(data);
-    console.log(`✅ ${coinGeckoList.length} coin yüklendi`);
     return coinGeckoList;
   } catch (err) {
-    console.error(`❌ CoinGecko list yüklenemedi: ${err.message}`);
-    throw err;
+    coinGeckoAvailable = false;
+    return null;
   }
 }
 
@@ -220,26 +188,29 @@ async function getCoinGeckoList() {
  * CoinGecko'dan coin ID bul
  */
 async function findCoinId(symbol) {
+  if (!coinGeckoAvailable) {
+    return null;
+  }
+  
   try {
-    if (!coinGeckoList) {
-      await getCoinGeckoList();
-    }
+    const coins = await getCoinGeckoList();
+    if (!coins) return null;
     
     const lowerSymbol = symbol.toLowerCase();
     
     // Önce mapping'den bak
     if (SYMBOL_MAPPING[lowerSymbol]) {
       const mappedId = SYMBOL_MAPPING[lowerSymbol];
-      const coin = coinGeckoList.find(c => c.id === mappedId || c.symbol.toLowerCase() === mappedId.toLowerCase());
+      const coin = coins.find(c => c.id === mappedId || c.symbol.toLowerCase() === mappedId.toLowerCase());
       if (coin) return coin.id;
     }
     
     // Exact match
-    let coin = coinGeckoList.find(c => c.symbol.toLowerCase() === lowerSymbol);
+    let coin = coins.find(c => c.symbol.toLowerCase() === lowerSymbol);
     if (coin) return coin.id;
     
-    // Partial match (örn: "floki" -> "floki-inu")
-    coin = coinGeckoList.find(c => c.id.includes(lowerSymbol) || c.symbol.toLowerCase().includes(lowerSymbol));
+    // Partial match
+    coin = coins.find(c => c.id.includes(lowerSymbol) || c.symbol.toLowerCase().includes(lowerSymbol));
     if (coin) return coin.id;
     
     return null;
@@ -252,6 +223,10 @@ async function findCoinId(symbol) {
  * CoinGecko'dan coin detail al (image URL için)
  */
 async function getCoinDetail(coinId) {
+  if (!coinGeckoAvailable) {
+    return null;
+  }
+  
   try {
     const data = await httpGet(`${COINGECKO_API}/coins/${coinId}?localization=false&tickers=false&market_data=false&community_data=false&developer_data=false&sparkline=false`);
     const coin = JSON.parse(data);
@@ -279,7 +254,6 @@ function downloadFile(url, dest) {
         response.pipe(file);
         file.on('finish', () => {
           file.close();
-          // Dosya boyutunu kontrol et
           const stats = fs.statSync(dest);
           if (stats.size < 100) {
             fs.unlinkSync(dest);
@@ -303,14 +277,7 @@ function downloadFile(url, dest) {
       }
     });
     
-    request.on('error', (err) => {
-      file.close();
-      if (fs.existsSync(dest)) {
-        fs.unlinkSync(dest);
-      }
-      reject(err);
-    });
-    
+    request.on('error', reject);
     request.on('timeout', () => {
       request.destroy();
       file.close();
@@ -328,24 +295,16 @@ function downloadFile(url, dest) {
 function normalizeBaseAsset(baseAsset) {
   const lower = baseAsset.toLowerCase();
   
-  // Özel durumlar (atlanacak)
   const skipCases = [
-    'eur', // Fiat
-    'broccoli714', // Special token
-    'broccolif3b', // Special token
-    '币安人生', // Chinese characters
-    'btcusdt_251226', // Futures contract
-    'ethusdt_251226', // Futures contract
-    'btcusdt_260327', // Futures contract
-    'ethusdt_260327', // Futures contract
-    'btcdom', // Index, not a coin
+    'eur', 'broccoli714', 'broccolif3b', '币安人生',
+    'btcusdt_251226', 'ethusdt_251226', 'btcusdt_260327', 'ethusdt_260327',
+    'btcdom',
   ];
   
   if (skipCases.includes(lower)) {
     return null;
   }
   
-  // Mapping'den bak
   if (SYMBOL_MAPPING[lower]) {
     return SYMBOL_MAPPING[lower];
   }
@@ -354,9 +313,13 @@ function normalizeBaseAsset(baseAsset) {
 }
 
 /**
- * Logo indir - CoinGecko
+ * Logo indir - CoinGecko (sadece coinGeckoAvailable ise)
  */
 async function downloadFromCoinGecko(baseAsset, symbol) {
+  if (!coinGeckoAvailable) {
+    return false;
+  }
+  
   const normalized = normalizeBaseAsset(baseAsset);
   if (!normalized) return false;
   
@@ -364,15 +327,12 @@ async function downloadFromCoinGecko(baseAsset, symbol) {
     const coinId = await findCoinId(normalized);
     if (!coinId) return false;
     
-    // Coin detail'den image URL al
     const imageUrl = await getCoinDetail(coinId);
     if (!imageUrl) return false;
     
-    // URL'den extension çıkar
     const ext = imageUrl.split('.').pop().split('?')[0] || 'png';
     const dest = path.join(LOGOS_DIR, `${baseAsset.toLowerCase()}.${ext}`);
     
-    // Eğer dosya zaten varsa, atla
     if (fs.existsSync(dest)) {
       return 'exists';
     }
@@ -430,6 +390,24 @@ async function downloadFromAlternatives(baseAsset, symbol) {
     }
   }
   
+  // TrustWallet Assets
+  for (const ext of extensions) {
+    const url = `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/ethereum/assets/${normalized}/logo.${ext}`;
+    const dest = path.join(LOGOS_DIR, `${baseAsset.toLowerCase()}.${ext}`);
+    
+    if (fs.existsSync(dest)) {
+      return 'exists';
+    }
+    
+    try {
+      await downloadFile(url, dest);
+      console.log(`✅ ${symbol} (${baseAsset}) -> ${baseAsset.toLowerCase()}.${ext} (TrustWallet)`);
+      return true;
+    } catch (err) {
+      // Devam et
+    }
+  }
+  
   return false;
 }
 
@@ -440,21 +418,30 @@ async function downloadLogo(baseAsset, symbol) {
   const normalized = normalizeBaseAsset(baseAsset);
   
   if (!normalized) {
-    console.log(`⚠️  ${symbol} (${baseAsset}) -> Özel durum, atlanıyor`);
     return 'skipped';
   }
   
-  // Önce CoinGecko'dan dene
-  const coinGeckoResult = await downloadFromCoinGecko(baseAsset, symbol);
-  if (coinGeckoResult === true) return true;
-  if (coinGeckoResult === 'exists') return 'exists';
+  // Önce mevcut dosyaları kontrol et
+  const extensions = ['png', 'jpg', 'jpeg', 'svg'];
+  for (const ext of extensions) {
+    const dest = path.join(LOGOS_DIR, `${baseAsset.toLowerCase()}.${ext}`);
+    if (fs.existsSync(dest)) {
+      return 'exists';
+    }
+  }
+  
+  // Önce CoinGecko'dan dene (eğer available ise)
+  if (coinGeckoAvailable) {
+    const coinGeckoResult = await downloadFromCoinGecko(baseAsset, symbol);
+    if (coinGeckoResult === true) return true;
+    if (coinGeckoResult === 'exists') return 'exists';
+  }
   
   // Alternatif kaynaklardan dene
   const altResult = await downloadFromAlternatives(baseAsset, symbol);
   if (altResult === true) return true;
   if (altResult === 'exists') return 'exists';
   
-  console.log(`❌ ${symbol} (${baseAsset}) -> Logo bulunamadı`);
   return false;
 }
 
@@ -462,31 +449,32 @@ async function downloadLogo(baseAsset, symbol) {
  * Ana fonksiyon
  */
 async function main() {
-  // missing-icons.json dosyasını oku
   if (!fs.existsSync(MISSING_ICONS_FILE)) {
     console.error(`❌ missing-icons.json dosyası bulunamadı: ${MISSING_ICONS_FILE}`);
-    console.error('💡 Önce check-missing-icons.js script\'ini çalıştırın!');
     process.exit(1);
   }
   
   const missingData = JSON.parse(fs.readFileSync(MISSING_ICONS_FILE, 'utf-8'));
   const missingIcons = missingData.missing;
   
-  console.log(`📋 ${missingIcons.length} eksik logo bulundu\n`);
+  console.log(`📋 ${missingIcons.length} eksik logo bulundu`);
   console.log(`📊 Spot: ${missingData.spot}, Futures: ${missingData.futures}\n`);
   console.log('=== LOGO İNDİRME BAŞLIYOR ===\n');
   
-  // Logos dizinini oluştur
   if (!fs.existsSync(LOGOS_DIR)) {
     fs.mkdirSync(LOGOS_DIR, { recursive: true });
   }
   
-  // CoinGecko list'ini önceden yükle
+  // CoinGecko'yu test et (sadece bir kez)
+  console.log('📡 CoinGecko API test ediliyor...');
   try {
-    await getCoinGeckoList();
-    console.log('');
+    const testData = await httpGet(`${COINGECKO_API}/coins/list?include_platform=false`);
+    coinGeckoList = JSON.parse(testData);
+    coinGeckoAvailable = true;
+    console.log(`✅ CoinGecko kullanılabilir (${coinGeckoList.length} coin)\n`);
   } catch (err) {
-    console.log('⚠️  CoinGecko kullanılamıyor, sadece alternatif kaynaklardan devam ediliyor...\n');
+    coinGeckoAvailable = false;
+    console.log(`⚠️  CoinGecko kullanılamıyor (${err.message}), sadece alternatif kaynaklardan devam ediliyor...\n`);
   }
   
   let success = 0;
@@ -499,26 +487,30 @@ async function main() {
     const item = missingIcons[i];
     const { symbol, baseAsset } = item;
     
-    console.log(`[${i + 1}/${missingIcons.length}] ${symbol} (${baseAsset})...`);
+    process.stdout.write(`[${i + 1}/${missingIcons.length}] ${symbol} (${baseAsset})... `);
     
-    // Rate limiting için bekle (CoinGecko için)
-    if (i > 0 && i % 5 === 0) {
-      await new Promise(resolve => setTimeout(resolve, 2000));
+    // Rate limiting (her 3 coin'de bir bekle)
+    if (i > 0 && i % 3 === 0) {
+      await new Promise(resolve => setTimeout(resolve, 1000));
     }
     
     const result = await downloadLogo(baseAsset, symbol);
     if (result === true) {
       success++;
+      process.stdout.write('\n');
     } else if (result === 'skipped') {
       skipped++;
+      console.log('⚠️  Atlanıyor');
     } else if (result === 'exists') {
       exists++;
+      console.log('📦 Zaten mevcut');
     } else {
       failed++;
+      console.log('❌ Bulunamadı');
     }
     
-    // Her coin'de bir kısa bekleme
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    // Her coin'de kısa bekleme
+    await new Promise(resolve => setTimeout(resolve, 300));
   }
   
   console.log(`\n=== SONUÇ ===`);

@@ -1,0 +1,603 @@
+{
+  "total": 119,
+  "spot": 10,
+  "futures": 116,
+  "default": 0,
+  "missing": [
+    {
+      "symbol": "eurusdt",
+      "baseAsset": "EUR",
+      "iconPath": "/logos/eur.png"
+    },
+    {
+      "symbol": "fxsusdt",
+      "baseAsset": "FXS",
+      "iconPath": "/logos/fxs.png"
+    },
+    {
+      "symbol": "bttcusdt",
+      "baseAsset": "BTTC",
+      "iconPath": "/logos/bttc.png"
+    },
+    {
+      "symbol": "flokiusdt",
+      "baseAsset": "FLOKI",
+      "iconPath": "/logos/floki.png"
+    },
+    {
+      "symbol": "broccoli714usdt",
+      "baseAsset": "BROCCOLI714",
+      "iconPath": "/logos/broccoli714.png"
+    },
+    {
+      "symbol": "kiteusdt",
+      "baseAsset": "KITE",
+      "iconPath": "/logos/kite.png"
+    },
+    {
+      "symbol": "mmtusdt",
+      "baseAsset": "MMT",
+      "iconPath": "/logos/mmt.png"
+    },
+    {
+      "symbol": "allousdt",
+      "baseAsset": "ALLO",
+      "iconPath": "/logos/allo.png"
+    },
+    {
+      "symbol": "bankusdt",
+      "baseAsset": "BANK",
+      "iconPath": "/logos/bank.png"
+    },
+    {
+      "symbol": "atusdt",
+      "baseAsset": "AT",
+      "iconPath": "/logos/at.png"
+    },
+    {
+      "symbol": "xmrusdt",
+      "baseAsset": "XMR",
+      "iconPath": "/logos/xmr.png"
+    },
+    {
+      "symbol": "1000shibusdt",
+      "baseAsset": "1000SHIB",
+      "iconPath": "/logos/1000shib.png"
+    },
+    {
+      "symbol": "btcdomusdt",
+      "baseAsset": "BTCDOM",
+      "iconPath": "/logos/btcdom.png"
+    },
+    {
+      "symbol": "1000xecusdt",
+      "baseAsset": "1000XEC",
+      "iconPath": "/logos/1000xec.png"
+    },
+    {
+      "symbol": "1000luncusdt",
+      "baseAsset": "1000LUNC",
+      "iconPath": "/logos/1000lunc.png"
+    },
+    {
+      "symbol": "luna2usdt",
+      "baseAsset": "LUNA2",
+      "iconPath": "/logos/luna2.png"
+    },
+    {
+      "symbol": "1000pepeusdt",
+      "baseAsset": "1000PEPE",
+      "iconPath": "/logos/1000pepe.png"
+    },
+    {
+      "symbol": "1000flokiusdt",
+      "baseAsset": "1000FLOKI",
+      "iconPath": "/logos/1000floki.png"
+    },
+    {
+      "symbol": "dodoxusdt",
+      "baseAsset": "DODOX",
+      "iconPath": "/logos/dodox.png"
+    },
+    {
+      "symbol": "bsvusdt",
+      "baseAsset": "BSV",
+      "iconPath": "/logos/bsv.png"
+    },
+    {
+      "symbol": "kasusdt",
+      "baseAsset": "KAS",
+      "iconPath": "/logos/kas.png"
+    },
+    {
+      "symbol": "safeusdt",
+      "baseAsset": "SAFE",
+      "iconPath": "/logos/safe.png"
+    },
+    {
+      "symbol": "ponkeusdt",
+      "baseAsset": "PONKE",
+      "iconPath": "/logos/ponke.png"
+    },
+    {
+      "symbol": "1000000mogusdt",
+      "baseAsset": "1000000MOG",
+      "iconPath": "/logos/1000000mog.png"
+    },
+    {
+      "symbol": "grassusdt",
+      "baseAsset": "GRASS",
+      "iconPath": "/logos/grass.png"
+    },
+    {
+      "symbol": "driftusdt",
+      "baseAsset": "DRIFT",
+      "iconPath": "/logos/drift.png"
+    },
+    {
+      "symbol": "hippousdt",
+      "baseAsset": "HIPPO",
+      "iconPath": "/logos/hippo.png"
+    },
+    {
+      "symbol": "degenusdt",
+      "baseAsset": "DEGEN",
+      "iconPath": "/logos/degen.png"
+    },
+    {
+      "symbol": "banusdt",
+      "baseAsset": "BAN",
+      "iconPath": "/logos/ban.png"
+    },
+    {
+      "symbol": "aktusdt",
+      "baseAsset": "AKT",
+      "iconPath": "/logos/akt.png"
+    },
+    {
+      "symbol": "chillguyusdt",
+      "baseAsset": "CHILLGUY",
+      "iconPath": "/logos/chillguy.png"
+    },
+    {
+      "symbol": "mocausdt",
+      "baseAsset": "MOCA",
+      "iconPath": "/logos/moca.png"
+    },
+    {
+      "symbol": "fartcoinusdt",
+      "baseAsset": "FARTCOIN",
+      "iconPath": "/logos/fartcoin.png"
+    },
+    {
+      "symbol": "sonicusdt",
+      "baseAsset": "SONIC",
+      "iconPath": "/logos/sonic.png"
+    },
+    {
+      "symbol": "arcusdt",
+      "baseAsset": "ARC",
+      "iconPath": "/logos/arc.png"
+    },
+    {
+      "symbol": "vvvusdt",
+      "baseAsset": "VVV",
+      "iconPath": "/logos/vvv.png"
+    },
+    {
+      "symbol": "ipusdt",
+      "baseAsset": "IP",
+      "iconPath": "/logos/ip.png"
+    },
+    {
+      "symbol": "broccolif3busdt",
+      "baseAsset": "BROCCOLIF3B",
+      "iconPath": "/logos/broccolif3b.png"
+    },
+    {
+      "symbol": "brusdt",
+      "baseAsset": "BR",
+      "iconPath": "/logos/br.png"
+    },
+    {
+      "symbol": "athusdt",
+      "baseAsset": "ATH",
+      "iconPath": "/logos/ath.png"
+    },
+    {
+      "symbol": "promptusdt",
+      "baseAsset": "PROMPT",
+      "iconPath": "/logos/prompt.png"
+    },
+    {
+      "symbol": "fheusdt",
+      "baseAsset": "FHE",
+      "iconPath": "/logos/fhe.png"
+    },
+    {
+      "symbol": "eptusdt",
+      "baseAsset": "EPT",
+      "iconPath": "/logos/ept.png"
+    },
+    {
+      "symbol": "aiotusdt",
+      "baseAsset": "AIOT",
+      "iconPath": "/logos/aiot.png"
+    },
+    {
+      "symbol": "b2usdt",
+      "baseAsset": "B2",
+      "iconPath": "/logos/b2.png"
+    },
+    {
+      "symbol": "agtusdt",
+      "baseAsset": "AGT",
+      "iconPath": "/logos/agt.png"
+    },
+    {
+      "symbol": "bdxnusdt",
+      "baseAsset": "BDXN",
+      "iconPath": "/logos/bdxn.png"
+    },
+    {
+      "symbol": "pufferusdt",
+      "baseAsset": "PUFFER",
+      "iconPath": "/logos/puffer.png"
+    },
+    {
+      "symbol": "1000000bobusdt",
+      "baseAsset": "1000000BOB",
+      "iconPath": "/logos/1000000bob.png"
+    },
+    {
+      "symbol": "skateusdt",
+      "baseAsset": "SKATE",
+      "iconPath": "/logos/skate.png"
+    },
+    {
+      "symbol": "dmcusdt",
+      "baseAsset": "DMC",
+      "iconPath": "/logos/dmc.png"
+    },
+    {
+      "symbol": "husdt",
+      "baseAsset": "H",
+      "iconPath": "/logos/h.png"
+    },
+    {
+      "symbol": "olusdt",
+      "baseAsset": "OL",
+      "iconPath": "/logos/ol.png"
+    },
+    {
+      "symbol": "btcusdt_251226",
+      "baseAsset": "BTCUSDT_251226",
+      "iconPath": "/logos/btcusdt_251226.png"
+    },
+    {
+      "symbol": "ethusdt_251226",
+      "baseAsset": "ETHUSDT_251226",
+      "iconPath": "/logos/ethusdt_251226.png"
+    },
+    {
+      "symbol": "icntusdt",
+      "baseAsset": "ICNT",
+      "iconPath": "/logos/icnt.png"
+    },
+    {
+      "symbol": "bullausdt",
+      "baseAsset": "BULLA",
+      "iconPath": "/logos/bulla.png"
+    },
+    {
+      "symbol": "idolusdt",
+      "baseAsset": "IDOL",
+      "iconPath": "/logos/idol.png"
+    },
+    {
+      "symbol": "musdt",
+      "baseAsset": "M",
+      "iconPath": "/logos/m.png"
+    },
+    {
+      "symbol": "crossusdt",
+      "baseAsset": "CROSS",
+      "iconPath": "/logos/cross.png"
+    },
+    {
+      "symbol": "ainusdt",
+      "baseAsset": "AIN",
+      "iconPath": "/logos/ain.png"
+    },
+    {
+      "symbol": "tacusdt",
+      "baseAsset": "TAC",
+      "iconPath": "/logos/tac.png"
+    },
+    {
+      "symbol": "tausdt",
+      "baseAsset": "TA",
+      "iconPath": "/logos/ta.png"
+    },
+    {
+      "symbol": "zorausdt",
+      "baseAsset": "ZORA",
+      "iconPath": "/logos/zora.png"
+    },
+    {
+      "symbol": "tagusdt",
+      "baseAsset": "TAG",
+      "iconPath": "/logos/tag.png"
+    },
+    {
+      "symbol": "zrcusdt",
+      "baseAsset": "ZRC",
+      "iconPath": "/logos/zrc.png"
+    },
+    {
+      "symbol": "esportsusdt",
+      "baseAsset": "ESPORTS",
+      "iconPath": "/logos/esports.png"
+    },
+    {
+      "symbol": "playusdt",
+      "baseAsset": "PLAY",
+      "iconPath": "/logos/play.png"
+    },
+    {
+      "symbol": "allusdt",
+      "baseAsset": "ALL",
+      "iconPath": "/logos/all.png"
+    },
+    {
+      "symbol": "inusdt",
+      "baseAsset": "IN",
+      "iconPath": "/logos/in.png"
+    },
+    {
+      "symbol": "carvusdt",
+      "baseAsset": "CARV",
+      "iconPath": "/logos/carv.png"
+    },
+    {
+      "symbol": "aiousdt",
+      "baseAsset": "AIO",
+      "iconPath": "/logos/aio.png"
+    },
+    {
+      "symbol": "xnyusdt",
+      "baseAsset": "XNY",
+      "iconPath": "/logos/xny.png"
+    },
+    {
+      "symbol": "uselessusdt",
+      "baseAsset": "USELESS",
+      "iconPath": "/logos/useless.png"
+    },
+    {
+      "symbol": "damusdt",
+      "baseAsset": "DAM",
+      "iconPath": "/logos/dam.png"
+    },
+    {
+      "symbol": "cudisusdt",
+      "baseAsset": "CUDIS",
+      "iconPath": "/logos/cudis.png"
+    },
+    {
+      "symbol": "btrusdt",
+      "baseAsset": "BTR",
+      "iconPath": "/logos/btr.png"
+    },
+    {
+      "symbol": "qusdt",
+      "baseAsset": "Q",
+      "iconPath": "/logos/q.png"
+    },
+    {
+      "symbol": "ariausdt",
+      "baseAsset": "ARIA",
+      "iconPath": "/logos/aria.png"
+    },
+    {
+      "symbol": "takeusdt",
+      "baseAsset": "TAKE",
+      "iconPath": "/logos/take.png"
+    },
+    {
+      "symbol": "ptbusdt",
+      "baseAsset": "PTB",
+      "iconPath": "/logos/ptb.png"
+    },
+    {
+      "symbol": "flockusdt",
+      "baseAsset": "FLOCK",
+      "iconPath": "/logos/flock.png"
+    },
+    {
+      "symbol": "ubusdt",
+      "baseAsset": "UB",
+      "iconPath": "/logos/ub.png"
+    },
+    {
+      "symbol": "toshiusdt",
+      "baseAsset": "TOSHI",
+      "iconPath": "/logos/toshi.png"
+    },
+    {
+      "symbol": "stblusdt",
+      "baseAsset": "STBL",
+      "iconPath": "/logos/stbl.png"
+    },
+    {
+      "symbol": "aiausdt",
+      "baseAsset": "AIA",
+      "iconPath": "/logos/aia.png"
+    },
+    {
+      "symbol": "blessusdt",
+      "baseAsset": "BLESS",
+      "iconPath": "/logos/bless.png"
+    },
+    {
+      "symbol": "fluidusdt",
+      "baseAsset": "FLUID",
+      "iconPath": "/logos/fluid.png"
+    },
+    {
+      "symbol": "coaiusdt",
+      "baseAsset": "COAI",
+      "iconPath": "/logos/coai.png"
+    },
+    {
+      "symbol": "btcusdt_260327",
+      "baseAsset": "BTCUSDT_260327",
+      "iconPath": "/logos/btcusdt_260327.png"
+    },
+    {
+      "symbol": "ethusdt_260327",
+      "baseAsset": "ETHUSDT_260327",
+      "iconPath": "/logos/ethusdt_260327.png"
+    },
+    {
+      "symbol": "hanausdt",
+      "baseAsset": "HANA",
+      "iconPath": "/logos/hana.png"
+    },
+    {
+      "symbol": "akeusdt",
+      "baseAsset": "AKE",
+      "iconPath": "/logos/ake.png"
+    },
+    {
+      "symbol": "xanusdt",
+      "baseAsset": "XAN",
+      "iconPath": "/logos/xan.png"
+    },
+    {
+      "symbol": "vfyusdt",
+      "baseAsset": "VFY",
+      "iconPath": "/logos/vfy.png"
+    },
+    {
+      "symbol": "truthusdt",
+      "baseAsset": "TRUTH",
+      "iconPath": "/logos/truth.png"
+    },
+    {
+      "symbol": "evaausdt",
+      "baseAsset": "EVAA",
+      "iconPath": "/logos/evaa.png"
+    },
+    {
+      "symbol": "lynusdt",
+      "baseAsset": "LYN",
+      "iconPath": "/logos/lyn.png"
+    },
+    {
+      "symbol": "kgenusdt",
+      "baseAsset": "KGEN",
+      "iconPath": "/logos/kgen.png"
+    },
+    {
+      "symbol": "4usdt",
+      "baseAsset": "4",
+      "iconPath": "/logos/4.png"
+    },
+    {
+      "symbol": "monusdt",
+      "baseAsset": "MON",
+      "iconPath": "/logos/mon.png"
+    },
+    {
+      "symbol": "clousdt",
+      "baseAsset": "CLO",
+      "iconPath": "/logos/clo.png"
+    },
+    {
+      "symbol": "labusdt",
+      "baseAsset": "LAB",
+      "iconPath": "/logos/lab.png"
+    },
+    {
+      "symbol": "rvvusdt",
+      "baseAsset": "RVV",
+      "iconPath": "/logos/rvv.png"
+    },
+    {
+      "symbol": "币安人生usdt",
+      "baseAsset": "币安人生",
+      "iconPath": "/logos/币安人生.png"
+    },
+    {
+      "symbol": "bluaiusdt",
+      "baseAsset": "BLUAI",
+      "iconPath": "/logos/bluai.png"
+    },
+    {
+      "symbol": "aprusdt",
+      "baseAsset": "APR",
+      "iconPath": "/logos/apr.png"
+    },
+    {
+      "symbol": "onusdt",
+      "baseAsset": "ON",
+      "iconPath": "/logos/on.png"
+    },
+    {
+      "symbol": "42usdt",
+      "baseAsset": "42",
+      "iconPath": "/logos/42.png"
+    },
+    {
+      "symbol": "commonusdt",
+      "baseAsset": "COMMON",
+      "iconPath": "/logos/common.png"
+    },
+    {
+      "symbol": "ccusdt",
+      "baseAsset": "CC",
+      "iconPath": "/logos/cc.png"
+    },
+    {
+      "symbol": "uaiusdt",
+      "baseAsset": "UAI",
+      "iconPath": "/logos/uai.png"
+    },
+    {
+      "symbol": "folksusdt",
+      "baseAsset": "FOLKS",
+      "iconPath": "/logos/folks.png"
+    },
+    {
+      "symbol": "jctusdt",
+      "baseAsset": "JCT",
+      "iconPath": "/logos/jct.png"
+    },
+    {
+      "symbol": "clankerusdt",
+      "baseAsset": "CLANKER",
+      "iconPath": "/logos/clanker.png"
+    },
+    {
+      "symbol": "beatusdt",
+      "baseAsset": "BEAT",
+      "iconPath": "/logos/beat.png"
+    },
+    {
+      "symbol": "sentusdt",
+      "baseAsset": "SENT",
+      "iconPath": "/logos/sent.png"
+    },
+    {
+      "symbol": "bobusdt",
+      "baseAsset": "BOB",
+      "iconPath": "/logos/bob.png"
+    },
+    {
+      "symbol": "irysusdt",
+      "baseAsset": "IRYS",
+      "iconPath": "/logos/irys.png"
+    }
+  ]
+}
