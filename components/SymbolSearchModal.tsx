@@ -5,6 +5,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { Globe, Star, Gem, Smile, Building2, Bot } from 'lucide-react';
 
 interface SymbolSearchModalProps {
   isOpen: boolean;
@@ -21,12 +22,12 @@ interface SymbolInfo {
 }
 
 const CATEGORIES = [
-  { id: 'all', name: 'All', icon: '🌐' },
-  { id: 'major', name: 'Major', icon: '⭐' },
-  { id: 'defi', name: 'DeFi', icon: '🔷' },
-  { id: 'meme', name: 'Meme', icon: '🐶' },
-  { id: 'layer1', name: 'Layer 1', icon: '🏗️' },
-  { id: 'ai', name: 'AI', icon: '🤖' },
+  { id: 'all', name: 'All', icon: Globe },
+  { id: 'major', name: 'Major', icon: Star },
+  { id: 'defi', name: 'DeFi', icon: Gem },
+  { id: 'meme', name: 'Meme', icon: Smile },
+  { id: 'layer1', name: 'Layer 1', icon: Building2 },
+  { id: 'ai', name: 'AI', icon: Bot },
 ];
 
 const MAJOR_TOKENS = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP', 'ADA', 'DOGE', 'AVAX', 'DOT', 'MATIC'];
@@ -209,20 +210,23 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
 
         {/* Category Filters */}
         <div className="flex flex-wrap gap-2.5 px-4 py-4 border-b border-gray-800 bg-[#1E222D]/50">
-          {CATEGORIES.map(cat => (
-            <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-5 py-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
-                selectedCategory === cat.id
-                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                  : 'bg-[#2A2E39] text-gray-400 hover:bg-gray-700 hover:text-white'
-              }`}
-            >
-              <span className="text-lg">{cat.icon}</span>
-              <span>{cat.name}</span>
-            </button>
-          ))}
+          {CATEGORIES.map(cat => {
+            const IconComponent = cat.icon;
+            return (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`px-5 py-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
+                  selectedCategory === cat.id
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                    : 'bg-[#2A2E39] text-gray-400 hover:bg-gray-700 hover:text-white'
+                }`}
+              >
+                <IconComponent className="w-4 h-4" />
+                <span>{cat.name}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Symbol List */}
@@ -281,7 +285,7 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
                         <div className="flex items-center gap-2">
                           <span className="text-white font-semibold">{symbol.displayName}</span>
                           {isMajor && (
-                            <span className="text-yellow-500 text-xs">⭐</span>
+                            <Star className="w-3.5 h-3.5 text-yellow-500" />
                           )}
                         </div>
                         <div className="text-xs text-gray-500 truncate">
