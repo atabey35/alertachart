@@ -32,3 +32,7 @@ Disallow: /api/
 Disallow: /admin/
 Disallow: /auth/
 
+# Disallow premium content pages (require authentication and premium access)
+Disallow: /data/liquidation-tracker
+Disallow: /aggr
+

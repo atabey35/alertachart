@@ -53,18 +53,19 @@ export default function sitemap(): MetadataRoute.Sitemap {
       changeFrequency: 'weekly',
       priority: 0.7,
     },
-    {
-      url: `${baseUrl}/data/liquidation-tracker`,
-      lastModified: now,
-      changeFrequency: 'always',
-      priority: 0.9,
-    },
-    {
-      url: `${baseUrl}/aggr`,
-      lastModified: now,
-      changeFrequency: 'always',
-      priority: 0.9,
-    },
+    // Premium pages removed from sitemap - they require authentication and premium access
+    // {
+    //   url: `${baseUrl}/data/liquidation-tracker`,
+    //   lastModified: now,
+    //   changeFrequency: 'always',
+    //   priority: 0.9,
+    // },
+    // {
+    //   url: `${baseUrl}/aggr`,
+    //   lastModified: now,
+    //   changeFrequency: 'always',
+    //   priority: 0.9,
+    // },
     {
       url: `${baseUrl}/login`,
       lastModified: now,
