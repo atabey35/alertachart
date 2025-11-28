@@ -3,7 +3,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
-import { hasPremiumAccess } from '@/utils/premium';
 
 export default function AggrPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
@@ -39,22 +38,40 @@ export default function AggrPage() {
       setIsAuthenticated(!!user);
       
       if (user) {
-        // Check premium access
-        const premiumAccess = hasPremiumAccess(user);
-        setHasPremium(premiumAccess);
-        
-        if (!premiumAccess) {
-          // User is authenticated but not premium, show upgrade message
+        // Check premium access via API
+        try {
+          const planResponse = await fetch('/api/user/plan', {
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          
+          if (planResponse.ok) {
+            const planData = await planResponse.json();
+            const premiumAccess = planData.hasPremiumAccess || false;
+            setHasPremium(premiumAccess);
+            
+            if (!premiumAccess) {
+              // User is authenticated but not premium, show upgrade message
+              setLoading(false);
+              return;
+            }
+            
+            if (!redirectingRef.current) {
+              // User is authenticated and premium, redirect to aggr with embed mode
+              redirectingRef.current = true;
+              console.log('[Aggr] User authenticated and premium, redirecting to aggr.alertachart.com');
+              // Use replace instead of href to prevent back button issues
+              window.location.replace('https://aggr.alertachart.com?embed=true');
+            }
+          } else {
+            // Plan check failed, assume not premium
+            setHasPremium(false);
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error('[Aggr] Premium check failed:', error);
+          setHasPremium(false);
           setLoading(false);
-          return;
-        }
-        
-        if (!redirectingRef.current) {
-          // User is authenticated and premium, redirect to aggr with embed mode
-          redirectingRef.current = true;
-          console.log('[Aggr] User authenticated and premium, redirecting to aggr.alertachart.com');
-          // Use replace instead of href to prevent back button issues
-          window.location.replace('https://aggr.alertachart.com?embed=true');
         }
       }
     } catch (error) {
@@ -76,21 +93,40 @@ export default function AggrPage() {
       setIsAuthenticated(!!user);
       
       if (user) {
-        const premiumAccess = hasPremiumAccess(user);
-        setHasPremium(premiumAccess);
-        
-        if (!premiumAccess) {
-          // User is authenticated but not premium
-          setLoading(false);
-        } else {
-          // User is premium, content is already loaded on subdomain
+        // Check premium access via API
+        try {
+          const planResponse = await fetch('/api/user/plan', {
+            credentials: 'include',
+            cache: 'no-store',
+          });
+          
+          if (planResponse.ok) {
+            const planData = await planResponse.json();
+            const premiumAccess = planData.hasPremiumAccess || false;
+            setHasPremium(premiumAccess);
+            
+            if (!premiumAccess) {
+              // User is authenticated but not premium
+              setLoading(false);
+            } else {
+              // User is premium, content is already loaded on subdomain
+              setLoading(false);
+            }
+          } else {
+            // Plan check failed, assume not premium
+            setHasPremium(false);
+            setLoading(false);
+          }
+        } catch (error) {
+          console.error('[Aggr] Premium check failed:', error);
+          setHasPremium(false);
           setLoading(false);
         }
       } else {
         setLoading(false);
       }
     } catch (error) {
-      console.error('[Aggr] Premium check failed:', error);
+      console.error('[Aggr] Auth check failed:', error);
       setIsAuthenticated(false);
       setHasPremium(false);
       setLoading(false);
