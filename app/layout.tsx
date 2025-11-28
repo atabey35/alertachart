@@ -227,6 +227,7 @@ export const metadata: Metadata = {
     ],
     shortcut: '/icon.png',
   },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
