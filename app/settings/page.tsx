@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, BarChart3, Bell, Sparkles, Clock } from 'lucide-react';
+import { Dialog } from '@capacitor/dialog';
 import { handleGoogleWebLogin, handleAppleWebLogin } from '@/utils/webAuth';
 import { isNativePlatform } from '@/utils/platformDetection';
 import { authService } from '@/services/authService';
@@ -2063,6 +2064,8 @@ export default function SettingsPage() {
               <button
                 onClick={async () => {
                   try {
+                    console.log('[Settings] Delete button clicked');
+                    
                     // 🔥 iOS Fix: Use Capacitor Dialog instead of window.confirm
                     const confirmMessage = language === 'tr'
                       ? 'Hesabınızı kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm verileriniz silinecektir.'
@@ -2072,37 +2075,33 @@ export default function SettingsPage() {
                     const confirmButton = language === 'tr' ? 'Sil' : 'Delete';
                     const cancelButton = language === 'tr' ? 'İptal' : 'Cancel';
 
-                    // Check if Capacitor Dialog is available (native app)
-                    const Capacitor = (window as any).Capacitor;
+                    // Use Capacitor Dialog (works on both web and native)
                     let confirmed = false;
 
-                    if (Capacitor?.Plugins?.Dialog) {
-                      // Use Capacitor native dialog
-                      const result = await Capacitor.Plugins.Dialog.confirm({
+                    try {
+                      const result = await Dialog.confirm({
                         title: confirmTitle,
                         message: confirmMessage,
                         okButtonTitle: confirmButton,
                         cancelButtonTitle: cancelButton,
                       });
                       confirmed = result.value;
-                    } else {
-                      // Fallback to web confirm
+                      console.log('[Settings] Dialog result:', confirmed);
+                    } catch (dialogError) {
+                      console.error('[Settings] Dialog error:', dialogError);
+                      // Fallback to window.confirm
                       confirmed = window.confirm(confirmMessage);
+                      console.log('[Settings] Fallback confirm result:', confirmed);
                     }
 
                     if (confirmed) {
+                      console.log('[Settings] User confirmed deletion');
                       handleDeleteAccount();
+                    } else {
+                      console.log('[Settings] User cancelled deletion');
                     }
                   } catch (err) {
-                    console.error('[Settings] Delete account confirmation error:', err);
-                    // Fallback to window.confirm on error
-                    if (window.confirm(
-                      language === 'tr'
-                        ? 'Hesabınızı kalıcı olarak silmek istediğinizden emin misiniz?'
-                        : 'Are you sure you want to permanently delete your account?'
-                    )) {
-                      handleDeleteAccount();
-                    }
+                    console.error('[Settings] Delete account button error:', err);
                   }
                 }}
                 disabled={loading}
