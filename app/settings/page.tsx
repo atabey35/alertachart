@@ -1777,20 +1777,67 @@ export default function SettingsPage() {
 
       console.log('[Settings] ✅ Account deleted successfully');
 
-      // Show success message if there's a subscription note
+      // Show success message
+      const successMessage = language === 'tr'
+        ? '✅ Hesabınız başarıyla silindi. Yönlendiriliyorsunuz...'
+        : '✅ Account deleted successfully. Redirecting...';
+
+      // Show subscription note if exists
       if (data.note) {
-        alert(data.note);
+        const fullMessage = `${successMessage}\n\n${data.note}`;
+        try {
+          const Dialog = (await import('@capacitor/dialog')).Dialog;
+          await Dialog.alert({
+            title: language === 'tr' ? 'Hesap Silindi' : 'Account Deleted',
+            message: fullMessage,
+          });
+        } catch {
+          alert(fullMessage);
+        }
       }
 
-      // Sign out and clear all data
+      // 🔥 CRITICAL: Clear all session data
+      console.log('[Settings] Clearing all session data...');
+      
+      // Sign out from NextAuth
       if (status === 'authenticated') {
         await signOut({ redirect: false });
       }
 
+      // Clear auth service
       await authService.logout();
 
-      // Redirect to home
-      if (!isCapacitor) {
+      // 🔥 iOS Fix: Clear WebView cache and cookies
+      if (isCapacitor && typeof window !== 'undefined') {
+        try {
+          const Capacitor = (window as any).Capacitor;
+          
+          // Clear Preferences
+          if (Capacitor?.Plugins?.Preferences) {
+            await Capacitor.Plugins.Preferences.clear();
+            console.log('[Settings] ✅ Preferences cleared');
+          }
+
+          // Clear localStorage
+          localStorage.clear();
+          sessionStorage.clear();
+          console.log('[Settings] ✅ Storage cleared');
+
+          // Force reload to clear WebView cache
+          console.log('[Settings] 🔄 Forcing app reload...');
+          setTimeout(() => {
+            window.location.href = '/';
+            setTimeout(() => {
+              window.location.reload();
+            }, 100);
+          }, 1000);
+        } catch (err) {
+          console.error('[Settings] Error clearing cache:', err);
+          // Fallback: just redirect
+          window.location.href = '/';
+        }
+      } else {
+        // Web: Just redirect
         router.replace('/');
         router.refresh();
       }
