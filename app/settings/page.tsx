@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import { TrendingUp, BarChart3, Bell, Sparkles, Clock } from 'lucide-react';
+import { TrendingUp, BarChart3, Bell, Sparkles, Clock, FileText, Shield } from 'lucide-react';
 import { Dialog } from '@capacitor/dialog';
 import { handleGoogleWebLogin, handleAppleWebLogin } from '@/utils/webAuth';
 import { isNativePlatform } from '@/utils/platformDetection';
@@ -2459,6 +2459,62 @@ export default function SettingsPage() {
               }`}
             >
               🇬🇧 English
+            </button>
+          </div>
+        </div>
+
+        {/* Legal Links - Terms & Privacy */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-gray-300">
+            {language === 'tr' ? 'Yasal Bilgiler' : 'Legal Information'}
+          </label>
+          <div className="grid grid-cols-2 gap-2">
+            {/* Terms of Use */}
+            <button
+              onClick={async () => {
+                const url = 'https://www.alertachart.com/terms';
+                try {
+                  const Capacitor = (window as any).Capacitor;
+                  if (Capacitor?.Plugins?.Browser) {
+                    // Capacitor: Open in system browser
+                    await Capacitor.Plugins.Browser.open({ url });
+                  } else {
+                    // Web: Open in new tab
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                } catch (error) {
+                  console.error('[Settings] Error opening Terms:', error);
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }
+              }}
+              className="flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-gray-700 bg-gray-800 text-gray-300 hover:border-blue-500 hover:bg-blue-900/20 hover:text-white transition-all"
+            >
+              <FileText className="w-4 h-4" />
+              <span className="text-sm">{language === 'tr' ? 'Kullanım Koşulları' : 'Terms of Use'}</span>
+            </button>
+
+            {/* Privacy Policy */}
+            <button
+              onClick={async () => {
+                const url = 'https://www.alertachart.com/privacy';
+                try {
+                  const Capacitor = (window as any).Capacitor;
+                  if (Capacitor?.Plugins?.Browser) {
+                    // Capacitor: Open in system browser
+                    await Capacitor.Plugins.Browser.open({ url });
+                  } else {
+                    // Web: Open in new tab
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                } catch (error) {
+                  console.error('[Settings] Error opening Privacy:', error);
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }
+              }}
+              className="flex items-center justify-center gap-2 p-3 rounded-lg border-2 border-gray-700 bg-gray-800 text-gray-300 hover:border-blue-500 hover:bg-blue-900/20 hover:text-white transition-all"
+            >
+              <Shield className="w-4 h-4" />
+              <span className="text-sm">{language === 'tr' ? 'Gizlilik Politikası' : 'Privacy Policy'}</span>
             </button>
           </div>
         </div>

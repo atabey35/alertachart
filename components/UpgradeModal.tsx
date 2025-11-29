@@ -567,29 +567,53 @@ export default function UpgradeModal({
 
           {/* Legal Links */}
           <div className="flex items-center justify-center gap-4 text-xs">
-            <a
-              href="https://www.alertachart.com/terms"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-blue-400 underline transition-colors"
-              onClick={(e) => {
+            <button
+              onClick={async (e) => {
+                e.preventDefault();
                 e.stopPropagation();
+                const url = 'https://www.alertachart.com/terms';
+                try {
+                  const Capacitor = (window as any).Capacitor;
+                  if (Capacitor?.Plugins?.Browser) {
+                    // Capacitor: Open in system browser
+                    await Capacitor.Plugins.Browser.open({ url });
+                  } else {
+                    // Web: Open in new tab
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                } catch (error) {
+                  console.error('[UpgradeModal] Error opening Terms:', error);
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }
               }}
+              className="text-gray-400 hover:text-blue-400 underline transition-colors cursor-pointer"
             >
               {language === 'tr' ? 'Kullanım Koşulları' : 'Terms of Use'}
-            </a>
+            </button>
             <span className="text-gray-600">•</span>
-            <a
-              href="https://www.alertachart.com/privacy"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-gray-400 hover:text-blue-400 underline transition-colors"
-              onClick={(e) => {
+            <button
+              onClick={async (e) => {
+                e.preventDefault();
                 e.stopPropagation();
+                const url = 'https://www.alertachart.com/privacy';
+                try {
+                  const Capacitor = (window as any).Capacitor;
+                  if (Capacitor?.Plugins?.Browser) {
+                    // Capacitor: Open in system browser
+                    await Capacitor.Plugins.Browser.open({ url });
+                  } else {
+                    // Web: Open in new tab
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                } catch (error) {
+                  console.error('[UpgradeModal] Error opening Privacy:', error);
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }
               }}
+              className="text-gray-400 hover:text-blue-400 underline transition-colors cursor-pointer"
             >
               {language === 'tr' ? 'Gizlilik Politikası' : 'Privacy Policy'}
-            </a>
+            </button>
           </div>
           </div>
 
