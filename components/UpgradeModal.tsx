@@ -813,10 +813,11 @@ export default function UpgradeModal({
               ) : (
                 // 🔥 APPLE GUIDELINE 2.3.10: Never mention "Google Play" on iOS
                 // 🔥 APPLE GUIDELINE 3.1.2: Show price in button or nearby
+                // 🔥 APPLE GUIDELINE 2.1: Show trial info in button to attract users
                 platform === 'ios'
                   ? (products[0]?.price 
-                      ? (language === 'tr' ? `Aboneliği Başlat - ${products[0].price}` : `Subscribe - ${products[0].price}`)
-                      : (language === 'tr' ? 'Aboneliği Başlat' : 'Subscribe'))
+                      ? (language === 'tr' ? `3 Gün Ücretsiz Dene, Sonra ${products[0].price}/Ay` : `Try 3 Days Free, Then ${products[0].price}/Month`)
+                      : (language === 'tr' ? '3 Gün Ücretsiz Dene & Abone Ol' : 'Try 3 Days Free & Subscribe'))
                   : platform === 'android'
                   ? (products[0]?.price 
                       ? (language === 'tr' ? `Google Play'den Satın Al - ${products[0].price}` : `Buy from Google Play - ${products[0].price}`)
