@@ -247,3 +247,61 @@ export async function purchaseProduct(productId: string): Promise<{
     return { success: false, error: err?.message || err?.toString() };
   }
 }
+
+/**
+ * Restore purchases (REQUIRED by Apple App Store Guidelines 3.1.1)
+ * This function restores previously purchased subscriptions
+ */
+export async function restorePurchases(): Promise<{
+  success: boolean;
+  purchases?: any[];
+  error?: string;
+}> {
+  console.log('[IAP Service] restorePurchases: Starting...');
+  logToNative('[IAP Service] restorePurchases: Starting...');
+  
+  if (typeof window === 'undefined') {
+    console.error('[IAP Service] restorePurchases: window is undefined');
+    return { success: false, error: 'Not available in web' };
+  }
+  
+  try {
+    const plugin = getIAPPlugin();
+    if (!plugin) {
+      console.error('[IAP Service] restorePurchases: Plugin not found');
+      return { success: false, error: 'IAP plugin not available' };
+    }
+    
+    console.log('[IAP Service] restorePurchases: Calling plugin.restorePurchases()...');
+    logToNative('[IAP Service] restorePurchases: Calling plugin.restorePurchases()...');
+    
+    const result = await plugin.restorePurchases();
+    
+    console.log('[IAP Service] restorePurchases: Result:', result);
+    logToNative(`[IAP Service] restorePurchases: Result: ${JSON.stringify(result)}`);
+    
+    if (result && result.purchases) {
+      console.log('[IAP Service] restorePurchases: ✅ Found', result.purchases.length, 'purchase(s)');
+      logToNative(`[IAP Service] restorePurchases: ✅ Found ${result.purchases.length} purchase(s)`);
+      return {
+        success: true,
+        purchases: result.purchases,
+      };
+    }
+    
+    // No purchases found (not an error - user may not have any purchases)
+    console.log('[IAP Service] restorePurchases: ℹ️ No purchases to restore');
+    logToNative('[IAP Service] restorePurchases: ℹ️ No purchases to restore');
+    return {
+      success: true,
+      purchases: [],
+    };
+  } catch (error: any) {
+    console.error('[IAP Service] restorePurchases: ❌ Failed:', error);
+    logToNative(`[IAP Service] restorePurchases: ❌ Failed: ${error}`);
+    return {
+      success: false,
+      error: error?.message || error?.toString() || 'Failed to restore purchases',
+    };
+  }
+}

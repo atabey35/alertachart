@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Play, Sparkles, Bell, BarChart3, Clock, TrendingUp } from 'lucide-react';
+import { X, Play, Sparkles, Bell, BarChart3, Clock, TrendingUp, RefreshCw } from 'lucide-react';
 import FeatureVideoModal from './FeatureVideoModal';
-import { initializeIAP, purchaseProduct, isIAPAvailable, getProducts } from '@/services/iapService';
+import { initializeIAP, purchaseProduct, isIAPAvailable, getProducts, restorePurchases } from '@/services/iapService';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -398,6 +398,87 @@ export default function UpgradeModal({
     }
   };
 
+  /**
+   * Handle Restore Purchases
+   * REQUIRED by Apple App Store Guidelines 3.1.1
+   */
+  const handleRestorePurchases = async () => {
+    if (loading) return;
+    
+    console.log('[UpgradeModal] 🔄 Restore Purchases clicked');
+    setLoading(true);
+    setError('');
+    
+    try {
+      console.log('[UpgradeModal] Calling restorePurchases...');
+      const result = await restorePurchases();
+      
+      if (!result.success) {
+        console.error('[UpgradeModal] Restore failed:', result.error);
+        setError(result.error || (language === 'tr' ? 'Satın almalar geri yüklenemedi.' : 'Failed to restore purchases.'));
+        setLoading(false);
+        return;
+      }
+      
+      // Check if we have any purchases
+      if (!result.purchases || result.purchases.length === 0) {
+        console.log('[UpgradeModal] No purchases found to restore');
+        setError(language === 'tr' ? 'Geri yüklenecek satın alma bulunamadı.' : 'No purchases found to restore.');
+        setLoading(false);
+        return;
+      }
+      
+      console.log('[UpgradeModal] Found purchases to restore:', result.purchases);
+      
+      // Verify each purchase with backend
+      let restored = false;
+      for (const purchase of result.purchases) {
+        try {
+          console.log('[UpgradeModal] Verifying restored purchase:', purchase);
+          
+          const verifyResponse = await fetch('/api/subscription/verify-purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              platform,
+              productId: purchase.productId,
+              transactionId: purchase.transactionId || purchase.orderId,
+              receipt: purchase.receipt,
+              isRestore: true, // Flag to indicate this is a restore operation
+            }),
+          });
+          
+          const verifyData = await verifyResponse.json();
+          console.log('[UpgradeModal] Restore verification response:', verifyData);
+          
+          if (verifyResponse.ok) {
+            restored = true;
+            console.log('[UpgradeModal] ✅ Purchase restored successfully');
+          } else {
+            console.warn('[UpgradeModal] ⚠️ Restore verification failed for purchase:', purchase.productId);
+          }
+        } catch (verifyError) {
+          console.error('[UpgradeModal] Error verifying restored purchase:', verifyError);
+        }
+      }
+      
+      if (restored) {
+        // Success - refresh and close
+        console.log('[UpgradeModal] ✅ Restore successful!');
+        onUpgrade(); // Trigger refresh
+        onClose();
+        alert(language === 'tr' ? 'Satın almalar başarıyla geri yüklendi!' : 'Purchases restored successfully!');
+      } else {
+        setError(language === 'tr' ? 'Satın almalar doğrulanamadı.' : 'Could not verify purchases.');
+      }
+    } catch (err: any) {
+      console.error('[UpgradeModal] Error in restore:', err);
+      setError(language === 'tr' ? 'Bir hata oluştu. Lütfen tekrar deneyin.' : 'An error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Debug: Log when modal opens/closes
   useEffect(() => {
     if (isOpen) {
@@ -727,6 +808,21 @@ export default function UpgradeModal({
             >
               {language === 'tr' ? 'Daha Sonra' : 'Later'}
             </button>
+
+            {/* Restore Purchases Button - REQUIRED by Apple Guidelines 3.1.1 */}
+            {(platform === 'ios' || platform === 'android') && (
+              <button
+                onClick={handleRestorePurchases}
+                disabled={loading || !iapAvailable || !iapInitialized}
+                className="w-full py-2.5 px-4 rounded-lg text-blue-400 hover:text-blue-300 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors text-xs font-medium flex items-center justify-center gap-2"
+              >
+                <RefreshCw className="w-3.5 h-3.5" />
+                {loading 
+                  ? (language === 'tr' ? 'Geri Yükleniyor...' : 'Restoring...')
+                  : (language === 'tr' ? 'Satın Alımları Geri Yükle' : 'Restore Purchases')
+                }
+              </button>
+            )}
           </div>
         </div>
       </div>

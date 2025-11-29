@@ -137,7 +137,9 @@ async function verifyReceipt(
 
 /**
  * Verify Apple IAP receipt
- * Uses Apple's verifyReceipt API for production verification
+ * Uses Apple's verifyReceipt API
+ * CRITICAL: Always try Production first, then Sandbox if status 21007
+ * Required by Apple App Store Guidelines 2.1
  */
 async function verifyAppleReceipt(
   receipt: string,
@@ -146,18 +148,21 @@ async function verifyAppleReceipt(
   try {
     // Basic validation
     if (!receipt || receipt.length < 10) {
+      console.error('[Verify Purchase] ❌ Invalid receipt format (too short)');
       return { valid: false, error: 'Invalid receipt format' };
     }
 
-    // Apple Shared Secret (App Store Connect'ten alın)
+    // Apple Shared Secret (from App Store Connect)
     const appleSharedSecret = process.env.APPLE_SHARED_SECRET;
     
     if (!appleSharedSecret) {
-      console.error('[Verify Purchase] ❌ APPLE_SHARED_SECRET not set');
+      console.error('[Verify Purchase] ❌ APPLE_SHARED_SECRET not set in environment');
       return { valid: false, error: 'Server configuration error: Apple Shared Secret not configured' };
     }
 
-    // Production verification
+    console.log('[Verify Purchase] 🔄 Step 1: Trying PRODUCTION URL...');
+
+    // Step 1: ALWAYS try Production URL first
     const productionResponse = await fetch('https://buy.itunes.apple.com/verifyReceipt', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -169,41 +174,48 @@ async function verifyAppleReceipt(
     });
 
     const productionResult = await productionResponse.json();
+    console.log('[Verify Purchase] Production result status:', productionResult.status);
 
-    // Status 0 = success
+    // Status 0 = SUCCESS (Production receipt)
     if (productionResult.status === 0) {
-      // Receipt valid, extract expiry date if subscription
       let expiryDate: Date | undefined;
       
-      if (productionResult.receipt?.in_app) {
-        // Find the latest transaction for this product
+      // Extract expiry date from receipt
+      if (productionResult.latest_receipt_info && productionResult.latest_receipt_info.length > 0) {
+        const latestInfo = productionResult.latest_receipt_info.find(
+          (info: any) => info.product_id === productId
+        );
+        if (latestInfo?.expires_date_ms) {
+          expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
+        }
+      } else if (productionResult.receipt?.in_app) {
         const transactions = productionResult.receipt.in_app.filter(
           (tx: any) => tx.product_id === productId
         );
-        
-        if (transactions.length > 0) {
-          const latestTx = transactions[transactions.length - 1];
-          // For subscriptions, check latest_receipt_info
-          if (productionResult.latest_receipt_info) {
-            const latestInfo = productionResult.latest_receipt_info.find(
-              (info: any) => info.product_id === productId
-            );
-            if (latestInfo?.expires_date_ms) {
-              expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
-            }
+        if (transactions.length > 0 && productionResult.latest_receipt_info) {
+          const latestInfo = productionResult.latest_receipt_info.find(
+            (info: any) => info.product_id === productId
+          );
+          if (latestInfo?.expires_date_ms) {
+            expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
           }
         }
       }
 
-      console.log('[Verify Purchase] ✅ Apple receipt validated (production)');
+      console.log('[Verify Purchase] ✅ PRODUCTION verification SUCCESS', {
+        productId,
+        expiryDate: expiryDate?.toISOString()
+      });
       return { valid: true, expiryDate };
     }
 
-    // Status 21007 = sandbox receipt sent to production
-    // Try sandbox verification
+    // Status 21007 = Sandbox receipt sent to production
+    // THIS IS THE CRITICAL PART FOR APPLE REVIEW
     if (productionResult.status === 21007) {
-      console.log('[Verify Purchase] 🔄 Production receipt invalid, trying sandbox...');
+      console.log('[Verify Purchase] ⚠️ Status 21007 detected (Sandbox receipt in production)');
+      console.log('[Verify Purchase] 🔄 Step 2: Trying SANDBOX URL...');
       
+      // Step 2: Retry with Sandbox URL
       const sandboxResponse = await fetch('https://sandbox.itunes.apple.com/verifyReceipt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -215,12 +227,14 @@ async function verifyAppleReceipt(
       });
 
       const sandboxResult = await sandboxResponse.json();
+      console.log('[Verify Purchase] Sandbox result status:', sandboxResult.status);
 
+      // Status 0 = SUCCESS (Sandbox receipt)
       if (sandboxResult.status === 0) {
-        // Extract expiry date
         let expiryDate: Date | undefined;
         
-        if (sandboxResult.latest_receipt_info) {
+        // Extract expiry date
+        if (sandboxResult.latest_receipt_info && sandboxResult.latest_receipt_info.length > 0) {
           const latestInfo = sandboxResult.latest_receipt_info.find(
             (info: any) => info.product_id === productId
           );
@@ -229,36 +243,66 @@ async function verifyAppleReceipt(
           }
         }
 
-        console.log('[Verify Purchase] ✅ Apple receipt validated (sandbox)');
+        console.log('[Verify Purchase] ✅ SANDBOX verification SUCCESS', {
+          productId,
+          expiryDate: expiryDate?.toISOString()
+        });
         return { valid: true, expiryDate };
       }
 
+      // Sandbox verification also failed
+      const sandboxErrorMsg = getSandboxErrorMessage(sandboxResult.status);
+      console.error('[Verify Purchase] ❌ SANDBOX verification failed:', sandboxErrorMsg);
       return { 
         valid: false, 
-        error: `Sandbox verification failed: ${sandboxResult.status}` 
+        error: `Sandbox verification failed: ${sandboxErrorMsg}` 
+      };
+    }
+
+    // Status 21008 = Production receipt sent to sandbox (edge case)
+    // This shouldn't happen if we try production first, but handle it anyway
+    if (productionResult.status === 21008) {
+      console.error('[Verify Purchase] ❌ Status 21008: Production receipt sent to sandbox URL');
+      return {
+        valid: false,
+        error: 'Receipt environment mismatch (21008). This should not happen.'
       };
     }
 
     // Other error statuses
-    const errorMessages: { [key: number]: string } = {
-      21000: 'The App Store could not read the JSON object you provided',
-      21002: 'The receipt data property was malformed or missing',
-      21003: 'The receipt could not be authenticated',
-      21004: 'The shared secret you provided does not match the shared secret on file',
-      21005: 'The receipt server is not currently available',
-      21006: 'This receipt is valid but the subscription has expired',
-      21008: 'This receipt is from the test environment, but it was sent to the production environment',
-      21010: 'This receipt could not be authorized',
-    };
-
-    const errorMessage = errorMessages[productionResult.status] || `Unknown error: ${productionResult.status}`;
-    
-    console.error('[Verify Purchase] ❌ Apple verification failed:', errorMessage);
+    const errorMessage = getProductionErrorMessage(productionResult.status);
+    console.error('[Verify Purchase] ❌ Production verification failed:', errorMessage);
     return { valid: false, error: errorMessage };
   } catch (error: any) {
-    console.error('[Verify Purchase] ❌ Apple verification error:', error);
-    return { valid: false, error: error.message || 'Network error' };
+    console.error('[Verify Purchase] ❌ Apple verification exception:', error);
+    return { valid: false, error: error.message || 'Network error during Apple verification' };
   }
+}
+
+/**
+ * Get error message for production verification status codes
+ */
+function getProductionErrorMessage(status: number): string {
+  const errorMessages: { [key: number]: string } = {
+    21000: 'The App Store could not read the JSON object you provided',
+    21002: 'The receipt data property was malformed or missing',
+    21003: 'The receipt could not be authenticated',
+    21004: 'The shared secret you provided does not match the shared secret on file',
+    21005: 'The receipt server is not currently available',
+    21006: 'This receipt is valid but the subscription has expired',
+    21007: 'This receipt is from the test environment (should retry with sandbox)',
+    21008: 'This receipt is from the production environment (should retry with production)',
+    21010: 'This receipt could not be authorized',
+  };
+
+  return errorMessages[status] || `Unknown Apple status code: ${status}`;
+}
+
+/**
+ * Get error message for sandbox verification status codes
+ */
+function getSandboxErrorMessage(status: number): string {
+  return getProductionErrorMessage(status); // Same error codes
 }
 
 /**
