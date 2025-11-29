@@ -1907,7 +1907,7 @@ export default function SettingsPage() {
   const [isDesktop, setIsDesktop] = useState(false);
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const checkDesktop = () => setIsDesktop(window.innerWidth >= 1024);
+      const checkDesktop = () => setIsDesktop(window.innerWidth >= 1280); // iPad dahil tüm tabletler mobil UI görsün
       checkDesktop();
       window.addEventListener('resize', checkDesktop);
       return () => window.removeEventListener('resize', checkDesktop);
