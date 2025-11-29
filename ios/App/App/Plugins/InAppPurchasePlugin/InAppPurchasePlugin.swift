@@ -11,6 +11,18 @@ public class InAppPurchasePlugin: CAPPlugin {
         call.resolve()
     }
     
+    @objc func logDebug(_ call: CAPPluginCall) {
+        guard let message = call.getString("message") else {
+            call.reject("message is required")
+            return
+        }
+        
+        // Log to Xcode console
+        print("[InAppPurchase] \(message)")
+        
+        call.resolve()
+    }
+    
     @objc func getProducts(_ call: CAPPluginCall) {
         guard let productIds = call.getArray("productIds") as? [String] else {
             call.reject("productIds array is required")

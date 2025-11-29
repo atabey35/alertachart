@@ -30,6 +30,11 @@ const config: CapacitorConfig = {
     WebViewController: {
       allowBackForwardNavigationGestures: false,
     },
+    // 🔥 CRITICAL: Register custom InAppPurchase plugin
+    InAppPurchase: {
+      // Plugin auto-discovered from ios/App/App/Plugins/InAppPurchasePlugin
+      // and android/app/src/main/java/.../InAppPurchasePlugin.java
+    },
   },
 };
 

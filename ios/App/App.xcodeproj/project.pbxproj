@@ -374,7 +374,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 5.3;
+				MARKETING_VERSION = 5.4;
 				OTHER_SWIFT_FLAGS = "$(inherited) \"-D\" \"COCOAPODS\" \"-DDEBUG\"";
 				PRODUCT_BUNDLE_IDENTIFIER = com.kriptokirmizi.alerta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -400,7 +400,7 @@
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
 				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks";
-				MARKETING_VERSION = 5.3;
+				MARKETING_VERSION = 5.4;
 				PRODUCT_BUNDLE_IDENTIFIER = com.kriptokirmizi.alerta;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "";
