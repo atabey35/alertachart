@@ -621,27 +621,37 @@ export default function UpgradeModal({
 
           {/* Subscription Details & Legal Links - Apple App Store Requirement */}
           <div className="px-4 py-3 space-y-2.5 border-t border-gray-800/60 bg-gray-950/50 flex-shrink-0">
-            {/* Pricing Info */}
+            {/* Pricing Info - APPLE GUIDELINE 3.1.2: Price MUST be clearly visible */}
             <div className="text-center">
               <p className="text-xs text-gray-400 mb-1">
                 {language === 'tr' ? 'Abonelik Detayları' : 'Subscription Details'}
               </p>
-              <div className="flex items-center justify-center gap-2">
+              <div className="flex items-center justify-center gap-2 mb-1">
                 <span className="text-white font-semibold text-sm">
                   {language === 'tr' ? 'Aylık Abonelik' : 'Monthly Subscription'}
                 </span>
                 {products.length > 0 && products[0].price && (
                   <>
                     <span className="text-gray-500">•</span>
-                    <span className="text-blue-400 font-bold text-sm">
+                    <span className="text-blue-400 font-bold text-lg">
                       {products[0].price}
                     </span>
                   </>
                 )}
               </div>
+              {/* 🔥 APPLE GUIDELINE 3.1.2: Show prominent loading state for price */}
               {!productsLoaded && platform !== 'web' && (
-                <p className="text-xs text-gray-500 mt-1">
-                  {language === 'tr' ? 'Fiyat yükleniyor...' : 'Loading price...'}
+                <div className="flex items-center justify-center gap-2 py-2">
+                  <span className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                  <p className="text-xs text-blue-400 font-medium">
+                    {language === 'tr' ? 'Fiyat yükleniyor...' : 'Loading price...'}
+                  </p>
+                </div>
+              )}
+              {/* Show trial info on iOS */}
+              {platform === 'ios' && products.length > 0 && (
+                <p className="text-xs text-gray-400 mt-1">
+                  {language === 'tr' ? '3 gün ücretsiz, ardından aylık ödeme' : '3 days free, then monthly'}
                 </p>
               )}
             </div>
@@ -700,9 +710,14 @@ export default function UpgradeModal({
 
           {/* Action Buttons - Fixed at bottom */}
           <div className="px-4 pb-4 pt-3 space-y-2 border-t border-gray-800/60 bg-gradient-to-br from-gray-950 via-black to-gray-950 flex-shrink-0">
-            {/* Trial button - only for native apps (iOS/Android), not web */}
-            {/* Double check: platform must be 'ios' or 'android', not 'web' */}
-            {currentPlan === 'free' && !isTrial && (platform === 'ios' || platform === 'android') && (
+            {/* 
+              🔥 APPLE GUIDELINE 2.1: 
+              - On iOS, trials are handled automatically by App Store via introductory offers
+              - Do NOT show separate "Try Free" button on iOS - Apple rejects this
+              - Only show ONE subscription button that includes trial info in product description
+              - Android can still use separate trial button if needed
+            */}
+            {currentPlan === 'free' && !isTrial && platform === 'android' && (
               <button
                 onClick={handleStartTrial}
                 disabled={loading}
@@ -737,8 +752,8 @@ export default function UpgradeModal({
                 await logButtonClick('onClick');
                 
                 // Log to both console and native
-                const isDisabled = loading || (platform !== 'web' && (!iapAvailable || !iapInitialized));
-                const logMsg = `🔘 Purchase button clicked! disabled=${isDisabled}, loading=${loading}, platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}`;
+                const isDisabled = loading || (platform !== 'web' && (!iapAvailable || !iapInitialized || !productsLoaded || products.length === 0));
+                const logMsg = `🔘 Purchase button clicked! disabled=${isDisabled}, loading=${loading}, platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}, productsLoaded=${productsLoaded}, products=${products.length}`;
                 console.log('[UpgradeModal]', logMsg);
                 
                 // Send to native Android log (always visible in Logcat)
@@ -775,7 +790,7 @@ export default function UpgradeModal({
                 
                 handlePurchase();
               }}
-              disabled={loading || (platform !== 'web' && (!iapAvailable || !iapInitialized))}
+              disabled={loading || (platform !== 'web' && (!iapAvailable || !iapInitialized || !productsLoaded || products.length === 0))}
               style={{ 
                 pointerEvents: 'auto', 
                 zIndex: 1000,
@@ -787,17 +802,25 @@ export default function UpgradeModal({
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {platform === 'ios'
-                    ? (language === 'tr' ? 'Satın Alınıyor...' : 'Purchasing...')
-                    : platform === 'android'
-                    ? (language === 'tr' ? 'Satın Alınıyor...' : 'Purchasing...')
-                    : (language === 'tr' ? 'İşleniyor...' : 'Processing...')}
+                  {language === 'tr' ? 'Satın Alınıyor...' : 'Purchasing...'}
+                </span>
+              ) : !productsLoaded || products.length === 0 ? (
+                // 🔥 APPLE GUIDELINE 3.1.2: Show loading state if price not available
+                <span className="flex items-center justify-center gap-2">
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  {language === 'tr' ? 'Yükleniyor...' : 'Loading...'}
                 </span>
               ) : (
+                // 🔥 APPLE GUIDELINE 2.3.10: Never mention "Google Play" on iOS
+                // 🔥 APPLE GUIDELINE 3.1.2: Show price in button or nearby
                 platform === 'ios'
-                  ? (language === 'tr' ? 'App Store\'dan Satın Al' : 'Buy from App Store')
+                  ? (products[0]?.price 
+                      ? (language === 'tr' ? `Aboneliği Başlat - ${products[0].price}` : `Subscribe - ${products[0].price}`)
+                      : (language === 'tr' ? 'Aboneliği Başlat' : 'Subscribe'))
                   : platform === 'android'
-                  ? (language === 'tr' ? 'Google Play\'den Satın Al' : 'Buy from Google Play')
+                  ? (products[0]?.price 
+                      ? (language === 'tr' ? `Google Play'den Satın Al - ${products[0].price}` : `Buy from Google Play - ${products[0].price}`)
+                      : (language === 'tr' ? 'Google Play\'den Satın Al' : 'Buy from Google Play'))
                   : (language === 'tr' ? 'Premium\'a Geç' : 'Go Premium')
               )}
             </button>
