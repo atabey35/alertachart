@@ -41,6 +41,18 @@ class CustomBridgeViewController: CAPBridgeViewController {
         configureWebViewForNativeApp()
     }
     
+    // 🔥 CRITICAL: Register custom plugins
+    // Called after Capacitor is loaded and ready
+    override func capacitorDidLoad() {
+        super.capacitorDidLoad()
+        
+        print("[CustomBridgeViewController] 🔌 Registering custom plugins...")
+        
+        // Register InAppPurchasePlugin
+        bridge?.registerPluginInstance(InAppPurchasePlugin())
+        print("[CustomBridgeViewController] ✅ InAppPurchasePlugin registered")
+    }
+    
     // 🔥 CRITICAL: Hide status bar on iPad for native app appearance
     override var prefersStatusBarHidden: Bool {
         let isPad = UIDevice.current.userInterfaceIdiom == .pad

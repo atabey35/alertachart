@@ -17,6 +17,7 @@
 		621357752EC8F916008480A0 /* CustomBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 621357742EC8F916008480A0 /* CustomBridgeViewController.swift */; };
 		624F303D2EC9E918004B74C6 /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 624F303C2EC9E918004B74C6 /* GoogleService-Info.plist */; };
 		62652D2C2ECCC7CF00D6C840 /* StoreKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 62652D2B2ECCC7CF00D6C840 /* StoreKit.framework */; };
+		62870C252EDB409A0082B8F5 /* InAppPurchasePlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62870C242EDB40990082B8F5 /* InAppPurchasePlugin.swift */; };
 		A084ECDBA7D38E1E42DFC39D /* Pods_App.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */; };
 /* End PBXBuildFile section */
 
@@ -36,6 +37,7 @@
 		624F303E2ECA09DF004B74C6 /* AppDebug.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AppDebug.entitlements; sourceTree = "<group>"; };
 		624F303F2ECA09DF004B74C7 /* AppRelease.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AppRelease.entitlements; sourceTree = "<group>"; };
 		62652D2B2ECCC7CF00D6C840 /* StoreKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = StoreKit.framework; path = System/Library/Frameworks/StoreKit.framework; sourceTree = SDKROOT; };
+		62870C242EDB40990082B8F5 /* InAppPurchasePlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InAppPurchasePlugin.swift; sourceTree = "<group>"; };
 		AF277DCFFFF123FFC6DF26C7 /* Pods_App.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = Pods_App.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF51FD2D460BCFE21FA515B2 /* Pods-App.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.release.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.release.xcconfig"; sourceTree = "<group>"; };
 		FC68EB0AF532CFC21C3344DD /* Pods-App.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-App.debug.xcconfig"; path = "Pods/Target Support Files/Pods-App/Pods-App.debug.xcconfig"; sourceTree = "<group>"; };
@@ -84,6 +86,7 @@
 		504EC3061FED79650016851F /* App */ = {
 			isa = PBXGroup;
 			children = (
+				62870C242EDB40990082B8F5 /* InAppPurchasePlugin.swift */,
 				624F303E2ECA09DF004B74C6 /* AppDebug.entitlements */,
 				624F303F2ECA09DF004B74C7 /* AppRelease.entitlements */,
 				624F303C2EC9E918004B74C6 /* GoogleService-Info.plist */,
@@ -226,6 +229,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				62870C252EDB409A0082B8F5 /* InAppPurchasePlugin.swift in Sources */,
 				621357752EC8F916008480A0 /* CustomBridgeViewController.swift in Sources */,
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
 			);
