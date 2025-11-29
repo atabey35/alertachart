@@ -41,7 +41,7 @@ export default function PrivacyPageEN() {
         <article className="prose prose-invert prose-gray max-w-none">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Privacy Policy</h1>
           <p className="text-gray-400 mb-8">
-            <strong>Last Updated:</strong> November 4, 2025
+            <strong>Last Updated:</strong> November 29, 2025
           </p>
           <p className="text-gray-400 mb-8">
             <strong>Applicable Domain:</strong>{' '}
@@ -65,40 +65,99 @@ export default function PrivacyPageEN() {
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">2. Data Collection</h2>
-            <p className="text-gray-300 leading-relaxed">
-              Currently, we <strong className="text-white">do not collect any personal data from users</strong>.
+            <p className="text-gray-300 leading-relaxed mb-4">
+              When you create an account (by signing in with Apple or Google), the following information is collected:
             </p>
+            <ul className="list-disc list-inside space-y-2 ml-4 text-gray-300">
+              <li><strong className="text-white">Email address:</strong> For account management and communication</li>
+              <li><strong className="text-white">Name:</strong> For profile information</li>
+              <li><strong className="text-white">Authentication provider:</strong> Apple or Google</li>
+              <li><strong className="text-white">Subscription information:</strong> Premium membership status and expiration date</li>
+            </ul>
             <p className="text-gray-300 leading-relaxed mt-4">
-              No registration process or sharing of credentials is required to use the site or application.
+              The data we collect is <strong className="text-white">minimal and only necessary</strong> for the app to function, 
+              and is never shared with third parties.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">3. Future Features</h2>
-            <p className="text-gray-300 leading-relaxed">
-              In the future, if user login or account creation features are added, only{' '}
-              <strong className="text-white">minimal personal data</strong> (e.g., email address) necessary for the service 
-              to function may be requested.
+            <h2 className="text-2xl font-semibold text-white mb-4">3. Data Usage</h2>
+            <p className="text-gray-300 leading-relaxed mb-3">
+              Collected data is used only for the following purposes:
             </p>
+            <ul className="list-disc list-inside space-y-2 ml-4 text-gray-300">
+              <li>User account management</li>
+              <li>Providing premium subscription services</li>
+              <li>Sending price alerts</li>
+              <li>Personalizing app features</li>
+              <li>Providing technical support</li>
+            </ul>
             <p className="text-gray-300 leading-relaxed mt-4">
-              In such cases, users will be separately informed about data processing.
+              <strong className="text-white">Your data is never used for advertising, marketing, or third-party services.</strong>
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">4. Third-Party Services</h2>
-            <p className="text-gray-300 leading-relaxed">
-              The application uses <strong className="text-white">Neon Database</strong> infrastructure for data storage and management purposes.
+            <p className="text-gray-300 leading-relaxed mb-3">
+              The application uses the following secure infrastructure for data storage and management:
             </p>
+            <ul className="list-disc list-inside space-y-2 ml-4 text-gray-300">
+              <li><strong className="text-white">Railway PostgreSQL:</strong> Secure storage of user data</li>
+              <li><strong className="text-white">Apple Sign In:</strong> Secure authentication (iOS)</li>
+              <li><strong className="text-white">Google Sign In:</strong> Secure authentication (Android/Web)</li>
+            </ul>
             <p className="text-gray-300 leading-relaxed mt-4">
-              This service provides secure data storage servers, but no personal user data is processed.
+              These services provide secure data storage servers and are subject to their own privacy policies.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">5. Cookies</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">5. Third-Party Sharing</h2>
             <p className="text-gray-300 leading-relaxed">
-              Our site may only use <strong className="text-white">essential technical cookies</strong> to improve user experience.
+              Your personal data is <strong className="text-white">never shared, sold, or rented to third parties</strong>.
+            </p>
+            <p className="text-gray-300 leading-relaxed mt-4">
+              Your data will not be disclosed in any way except for legal obligations (court orders, etc.).
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-4">6. User Rights</h2>
+            <p className="text-gray-300 leading-relaxed mb-3">
+              Under GDPR and data protection laws, you have the following rights:
+            </p>
+            <ul className="list-disc list-inside space-y-2 ml-4 text-gray-300">
+              <li><strong className="text-white">Right to Access:</strong> Learn what data is collected about you</li>
+              <li><strong className="text-white">Right to Rectification:</strong> Request correction of inaccurate information</li>
+              <li><strong className="text-white">Right to Erasure:</strong> Delete your account and all data (Settings &gt; Delete Account)</li>
+              <li><strong className="text-white">Right to Data Portability:</strong> Obtain a copy of your data</li>
+              <li><strong className="text-white">Right to Object:</strong> Object to data processing</li>
+            </ul>
+            <p className="text-gray-300 leading-relaxed mt-4">
+              To exercise these rights, contact us at{' '}
+              <a href="mailto:info@alertachart.com" className="text-blue-400 hover:text-blue-300 underline">
+                info@alertachart.com
+              </a>.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-4">7. Account Deletion</h2>
+            <p className="text-gray-300 leading-relaxed">
+              You can delete your account at any time from <strong className="text-white">Settings &gt; Delete Account</strong>.
+            </p>
+            <p className="text-gray-300 leading-relaxed mt-4">
+              Account deletion is <strong className="text-white">irreversible</strong> and all your data (profile, alerts, settings) 
+              will be permanently deleted. If you have an active premium subscription, you must manually cancel it from 
+              App Store or Google Play settings.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-4">8. Cookies</h2>
+            <p className="text-gray-300 leading-relaxed">
+              Our site only uses <strong className="text-white">essential technical cookies</strong> to improve user experience.
             </p>
             <p className="text-gray-300 leading-relaxed mt-4">
               Advertising or analytics cookies are not used.
@@ -106,7 +165,7 @@ export default function PrivacyPageEN() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">6. Children&apos;s Privacy</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">9. Children&apos;s Privacy</h2>
             <p className="text-gray-300 leading-relaxed">
               Our services <strong className="text-white">do not target users under 13 years of age</strong>, and personal data 
               from this age group is not knowingly collected.
@@ -114,17 +173,26 @@ export default function PrivacyPageEN() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">7. Security</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">10. Security</h2>
             <p className="text-gray-300 leading-relaxed">
-              Data security is important to us. The application implements reasonable technical measures to protect data. 
-              However, no data transmission over the internet can be guaranteed to be completely secure.
+              Data security is our priority. We implement the following measures to protect your data:
+            </p>
+            <ul className="list-disc list-inside space-y-2 ml-4 text-gray-300 mt-3">
+              <li>Secure data transmission with SSL/TLS encryption</li>
+              <li>Secure database infrastructure (Railway PostgreSQL)</li>
+              <li>Secure authentication with OAuth 2.0</li>
+              <li>Regular security updates</li>
+            </ul>
+            <p className="text-gray-300 leading-relaxed mt-4">
+              However, no data transmission over the internet can be guaranteed to be 100% secure.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">8. Changes</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">11. Changes</h2>
             <p className="text-gray-300 leading-relaxed">
-              This privacy policy may be updated from time to time. The current version will always be published at{' '}
+              This privacy policy may be updated from time to time. Significant changes will be notified within the app. 
+              The current version will always be published at{' '}
               <a 
                 href="https://alertachart.com/privacy" 
                 className="text-blue-400 hover:text-blue-300 underline"
@@ -135,9 +203,9 @@ export default function PrivacyPageEN() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">9. Contact</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">12. Contact</h2>
             <p className="text-gray-300 leading-relaxed">
-              For questions or requests, you can contact us at:
+              For questions or requests about our privacy policy:
             </p>
             <p className="text-gray-300 leading-relaxed mt-4">
               📧 <a 
@@ -173,4 +241,3 @@ export default function PrivacyPageEN() {
     </div>
   );
 }
-

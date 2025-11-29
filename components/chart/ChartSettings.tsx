@@ -64,7 +64,7 @@ export interface ChartSettingsType {
 
 export const DEFAULT_SETTINGS: ChartSettingsType = {
   showWatermark: false,
-  showGrid: false,
+  showGrid: true,
   gridVerticalColor: '#1a1a1a',
   gridHorizontalColor: '#1a1a1a',
   upColor: '#26a69a',

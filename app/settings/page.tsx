@@ -1739,6 +1739,62 @@ export default function SettingsPage() {
     }
   }, [isLoggingOut, status, isCapacitor, router, language]);
 
+  const handleDeleteAccount = useCallback(async () => {
+    if (loading) {
+      console.log('[Settings] Delete account already in progress');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+
+    try {
+      console.log('[Settings] Deleting account...');
+
+      // Call delete account API
+      const response = await fetch('/api/user/delete-account', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete account');
+      }
+
+      console.log('[Settings] ✅ Account deleted successfully');
+
+      // Show success message if there's a subscription note
+      if (data.note) {
+        alert(data.note);
+      }
+
+      // Sign out and clear all data
+      if (status === 'authenticated') {
+        await signOut({ redirect: false });
+      }
+
+      await authService.logout();
+
+      // Redirect to home
+      if (!isCapacitor) {
+        router.replace('/');
+        router.refresh();
+      }
+    } catch (err: any) {
+      const fallbackMessage = language === 'tr'
+        ? 'Hesap silinemedi. Lütfen tekrar deneyin.'
+        : 'Failed to delete account. Please try again.';
+      const message = err?.message || fallbackMessage;
+      setError(message);
+      console.error('[Settings] Delete account failed:', err);
+      setLoading(false);
+    }
+  }, [loading, status, isCapacitor, router, language]);
+
   const handleNavigateToTab = (tab: 'chart' | 'watchlist' | 'alerts' | 'aggr' | 'liquidations') => {
     router.push(`/?tab=${tab}`);
   };
@@ -1993,6 +2049,33 @@ export default function SettingsPage() {
                   </div>
                 </button>
               )}
+
+              {/* Delete Account Button - Apple App Store Requirement */}
+              <button
+                onClick={() => {
+                  if (window.confirm(
+                    language === 'tr'
+                      ? 'Hesabınızı kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm verileriniz silinecektir.'
+                      : 'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be deleted.'
+                  )) {
+                    handleDeleteAccount();
+                  }
+                }}
+                disabled={loading}
+                className="w-full px-4 py-3 bg-gray-900/80 hover:bg-gray-800/80 border border-red-500/50 hover:border-red-500 text-red-400 hover:text-red-300 rounded-xl font-semibold transition-all duration-200 active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation"
+                style={{ WebkitTapHighlightColor: 'transparent' }}
+              >
+                <div className="flex items-center justify-center gap-2">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                  <span>
+                    {loading
+                      ? language === 'tr' ? 'Siliniyor...' : 'Deleting...'
+                      : language === 'tr' ? 'Hesabı Sil' : 'Delete Account'}
+                  </span>
+                </div>
+              </button>
 
               {/* Logout Button */}
               <button

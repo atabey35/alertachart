@@ -3,25 +3,33 @@ import type { CapacitorConfig } from '@capacitor/cli';
 const config: CapacitorConfig = {
   appId: 'com.kriptokirmizi.alerta',
   appName: 'Alerta Chart',
-  webDir: 'public', // Local login screen
+  webDir: 'public', // Fallback for offline/first launch
+  
+  // ✅ PRODUCTION MODE: Load from live website (always fresh content)
   server: {
     url: 'https://www.alertachart.com',
-    cleartext: true, // Allow HTTP if needed
+    cleartext: false, // HTTPS only for production
+    androidScheme: 'https',
+    iosScheme: 'https'
   },
+  
+  // 🧪 LOCAL DEV MODE: Change url to your local IP for hot-reload testing
+  // server: {
+  //   url: 'http://YOUR_LOCAL_IP:3000',
+  //   cleartext: true,
+  //   androidScheme: 'https',
+  // },
+  
   plugins: {
     GoogleAuth: {
       scopes: ['profile', 'email'],
-      // 🔥 CRITICAL: serverClientId her zaman Web client ID (backend token exchange için)
       serverClientId: '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com',
-      // 🔥 CRITICAL: clientId platform-specific olmalı
-      // Android: Android client ID kullan
-      // iOS: iOS client ID kullan (Web client ID custom scheme URI'leri desteklemez)
-      // NOT: Runtime'da AndroidLogin.tsx ve IOSLogin.tsx'de doğru client ID kullanılıyor
-      // Bu config sadece fallback olarak kullanılabilir
-      clientId: '776781271347-fgnaoenplt1lnnmjivcagc013fa01ch1.apps.googleusercontent.com', // Android client ID
+      clientId: '776781271347-fgnaoenplt1lnnmjivcagc013fa01ch1.apps.googleusercontent.com',
       forceCodeForRefreshToken: true,
     },
-    WebViewController: {},
+    WebViewController: {
+      allowBackForwardNavigationGestures: false,
+    },
   },
 };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Drawing } from '@/types/drawing';
 
 interface DrawingPropertiesModalProps {
@@ -25,6 +25,8 @@ export default function DrawingPropertiesModal({
   const [text, setText] = useState(drawing?.text || '');
   const [extendRight, setExtendRight] = useState(drawing?.extendRight || false);
   const [extendLeft, setExtendLeft] = useState(drawing?.extendLeft || false);
+  const textInputRef = useRef<HTMLInputElement>(null);
+  const [keyboardOpen, setKeyboardOpen] = useState(false);
 
   useEffect(() => {
     if (drawing) {
@@ -77,11 +79,75 @@ export default function DrawingPropertiesModal({
     '#000000', // Black
   ];
 
+  // Handle keyboard open/close for mobile
+  useEffect(() => {
+    if (!isText) return;
+    
+    const handleKeyboardOpen = () => {
+      setKeyboardOpen(true);
+      // Scroll modal to top when keyboard opens
+      if (textInputRef.current) {
+        setTimeout(() => {
+          textInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+      }
+    };
+    
+    const handleKeyboardClose = () => {
+      setKeyboardOpen(false);
+    };
+    
+    // Use visualViewport API for better keyboard detection
+    if (typeof window !== 'undefined' && window.visualViewport) {
+      window.visualViewport.addEventListener('resize', () => {
+        const viewportHeight = window.visualViewport?.height || window.innerHeight;
+        const windowHeight = window.innerHeight;
+        
+        // Keyboard is open if viewport is significantly smaller than window
+        if (windowHeight - viewportHeight > 150) {
+          handleKeyboardOpen();
+        } else {
+          handleKeyboardClose();
+        }
+      });
+    }
+    
+    // Fallback: Listen to input focus/blur
+    if (textInputRef.current) {
+      textInputRef.current.addEventListener('focus', handleKeyboardOpen);
+      textInputRef.current.addEventListener('blur', handleKeyboardClose);
+    }
+    
+    return () => {
+      if (typeof window !== 'undefined' && window.visualViewport) {
+        window.visualViewport.removeEventListener('resize', handleKeyboardOpen);
+      }
+      if (textInputRef.current) {
+        textInputRef.current.removeEventListener('focus', handleKeyboardOpen);
+        textInputRef.current.removeEventListener('blur', handleKeyboardClose);
+      }
+    };
+  }, [isText]);
+
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={onClose}>
+    <div 
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" 
+      onClick={onClose}
+      style={{
+        // Position modal at top when keyboard is open (mobile)
+        alignItems: keyboardOpen && typeof window !== 'undefined' && window.innerWidth < 768 ? 'flex-start' : 'center',
+        paddingTop: keyboardOpen && typeof window !== 'undefined' && window.innerWidth < 768 ? '20px' : '0',
+      }}
+    >
       <div 
         className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
+        style={{
+          // Keep modal visible above keyboard
+          maxHeight: keyboardOpen && typeof window !== 'undefined' && window.innerWidth < 768 
+            ? `${window.visualViewport?.height ? window.visualViewport.height - 40 : '80vh'}` 
+            : '90vh',
+        }}
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-white">Çizim Özellikleri</h3>
@@ -248,11 +314,13 @@ export default function DrawingPropertiesModal({
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-300 mb-2">Metin</label>
             <input
+              ref={textInputRef}
               type="text"
               value={text}
               onChange={(e) => setText(e.target.value)}
               className="w-full px-3 py-2 bg-gray-700 text-white rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
               placeholder="Metin girin..."
+              autoFocus={isText && drawing?.type === 'text'}
             />
           </div>
         )}

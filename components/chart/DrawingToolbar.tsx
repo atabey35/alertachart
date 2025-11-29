@@ -36,6 +36,8 @@ interface DrawingToolbarProps {
   activeTool: DrawingTool;
   onToolChange: (tool: DrawingTool) => void;
   onClearAll: () => void;
+  onUndo?: () => void;
+  canUndo?: boolean; // Whether undo is available
 }
 
 interface ToolItem {
@@ -52,7 +54,7 @@ interface ToolCategory {
   tools: ToolItem[];
 }
 
-export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }: DrawingToolbarProps) {
+export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, onUndo, canUndo = false }: DrawingToolbarProps) {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [isMobileExpanded, setIsMobileExpanded] = useState(false);
   const toolbarRef = React.useRef<HTMLDivElement>(null);
@@ -245,131 +247,164 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll }:
 
   return (
     <>
-      {/* MOBILE & TABLET (iPad): Modern bottom toolbar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-[90] bg-gradient-to-t from-gray-950 via-gray-900 to-gray-900 backdrop-blur-xl border-t border-gray-700/50 shadow-2xl" style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 56px))', pointerEvents: 'auto' }}>
-        {/* Expand/Collapse Button */}
-        <button
-          onClick={() => setIsMobileExpanded(!isMobileExpanded)}
-          className="absolute -top-14 right-4 w-14 h-14 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full shadow-2xl flex items-center justify-center text-white active:scale-95 transition-all border-2 border-blue-500/50"
-        >
-          <svg 
-            className={`w-6 h-6 transition-transform duration-300 ${isMobileExpanded ? 'rotate-180' : ''}`}
-            fill="none" 
-            stroke="currentColor" 
-            strokeWidth="2.5"
-            viewBox="0 0 24 24"
+      {/* ✅ FIX #3: MOBILE - Modern FAB (Floating Action Button) + Glassmorphism Bottom Sheet */}
+      <div className="lg:hidden">
+        {/* Floating Action Button (FAB) - Always Visible */}
+        {!isMobileExpanded && (
+          <button
+            onClick={() => setIsMobileExpanded(true)}
+            className="fixed bottom-6 right-6 z-[100] w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-700 rounded-full shadow-2xl flex items-center justify-center text-white active:scale-95 transition-all border-2 border-blue-500/50"
+            style={{ 
+              marginBottom: 'max(env(safe-area-inset-bottom), 0px)',
+              pointerEvents: 'auto'
+            }}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+            {/* Icon changes based on active tool */}
+            {activeTool === 'none' ? (
+              <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            ) : (
+              <svg className="w-7 h-7 animate-pulse" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                <line x1="4" y1="20" x2="20" y2="4" />
+              </svg>
+            )}
+          </button>
+        )}
 
-        {/* Tools Grid - Horizontal scrollable with all tools */}
-        <div 
-          className={`transition-all duration-300 ease-in-out ${
-            isMobileExpanded ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
-          } overflow-hidden`}
-        >
-          <div className="px-4 pt-4 pb-2">
-            {/* Horizontal scrollable container */}
+        {/* Glassmorphism Bottom Sheet - Expanded State */}
+        {isMobileExpanded && (
+          <>
+            {/* Semi-transparent backdrop overlay - click to close */}
             <div 
-              className="overflow-x-auto overflow-y-hidden pb-2" 
+              className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[95]"
+              onClick={() => setIsMobileExpanded(false)}
+              style={{ pointerEvents: 'auto' }}
+            />
+            
+            {/* Floating Bottom Sheet */}
+            <div 
+              className="fixed bottom-0 left-0 right-0 z-[100] bg-gradient-to-t from-gray-950/95 via-gray-900/95 to-gray-800/95 backdrop-blur-xl border-t-2 border-blue-500/30 shadow-2xl rounded-t-3xl mx-4 animate-slide-up"
               style={{ 
-                WebkitOverflowScrolling: 'touch',
-                scrollbarWidth: 'none',
-                msOverflowStyle: 'none'
+                paddingBottom: 'max(env(safe-area-inset-bottom), 20px)',
+                pointerEvents: 'auto',
+                maxHeight: '70vh'
               }}
+              onClick={(e) => e.stopPropagation()} // Prevent closing when clicking inside sheet
             >
-              <div className="flex gap-2" style={{ minWidth: 'max-content' }}>
-                {/* Cursor/Select Tool */}
+              {/* Handle bar + Close button */}
+              <div className="flex items-center justify-between px-6 pt-4 pb-2">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-1.5 bg-gray-600 rounded-full"></div>
+                  <span className="text-sm font-semibold text-gray-300">
+                    {activeTool === 'none' ? 'Select Tool' : toolCategories.flatMap(c => c.tools).find(t => t.id === activeTool)?.label || 'Drawing'}
+                  </span>
+                </div>
                 <button
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    onToolChange('none');
-                    setIsMobileExpanded(false);
-                  }}
-                  onTouchStart={(e) => {
-                    e.stopPropagation();
-                  }}
-                  className={`flex-shrink-0 flex flex-col items-center justify-center gap-1 p-3 rounded-xl transition-all active:scale-95 w-16 ${
-                    activeTool === 'none'
-                      ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
-                      : 'bg-gray-800/80 text-gray-400 hover:bg-gray-700/80'
-                  }`}
+                  onClick={() => setIsMobileExpanded(false)}
+                  className="w-10 h-10 rounded-full bg-gray-800/80 hover:bg-gray-700 text-gray-300 flex items-center justify-center active:scale-95 transition-all"
                 >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
-                  <span className="text-[9px] font-medium text-center leading-tight">Cursor</span>
-                </button>
-
-                {/* All Tools from All Categories */}
-                {toolCategories.map((category) => 
-                  category.tools.map((tool) => (
-                    <button
-                      key={tool.id}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        // Force tool change - ensure it always works
-                        onToolChange(tool.id);
-                        setIsMobileExpanded(false);
-                      }}
-                      onTouchStart={(e) => {
-                        // Prevent event bubbling on touch
-                        e.stopPropagation();
-                      }}
-                      className={`flex-shrink-0 flex flex-col items-center justify-center gap-1 p-3 rounded-xl transition-all active:scale-95 w-16 ${
-                        activeTool === tool.id
-                          ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
-                          : 'bg-gray-800/80 text-gray-400 hover:bg-gray-700/80'
-                      }`}
-                      title={tool.label}
-                    >
-                      {tool.icon}
-                      <span className="text-[9px] font-medium text-center leading-tight">{tool.label}</span>
-                    </button>
-                  ))
-                )}
-
-                {/* Clear All */}
-                <button
-                  onClick={() => {
-                    onClearAll();
-                    setIsMobileExpanded(false);
-                  }}
-                  className="flex-shrink-0 flex flex-col items-center justify-center gap-1 p-3 rounded-xl bg-gray-800/80 text-red-400 hover:bg-red-900/30 active:scale-95 transition-all w-16"
-                  title="Clear All"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                  <span className="text-[9px] font-medium text-center leading-tight">Clear</span>
                 </button>
               </div>
-            </div>
-            {/* Scroll indicator */}
-            <div className="text-center text-[10px] text-gray-500 mt-1">
-              ← Swipe to see all tools →
-            </div>
-          </div>
-        </div>
 
-        {/* Status Bar */}
-        <div className="px-4 py-3 bg-gradient-to-r from-gray-900/95 to-gray-800/95 border-t border-gray-700/50 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${activeTool === 'none' ? 'bg-gray-500' : 'bg-blue-500 animate-pulse'}`}></div>
-            <span className="text-sm font-semibold text-gray-200">
-              {activeTool === 'none' ? 'Cursor Mode' : toolCategories.flatMap(c => c.tools).find(t => t.id === activeTool)?.label || 'Drawing Tool'}
-            </span>
-          </div>
-          <button
-            onClick={() => setIsMobileExpanded(!isMobileExpanded)}
-            className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white text-sm font-semibold rounded-lg active:scale-95 transition-all shadow-lg shadow-blue-500/30"
-          >
-            {isMobileExpanded ? 'Hide' : 'Tools'}
-          </button>
-        </div>
+              {/* Tools Grid - Scrollable */}
+              <div 
+                className="px-4 py-3 overflow-y-auto" 
+                style={{ 
+                  maxHeight: 'calc(70vh - 120px)',
+                  WebkitOverflowScrolling: 'touch'
+                }}
+              >
+                {/* Cursor Tool */}
+                <div className="mb-4">
+                  <button
+                    onClick={() => {
+                      onToolChange('none');
+                      setIsMobileExpanded(false);
+                    }}
+                    className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all active:scale-98 ${
+                      activeTool === 'none'
+                        ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                        : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
+                    }`}
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                    </svg>
+                    <div className="flex flex-col items-start">
+                      <span className="text-base font-semibold">Cursor</span>
+                      <span className="text-xs text-gray-400">Select & Move</span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Tool Categories */}
+                {toolCategories.map((category) => (
+                  <div key={category.id} className="mb-6">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">
+                      {category.name}
+                    </h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      {category.tools.map((tool) => (
+                        <button
+                          key={tool.id}
+                          onClick={() => {
+                            onToolChange(tool.id);
+                            setIsMobileExpanded(false);
+                          }}
+                          className={`flex items-center gap-3 p-3 rounded-xl transition-all active:scale-95 ${
+                            activeTool === tool.id
+                              ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20'
+                              : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
+                          }`}
+                        >
+                          <div className="flex-shrink-0">{tool.icon}</div>
+                          <span className="text-sm font-medium text-left truncate">{tool.label}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Actions */}
+                <div className="mt-6 pt-4 border-t border-gray-700/50 grid grid-cols-2 gap-2">
+                  {/* Undo */}
+                  {canUndo && onUndo && (
+                    <button
+                      onClick={() => {
+                        onUndo();
+                        setIsMobileExpanded(false);
+                      }}
+                      className="flex items-center gap-3 p-3 rounded-xl bg-gray-800/60 text-gray-300 hover:bg-gray-700/60 active:scale-95 transition-all"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 15L3 9m0 0l6-6M3 9h12a6 6 0 010 12h-3" />
+                      </svg>
+                      <span className="text-sm font-medium">Undo</span>
+                    </button>
+                  )}
+                  
+                  {/* Clear All */}
+                  <button
+                    onClick={() => {
+                      onClearAll();
+                      setIsMobileExpanded(false);
+                    }}
+                    className="flex items-center gap-3 p-3 rounded-xl bg-red-900/30 text-red-400 hover:bg-red-900/50 active:scale-95 transition-all"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    <span className="text-sm font-medium">Clear All</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
 
       {/* DESKTOP: TradingView-style left toolbar with popup submenus */}

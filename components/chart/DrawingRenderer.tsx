@@ -139,17 +139,29 @@ export default function DrawingRenderer({
           }
         }}
       >
-        {/* Invisible wide hit area for easier selection - larger on mobile */}
+        {/* Invisible wide hit area for easier selection - larger on mobile (60px for "Fat Finger" fix) */}
         <line
           x1={0}
           y1={point.y}
           x2={chartWidth}
           y2={point.y}
           stroke="transparent"
-          strokeWidth={30}
-          style={{ cursor: isSelected ? 'move' : 'pointer', pointerEvents: 'stroke' }}
+          strokeWidth={typeof window !== 'undefined' && window.innerWidth < 768 ? 60 : 30}
+          style={{ 
+            cursor: isSelected ? 'move' : 'pointer', 
+            pointerEvents: 'stroke',
+            touchAction: 'none' // ✅ FIX #2: Prevent scrolling when touching drawing
+          }}
           onClick={() => onSelectDrawing(drawing.id)}
           onDoubleClick={() => onDoubleClick?.(drawing)}
+          onTouchStart={(e) => {
+            e.preventDefault(); // ✅ FIX #2: Prevent default touch behavior
+            e.stopPropagation(); // ✅ FIX #2: Stop propagation to prevent context menu
+            onSelectDrawing(drawing.id);
+            if (onDragStart && e.touches.length === 1) {
+              onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
         />
         {/* Visible line */}
         <line
@@ -189,17 +201,29 @@ export default function DrawingRenderer({
           }
         }}
       >
-        {/* Invisible wide hit area for easier selection - larger on mobile */}
+        {/* Invisible wide hit area for easier selection - larger on mobile (60px for "Fat Finger" fix) */}
         <line
           x1={point.x}
           y1={0}
           x2={point.x}
           y2={containerHeight}
           stroke="transparent"
-          strokeWidth={30}
-          style={{ cursor: isSelected ? 'move' : 'pointer', pointerEvents: 'stroke' }}
+          strokeWidth={typeof window !== 'undefined' && window.innerWidth < 768 ? 60 : 30}
+          style={{ 
+            cursor: isSelected ? 'move' : 'pointer', 
+            pointerEvents: 'stroke',
+            touchAction: 'none' // ✅ FIX #2: Prevent scrolling when touching drawing
+          }}
           onClick={() => onSelectDrawing(drawing.id)}
           onDoubleClick={() => onDoubleClick?.(drawing)}
+          onTouchStart={(e) => {
+            e.preventDefault(); // ✅ FIX #2: Prevent default touch behavior
+            e.stopPropagation(); // ✅ FIX #2: Stop propagation to prevent context menu
+            onSelectDrawing(drawing.id);
+            if (onDragStart && e.touches.length === 1) {
+              onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
         />
         {/* Visible line */}
         <line
@@ -267,18 +291,38 @@ export default function DrawingRenderer({
             onDragStart(drawing.id, e.clientX, e.clientY);
           }
         }}
+        onTouchStart={(e) => {
+          if (!isPreview && isSelected && onDragStart && e.touches.length === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
+          }
+        }}
       >
-        {/* Invisible wide hit area for easier selection - larger on mobile */}
+        {/* Invisible wide hit area for easier selection - larger on mobile (60px for "Fat Finger" fix) */}
         <line
           x1={x1}
           y1={y1}
           x2={x2}
           y2={y2}
           stroke="transparent"
-          strokeWidth={30}
-          style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer'), pointerEvents: 'stroke' }}
+          strokeWidth={typeof window !== 'undefined' && window.innerWidth < 768 ? 60 : 30}
+          style={{ 
+            cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer'), 
+            pointerEvents: 'stroke',
+            touchAction: 'none' // ✅ FIX #2: Prevent scrolling when touching drawing
+          }}
           onClick={() => !isPreview && onSelectDrawing(drawing.id)}
           onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+          onTouchStart={(e) => {
+            if (isPreview) return;
+            e.preventDefault(); // ✅ FIX #2: Prevent default touch behavior
+            e.stopPropagation(); // ✅ FIX #2: Stop propagation to prevent context menu
+            onSelectDrawing(drawing.id);
+            if (onDragStart && e.touches.length === 1) {
+              onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
+            }
+          }}
         />
         {/* Visible line */}
         <line
@@ -297,16 +341,18 @@ export default function DrawingRenderer({
             <circle 
               cx={p1.x} 
               cy={p1.y} 
-              r="7" 
+              r={typeof window !== 'undefined' && window.innerWidth < 768 ? 8 : 7}
               fill={drawing.color || '#2962FF'} 
               stroke="#fff"
               strokeWidth="2"
-              style={{ cursor: 'grab' }}
+              style={{ cursor: 'move', pointerEvents: 'auto' }}
               onMouseDown={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 onDragPoint?.(drawing.id, 0, e.clientX, e.clientY);
               }}
               onTouchStart={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 if (e.touches.length === 1) {
                   const touch = e.touches[0];
@@ -317,16 +363,18 @@ export default function DrawingRenderer({
             <circle 
               cx={p2.x} 
               cy={p2.y} 
-              r="7" 
+              r={typeof window !== 'undefined' && window.innerWidth < 768 ? 8 : 7}
               fill={drawing.color || '#2962FF'} 
               stroke="#fff"
               strokeWidth="2"
-              style={{ cursor: 'grab' }}
+              style={{ cursor: 'move', pointerEvents: 'auto' }}
               onMouseDown={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 onDragPoint?.(drawing.id, 1, e.clientX, e.clientY);
               }}
               onTouchStart={(e) => {
+                e.preventDefault();
                 e.stopPropagation();
                 if (e.touches.length === 1) {
                   const touch = e.touches[0];
@@ -364,6 +412,13 @@ export default function DrawingRenderer({
           if (!isPreview && isSelected && onDragStart) {
             e.stopPropagation();
             onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+        onTouchStart={(e) => {
+          if (!isPreview && isSelected && onDragStart && e.touches.length === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
           }
         }}
       >
@@ -412,6 +467,13 @@ export default function DrawingRenderer({
           if (!isPreview && isSelected && onDragStart) {
             e.stopPropagation();
             onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+        onTouchStart={(e) => {
+          if (!isPreview && isSelected && onDragStart && e.touches.length === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
           }
         }}
       >
@@ -513,6 +575,13 @@ export default function DrawingRenderer({
             onDragStart(drawing.id, e.clientX, e.clientY);
           }
         }}
+        onTouchStart={(e) => {
+          if (!isPreview && isSelected && onDragStart && e.touches.length === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
+          }
+        }}
       >
         <line
           x1={p1.x}
@@ -570,6 +639,13 @@ export default function DrawingRenderer({
             onDragStart(drawing.id, e.clientX, e.clientY);
           }
         }}
+        onTouchStart={(e) => {
+          if (!isPreview && isSelected && onDragStart && e.touches.length === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
+          }
+        }}
       >
         <rect
           x={x}
@@ -615,6 +691,13 @@ export default function DrawingRenderer({
           if (!isPreview && isSelected && onDragStart) {
             e.stopPropagation();
             onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+        onTouchStart={(e) => {
+          if (!isPreview && isSelected && onDragStart && e.touches.length === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
           }
         }}
       >
@@ -667,6 +750,13 @@ export default function DrawingRenderer({
             onDragStart(drawing.id, e.clientX, e.clientY);
           }
         }}
+        onTouchStart={(e) => {
+          if (!isPreview && isSelected && onDragStart && e.touches.length === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
+          }
+        }}
       >
         <ellipse
           cx={cx}
@@ -713,6 +803,13 @@ export default function DrawingRenderer({
           if (!isPreview && isSelected && onDragStart) {
             e.stopPropagation();
             onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+        onTouchStart={(e) => {
+          if (!isPreview && isSelected && onDragStart && e.touches.length === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
           }
         }}
       >
@@ -1206,6 +1303,13 @@ export default function DrawingRenderer({
           if (!isPreview && isSelected && onDragStart) {
             e.stopPropagation();
             onDragStart(drawing.id, e.clientX, e.clientY);
+          }
+        }}
+        onTouchStart={(e) => {
+          if (!isPreview && isSelected && onDragStart && e.touches.length === 1) {
+            e.preventDefault();
+            e.stopPropagation();
+            onDragStart(drawing.id, e.touches[0].clientX, e.touches[0].clientY);
           }
         }}
       >

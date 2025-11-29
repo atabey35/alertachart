@@ -538,6 +538,61 @@ export default function UpgradeModal({
             </div>
           )}
 
+          {/* Subscription Details & Legal Links - Apple App Store Requirement */}
+          <div className="px-4 py-3 space-y-2.5 border-t border-gray-800/60 bg-gray-950/50 flex-shrink-0">
+            {/* Pricing Info */}
+            <div className="text-center">
+              <p className="text-xs text-gray-400 mb-1">
+                {language === 'tr' ? 'Abonelik Detayları' : 'Subscription Details'}
+              </p>
+              <div className="flex items-center justify-center gap-2">
+                <span className="text-white font-semibold text-sm">
+                  {language === 'tr' ? 'Aylık Abonelik' : 'Monthly Subscription'}
+                </span>
+                {products.length > 0 && products[0].price && (
+                  <>
+                    <span className="text-gray-500">•</span>
+                    <span className="text-blue-400 font-bold text-sm">
+                      {products[0].price}
+                    </span>
+                  </>
+                )}
+              </div>
+              {!productsLoaded && platform !== 'web' && (
+                <p className="text-xs text-gray-500 mt-1">
+                  {language === 'tr' ? 'Fiyat yükleniyor...' : 'Loading price...'}
+                </p>
+              )}
+            </div>
+
+          {/* Legal Links */}
+          <div className="flex items-center justify-center gap-4 text-xs">
+            <a
+              href="https://www.alertachart.com/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-blue-400 underline transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              {language === 'tr' ? 'Kullanım Koşulları' : 'Terms of Use'}
+            </a>
+            <span className="text-gray-600">•</span>
+            <a
+              href="https://www.alertachart.com/privacy"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-gray-400 hover:text-blue-400 underline transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+              }}
+            >
+              {language === 'tr' ? 'Gizlilik Politikası' : 'Privacy Policy'}
+            </a>
+          </div>
+          </div>
+
           {/* Action Buttons - Fixed at bottom */}
           <div className="px-4 pb-4 pt-3 space-y-2 border-t border-gray-800/60 bg-gradient-to-br from-gray-950 via-black to-gray-950 flex-shrink-0">
             {/* Trial button - only for native apps (iOS/Android), not web */}

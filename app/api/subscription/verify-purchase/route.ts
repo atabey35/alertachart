@@ -153,9 +153,8 @@ async function verifyAppleReceipt(
     const appleSharedSecret = process.env.APPLE_SHARED_SECRET;
     
     if (!appleSharedSecret) {
-      console.warn('[Verify Purchase] ⚠️ APPLE_SHARED_SECRET not set, using basic validation');
-      // Development/test için basic validation
-      return { valid: true };
+      console.error('[Verify Purchase] ❌ APPLE_SHARED_SECRET not set');
+      return { valid: false, error: 'Server configuration error: Apple Shared Secret not configured' };
     }
 
     // Production verification

@@ -41,7 +41,7 @@ export default function PrivacyPage() {
         <article className="prose prose-invert prose-gray max-w-none">
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">Gizlilik Politikası</h1>
           <p className="text-gray-400 mb-8">
-            <strong>Son Güncelleme:</strong> 4 Kasım 2025
+            <strong>Son Güncelleme:</strong> 29 Kasım 2025
           </p>
           <p className="text-gray-400 mb-8">
             <strong>Geçerli Alan Adı:</strong>{' '}
@@ -66,39 +66,99 @@ export default function PrivacyPage() {
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">2. Toplanan Veriler</h2>
-            <p className="text-gray-300 leading-relaxed">
-              Şu anda <strong className="text-white">kullanıcılardan herhangi bir kişisel veri toplamıyoruz</strong>.
+            <p className="text-gray-300 leading-relaxed mb-4">
+              Kullanıcı hesabı oluşturduğunuzda (Apple veya Google ile giriş yaparak), şu bilgiler toplanır:
             </p>
+            <ul className="list-disc list-inside space-y-2 ml-4 text-gray-300">
+              <li><strong className="text-white">E-posta adresi:</strong> Hesap yönetimi ve iletişim için</li>
+              <li><strong className="text-white">İsim:</strong> Profil bilgisi için</li>
+              <li><strong className="text-white">Giriş sağlayıcısı:</strong> Apple veya Google</li>
+              <li><strong className="text-white">Abonelik bilgisi:</strong> Premium üyelik durumu ve son kullanma tarihi</li>
+            </ul>
             <p className="text-gray-300 leading-relaxed mt-4">
-              Siteyi veya uygulamayı kullanmak için herhangi bir kayıt işlemi ya da kimlik bilgisi paylaşımı zorunlu değildir.
+              Topladığımız veriler sadece uygulamanın çalışması için gerekli <strong className="text-white">asgari düzeydedir</strong> 
+              ve kesinlikle üçüncü taraflarla paylaşılmaz.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">3. Gelecekteki Özellikler</h2>
-            <p className="text-gray-300 leading-relaxed">
-              İleride kullanıcı girişi veya hesap oluşturma özelliği eklendiğinde, yalnızca hizmetin çalışması için{' '}
-              <strong className="text-white">asgari düzeyde kişisel veri</strong> (örneğin e-posta adresi) talep edilebilir.
+            <h2 className="text-2xl font-semibold text-white mb-4">3. Verilerin Kullanımı</h2>
+            <p className="text-gray-300 leading-relaxed mb-3">
+              Toplanan veriler yalnızca şu amaçlarla kullanılır:
             </p>
+            <ul className="list-disc list-inside space-y-2 ml-4 text-gray-300">
+              <li>Kullanıcı hesabı yönetimi</li>
+              <li>Premium abonelik hizmetlerinin sağlanması</li>
+              <li>Fiyat uyarılarının gönderilmesi</li>
+              <li>Uygulama özelliklerinin kişiselleştirilmesi</li>
+              <li>Teknik destek sağlanması</li>
+            </ul>
             <p className="text-gray-300 leading-relaxed mt-4">
-              Bu durumda kullanıcılar, verilerin işlenmesiyle ilgili ayrıca bilgilendirilecektir.
+              <strong className="text-white">Verileriniz asla reklam, pazarlama veya üçüncü taraf hizmetler için kullanılmaz.</strong>
             </p>
           </section>
 
           <section className="mb-8">
             <h2 className="text-2xl font-semibold text-white mb-4">4. Üçüncü Taraf Hizmetleri</h2>
-            <p className="text-gray-300 leading-relaxed">
-              Uygulama, veri saklama ve yönetimi amacıyla <strong className="text-white">Neon Database</strong> altyapısını kullanmaktadır.
+            <p className="text-gray-300 leading-relaxed mb-3">
+              Uygulama, veri saklama ve yönetimi amacıyla aşağıdaki güvenli altyapıları kullanmaktadır:
             </p>
+            <ul className="list-disc list-inside space-y-2 ml-4 text-gray-300">
+              <li><strong className="text-white">Railway PostgreSQL:</strong> Kullanıcı verilerinin güvenli saklanması</li>
+              <li><strong className="text-white">Apple Sign In:</strong> Güvenli kimlik doğrulama (iOS)</li>
+              <li><strong className="text-white">Google Sign In:</strong> Güvenli kimlik doğrulama (Android/Web)</li>
+            </ul>
             <p className="text-gray-300 leading-relaxed mt-4">
-              Bu hizmet, güvenli veri depolama sunucuları sağlar ancak kişisel kullanıcı verisi işlenmemektedir.
+              Bu hizmetler güvenli veri depolama sunucuları sağlar ve kendi gizlilik politikalarına tabidir.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">5. Çerezler</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">5. Üçüncü Taraf Paylaşım</h2>
             <p className="text-gray-300 leading-relaxed">
-              Sitemiz, kullanıcı deneyimini geliştirmek için yalnızca <strong className="text-white">zorunlu teknik çerezler</strong> kullanabilir.
+              Kişisel verileriniz <strong className="text-white">hiçbir üçüncü tarafla paylaşılmaz, satılmaz veya kiralanmaz</strong>.
+            </p>
+            <p className="text-gray-300 leading-relaxed mt-4">
+              Yasal zorunluluklar (mahkeme kararı, vb.) dışında verileriniz hiçbir şekilde ifşa edilmez.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-4">6. Kullanıcı Hakları</h2>
+            <p className="text-gray-300 leading-relaxed mb-3">
+              GDPR ve KVK Kanunu uyarınca aşağıdaki haklara sahipsiniz:
+            </p>
+            <ul className="list-disc list-inside space-y-2 ml-4 text-gray-300">
+              <li><strong className="text-white">Erişim Hakkı:</strong> Hangi verilerinizin toplandığını öğrenme</li>
+              <li><strong className="text-white">Düzeltme Hakkı:</strong> Yanlış bilgilerin düzeltilmesini isteme</li>
+              <li><strong className="text-white">Silme Hakkı:</strong> Hesabınızı ve tüm verilerinizi silme (Ayarlar &gt; Hesabı Sil)</li>
+              <li><strong className="text-white">Veri Taşınabilirliği:</strong> Verilerinizin kopyasını alma</li>
+              <li><strong className="text-white">İtiraz Hakkı:</strong> Veri işlemeye itiraz etme</li>
+            </ul>
+            <p className="text-gray-300 leading-relaxed mt-4">
+              Bu haklarınızı kullanmak için{' '}
+              <a href="mailto:info@alertachart.com" className="text-blue-400 hover:text-blue-300 underline">
+                info@alertachart.com
+              </a>
+              {' '}adresinden bizimle iletişime geçebilirsiniz.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-4">7. Hesap Silme</h2>
+            <p className="text-gray-300 leading-relaxed">
+              Hesabınızı istediğiniz zaman <strong className="text-white">Ayarlar &gt; Hesabı Sil</strong> seçeneğinden silebilirsiniz.
+            </p>
+            <p className="text-gray-300 leading-relaxed mt-4">
+              Hesap silme işlemi <strong className="text-white">geri alınamaz</strong> ve tüm verileriniz (profil, alarmlar, ayarlar) 
+              kalıcı olarak silinir. Premium aboneliğiniz varsa, App Store veya Google Play ayarlarından manuel olarak iptal etmeniz gerekir.
+            </p>
+          </section>
+
+          <section className="mb-8">
+            <h2 className="text-2xl font-semibold text-white mb-4">8. Çerezler</h2>
+            <p className="text-gray-300 leading-relaxed">
+              Sitemiz, kullanıcı deneyimini geliştirmek için yalnızca <strong className="text-white">zorunlu teknik çerezler</strong> kullanır.
             </p>
             <p className="text-gray-300 leading-relaxed mt-4">
               Reklam veya analiz amaçlı çerezler kullanılmamaktadır.
@@ -106,7 +166,7 @@ export default function PrivacyPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">6. Çocukların Gizliliği</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">9. Çocukların Gizliliği</h2>
             <p className="text-gray-300 leading-relaxed">
               Hizmetlerimiz <strong className="text-white">13 yaşından küçük kullanıcıları hedeflemez</strong> ve bu yaş grubuna ait 
               kişisel veriler bilerek toplanmaz.
@@ -114,31 +174,40 @@ export default function PrivacyPage() {
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">7. Güvenlik</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">10. Güvenlik</h2>
             <p className="text-gray-300 leading-relaxed">
-              Veri güvenliği bizim için önemlidir. Uygulama, verileri korumak için makul teknik önlemleri uygular. 
-              Ancak internet üzerinden yapılan hiçbir veri aktarımının tamamen güvenli olduğu garanti edilemez.
+              Veri güvenliği bizim için önceliktir. Verilerinizi korumak için şu önlemleri uygularız:
+            </p>
+            <ul className="list-disc list-inside space-y-2 ml-4 text-gray-300 mt-3">
+              <li>SSL/TLS şifreleme ile güvenli veri iletimi</li>
+              <li>Güvenli veritabanı altyapısı (Railway PostgreSQL)</li>
+              <li>OAuth 2.0 ile güvenli kimlik doğrulama</li>
+              <li>Düzenli güvenlik güncellemeleri</li>
+            </ul>
+            <p className="text-gray-300 leading-relaxed mt-4">
+              Ancak internet üzerinden yapılan hiçbir veri aktarımının %100 güvenli olduğu garanti edilemez.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">8. Değişiklikler</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">11. Değişiklikler</h2>
             <p className="text-gray-300 leading-relaxed">
-              Bu gizlilik politikası zaman zaman güncellenebilir. Güncel sürüm her zaman{' '}
+              Bu gizlilik politikası zaman zaman güncellenebilir. Önemli değişiklikler uygulama içinde bildirilecektir. 
+              Güncel sürüm her zaman{' '}
               <a 
                 href="https://alertachart.com/privacy" 
                 className="text-blue-400 hover:text-blue-300 underline"
               >
                 https://alertachart.com/privacy
-              </a>{' '}
-              adresinde yayınlanacaktır.
+              </a>
+              {' '}adresinde yayınlanacaktır.
             </p>
           </section>
 
           <section className="mb-8">
-            <h2 className="text-2xl font-semibold text-white mb-4">9. İletişim</h2>
+            <h2 className="text-2xl font-semibold text-white mb-4">12. İletişim</h2>
             <p className="text-gray-300 leading-relaxed">
-              Sorularınız veya talepleriniz için bizimle şu adresten iletişime geçebilirsiniz:
+              Gizlilik politikamız hakkında sorularınız veya talepleriniz için:
             </p>
             <p className="text-gray-300 leading-relaxed mt-4">
               📧 <a 
@@ -174,4 +243,3 @@ export default function PrivacyPage() {
     </div>
   );
 }
-
