@@ -1751,12 +1751,21 @@ export default function SettingsPage() {
     try {
       console.log('[Settings] Deleting account...');
 
+      // 🔥 iOS/Capacitor Fix: Use full URL for API calls
+      const baseUrl = isCapacitor && typeof window !== 'undefined' 
+        ? 'https://www.alertachart.com' 
+        : '';
+      const apiUrl = `${baseUrl}/api/user/delete-account`;
+
+      console.log('[Settings] Delete account API URL:', apiUrl);
+
       // Call delete account API
-      const response = await fetch('/api/user/delete-account', {
+      const response = await fetch(apiUrl, {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // 🔥 CRITICAL: Include cookies for iOS/Capacitor
       });
 
       const data = await response.json();
