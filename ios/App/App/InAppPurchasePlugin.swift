@@ -3,7 +3,18 @@ import Capacitor
 import StoreKit
 
 @objc(InAppPurchasePlugin)
-public class InAppPurchasePlugin: CAPPlugin {
+public class InAppPurchasePlugin: CAPPlugin, CAPBridgedPlugin {
+    // 🔥 CRITICAL: Capacitor 7 requires CAPBridgedPlugin protocol
+    public let identifier = "InAppPurchasePlugin"
+    public let jsName = "InAppPurchase"
+    public let pluginMethods: [CAPPluginMethod] = [
+        CAPPluginMethod(name: "initialize", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "logDebug", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "getProducts", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "restorePurchases", returnType: CAPPluginReturnPromise)
+    ]
+    
     private var products: [String: SKProduct] = [:]
     
     @objc func initialize(_ call: CAPPluginCall) {
