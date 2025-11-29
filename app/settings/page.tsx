@@ -2061,13 +2061,48 @@ export default function SettingsPage() {
 
               {/* Delete Account Button - Apple App Store Requirement */}
               <button
-                onClick={() => {
-                  if (window.confirm(
-                    language === 'tr'
+                onClick={async () => {
+                  try {
+                    // 🔥 iOS Fix: Use Capacitor Dialog instead of window.confirm
+                    const confirmMessage = language === 'tr'
                       ? 'Hesabınızı kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm verileriniz silinecektir.'
-                      : 'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be deleted.'
-                  )) {
-                    handleDeleteAccount();
+                      : 'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be deleted.';
+                    
+                    const confirmTitle = language === 'tr' ? 'Hesabı Sil' : 'Delete Account';
+                    const confirmButton = language === 'tr' ? 'Sil' : 'Delete';
+                    const cancelButton = language === 'tr' ? 'İptal' : 'Cancel';
+
+                    // Check if Capacitor Dialog is available (native app)
+                    const Capacitor = (window as any).Capacitor;
+                    let confirmed = false;
+
+                    if (Capacitor?.Plugins?.Dialog) {
+                      // Use Capacitor native dialog
+                      const result = await Capacitor.Plugins.Dialog.confirm({
+                        title: confirmTitle,
+                        message: confirmMessage,
+                        okButtonTitle: confirmButton,
+                        cancelButtonTitle: cancelButton,
+                      });
+                      confirmed = result.value;
+                    } else {
+                      // Fallback to web confirm
+                      confirmed = window.confirm(confirmMessage);
+                    }
+
+                    if (confirmed) {
+                      handleDeleteAccount();
+                    }
+                  } catch (err) {
+                    console.error('[Settings] Delete account confirmation error:', err);
+                    // Fallback to window.confirm on error
+                    if (window.confirm(
+                      language === 'tr'
+                        ? 'Hesabınızı kalıcı olarak silmek istediğinizden emin misiniz?'
+                        : 'Are you sure you want to permanently delete your account?'
+                    )) {
+                      handleDeleteAccount();
+                    }
                   }
                 }}
                 disabled={loading}
