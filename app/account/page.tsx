@@ -8,11 +8,12 @@ import PremiumBadge from '@/components/PremiumBadge';
 import TrialIndicator from '@/components/TrialIndicator';
 import UpgradeModal from '@/components/UpgradeModal';
 import { hasPremiumAccess, User as UserType } from '@/utils/premium';
+import { authService } from '@/services/authService';
 
 export default function AccountPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
-  const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
+  const [user, setUser] = useState<{ id: number; email: string; name?: string; provider?: string } | null>(null);
   const [userPlan, setUserPlan] = useState<{
     plan: 'free' | 'premium';
     isTrial: boolean;
@@ -38,7 +39,7 @@ export default function AccountPage() {
     }
   }, []);
 
-  // 🔥 FIXED: Fetch user from session - only runs once per session change
+  // 🔥 APPLE GUIDELINE 5.1.1: Check for both session AND guest user
   useEffect(() => {
     if (typeof window === 'undefined') return;
     
@@ -49,21 +50,38 @@ export default function AccountPage() {
       
       const sessionUserId = (session.user as any).id || 0;
       const sessionEmail = session.user.email || '';
+      const sessionProvider = (session.user as any).provider;
       
       userInitializedRef.current = true;
       setUser({
         id: sessionUserId,
         email: sessionEmail,
         name: session.user.name || undefined,
+        provider: sessionProvider,
       });
     } else if (status === 'unauthenticated') {
-      // If unauthenticated, clear user (only if was previously authenticated)
+      // 🔥 NEW: Check for guest user in localStorage
+      const guestUserStr = localStorage.getItem('guest_user');
+      if (guestUserStr) {
+        try {
+          const guestUser = JSON.parse(guestUserStr);
+          console.log('[Account] ✅ Guest user found in localStorage:', guestUser.email);
+          userInitializedRef.current = true;
+          setUser(guestUser);
+          return; // Don't clear user
+        } catch (e) {
+          console.error('[Account] Failed to parse guest_user:', e);
+          localStorage.removeItem('guest_user');
+        }
+      }
+      
+      // If no guest user and was previously authenticated, clear user
       if (userInitializedRef.current) {
         userInitializedRef.current = false;
         setUser(null);
       }
     }
-  }, [status, session]); // 🔥 No 'user' dependency to prevent infinite loop
+  }, [status, session]);
 
   // 🔥 FIXED: Fetch user plan - only runs once per user change, with debouncing
   useEffect(() => {
@@ -83,12 +101,21 @@ export default function AccountPage() {
     userPlanFetchingRef.current = true;
     const fetchUserPlan = async () => {
       try {
-        const response = await fetch(`/api/user/plan?t=${Date.now()}`, {
+        // 🔥 APPLE GUIDELINE 5.1.1: For guest users, send email as query param
+        let url = `/api/user/plan?t=${Date.now()}`;
+        const isGuest = user.provider === 'guest';
+        if (isGuest && user.email) {
+          url += `&email=${encodeURIComponent(user.email)}`;
+          console.log('[Account] Guest user - adding email to plan request:', user.email);
+        }
+        
+        const response = await fetch(url, {
           cache: 'no-store',
           headers: { 'Cache-Control': 'no-cache' },
         });
         if (response.ok) {
           const data = await response.json();
+          console.log('[Account] User plan fetched:', { email: user.email, plan: data.plan, hasPremiumAccess: data.hasPremiumAccess, isGuest });
           setUserPlan({
             plan: data.plan || 'free',
             isTrial: data.isTrial || false,
@@ -180,9 +207,9 @@ export default function AccountPage() {
                       </div>
                       <p className="text-gray-300 mb-3">{user.email}</p>
                       <div className="flex flex-wrap gap-2">
-                        {(session?.user as any)?.provider && (
+                        {(user.provider || (session?.user as any)?.provider) && (
                           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-500/20 text-blue-300 text-xs font-semibold rounded-full border border-blue-500/30">
-                            {(session?.user as any).provider === 'google' && (
+                            {(user.provider === 'google' || (session?.user as any)?.provider === 'google') && (
                               <svg className="w-4 h-4" viewBox="0 0 24 24">
                                 <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                                 <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -190,12 +217,15 @@ export default function AccountPage() {
                                 <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                               </svg>
                             )}
-                            {(session?.user as any).provider === 'apple' && (
+                            {(user.provider === 'apple' || (session?.user as any)?.provider === 'apple') && (
                               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                               </svg>
                             )}
-                            <span className="capitalize">{(session?.user as any).provider}</span>
+                            {user.provider === 'guest' && (
+                              <User className="w-4 h-4" />
+                            )}
+                            <span className="capitalize">{user.provider === 'guest' ? (language === 'tr' ? 'Misafir' : 'Guest') : (user.provider || (session?.user as any)?.provider)}</span>
                           </span>
                         )}
                         <span className="text-xs text-gray-500 font-mono">ID: #{user.id}</span>
