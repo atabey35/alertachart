@@ -3,11 +3,20 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
+import UpgradeModal from '@/components/UpgradeModal';
 
 export default function AggrPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [hasPremium, setHasPremium] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [userPlan, setUserPlan] = useState<{
+    plan: 'free' | 'premium';
+    isTrial: boolean;
+    trialRemainingDays: number;
+    expiryDate?: string | null;
+    hasPremiumAccess?: boolean;
+  } | null>(null);
   const router = useRouter();
   const redirectingRef = useRef(false); // Prevent multiple redirects
   const hasCheckedRef = useRef(false); // Prevent multiple auth checks
@@ -57,6 +66,12 @@ export default function AggrPage() {
       }
       
       setIsAuthenticated(!!user);
+      console.log('[Aggr] Auth check result:', { 
+        hasUser: !!user, 
+        userEmail: user?.email, 
+        guestEmail,
+        isAuthenticated: !!user 
+      });
       
       if (user) {
         // Check premium access via API
@@ -65,20 +80,35 @@ export default function AggrPage() {
           let apiUrl = '/api/user/plan';
           if (guestEmail) {
             apiUrl += `?email=${encodeURIComponent(guestEmail)}`;
+            console.log('[Aggr] Using guest email in API call:', guestEmail);
           }
           
+          console.log('[Aggr] Fetching plan from:', apiUrl);
           const planResponse = await fetch(apiUrl, {
             credentials: 'include',
             cache: 'no-store',
           });
           
+          console.log('[Aggr] Plan response status:', planResponse.status);
+          
           if (planResponse.ok) {
             const planData = await planResponse.json();
+            console.log('[Aggr] Plan data received:', planData);
             const premiumAccess = planData.hasPremiumAccess || false;
             setHasPremium(premiumAccess);
             
+            // Set user plan for UpgradeModal
+            setUserPlan({
+              plan: planData.plan || 'free',
+              isTrial: planData.isTrial || false,
+              trialRemainingDays: planData.trialDaysRemaining || 0,
+              expiryDate: planData.expiryDate || null,
+              hasPremiumAccess: premiumAccess,
+            });
+            
             if (!premiumAccess) {
               // User is authenticated but not premium, show upgrade message
+              console.log('[Aggr] User authenticated but not premium');
               setLoading(false);
               return;
             }
@@ -92,6 +122,8 @@ export default function AggrPage() {
             }
           } else {
             // Plan check failed, assume not premium
+            const errorData = await planResponse.json().catch(() => ({}));
+            console.error('[Aggr] Plan check failed:', planResponse.status, errorData);
             setHasPremium(false);
             setLoading(false);
           }
@@ -100,6 +132,9 @@ export default function AggrPage() {
           setHasPremium(false);
           setLoading(false);
         }
+      } else {
+        console.log('[Aggr] No user found - will show login screen');
+        setLoading(false);
       }
     } catch (error) {
       console.error('[Aggr] Auth check failed:', error);
@@ -159,6 +194,15 @@ export default function AggrPage() {
             const premiumAccess = planData.hasPremiumAccess || false;
             setHasPremium(premiumAccess);
             
+            // Set user plan for UpgradeModal
+            setUserPlan({
+              plan: planData.plan || 'free',
+              isTrial: planData.isTrial || false,
+              trialRemainingDays: planData.trialDaysRemaining || 0,
+              expiryDate: planData.expiryDate || null,
+              hasPremiumAccess: premiumAccess,
+            });
+            
             if (!premiumAccess) {
               // User is authenticated but not premium
               setLoading(false);
@@ -169,6 +213,12 @@ export default function AggrPage() {
           } else {
             // Plan check failed, assume not premium
             setHasPremium(false);
+            setUserPlan({
+              plan: 'free',
+              isTrial: false,
+              trialRemainingDays: 0,
+              hasPremiumAccess: false,
+            });
             setLoading(false);
           }
         } catch (error) {
@@ -236,14 +286,29 @@ export default function AggrPage() {
             Bu özellik sadece premium üyeler için kullanılabilir.
           </p>
           
-          {/* Upgrade Button */}
+          {/* Upgrade Button - Opens UpgradeModal (same as main page) */}
           <button
-            onClick={() => window.location.href = 'https://www.alertachart.com/?upgrade=true'}
+            onClick={() => setShowUpgradeModal(true)}
             className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98]"
           >
             Premium&apos;a Geç
           </button>
         </div>
+        
+        {/* UpgradeModal - Same as main page */}
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          onUpgrade={() => {
+            // Refresh premium status after upgrade
+            setShowUpgradeModal(false);
+            checkAuthAndPremium();
+          }}
+          currentPlan={userPlan?.plan || 'free'}
+          isTrial={userPlan?.isTrial || false}
+          trialRemainingDays={userPlan?.trialRemainingDays || 0}
+          language="tr"
+        />
       </div>
     );
   }

@@ -3,11 +3,20 @@
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
+import UpgradeModal from '@/components/UpgradeModal';
 
 export default function LiquidationTrackerPage() {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [hasPremium, setHasPremium] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [userPlan, setUserPlan] = useState<{
+    plan: 'free' | 'premium';
+    isTrial: boolean;
+    trialRemainingDays: number;
+    expiryDate?: string | null;
+    hasPremiumAccess?: boolean;
+  } | null>(null);
   const router = useRouter();
   const redirectingRef = useRef(false); // Prevent multiple redirects
   const hasCheckedRef = useRef(false); // Prevent multiple auth checks
@@ -37,12 +46,14 @@ export default function LiquidationTrackerPage() {
       
       // 🔥 APPLE GUIDELINE 5.1.1: Check for guest user first
       let user = null;
+      let guestEmail = null;
       if (typeof window !== 'undefined') {
         const guestUserStr = localStorage.getItem('guest_user');
         if (guestUserStr) {
           try {
             user = JSON.parse(guestUserStr);
-            console.log('[LiquidationTracker] ✅ Guest user found:', user);
+            guestEmail = user.email;
+            console.log('[LiquidationTracker] ✅ Guest user found:', guestEmail);
           } catch (e) {
             console.error('[LiquidationTracker] Failed to parse guest_user:', e);
           }
@@ -55,22 +66,49 @@ export default function LiquidationTrackerPage() {
       }
       
       setIsAuthenticated(!!user);
+      console.log('[LiquidationTracker] Auth check result:', { 
+        hasUser: !!user, 
+        userEmail: user?.email, 
+        guestEmail,
+        isAuthenticated: !!user 
+      });
       
       if (user) {
         // Check premium access via API
         try {
-          const planResponse = await fetch('/api/user/plan', {
+          // 🔥 Add guest email as query param if available
+          let apiUrl = '/api/user/plan';
+          if (guestEmail) {
+            apiUrl += `?email=${encodeURIComponent(guestEmail)}`;
+            console.log('[LiquidationTracker] Using guest email in API call:', guestEmail);
+          }
+          
+          console.log('[LiquidationTracker] Fetching plan from:', apiUrl);
+          const planResponse = await fetch(apiUrl, {
             credentials: 'include',
             cache: 'no-store',
           });
           
+          console.log('[LiquidationTracker] Plan response status:', planResponse.status);
+          
           if (planResponse.ok) {
             const planData = await planResponse.json();
+            console.log('[LiquidationTracker] Plan data received:', planData);
             const premiumAccess = planData.hasPremiumAccess || false;
             setHasPremium(premiumAccess);
             
+            // Set user plan for UpgradeModal
+            setUserPlan({
+              plan: planData.plan || 'free',
+              isTrial: planData.isTrial || false,
+              trialRemainingDays: planData.trialDaysRemaining || 0,
+              expiryDate: planData.expiryDate || null,
+              hasPremiumAccess: premiumAccess,
+            });
+            
             if (!premiumAccess) {
               // User is authenticated but not premium, show upgrade message
+              console.log('[LiquidationTracker] User authenticated but not premium');
               setLoading(false);
               return;
             }
@@ -84,6 +122,8 @@ export default function LiquidationTrackerPage() {
             }
           } else {
             // Plan check failed, assume not premium
+            const errorData = await planResponse.json().catch(() => ({}));
+            console.error('[LiquidationTracker] Plan check failed:', planResponse.status, errorData);
             setHasPremium(false);
             setLoading(false);
           }
@@ -92,6 +132,9 @@ export default function LiquidationTrackerPage() {
           setHasPremium(false);
           setLoading(false);
         }
+      } else {
+        console.log('[LiquidationTracker] No user found - will show login screen');
+        setLoading(false);
       }
     } catch (error) {
       console.error('[LiquidationTracker] Auth check failed:', error);
@@ -151,6 +194,15 @@ export default function LiquidationTrackerPage() {
             const premiumAccess = planData.hasPremiumAccess || false;
             setHasPremium(premiumAccess);
             
+            // Set user plan for UpgradeModal
+            setUserPlan({
+              plan: planData.plan || 'free',
+              isTrial: planData.isTrial || false,
+              trialRemainingDays: planData.trialDaysRemaining || 0,
+              expiryDate: planData.expiryDate || null,
+              hasPremiumAccess: premiumAccess,
+            });
+            
             if (!premiumAccess) {
               // User is authenticated but not premium
               setLoading(false);
@@ -161,6 +213,12 @@ export default function LiquidationTrackerPage() {
           } else {
             // Plan check failed, assume not premium
             setHasPremium(false);
+            setUserPlan({
+              plan: 'free',
+              isTrial: false,
+              trialRemainingDays: 0,
+              hasPremiumAccess: false,
+            });
             setLoading(false);
           }
         } catch (error) {
@@ -228,9 +286,9 @@ export default function LiquidationTrackerPage() {
             Bu özellik sadece premium üyeler için kullanılabilir.
           </p>
           
-          {/* Upgrade Button */}
+          {/* Upgrade Button - Opens UpgradeModal (same as main page) */}
           <button
-            onClick={() => window.location.href = 'https://www.alertachart.com/?upgrade=true'}
+            onClick={() => setShowUpgradeModal(true)}
             className="w-full py-4 px-6 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all duration-200 shadow-lg hover:shadow-xl active:scale-[0.98]"
           >
             Premium&apos;a Geç
@@ -264,6 +322,21 @@ export default function LiquidationTrackerPage() {
           Alerta hesabınla giriş yap
         </button>
       </div>
+      
+      {/* UpgradeModal - Same as main page */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        onUpgrade={() => {
+          // Refresh premium status after upgrade
+          setShowUpgradeModal(false);
+          checkAuthAndPremium();
+        }}
+        currentPlan={userPlan?.plan || 'free'}
+        isTrial={userPlan?.isTrial || false}
+        trialRemainingDays={userPlan?.trialRemainingDays || 0}
+        language="tr"
+      />
     </div>
   );
 }
