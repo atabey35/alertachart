@@ -2380,6 +2380,7 @@ export default function SettingsPage() {
                             id: data.user.id,
                             email: data.user.email,
                             name: data.user.name || 'Guest User',
+                            provider: 'guest', // 🔥 CRITICAL: Add provider field for guest user
                           };
                           
                           setUser(guestUser);
