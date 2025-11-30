@@ -1365,7 +1365,20 @@ export default function SettingsPage() {
           if (result && result.authentication) {
             const { idToken, accessToken } = result.authentication;
             
-            console.log('[Settings] Sending tokens to backend...');
+            // Get deviceId before sending to backend
+            let deviceId = null;
+            try {
+              const { Device } = await import('@capacitor/device');
+              const deviceInfo = await Device.getId();
+              deviceId = deviceInfo.identifier;
+              if (deviceId === 'unknown' || deviceId === 'null' || deviceId === 'undefined') {
+                deviceId = null;
+              }
+            } catch (deviceError) {
+              console.warn('[Settings] ⚠️ Could not get deviceId:', deviceError);
+            }
+            
+            console.log('[Settings] Sending tokens to backend...', deviceId ? `with deviceId: ${deviceId}` : 'without deviceId');
             // Backend'e gönder
             const response = await fetch('/api/auth/google-native', {
               method: 'POST',
@@ -1373,6 +1386,7 @@ export default function SettingsPage() {
               body: JSON.stringify({
                 idToken,
                 accessToken,
+                deviceId,
               }),
             });
 
@@ -1517,6 +1531,19 @@ export default function SettingsPage() {
             if (result && result.response) {
               const { identityToken, authorizationCode, user } = result.response;
               
+              // Get deviceId before sending to backend
+              let deviceId = null;
+              try {
+                const { Device } = await import('@capacitor/device');
+                const deviceInfo = await Device.getId();
+                deviceId = deviceInfo.identifier;
+                if (deviceId === 'unknown' || deviceId === 'null' || deviceId === 'undefined') {
+                  deviceId = null;
+                }
+              } catch (deviceError) {
+                console.warn('[Settings] ⚠️ Could not get deviceId:', deviceError);
+              }
+              
               // Backend'e gönder
               const response = await fetch('/api/auth/apple-native', {
                 method: 'POST',
@@ -1525,6 +1552,7 @@ export default function SettingsPage() {
                   identityToken,
                   authorizationCode,
                   email: user,
+                  deviceId,
                 }),
               });
 
@@ -1621,6 +1649,19 @@ export default function SettingsPage() {
         if (result && result.response) {
           const { identityToken, authorizationCode, user } = result.response;
           
+          // Get deviceId before sending to backend
+          let deviceId = null;
+          try {
+            const { Device } = await import('@capacitor/device');
+            const deviceInfo = await Device.getId();
+            deviceId = deviceInfo.identifier;
+            if (deviceId === 'unknown' || deviceId === 'null' || deviceId === 'undefined') {
+              deviceId = null;
+            }
+          } catch (deviceError) {
+            console.warn('[Settings] ⚠️ Could not get deviceId:', deviceError);
+          }
+          
           // Backend'e gönder
           const response = await fetch('/api/auth/apple-native', {
             method: 'POST',
@@ -1629,6 +1670,7 @@ export default function SettingsPage() {
               identityToken,
               authorizationCode,
               email: user,
+              deviceId,
             }),
           });
 
