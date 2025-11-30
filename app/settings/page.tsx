@@ -2287,10 +2287,27 @@ export default function SettingsPage() {
                   
                   {/* 🔥 APPLE GUIDELINE 5.1.1: Guest Mode Button */}
                   <button
-                    onClick={() => {
-                      console.log('[Settings] Continue as Guest clicked - closing auth section');
-                      // Just close the auth section, user can continue using the app
-                      // No need to set any special state, app already works without login
+                    onClick={async () => {
+                      console.log('[Settings] Continue as Guest clicked');
+                      
+                      // Show confirmation message
+                      if (isCapacitor) {
+                        // Native: Use Capacitor Dialog
+                        await Dialog.alert({
+                          title: language === 'tr' ? 'Misafir Modu' : 'Guest Mode',
+                          message: language === 'tr' 
+                            ? 'Uygulamayı misafir olarak kullanmaya devam edebilirsiniz. Premium özellikler için satın alma yapabilirsiniz.'
+                            : 'You can continue using the app as a guest. You can purchase premium features anytime.',
+                        });
+                      } else {
+                        // Web: Use alert
+                        alert(language === 'tr' 
+                          ? 'Uygulamayı misafir olarak kullanmaya devam edebilirsiniz.'
+                          : 'You can continue using the app as a guest.');
+                      }
+                      
+                      // Redirect to home page
+                      router.push('/');
                     }}
                     disabled={loading}
                     className="w-full py-4 px-6 bg-gray-800/50 hover:bg-gray-700/50 disabled:bg-gray-900/50 disabled:cursor-not-allowed text-gray-300 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-gray-700/50 shadow-lg hover:shadow-xl active:scale-[0.98]"
