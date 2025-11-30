@@ -952,52 +952,53 @@ export default function Home() {
       setTimeout(fetchUserPlanImmediately, 500);
       setTimeout(fetchUserPlanImmediately, 1500);
     } else if (status === 'unauthenticated') {
-      // Fall back to legacy auth
-      const legacyUser = authService.getUser();
-      
-      // 🔥 APPLE GUIDELINE 5.1.1: Check for guest user in localStorage
-      if (!legacyUser && typeof window !== 'undefined') {
-        const guestUserStr = localStorage.getItem('guest_user');
-        if (guestUserStr) {
+      // 🔥 APPLE GUIDELINE 5.1.1: authService.checkAuth() now handles guest users automatically
+      // It checks localStorage first, then API for regular users
+      const checkAuthAndLoadPlan = async () => {
+        const user = await authService.checkAuth();
+        setUser(user);
+        
+        if (user) {
+          // Fetch user plan (works for both guest and regular users)
           try {
-            const guestUser = JSON.parse(guestUserStr);
-            console.log('[App] ✅ Guest user restored from localStorage:', guestUser);
-            setUser(guestUser);
-            
-            // Fetch guest user plan
-            const fetchGuestUserPlan = async () => {
-              try {
-                const url = `/api/user/plan?t=${Date.now()}&email=${encodeURIComponent(guestUser.email)}`;
-                const response = await fetch(url, {
-                  cache: 'no-store',
-                  headers: { 'Cache-Control': 'no-cache' },
-                });
-                if (response.ok) {
-                  const data = await response.json();
-                  console.log('[App] Guest user plan fetched:', data);
-                  setUserPlan({
-                    plan: data.plan || 'free',
-                    isTrial: data.isTrial || false,
-                    trialRemainingDays: data.trialDaysRemaining || 0,
-                    expiryDate: data.expiryDate || null,
-                    hasPremiumAccess: data.hasPremiumAccess || false,
-                  });
-                }
-              } catch (error) {
-                console.error('[App] Error fetching guest user plan:', error);
-              }
-            };
-            fetchGuestUserPlan();
-          } catch (e) {
-            console.error('[App] Failed to parse guest_user from localStorage:', e);
-            localStorage.removeItem('guest_user');
+            let url = `/api/user/plan?t=${Date.now()}`;
+            const isGuest = (user as any)?.provider === 'guest';
+            if (isGuest && user.email) {
+              url += `&email=${encodeURIComponent(user.email)}`;
+            }
+            const response = await fetch(url, {
+              cache: 'no-store',
+              headers: { 'Cache-Control': 'no-cache' },
+            });
+            if (response.ok) {
+              const data = await response.json();
+              console.log('[App] User plan fetched:', { email: user.email, plan: data.plan, hasPremiumAccess: data.hasPremiumAccess });
+              setUserPlan({
+                plan: data.plan || 'free',
+                isTrial: data.isTrial || false,
+                trialRemainingDays: data.trialDaysRemaining || 0,
+                expiryDate: data.expiryDate || null,
+                hasPremiumAccess: data.hasPremiumAccess || false,
+              });
+              // Also set fullUser for hasPremiumAccessValue calculation
+              setFullUser({
+                id: user.id || 0,
+                email: user.email || '',
+                name: user.name || undefined,
+                plan: data.plan || 'free',
+                expiry_date: data.expiryDate || null,
+                trial_started_at: data.trialStartedAt || null,
+                trial_ended_at: data.trialEndedAt || null,
+                subscription_started_at: data.subscriptionStartedAt || null,
+                subscription_platform: data.subscriptionPlatform || null,
+              });
+            }
+          } catch (error) {
+            console.error('[App] Error fetching user plan:', error);
           }
-        } else {
-          setUser(legacyUser);
         }
-      } else {
-        setUser(legacyUser);
-      }
+      };
+      checkAuthAndLoadPlan();
       
       // 🔥 REMOVED: No longer redirecting to login page in mobile app
       // Users can access the app without login, and login is available in Settings
