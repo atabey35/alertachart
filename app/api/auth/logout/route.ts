@@ -80,15 +80,24 @@ export async function POST(request: NextRequest) {
 
     // Clear each cookie by setting it to expire in the past
     // For httpOnly cookies (accessToken, refreshToken), we must use HttpOnly flag
+    // 🔥 CRITICAL: iOS WebView requires multiple cookie clearing attempts with different options
     cookiesToClear.forEach(cookieName => {
       const isHttpOnly = cookieName === 'accessToken' || cookieName === 'refreshToken';
       
-      // Clear with different SameSite and Secure combinations to ensure it works
-      // Include domain=.alertachart.com for subdomain cookie clearing
+      // Clear with different SameSite, Secure, Domain, and Path combinations to ensure it works on iOS
+      // iOS WebView is very strict about cookie clearing
       const cookieOptions = [
+        // With domain
         `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.alertachart.com; SameSite=Lax; Secure${isHttpOnly ? '; HttpOnly' : ''}`,
         `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.alertachart.com; SameSite=None; Secure${isHttpOnly ? '; HttpOnly' : ''}`,
         `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.alertachart.com; SameSite=Strict${isHttpOnly ? '; HttpOnly' : ''}`,
+        // Without domain (iOS WebView sometimes requires this)
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax; Secure${isHttpOnly ? '; HttpOnly' : ''}`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None; Secure${isHttpOnly ? '; HttpOnly' : ''}`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Strict${isHttpOnly ? '; HttpOnly' : ''}`,
+        // Without Secure (for non-HTTPS contexts)
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=Lax${isHttpOnly ? '; HttpOnly' : ''}`,
+        `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; SameSite=None${isHttpOnly ? '; HttpOnly' : ''}`,
       ];
       
       cookieOptions.forEach(option => {

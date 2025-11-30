@@ -1773,26 +1773,89 @@ export default function SettingsPage() {
     setIsLoggingOut(true);
 
     try {
+      console.log('[Settings] 🚪 Starting logout process...');
+      
       // 🔥 APPLE GUIDELINE 5.1.1: Clear guest user from localStorage
       if (typeof window !== 'undefined') {
         localStorage.removeItem('guest_user');
         localStorage.removeItem('user_email');
+        localStorage.removeItem('native_device_id');
+        localStorage.removeItem('device_id');
         console.log('[Settings] ✅ Guest user cleared from localStorage');
       }
       
+      // 🔥 CRITICAL: Clear NextAuth session first
       if (status === 'authenticated') {
-      await signOut({ redirect: false });
+        console.log('[Settings] Clearing NextAuth session...');
+        try {
+          await signOut({ redirect: false });
+          console.log('[Settings] ✅ NextAuth signOut successful');
+        } catch (signOutError: any) {
+          console.warn('[Settings] ⚠️ NextAuth signOut failed (non-critical):', signOutError);
+          // Continue anyway - backend logout will handle it
+        }
       }
 
-      await authService.logout();
+      // 🔥 CRITICAL: Call backend logout API
+      console.log('[Settings] Calling backend logout API...');
+      try {
+        await authService.logout();
+        console.log('[Settings] ✅ Backend logout successful');
+      } catch (logoutError: any) {
+        console.error('[Settings] ❌ Backend logout failed:', logoutError);
+        // Continue anyway - try to clear cookies manually
+      }
 
-      // Web'de redirect yap, native app'te authService.logout() zaten redirect yapacak
-      if (!isCapacitor) {
+      // 🔥 CRITICAL: iOS WebView cookie clearing - manual cookie deletion
+      if (isCapacitor && typeof window !== 'undefined') {
+        console.log('[Settings] 🔄 iOS: Clearing cookies manually...');
+        try {
+          const Capacitor = (window as any).Capacitor;
+          
+          // Clear Preferences (iOS/Android)
+          if (Capacitor?.Plugins?.Preferences) {
+            await Capacitor.Plugins.Preferences.remove({ key: 'accessToken' });
+            await Capacitor.Plugins.Preferences.remove({ key: 'refreshToken' });
+            console.log('[Settings] ✅ Preferences cleared');
+          }
+          
+          // Clear all cookies via document.cookie (non-httpOnly cookies)
+          const cookiesToClear = [
+            'next-auth.session-token',
+            'next-auth.csrf-token',
+            'next-auth.callback-url',
+            'accessToken',
+            'refreshToken',
+          ];
+          
+          cookiesToClear.forEach(cookieName => {
+            // Try different domain/path combinations
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.alertachart.com;`;
+            document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=alertachart.com;`;
+          });
+          
+          console.log('[Settings] ✅ Cookies cleared manually');
+        } catch (cookieError) {
+          console.error('[Settings] ⚠️ Failed to clear cookies manually:', cookieError);
+        }
+      }
+
+      // 🔥 CRITICAL: Force page reload to ensure all state is cleared
+      console.log('[Settings] 🔄 Force reloading page...');
+      if (isCapacitor) {
+        // Native app: redirect to index.html (authService.logout() should handle this, but force it)
+        window.location.replace('/index.html');
+      } else {
+        // Web: redirect to home
         router.replace('/');
         router.refresh();
+        // Force reload after a short delay to ensure cookies are cleared
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 100);
       }
-      // Native app'te: authService.logout() içinde redirect var, 
-      // isLoggingOut'u false yapma - redirect olacak ve sayfa reload olacak
+      
     } catch (err: any) {
       const fallbackMessage = language === 'tr'
         ? 'Çıkış yapılamadı. Lütfen tekrar deneyin.'
@@ -1800,17 +1863,23 @@ export default function SettingsPage() {
       const message = err?.message || fallbackMessage;
       setLogoutError(message);
       console.error('[Settings] Logout failed:', err);
-      // Only reset on error if we're not redirecting
-      if (!isCapacitor) {
-        setIsLoggingOut(false);
-        logoutProcessingRef.current = false;
+      
+      // Even on error, try to force reload
+      if (isCapacitor) {
+        window.location.replace('/index.html');
+      } else {
+        setTimeout(() => {
+          window.location.href = '/';
+        }, 500);
       }
     } finally {
-      // Only reset if we're on web (not native app)
-      // Native app'te redirect olacak, sayfa reload olacak, state zaten reset olacak
+      // Don't reset state - page will reload
+      // Only reset if we're on web and reload didn't happen
       if (!isCapacitor) {
-        setIsLoggingOut(false);
-        logoutProcessingRef.current = false;
+        setTimeout(() => {
+          setIsLoggingOut(false);
+          logoutProcessingRef.current = false;
+        }, 2000);
       }
     }
   }, [isLoggingOut, status, isCapacitor, router, language]);

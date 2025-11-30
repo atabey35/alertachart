@@ -61,16 +61,16 @@ export async function POST(request: NextRequest) {
       console.log('[Verify Purchase] ✅ Authenticated user:', session.user.email);
       userEmail = session.user.email;
       
-      const users = await sql`
+    const users = await sql`
         SELECT id, email, plan, subscription_id, device_id
-        FROM users 
+      FROM users 
         WHERE email = ${userEmail}
-        LIMIT 1
-      `;
+      LIMIT 1
+    `;
 
-      if (users.length === 0) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
-      }
+    if (users.length === 0) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
 
       user = users[0];
     } else if (deviceId) {
@@ -294,14 +294,14 @@ async function verifyAppleReceipt(
     let productionResponse;
     try {
       productionResponse = await fetch('https://buy.itunes.apple.com/verifyReceipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          'receipt-data': receipt,
-          'password': appleSharedSecret,
-          'exclude-old-transactions': true,
-        }),
-      });
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        'receipt-data': receipt,
+        'password': appleSharedSecret,
+        'exclude-old-transactions': true,
+      }),
+    });
     } catch (fetchError: any) {
       console.error('[Verify Purchase] ❌ Production URL fetch failed:', fetchError.message);
       return { valid: false, error: `Network error: ${fetchError.message}` };
@@ -343,11 +343,11 @@ async function verifyAppleReceipt(
           (tx: any) => tx.product_id === productId
         );
         if (transactions.length > 0 && productionResult.latest_receipt_info) {
-          const latestInfo = productionResult.latest_receipt_info.find(
-            (info: any) => info.product_id === productId
-          );
-          if (latestInfo?.expires_date_ms) {
-            expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
+            const latestInfo = productionResult.latest_receipt_info.find(
+              (info: any) => info.product_id === productId
+            );
+            if (latestInfo?.expires_date_ms) {
+              expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
           }
         }
       }
@@ -369,14 +369,14 @@ async function verifyAppleReceipt(
       let sandboxResponse;
       try {
         sandboxResponse = await fetch('https://sandbox.itunes.apple.com/verifyReceipt', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            'receipt-data': receipt,
-            'password': appleSharedSecret,
-            'exclude-old-transactions': true,
-          }),
-        });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          'receipt-data': receipt,
+          'password': appleSharedSecret,
+          'exclude-old-transactions': true,
+        }),
+      });
       } catch (fetchError: any) {
         console.error('[Verify Purchase] ❌ Sandbox URL fetch failed:', fetchError.message);
         return { valid: false, error: `Sandbox network error: ${fetchError.message}` };
@@ -458,17 +458,17 @@ async function verifyAppleReceipt(
  * Get error message for production verification status codes
  */
 function getProductionErrorMessage(status: number): string {
-  const errorMessages: { [key: number]: string } = {
-    21000: 'The App Store could not read the JSON object you provided',
-    21002: 'The receipt data property was malformed or missing',
-    21003: 'The receipt could not be authenticated',
-    21004: 'The shared secret you provided does not match the shared secret on file',
-    21005: 'The receipt server is not currently available',
-    21006: 'This receipt is valid but the subscription has expired',
+    const errorMessages: { [key: number]: string } = {
+      21000: 'The App Store could not read the JSON object you provided',
+      21002: 'The receipt data property was malformed or missing',
+      21003: 'The receipt could not be authenticated',
+      21004: 'The shared secret you provided does not match the shared secret on file',
+      21005: 'The receipt server is not currently available',
+      21006: 'This receipt is valid but the subscription has expired',
     21007: 'This receipt is from the test environment (should retry with sandbox)',
     21008: 'This receipt is from the production environment (should retry with production)',
-    21010: 'This receipt could not be authorized',
-  };
+      21010: 'This receipt could not be authorized',
+    };
 
   return errorMessages[status] || `Unknown Apple status code: ${status}`;
 }
