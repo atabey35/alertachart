@@ -327,15 +327,22 @@ class AuthService {
       localStorage.removeItem('fcm_token');
       console.log('[AuthService] ✅ LocalStorage cleared');
       
-        // 🔥 CRITICAL: Clear tokens from Capacitor Preferences (Android)
-        // Android stores tokens in Preferences instead of cookies
+        // 🔥 CRITICAL: Clear tokens from Capacitor Preferences (iOS/Android)
+        // iOS and Android may store tokens in Preferences instead of cookies
       const Capacitor = (window as any).Capacitor;
       if (Capacitor?.Plugins?.Preferences) {
         try {
             // Clear both accessToken and refreshToken
             await Capacitor.Plugins.Preferences.remove({ key: 'accessToken' });
             await Capacitor.Plugins.Preferences.remove({ key: 'refreshToken' });
-            console.log('[AuthService] ✅ Tokens removed from Preferences (Android)');
+            // Also try to clear all preferences (iOS sometimes caches)
+            try {
+              await Capacitor.Plugins.Preferences.clear();
+              console.log('[AuthService] ✅ All Preferences cleared');
+            } catch (clearError) {
+              // Ignore if clear() fails, individual removes should work
+            }
+            console.log('[AuthService] ✅ Tokens removed from Preferences (iOS/Android)');
         } catch (e) {
             console.error('[AuthService] Failed to remove tokens from Preferences:', e);
         }
