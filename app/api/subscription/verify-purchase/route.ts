@@ -22,9 +22,13 @@ export async function POST(request: NextRequest) {
 
     console.log('[Verify Purchase] 📥 Request received:', {
       hasSession: !!session?.user?.email,
+      sessionEmail: session?.user?.email,
       platform,
       productId,
       hasDeviceId: !!deviceId,
+      deviceId: deviceId, // 🔥 CRITICAL: Log actual deviceId value
+      deviceIdType: typeof deviceId,
+      deviceIdLength: deviceId?.length,
     });
 
     // Validation
@@ -71,7 +75,12 @@ export async function POST(request: NextRequest) {
       user = users[0];
     } else if (deviceId) {
       // Case 2: Guest user (no session, but deviceId provided)
-      console.log('[Verify Purchase] 🔓 Guest user with deviceId:', deviceId);
+      console.log('[Verify Purchase] 🔓 Guest user with deviceId:', {
+        deviceId,
+        deviceIdType: typeof deviceId,
+        deviceIdLength: deviceId?.length,
+        deviceIdTrimmed: deviceId?.trim(),
+      });
       
       // Check if a user exists with this deviceId
       const guestUsers = await sql`
@@ -81,11 +90,23 @@ export async function POST(request: NextRequest) {
         LIMIT 1
       `;
 
+      console.log('[Verify Purchase] 🔍 Guest user search result:', {
+        deviceId,
+        foundUsers: guestUsers.length,
+        userEmail: guestUsers[0]?.email,
+        userId: guestUsers[0]?.id,
+      });
+
       if (guestUsers.length > 0) {
         // Guest user already exists
         user = guestUsers[0];
         userEmail = user.email;
-        console.log('[Verify Purchase] ✅ Existing guest user found:', userEmail);
+        console.log('[Verify Purchase] ✅ Existing guest user found:', {
+          id: user.id,
+          email: userEmail,
+          plan: user.plan,
+          deviceId: user.device_id,
+        });
       } else {
         // Create new guest user
         const guestEmail = `guest_${deviceId}@alertachart.local`;
