@@ -2284,6 +2284,23 @@ export default function SettingsPage() {
                       <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
                     )}
                   </button>
+                  
+                  {/* 🔥 APPLE GUIDELINE 5.1.1: Guest Mode Button */}
+                  <button
+                    onClick={() => {
+                      console.log('[Settings] Continue as Guest clicked - closing auth section');
+                      // Just close the auth section, user can continue using the app
+                      // No need to set any special state, app already works without login
+                    }}
+                    disabled={loading}
+                    className="w-full py-4 px-6 bg-gray-800/50 hover:bg-gray-700/50 disabled:bg-gray-900/50 disabled:cursor-not-allowed text-gray-300 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-gray-700/50 shadow-lg hover:shadow-xl active:scale-[0.98]"
+                  >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    <span>{language === 'tr' ? 'Misafir Olarak Devam Et' : 'Continue as Guest'}</span>
+                  </button>
                 </div>
               </div>
               )}
