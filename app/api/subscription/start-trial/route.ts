@@ -7,18 +7,15 @@ import { authOptions } from '@/lib/authOptions';
  * POST /api/subscription/start-trial
  * Start 3-day trial for user (after payment)
  * Includes fraud prevention: Device ID + Email + IP checks
+ * 🔥 APPLE GUIDELINE 5.1.1: Supports guest users (deviceId) OR authenticated users (session)
  */
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    
     const body = await request.json();
     const { deviceId, platform, subscriptionId, productId } = body;
     
+    // 🔥 APPLE GUIDELINE 5.1.1: Support guest users (deviceId) OR authenticated users (session)
     if (!deviceId) {
       return NextResponse.json(
         { error: 'Device ID required' },
@@ -35,19 +32,85 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Get user from database
+    // Get user from database - support both session and deviceId
     const sql = getSql();
-    const users = await sql`
-      SELECT id, email, plan FROM users 
-      WHERE email = ${session.user.email}
-      LIMIT 1
-    `;
+    let user: any;
+    let userEmail: string;
     
-    if (users.length === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (session?.user?.email) {
+      // Case 1: Authenticated user
+      userEmail = session.user.email;
+      const users = await sql`
+        SELECT id, email, plan FROM users 
+        WHERE email = ${userEmail}
+        LIMIT 1
+      `;
+      
+      if (users.length === 0) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+      user = users[0];
+      console.log('[Start Trial] ✅ Authenticated user:', userEmail);
+    } else if (deviceId) {
+      // Case 2: Guest user (no session, but deviceId provided)
+      console.log('[Start Trial] 🔓 Guest user with deviceId:', deviceId);
+      
+      // Check if a user exists with this deviceId
+      const guestUsers = await sql`
+        SELECT id, email, plan FROM users 
+        WHERE device_id = ${deviceId} AND provider = 'guest'
+        LIMIT 1
+      `;
+      
+      if (guestUsers.length > 0) {
+        user = guestUsers[0];
+        userEmail = user.email;
+        console.log('[Start Trial] ✅ Guest user found:', userEmail);
+      } else {
+        // Create new guest user
+        const guestEmail = `guest_${deviceId}@alertachart.local`;
+        console.log('[Start Trial] 🆕 Creating new guest user:', guestEmail);
+        
+        try {
+          const newUsers = await sql`
+            INSERT INTO users (email, name, provider, plan, device_id, created_at)
+            VALUES (${guestEmail}, 'Guest User', 'guest', 'free', ${deviceId}, NOW())
+            RETURNING id, email, plan
+          `;
+          
+          if (newUsers.length === 0) {
+            throw new Error('INSERT returned no rows');
+          }
+          
+          user = newUsers[0];
+          userEmail = guestEmail;
+          console.log('[Start Trial] ✅ Guest user created:', userEmail);
+        } catch (insertError: any) {
+          // Race condition: retry SELECT
+          console.warn('[Start Trial] ⚠️ Guest user creation failed, retrying...');
+          const retryUsers = await sql`
+            SELECT id, email, plan FROM users 
+            WHERE device_id = ${deviceId} AND provider = 'guest'
+            LIMIT 1
+          `;
+          
+          if (retryUsers.length > 0) {
+            user = retryUsers[0];
+            userEmail = user.email;
+            console.log('[Start Trial] ✅ Guest user found after retry:', userEmail);
+          } else {
+            return NextResponse.json({ 
+              error: 'Failed to create guest user: ' + insertError.message 
+            }, { status: 500 });
+          }
+        }
+      }
+    } else {
+      // Case 3: No session and no deviceId -> Reject
+      return NextResponse.json({ 
+        error: 'Unauthorized. Please provide session or deviceId.' 
+      }, { status: 401 });
     }
-    
-    const user = users[0];
     
     // Check 1: Device ID kontrolü (BİRİNCİL - Fraud Prevention)
     const existingDeviceTrial = await sql`
@@ -200,4 +263,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-
