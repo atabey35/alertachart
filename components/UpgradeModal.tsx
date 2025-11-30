@@ -364,7 +364,12 @@ export default function UpgradeModal({
       if (result.success && result.transactionId && result.receipt && result.productId) {
         console.log('[UpgradeModal][DEBUG] Purchase OK! Proceeding to verify...');
         console.log('[UpgradeModal][DEBUG] Current deviceId state:', deviceId);
-        console.log('[UpgradeModal][DEBUG] deviceId || undefined:', deviceId || undefined);
+        console.log('[UpgradeModal][DEBUG] deviceId validation:', { deviceId, isEmpty: !deviceId || deviceId === '', willSend: deviceId && deviceId !== '' });
+        
+        // 🔥 CRITICAL: Ensure deviceId is not empty string
+        const validDeviceId = (deviceId && deviceId !== '' && deviceId !== 'unknown') ? deviceId : undefined;
+        console.log('[UpgradeModal][DEBUG] Valid deviceId to send:', validDeviceId);
+        
         try {
           const verifyResponse = await fetch('/api/subscription/verify-purchase', {
             method: 'POST',
@@ -374,7 +379,7 @@ export default function UpgradeModal({
               productId: result.productId, 
               transactionId: result.transactionId, 
               receipt: result.receipt,
-              deviceId: deviceId || undefined, // 🔥 APPLE GUIDELINE 5.1.1: Send deviceId for guest purchases
+              deviceId: validDeviceId, // 🔥 APPLE GUIDELINE 5.1.1: Send deviceId for guest purchases
             }),
           });
           const verifyData = await verifyResponse.json();
@@ -444,6 +449,9 @@ export default function UpgradeModal({
         try {
           console.log('[UpgradeModal] Verifying restored purchase:', purchase);
           
+          // 🔥 CRITICAL: Ensure deviceId is not empty string
+          const validDeviceId = (deviceId && deviceId !== '' && deviceId !== 'unknown') ? deviceId : undefined;
+          
           const verifyResponse = await fetch('/api/subscription/verify-purchase', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -453,7 +461,7 @@ export default function UpgradeModal({
               transactionId: purchase.transactionId || purchase.orderId,
               receipt: purchase.receipt,
               isRestore: true, // Flag to indicate this is a restore operation
-              deviceId: deviceId || undefined, // 🔥 APPLE GUIDELINE 5.1.1: Send deviceId for guest purchases
+              deviceId: validDeviceId, // 🔥 APPLE GUIDELINE 5.1.1: Send deviceId for guest purchases
             }),
           });
           
