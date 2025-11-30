@@ -567,6 +567,21 @@ export default function SettingsPage() {
         name: currentUser.name || undefined,
       });
     } else {
+      // 🔥 APPLE GUIDELINE 5.1.1: Check for guest user in localStorage
+      if (typeof window !== 'undefined') {
+        const guestUserStr = localStorage.getItem('guest_user');
+        if (guestUserStr) {
+          try {
+            const guestUser = JSON.parse(guestUserStr);
+            console.log('[Settings] ✅ Guest user restored from localStorage:', guestUser);
+            setUser(guestUser);
+            return;
+          } catch (e) {
+            console.error('[Settings] Failed to parse guest_user from localStorage:', e);
+            localStorage.removeItem('guest_user');
+          }
+        }
+      }
       setUser(null);
     }
   }, [session]);
@@ -1705,6 +1720,13 @@ export default function SettingsPage() {
     setIsLoggingOut(true);
 
     try {
+      // 🔥 APPLE GUIDELINE 5.1.1: Clear guest user from localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('guest_user');
+        localStorage.removeItem('user_email');
+        console.log('[Settings] ✅ Guest user cleared from localStorage');
+      }
+      
       if (status === 'authenticated') {
       await signOut({ redirect: false });
       }
@@ -2324,11 +2346,20 @@ export default function SettingsPage() {
                         
                         // Set user state
                         if (data.user) {
-                          setUser({
+                          const guestUser = {
                             id: data.user.id,
                             email: data.user.email,
                             name: data.user.name || 'Guest User',
-                          });
+                          };
+                          
+                          setUser(guestUser);
+                          
+                          // 🔥 CRITICAL: Save guest user to localStorage for persistence
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('guest_user', JSON.stringify(guestUser));
+                            localStorage.setItem('user_email', data.user.email);
+                            console.log('[Settings] ✅ Guest user saved to localStorage');
+                          }
                           
                           // Set user plan
                           setUserPlan({
