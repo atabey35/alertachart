@@ -367,7 +367,13 @@ export default function UpgradeModal({
           const verifyResponse = await fetch('/api/subscription/verify-purchase', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ platform, productId: result.productId, transactionId: result.transactionId, receipt: result.receipt }),
+            body: JSON.stringify({ 
+              platform, 
+              productId: result.productId, 
+              transactionId: result.transactionId, 
+              receipt: result.receipt,
+              deviceId: deviceId || undefined, // 🔥 APPLE GUIDELINE 5.1.1: Send deviceId for guest purchases
+            }),
           });
           const verifyData = await verifyResponse.json();
           console.log('[UpgradeModal][DEBUG] verify-purchase POST response:', verifyData);
@@ -445,6 +451,7 @@ export default function UpgradeModal({
               transactionId: purchase.transactionId || purchase.orderId,
               receipt: purchase.receipt,
               isRestore: true, // Flag to indicate this is a restore operation
+              deviceId: deviceId || undefined, // 🔥 APPLE GUIDELINE 5.1.1: Send deviceId for guest purchases
             }),
           });
           

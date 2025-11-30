@@ -17,13 +17,15 @@ import { authOptions } from '@/lib/authOptions';
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
     const body = await request.json();
-    const { platform, productId, transactionId, receipt } = body;
+    const { platform, productId, transactionId, receipt, deviceId } = body;
+
+    console.log('[Verify Purchase] 📥 Request received:', {
+      hasSession: !!session?.user?.email,
+      platform,
+      productId,
+      hasDeviceId: !!deviceId,
+    });
 
     // Validation
     if (!platform || !productId || !transactionId || !receipt) {
@@ -40,20 +42,83 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user from database
+    // 🔥 APPLE GUIDELINE 5.1.1: Allow purchases WITHOUT login (Guest Mode)
+    // User identification logic:
+    // 1. If session exists -> Use session.user.email
+    // 2. If NO session but deviceId provided -> Create/Find guest user by deviceId
+    // 3. If neither session nor deviceId -> Reject
+    
     const sql = getSql();
-    const users = await sql`
-      SELECT id, email, plan, subscription_id
-      FROM users 
-      WHERE email = ${session.user.email}
-      LIMIT 1
-    `;
+    let user: any;
+    let userEmail: string;
 
-    if (users.length === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (session?.user?.email) {
+      // Case 1: Authenticated user
+      console.log('[Verify Purchase] ✅ Authenticated user:', session.user.email);
+      userEmail = session.user.email;
+      
+      const users = await sql`
+        SELECT id, email, plan, subscription_id, device_id
+        FROM users 
+        WHERE email = ${userEmail}
+        LIMIT 1
+      `;
+
+      if (users.length === 0) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      user = users[0];
+    } else if (deviceId) {
+      // Case 2: Guest user (no session, but deviceId provided)
+      console.log('[Verify Purchase] 🔓 Guest user with deviceId:', deviceId);
+      
+      // Check if a user exists with this deviceId
+      const guestUsers = await sql`
+        SELECT id, email, plan, subscription_id, device_id
+        FROM users 
+        WHERE device_id = ${deviceId}
+        LIMIT 1
+      `;
+
+      if (guestUsers.length > 0) {
+        // Guest user already exists
+        user = guestUsers[0];
+        userEmail = user.email;
+        console.log('[Verify Purchase] ✅ Existing guest user found:', userEmail);
+      } else {
+        // Create new guest user
+        const guestEmail = `guest_${deviceId}@alertachart.local`;
+        console.log('[Verify Purchase] 🆕 Creating new guest user:', guestEmail);
+        
+        const newUsers = await sql`
+          INSERT INTO users (email, name, provider, plan, device_id, created_at)
+          VALUES (
+            ${guestEmail},
+            'Guest User',
+            'guest',
+            'free',
+            ${deviceId},
+            NOW()
+          )
+          RETURNING id, email, plan, subscription_id, device_id
+        `;
+
+        if (newUsers.length === 0) {
+          return NextResponse.json({ error: 'Failed to create guest user' }, { status: 500 });
+        }
+
+        user = newUsers[0];
+        userEmail = guestEmail;
+        console.log('[Verify Purchase] ✅ Guest user created successfully:', userEmail);
+      }
+    } else {
+      // Case 3: No session and no deviceId -> Reject
+      console.error('[Verify Purchase] ❌ No session and no deviceId provided');
+      return NextResponse.json({ 
+        error: 'Authentication required. Please provide session or deviceId.' 
+      }, { status: 401 });
     }
-
-    const user = users[0];
 
     // Verify receipt with Apple/Google
     const verificationResult = await verifyReceipt(platform, receipt, productId);

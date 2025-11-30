@@ -486,6 +486,19 @@ export default function IOSLogin() {
             )}
           </button>
           
+          {/* 🔥 APPLE GUIDELINE 5.1.1: Guest Mode Button */}
+          <button
+            onClick={() => router.push('/')}
+            disabled={loading}
+            className="w-full py-4 px-6 bg-gray-800/50 hover:bg-gray-700/50 disabled:bg-gray-900/50 disabled:cursor-not-allowed text-gray-300 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-gray-700/50 shadow-lg hover:shadow-xl active:scale-[0.98]"
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+            <span>Continue as Guest / Misafir Olarak Devam</span>
+          </button>
+          
         </div>
       </div>
     </div>
