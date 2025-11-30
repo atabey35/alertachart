@@ -316,6 +316,48 @@ export default function UpgradeModal({
       console.warn('[UpgradeModal][DEBUG] loading was TRUE, click ignored');
       return;
     }
+    
+    // 🔥 CRITICAL: Ensure deviceId is loaded before purchase
+    let currentDeviceId = deviceId;
+    if (!currentDeviceId || currentDeviceId === '' || currentDeviceId === 'unknown') {
+      console.log('[UpgradeModal][DEBUG] deviceId not loaded, attempting to get it now...');
+      try {
+        if ((window as any).Capacitor) {
+          const Device = (window as any).Capacitor.Plugins.Device;
+          if (Device) {
+            const deviceInfo = await Device.getId();
+            if (deviceInfo?.identifier) {
+              currentDeviceId = deviceInfo.identifier;
+              setDeviceId(currentDeviceId);
+              console.log('[UpgradeModal][DEBUG] ✅ Got deviceId from Capacitor:', currentDeviceId);
+            }
+          }
+        }
+        
+        // Fallback to localStorage
+        if (!currentDeviceId || currentDeviceId === 'unknown') {
+          const storedId = localStorage.getItem('native_device_id') || localStorage.getItem('device_id');
+          if (storedId && storedId !== 'unknown') {
+            currentDeviceId = storedId;
+            setDeviceId(currentDeviceId);
+            console.log('[UpgradeModal][DEBUG] ✅ Got deviceId from localStorage:', currentDeviceId);
+          }
+        }
+        
+        // Final fallback: generate one
+        if (!currentDeviceId || currentDeviceId === 'unknown') {
+          const detectedPlatform = (window as any).Capacitor?.getPlatform() || 'web';
+          const platformPrefix = detectedPlatform === 'ios' ? 'ios' : detectedPlatform === 'android' ? 'android' : 'web';
+          currentDeviceId = `${platformPrefix}-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
+          setDeviceId(currentDeviceId);
+          localStorage.setItem('native_device_id', currentDeviceId);
+          console.log('[UpgradeModal][DEBUG] ✅ Generated fallback deviceId:', currentDeviceId);
+        }
+      } catch (deviceError) {
+        console.error('[UpgradeModal][DEBUG] ❌ Failed to get deviceId:', deviceError);
+        // Continue anyway - backend will handle it
+      }
+    }
     if (!iapAvailable || !iapInitialized) {
       console.error('[UpgradeModal][DEBUG] IAP not available/initialized', { iapAvailable, iapInitialized });
       setError('Satın alma özelliği şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
@@ -363,11 +405,11 @@ export default function UpgradeModal({
       console.log('[UpgradeModal][DEBUG] purchaseProduct returned:', result);
       if (result.success && result.transactionId && result.receipt && result.productId) {
         console.log('[UpgradeModal][DEBUG] Purchase OK! Proceeding to verify...');
-        console.log('[UpgradeModal][DEBUG] Current deviceId state:', deviceId);
-        console.log('[UpgradeModal][DEBUG] deviceId validation:', { deviceId, isEmpty: !deviceId || deviceId === '', willSend: deviceId && deviceId !== '' });
+        console.log('[UpgradeModal][DEBUG] Current deviceId state:', currentDeviceId);
+        console.log('[UpgradeModal][DEBUG] deviceId validation:', { deviceId: currentDeviceId, isEmpty: !currentDeviceId || currentDeviceId === '', willSend: currentDeviceId && currentDeviceId !== '' });
         
         // 🔥 CRITICAL: Ensure deviceId is not empty string
-        const validDeviceId = (deviceId && deviceId !== '' && deviceId !== 'unknown') ? deviceId : undefined;
+        const validDeviceId = (currentDeviceId && currentDeviceId !== '' && currentDeviceId !== 'unknown') ? currentDeviceId : undefined;
         console.log('[UpgradeModal][DEBUG] Valid deviceId to send:', validDeviceId);
         
         try {
@@ -422,6 +464,37 @@ export default function UpgradeModal({
     setLoading(true);
     setError('');
     
+    // 🔥 CRITICAL: Ensure deviceId is loaded before restore
+    let currentDeviceId = deviceId;
+    if (!currentDeviceId || currentDeviceId === '' || currentDeviceId === 'unknown') {
+      console.log('[UpgradeModal][DEBUG] deviceId not loaded for restore, attempting to get it now...');
+      try {
+        if ((window as any).Capacitor) {
+          const Device = (window as any).Capacitor.Plugins.Device;
+          if (Device) {
+            const deviceInfo = await Device.getId();
+            if (deviceInfo?.identifier) {
+              currentDeviceId = deviceInfo.identifier;
+              setDeviceId(currentDeviceId);
+              console.log('[UpgradeModal][DEBUG] ✅ Got deviceId from Capacitor for restore:', currentDeviceId);
+            }
+          }
+        }
+        
+        // Fallback to localStorage
+        if (!currentDeviceId || currentDeviceId === 'unknown') {
+          const storedId = localStorage.getItem('native_device_id') || localStorage.getItem('device_id');
+          if (storedId && storedId !== 'unknown') {
+            currentDeviceId = storedId;
+            setDeviceId(currentDeviceId);
+            console.log('[UpgradeModal][DEBUG] ✅ Got deviceId from localStorage for restore:', currentDeviceId);
+          }
+        }
+      } catch (deviceError) {
+        console.error('[UpgradeModal][DEBUG] ❌ Failed to get deviceId for restore:', deviceError);
+      }
+    }
+    
     try {
       console.log('[UpgradeModal] Calling restorePurchases...');
       const result = await restorePurchases();
@@ -450,7 +523,7 @@ export default function UpgradeModal({
           console.log('[UpgradeModal] Verifying restored purchase:', purchase);
           
           // 🔥 CRITICAL: Ensure deviceId is not empty string
-          const validDeviceId = (deviceId && deviceId !== '' && deviceId !== 'unknown') ? deviceId : undefined;
+          const validDeviceId = (currentDeviceId && currentDeviceId !== '' && currentDeviceId !== 'unknown') ? currentDeviceId : undefined;
           
           const verifyResponse = await fetch('/api/subscription/verify-purchase', {
             method: 'POST',
