@@ -91,26 +91,68 @@ export async function POST(request: NextRequest) {
         const guestEmail = `guest_${deviceId}@alertachart.local`;
         console.log('[Verify Purchase] 🆕 Creating new guest user:', guestEmail);
         
-        const newUsers = await sql`
-          INSERT INTO users (email, name, provider, plan, device_id, created_at)
-          VALUES (
-            ${guestEmail},
-            'Guest User',
-            'guest',
-            'free',
-            ${deviceId},
-            NOW()
-          )
-          RETURNING id, email, plan, subscription_id, device_id
-        `;
+        try {
+          // Try to insert new guest user
+          const newUsers = await sql`
+            INSERT INTO users (email, name, provider, plan, device_id, created_at)
+            VALUES (
+              ${guestEmail},
+              'Guest User',
+              'guest',
+              'free',
+              ${deviceId},
+              NOW()
+            )
+            RETURNING id, email, plan, subscription_id, device_id
+          `;
 
-        if (newUsers.length === 0) {
-          return NextResponse.json({ error: 'Failed to create guest user' }, { status: 500 });
+          if (newUsers.length === 0) {
+            throw new Error('INSERT returned no rows');
+          }
+
+          user = newUsers[0];
+          userEmail = guestEmail;
+          console.log('[Verify Purchase] ✅ Guest user created successfully:', userEmail);
+        } catch (insertError: any) {
+          // Race condition: Another request created the user between SELECT and INSERT
+          // Or unique constraint violation on email
+          console.warn('[Verify Purchase] ⚠️ Guest user creation failed (likely race condition):', insertError.message);
+          console.log('[Verify Purchase] 🔄 Retrying SELECT to find existing user...');
+          
+          // Try to find user by email (in case INSERT failed due to unique constraint)
+          const retryByEmail = await sql`
+            SELECT id, email, plan, subscription_id, device_id
+            FROM users 
+            WHERE email = ${guestEmail}
+            LIMIT 1
+          `;
+          
+          if (retryByEmail.length > 0) {
+            user = retryByEmail[0];
+            userEmail = user.email;
+            console.log('[Verify Purchase] ✅ Found existing guest user by email after INSERT failure:', userEmail);
+          } else {
+            // Also try by device_id again (in case another request used different email format)
+            const retryByDeviceId = await sql`
+              SELECT id, email, plan, subscription_id, device_id
+              FROM users 
+              WHERE device_id = ${deviceId}
+              LIMIT 1
+            `;
+            
+            if (retryByDeviceId.length > 0) {
+              user = retryByDeviceId[0];
+              userEmail = user.email;
+              console.log('[Verify Purchase] ✅ Found existing guest user by deviceId after INSERT failure:', userEmail);
+            } else {
+              // Still not found - this is a real error
+              console.error('[Verify Purchase] ❌ Failed to create or find guest user after retry');
+              return NextResponse.json({ 
+                error: 'Failed to create guest user: ' + insertError.message 
+              }, { status: 500 });
+            }
+          }
         }
-
-        user = newUsers[0];
-        userEmail = guestEmail;
-        console.log('[Verify Purchase] ✅ Guest user created successfully:', userEmail);
       }
     } else {
       // Case 3: No session and no deviceId -> Reject
