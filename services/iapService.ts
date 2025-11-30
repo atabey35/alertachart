@@ -224,17 +224,24 @@ export async function purchaseProduct(productId: string): Promise<{
       console.error('[IAP Service][DEBUG] Plugin not found');
       return { success: false, error: 'IAP plugin not available' };
     }
-    // Check product exists
+    // 🔥 APPLE GUIDELINE 2.1: Blind Purchase Support
+    // Check product exists, but don't block purchase if products array is empty
+    // This allows purchase during App Store Review when products are not yet approved
     const products = await getProducts();
     console.log('[IAP Service][DEBUG] products loaded:', products);
-    const productExists = products.some((p: any) => p.productId === productId);
-    if (!productExists && products.length > 0) {
-      console.error('[IAP Service][DEBUG] Product not found in products', { productId, products });
-      return { success: false, error: `Product ${productId} not found. Available: ${products.map((p: any) => p.productId).join(', ')}` };
-    }
-    if (products.length === 0) {
-      console.error('[IAP Service][DEBUG] No products available!');
-      return { success: false, error: 'No products available. Check Play Console settings.' };
+    
+    if (products.length > 0) {
+      // If products are loaded, verify product exists
+      const productExists = products.some((p: any) => p.productId === productId);
+      if (!productExists) {
+        console.error('[IAP Service][DEBUG] Product not found in products', { productId, products });
+        return { success: false, error: `Product ${productId} not found. Available: ${products.map((p: any) => p.productId).join(', ')}` };
+      }
+    } else {
+      // Products array is empty (common during App Store Review)
+      // Allow blind purchase - Apple's native sheet will handle the transaction
+      console.log('[IAP Service][DEBUG] Products array empty - attempting blind purchase with productId:', productId);
+      console.log('[IAP Service][DEBUG] This is normal during App Store Review when products are not yet approved');
     }
     console.log('[IAP Service][DEBUG] STARTING plugin.purchase',{ productId });
     const result = await plugin.purchase({ productId });
