@@ -228,18 +228,40 @@ async function verifyAppleReceipt(
     console.log('[Verify Purchase] 🔄 Step 1: Trying PRODUCTION URL...');
 
     // Step 1: ALWAYS try Production URL first
-    const productionResponse = await fetch('https://buy.itunes.apple.com/verifyReceipt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        'receipt-data': receipt,
-        'password': appleSharedSecret,
-        'exclude-old-transactions': true,
-      }),
-    });
+    let productionResponse;
+    try {
+      productionResponse = await fetch('https://buy.itunes.apple.com/verifyReceipt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          'receipt-data': receipt,
+          'password': appleSharedSecret,
+          'exclude-old-transactions': true,
+        }),
+      });
+    } catch (fetchError: any) {
+      console.error('[Verify Purchase] ❌ Production URL fetch failed:', fetchError.message);
+      return { valid: false, error: `Network error: ${fetchError.message}` };
+    }
 
-    const productionResult = await productionResponse.json();
-    console.log('[Verify Purchase] Production result status:', productionResult.status);
+    if (!productionResponse.ok) {
+      console.error('[Verify Purchase] ❌ Production URL HTTP error:', productionResponse.status, productionResponse.statusText);
+      return { valid: false, error: `Apple server error: ${productionResponse.status} ${productionResponse.statusText}` };
+    }
+
+    let productionResult;
+    try {
+      productionResult = await productionResponse.json();
+    } catch (parseError: any) {
+      console.error('[Verify Purchase] ❌ Production result parse error:', parseError.message);
+      return { valid: false, error: 'Invalid response from Apple server' };
+    }
+
+    console.log('[Verify Purchase] Production result:', { 
+      status: productionResult.status,
+      hasLatestReceiptInfo: !!productionResult.latest_receipt_info,
+      hasReceipt: !!productionResult.receipt
+    });
 
     // Status 0 = SUCCESS (Production receipt)
     if (productionResult.status === 0) {
@@ -281,18 +303,40 @@ async function verifyAppleReceipt(
       console.log('[Verify Purchase] 🔄 Step 2: Trying SANDBOX URL...');
       
       // Step 2: Retry with Sandbox URL
-      const sandboxResponse = await fetch('https://sandbox.itunes.apple.com/verifyReceipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          'receipt-data': receipt,
-          'password': appleSharedSecret,
-          'exclude-old-transactions': true,
-        }),
-      });
+      let sandboxResponse;
+      try {
+        sandboxResponse = await fetch('https://sandbox.itunes.apple.com/verifyReceipt', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            'receipt-data': receipt,
+            'password': appleSharedSecret,
+            'exclude-old-transactions': true,
+          }),
+        });
+      } catch (fetchError: any) {
+        console.error('[Verify Purchase] ❌ Sandbox URL fetch failed:', fetchError.message);
+        return { valid: false, error: `Sandbox network error: ${fetchError.message}` };
+      }
 
-      const sandboxResult = await sandboxResponse.json();
-      console.log('[Verify Purchase] Sandbox result status:', sandboxResult.status);
+      if (!sandboxResponse.ok) {
+        console.error('[Verify Purchase] ❌ Sandbox URL HTTP error:', sandboxResponse.status, sandboxResponse.statusText);
+        return { valid: false, error: `Sandbox server error: ${sandboxResponse.status} ${sandboxResponse.statusText}` };
+      }
+
+      let sandboxResult;
+      try {
+        sandboxResult = await sandboxResponse.json();
+      } catch (parseError: any) {
+        console.error('[Verify Purchase] ❌ Sandbox result parse error:', parseError.message);
+        return { valid: false, error: 'Invalid response from Apple sandbox server' };
+      }
+
+      console.log('[Verify Purchase] Sandbox result:', {
+        status: sandboxResult.status,
+        hasLatestReceiptInfo: !!sandboxResult.latest_receipt_info,
+        hasReceipt: !!sandboxResult.receipt
+      });
 
       // Status 0 = SUCCESS (Sandbox receipt)
       if (sandboxResult.status === 0) {
@@ -317,10 +361,13 @@ async function verifyAppleReceipt(
 
       // Sandbox verification also failed
       const sandboxErrorMsg = getSandboxErrorMessage(sandboxResult.status);
-      console.error('[Verify Purchase] ❌ SANDBOX verification failed:', sandboxErrorMsg);
+      console.error('[Verify Purchase] ❌ SANDBOX verification failed:', {
+        status: sandboxResult.status,
+        message: sandboxErrorMsg
+      });
       return { 
         valid: false, 
-        error: `Sandbox verification failed: ${sandboxErrorMsg}` 
+        error: `Sandbox verification failed (status ${sandboxResult.status}): ${sandboxErrorMsg}` 
       };
     }
 
