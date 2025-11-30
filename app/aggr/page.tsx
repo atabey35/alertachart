@@ -34,13 +34,40 @@ export default function AggrPage() {
       }
 
       setLoading(true);
-      const user = await authService.checkAuth();
+      
+      // 🔥 APPLE GUIDELINE 5.1.1: Check for guest user first
+      let user = null;
+      let guestEmail = null;
+      if (typeof window !== 'undefined') {
+        const guestUserStr = localStorage.getItem('guest_user');
+        if (guestUserStr) {
+          try {
+            user = JSON.parse(guestUserStr);
+            guestEmail = user.email;
+            console.log('[Aggr] ✅ Guest user found:', guestEmail);
+          } catch (e) {
+            console.error('[Aggr] Failed to parse guest_user:', e);
+          }
+        }
+      }
+      
+      // If no guest user, check regular auth
+      if (!user) {
+        user = await authService.checkAuth();
+      }
+      
       setIsAuthenticated(!!user);
       
       if (user) {
         // Check premium access via API
         try {
-          const planResponse = await fetch('/api/user/plan', {
+          // 🔥 Add guest email as query param if available
+          let apiUrl = '/api/user/plan';
+          if (guestEmail) {
+            apiUrl += `?email=${encodeURIComponent(guestEmail)}`;
+          }
+          
+          const planResponse = await fetch(apiUrl, {
             credentials: 'include',
             cache: 'no-store',
           });
@@ -89,13 +116,40 @@ export default function AggrPage() {
   const checkPremiumAccess = async () => {
     try {
       setLoading(true);
-      const user = await authService.checkAuth();
+      
+      // 🔥 APPLE GUIDELINE 5.1.1: Check for guest user first
+      let user = null;
+      let guestEmail = null;
+      if (typeof window !== 'undefined') {
+        const guestUserStr = localStorage.getItem('guest_user');
+        if (guestUserStr) {
+          try {
+            user = JSON.parse(guestUserStr);
+            guestEmail = user.email;
+            console.log('[Aggr] ✅ Guest user found for premium check:', guestEmail);
+          } catch (e) {
+            console.error('[Aggr] Failed to parse guest_user:', e);
+          }
+        }
+      }
+      
+      // If no guest user, check regular auth
+      if (!user) {
+        user = await authService.checkAuth();
+      }
+      
       setIsAuthenticated(!!user);
       
       if (user) {
         // Check premium access via API
         try {
-          const planResponse = await fetch('/api/user/plan', {
+          // 🔥 Add guest email as query param if available
+          let apiUrl = '/api/user/plan';
+          if (guestEmail) {
+            apiUrl += `?email=${encodeURIComponent(guestEmail)}`;
+          }
+          
+          const planResponse = await fetch(apiUrl, {
             credentials: 'include',
             cache: 'no-store',
           });
