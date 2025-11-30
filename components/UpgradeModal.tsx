@@ -363,6 +363,8 @@ export default function UpgradeModal({
       console.log('[UpgradeModal][DEBUG] purchaseProduct returned:', result);
       if (result.success && result.transactionId && result.receipt && result.productId) {
         console.log('[UpgradeModal][DEBUG] Purchase OK! Proceeding to verify...');
+        console.log('[UpgradeModal][DEBUG] Current deviceId state:', deviceId);
+        console.log('[UpgradeModal][DEBUG] deviceId || undefined:', deviceId || undefined);
         try {
           const verifyResponse = await fetch('/api/subscription/verify-purchase', {
             method: 'POST',
