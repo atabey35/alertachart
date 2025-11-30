@@ -596,7 +596,18 @@ export default function SettingsPage() {
 
     const fetchUserPlan = async () => {
       try {
-        const response = await fetch(`/api/user/plan?t=${Date.now()}`, {
+        // 🔥 APPLE GUIDELINE 5.1.1: Include guest email in request if available
+        let url = `/api/user/plan?t=${Date.now()}`;
+        if (user?.email && typeof window !== 'undefined') {
+          const guestUser = localStorage.getItem('guest_user');
+          if (guestUser) {
+            // Guest user - add email as query param since no session exists
+            url += `&email=${encodeURIComponent(user.email)}`;
+            console.log('[Settings] Guest user - adding email to plan request:', user.email);
+          }
+        }
+        
+        const response = await fetch(url, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',

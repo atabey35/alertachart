@@ -18,18 +18,25 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     
+    // 🔥 APPLE GUIDELINE 5.1.1: Check for guest email in query params
+    const { searchParams } = new URL(request.url);
+    const guestEmail = searchParams.get('email');
+    
     // Development mode: Auto-login with test@gmail.com
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const userEmail = session?.user?.email || (isDevelopment ? 'test@gmail.com' : null);
+    const userEmail = session?.user?.email || guestEmail || (isDevelopment ? 'test@gmail.com' : null);
     
     // Debug logging
     if (!userEmail) {
-      console.log('[User Plan API] ⚠️ No user email in session:', {
+      console.log('[User Plan API] ⚠️ No user email in session or query:', {
         hasSession: !!session,
         hasUser: !!session?.user,
-        userEmail: session?.user?.email,
+        sessionEmail: session?.user?.email,
+        guestEmail: guestEmail,
         sessionKeys: session?.user ? Object.keys(session.user) : [],
       });
+    } else if (guestEmail) {
+      console.log('[User Plan API] ✅ Guest user email from query:', guestEmail);
     }
     
     // Unauthenticated requests return free plan
