@@ -953,7 +953,51 @@ export default function Home() {
       setTimeout(fetchUserPlanImmediately, 1500);
     } else if (status === 'unauthenticated') {
       // Fall back to legacy auth
-      setUser(authService.getUser());
+      const legacyUser = authService.getUser();
+      
+      // 🔥 APPLE GUIDELINE 5.1.1: Check for guest user in localStorage
+      if (!legacyUser && typeof window !== 'undefined') {
+        const guestUserStr = localStorage.getItem('guest_user');
+        if (guestUserStr) {
+          try {
+            const guestUser = JSON.parse(guestUserStr);
+            console.log('[App] ✅ Guest user restored from localStorage:', guestUser);
+            setUser(guestUser);
+            
+            // Fetch guest user plan
+            const fetchGuestUserPlan = async () => {
+              try {
+                const url = `/api/user/plan?t=${Date.now()}&email=${encodeURIComponent(guestUser.email)}`;
+                const response = await fetch(url, {
+                  cache: 'no-store',
+                  headers: { 'Cache-Control': 'no-cache' },
+                });
+                if (response.ok) {
+                  const data = await response.json();
+                  console.log('[App] Guest user plan fetched:', data);
+                  setUserPlan({
+                    plan: data.plan || 'free',
+                    isTrial: data.isTrial || false,
+                    trialRemainingDays: data.trialDaysRemaining || 0,
+                    expiryDate: data.expiryDate || null,
+                    hasPremiumAccess: data.hasPremiumAccess || false,
+                  });
+                }
+              } catch (error) {
+                console.error('[App] Error fetching guest user plan:', error);
+              }
+            };
+            fetchGuestUserPlan();
+          } catch (e) {
+            console.error('[App] Failed to parse guest_user from localStorage:', e);
+            localStorage.removeItem('guest_user');
+          }
+        } else {
+          setUser(legacyUser);
+        }
+      } else {
+        setUser(legacyUser);
+      }
       
       // 🔥 REMOVED: No longer redirecting to login page in mobile app
       // Users can access the app without login, and login is available in Settings
