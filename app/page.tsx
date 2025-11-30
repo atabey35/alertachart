@@ -1115,8 +1115,16 @@ export default function Home() {
 
     const fetchUserPlan = async () => {
       try {
+        // 🔥 APPLE GUIDELINE 5.1.1: For guest users, send email as query param
+        let url = `/api/user/plan?t=${Date.now()}`;
+        const isGuest = (user as any)?.provider === 'guest';
+        if (isGuest && user.email) {
+          url += `&email=${encodeURIComponent(user.email)}`;
+          console.log('[App] Guest user - fetching plan with email:', user.email);
+        }
+        
         // Add cache-busting timestamp to ensure fresh data from database
-        const response = await fetch(`/api/user/plan?t=${Date.now()}`, {
+        const response = await fetch(url, {
           cache: 'no-store',
           headers: {
             'Cache-Control': 'no-cache',
@@ -1124,7 +1132,7 @@ export default function Home() {
         });
         if (response.ok) {
           const data = await response.json();
-          console.log('[App] User plan fetched:', data);
+          console.log('[App] User plan fetched:', { email: user.email, plan: data.plan, hasPremiumAccess: data.hasPremiumAccess, isGuest });
           setUserPlan({
             plan: data.plan || 'free',
             isTrial: data.isTrial || false,
