@@ -363,42 +363,40 @@ export default function UpgradeModal({
       setError('Satın alma özelliği şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyin.');
       return;
     }
+    // 🔥 APPLE GUIDELINE 2.1: Try to load products, but don't block purchase if empty
     if (!productsLoaded) {
-      setError('Ürünler yükleniyor, lütfen bekleyin...');
       console.warn('[UpgradeModal][DEBUG] Products not loaded! Will load now');
       const loadedProducts = await getProducts();
       console.log('[UpgradeModal][DEBUG] loadedProducts:', loadedProducts);
       setProducts(loadedProducts);
       setProductsLoaded(true);
+      // Don't return early - allow blind purchase with fallback ID if products are empty
       if (loadedProducts.length === 0) {
-        console.error('[UpgradeModal][DEBUG] loadedProducts BOS!');
-        setError('Ürünler bulunamadı. Lütfen Play Store ayarlarını kontrol edin veya uygulamayı Play Store\'dan indirin.');
-        return;
+        console.warn('[UpgradeModal][DEBUG] loadedProducts empty - will use fallback product ID for blind purchase');
       }
-    }
-    if (products.length === 0) {
-      console.error('[UpgradeModal][DEBUG] Products array BOS!');
-      setError('Ürünler bulunamadı. Lütfen Play Store ayarlarını kontrol edin veya uygulamayı Play Store\'dan indirin.');
-      return;
     }
     setLoading(true);
     setError('');
     try {
+      // 🔥 APPLE GUIDELINE 2.1: Blind Purchase Fallback for App Store Review
+      // If products array is empty (common during review), use hardcoded fallback product IDs
       let productId = platform === 'ios'
         ? 'com.kriptokirmizi.alerta.premium.monthly'
         : 'premium_monthly';
-      const foundProduct = products.find((p) => p.productId === productId || p.productId === 'premium_monthly' || p.productId === 'alerta_monthly');
-      if (foundProduct) {
-        productId = foundProduct.productId;
-        console.log('[UpgradeModal][DEBUG] Found product:', productId);
-      } else if (products.length > 0) {
-        productId = products[0].productId;
-        console.warn('[UpgradeModal][DEBUG] Using fallback first product:', productId);
+      
+      if (products.length === 0) {
+        console.log('[UpgradeModal][DEBUG] Product list empty, attempting blind purchase with fallback ID...', productId);
+        // Use hardcoded fallback - Apple's native sheet will handle the transaction
+        // This allows purchase during App Store Review when products are not yet approved
       } else {
-        console.error('[UpgradeModal][DEBUG] Hiç ürün yok!', products);
-        setError('Ürün bulunamadı. Lütfen Play Store ayarlarını kontrol edin.');
-        setLoading(false);
-        return;
+        const foundProduct = products.find((p) => p.productId === productId || p.productId === 'premium_monthly' || p.productId === 'alerta_monthly');
+        if (foundProduct) {
+          productId = foundProduct.productId;
+          console.log('[UpgradeModal][DEBUG] Found product:', productId);
+        } else if (products.length > 0) {
+          productId = products[0].productId;
+          console.warn('[UpgradeModal][DEBUG] Using fallback first product:', productId);
+        }
       }
       console.log('[UpgradeModal][DEBUG] Calling purchaseProduct for productId:', productId);
       const result = await purchaseProduct(productId);
@@ -842,7 +840,8 @@ export default function UpgradeModal({
                 await logButtonClick('onClick');
                 
                 // Log to both console and native
-                const isDisabled = loading || (platform !== 'web' && (!iapAvailable || !iapInitialized || !productsLoaded || products.length === 0));
+                // 🔥 APPLE GUIDELINE 2.1: Button should be enabled if IAP is initialized, even if products are empty
+                const isDisabled = loading || (platform !== 'web' && (!iapAvailable || !iapInitialized));
                 const logMsg = `🔘 Purchase button clicked! disabled=${isDisabled}, loading=${loading}, platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}, productsLoaded=${productsLoaded}, products=${products.length}`;
                 console.log('[UpgradeModal]', logMsg);
                 
@@ -880,7 +879,7 @@ export default function UpgradeModal({
                 
                 handlePurchase();
               }}
-              disabled={loading || (platform !== 'web' && (!iapAvailable || !iapInitialized || !productsLoaded || products.length === 0))}
+              disabled={loading || (platform !== 'web' && (!iapAvailable || !iapInitialized))}
               style={{ 
                 pointerEvents: 'auto', 
                 zIndex: 1000,
@@ -895,11 +894,21 @@ export default function UpgradeModal({
                   {language === 'tr' ? 'Satın Alınıyor...' : 'Purchasing...'}
                 </span>
               ) : !productsLoaded || products.length === 0 ? (
-                // 🔥 APPLE GUIDELINE 3.1.2: Show loading state if price not available
-                <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {language === 'tr' ? 'Yükleniyor...' : 'Loading...'}
-                </span>
+                // 🔥 APPLE GUIDELINE 3.1.2: Show fallback text if IAP initialized but products empty (App Store Review scenario)
+                // If iapInitialized is true, show fallback text instead of loading spinner
+                iapInitialized ? (
+                  platform === 'ios'
+                    ? (language === 'tr' ? '3 Gün Ücretsiz Dene & Abone Ol' : 'Try 3 Days Free & Subscribe')
+                    : platform === 'android'
+                    ? (language === 'tr' ? '3 Gün Ücretsiz Dene & Abone Ol' : 'Try 3 Days Free & Subscribe')
+                    : (language === 'tr' ? 'Premium\'a Geç' : 'Go Premium')
+                ) : (
+                  // Only show loading if IAP is not yet initialized
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    {language === 'tr' ? 'Yükleniyor...' : 'Loading...'}
+                  </span>
+                )
               ) : (
                 // 🔥 APPLE GUIDELINE 2.3.10: Never mention "Google Play" on iOS
                 // 🔥 APPLE GUIDELINE 3.1.2: Show price in button or nearby
