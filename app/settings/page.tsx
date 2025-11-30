@@ -2289,25 +2289,78 @@ export default function SettingsPage() {
                   <button
                     onClick={async () => {
                       console.log('[Settings] Continue as Guest clicked');
+                      setLoading(true);
+                      setError('');
                       
-                      // Show confirmation message
-                      if (isCapacitor) {
-                        // Native: Use Capacitor Dialog
-                        await Dialog.alert({
-                          title: language === 'tr' ? 'Misafir Modu' : 'Guest Mode',
-                          message: language === 'tr' 
-                            ? 'Uygulamayı misafir olarak kullanmaya devam edebilirsiniz. Premium özellikler için satın alma yapabilirsiniz.'
-                            : 'You can continue using the app as a guest. You can purchase premium features anytime.',
+                      try {
+                        // Get device ID
+                        let deviceId = 'unknown';
+                        if (typeof window !== 'undefined' && (window as any).Capacitor) {
+                          try {
+                            const { Device } = await import('@capacitor/device');
+                            const deviceInfo = await Device.getId();
+                            deviceId = deviceInfo.identifier || 'unknown';
+                            console.log('[Settings] Guest mode - Device ID:', deviceId);
+                          } catch (e) {
+                            console.error('[Settings] Failed to get device ID:', e);
+                          }
+                        }
+                        
+                        // Create guest user in backend
+                        console.log('[Settings] Creating guest user with deviceId:', deviceId);
+                        const response = await fetch('/api/auth/guest-login', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ deviceId }),
                         });
-                      } else {
-                        // Web: Use alert
-                        alert(language === 'tr' 
-                          ? 'Uygulamayı misafir olarak kullanmaya devam edebilirsiniz.'
-                          : 'You can continue using the app as a guest.');
+                        
+                        if (!response.ok) {
+                          const errorData = await response.json();
+                          throw new Error(errorData.error || 'Failed to create guest account');
+                        }
+                        
+                        const data = await response.json();
+                        console.log('[Settings] Guest user created:', data);
+                        
+                        // Set user state
+                        if (data.user) {
+                          setUser({
+                            id: data.user.id,
+                            email: data.user.email,
+                            name: data.user.name || 'Guest User',
+                          });
+                          
+                          // Set user plan
+                          setUserPlan({
+                            plan: 'free',
+                            isTrial: false,
+                            trialRemainingDays: 0,
+                            hasPremiumAccess: false,
+                          });
+                          
+                          console.log('[Settings] ✅ Guest user logged in successfully');
+                          
+                          // Show success message
+                          if (isCapacitor) {
+                            await Dialog.alert({
+                              title: language === 'tr' ? 'Misafir Modu Aktif' : 'Guest Mode Active',
+                              message: language === 'tr' 
+                                ? 'Uygulamayı misafir olarak kullanabilirsiniz. Premium özellikler için satın alma yapabilirsiniz.'
+                                : 'You can now use the app as a guest. You can purchase premium features anytime.',
+                            });
+                          }
+                          
+                          // Redirect to home page
+                          router.push('/');
+                        } else {
+                          throw new Error('Guest user data not received');
+                        }
+                      } catch (err: any) {
+                        console.error('[Settings] Guest login failed:', err);
+                        setError(err.message || (language === 'tr' ? 'Misafir girişi başarısız oldu.' : 'Guest login failed.'));
+                      } finally {
+                        setLoading(false);
                       }
-                      
-                      // Redirect to home page
-                      router.push('/');
                     }}
                     disabled={loading}
                     className="w-full py-4 px-6 bg-gray-800/50 hover:bg-gray-700/50 disabled:bg-gray-900/50 disabled:cursor-not-allowed text-gray-300 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-gray-700/50 shadow-lg hover:shadow-xl active:scale-[0.98]"
@@ -2316,7 +2369,12 @@ export default function SettingsPage() {
                       <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                       <circle cx="12" cy="7" r="4"></circle>
                     </svg>
-                    <span>{language === 'tr' ? 'Misafir Olarak Devam Et' : 'Continue as Guest'}</span>
+                    <span>
+                      {loading 
+                        ? (language === 'tr' ? 'Oluşturuluyor...' : 'Creating...') 
+                        : (language === 'tr' ? 'Misafir Olarak Devam Et' : 'Continue as Guest')
+                      }
+                    </span>
                   </button>
                 </div>
               </div>
