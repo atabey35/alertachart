@@ -64,6 +64,24 @@ class AuthService {
    */
   async checkAuth(): Promise<User | null> {
     try {
+      // 🔥 APPLE GUIDELINE 5.1.1: Check localStorage for guest user FIRST
+      // Guest users don't have a session, so check localStorage before API call
+      if (typeof window !== 'undefined') {
+        try {
+          const guestUserStr = localStorage.getItem('guest_user');
+          if (guestUserStr) {
+            const guestUser = JSON.parse(guestUserStr);
+            console.log('[AuthService] ✅ Guest user found in localStorage:', guestUser.email);
+            this.user = guestUser;
+            this.notifyListeners();
+            return guestUser; // Return guest user immediately, no API call needed
+          }
+        } catch (e) {
+          console.error('[AuthService] Failed to parse guest_user from localStorage:', e);
+          localStorage.removeItem('guest_user');
+        }
+      }
+      
       // 🔥 CRITICAL: Android - Get token from Preferences instead of cookies
       // Android WebView loses cookies on some devices (Samsung, Xiaomi, Oppo)
       const isAndroid = this.isAndroid();
@@ -386,9 +404,32 @@ class AuthService {
 
   /**
    * Get current user
+   * Checks both session (this.user) and localStorage (guest user)
    */
   getUser(): User | null {
-    return this.user;
+    // First check session user
+    if (this.user) {
+      return this.user;
+    }
+    
+    // 🔥 APPLE GUIDELINE 5.1.1: Check localStorage for guest user
+    if (typeof window !== 'undefined') {
+      try {
+        const guestUserStr = localStorage.getItem('guest_user');
+        if (guestUserStr) {
+          const guestUser = JSON.parse(guestUserStr);
+          console.log('[AuthService] ✅ Guest user found in localStorage:', guestUser.email);
+          // Set to this.user so it's cached
+          this.user = guestUser;
+          return guestUser;
+        }
+      } catch (e) {
+        console.error('[AuthService] Failed to parse guest_user from localStorage:', e);
+        localStorage.removeItem('guest_user');
+      }
+    }
+    
+    return null;
   }
 
   /**

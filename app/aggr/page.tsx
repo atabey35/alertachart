@@ -26,15 +26,6 @@ export default function AggrPage() {
     if (hasCheckedRef.current) return;
     hasCheckedRef.current = true;
     
-    // 🔥 DEBUG: Check localStorage for guest user
-    if (typeof window !== 'undefined') {
-      const guestUserStr = localStorage.getItem('guest_user');
-      console.log('[Aggr] 🔍 useEffect - localStorage check:', {
-        hasGuestUser: !!guestUserStr,
-        guestUserStr: guestUserStr ? guestUserStr.substring(0, 100) : null,
-      });
-    }
-    
     checkAuthAndPremium();
   }, []);
 
@@ -53,43 +44,27 @@ export default function AggrPage() {
 
       setLoading(true);
       
-      // 🔥 APPLE GUIDELINE 5.1.1: Check for guest user first
-      let user = null;
-      let guestEmail = null;
-      if (typeof window !== 'undefined') {
-        const guestUserStr = localStorage.getItem('guest_user');
-        if (guestUserStr) {
-          try {
-            user = JSON.parse(guestUserStr);
-            guestEmail = user.email;
-            console.log('[Aggr] ✅ Guest user found:', guestEmail);
-          } catch (e) {
-            console.error('[Aggr] Failed to parse guest_user:', e);
-          }
-        }
-      }
-      
-      // If no guest user, check regular auth
-      if (!user) {
-        user = await authService.checkAuth();
-      }
+      // 🔥 APPLE GUIDELINE 5.1.1: authService now handles guest users automatically
+      // checkAuth() will check localStorage for guest user first, then API for regular users
+      const user = await authService.checkAuth();
       
       setIsAuthenticated(!!user);
       console.log('[Aggr] Auth check result:', { 
         hasUser: !!user, 
-        userEmail: user?.email, 
-        guestEmail,
+        userEmail: user?.email,
+        provider: (user as any)?.provider,
         isAuthenticated: !!user 
       });
       
       if (user) {
         // Check premium access via API
         try {
-          // 🔥 Add guest email as query param if available
+          // 🔥 For guest users, send email as query param (authService handles this now)
           let apiUrl = '/api/user/plan';
-          if (guestEmail) {
-            apiUrl += `?email=${encodeURIComponent(guestEmail)}`;
-            console.log('[Aggr] Using guest email in API call:', guestEmail);
+          const isGuest = (user as any)?.provider === 'guest';
+          if (isGuest && user.email) {
+            apiUrl += `?email=${encodeURIComponent(user.email)}`;
+            console.log('[Aggr] Guest user - using email in API call:', user.email);
           }
           
           console.log('[Aggr] Fetching plan from:', apiUrl);
