@@ -1793,6 +1793,17 @@ export default function SettingsPage() {
 
       console.log('[Settings] Delete account API URL:', apiUrl);
 
+      // 🔥 APPLE GUIDELINE 5.1.1: Include guest email in request body
+      const requestBody: any = {};
+      if (user?.email && typeof window !== 'undefined') {
+        const guestUser = localStorage.getItem('guest_user');
+        if (guestUser) {
+          // Guest user - send email in body since no session exists
+          requestBody.email = user.email;
+          console.log('[Settings] Guest user deletion - sending email:', user.email);
+        }
+      }
+
       // Call delete account API
       const response = await fetch(apiUrl, {
         method: 'DELETE',
@@ -1800,6 +1811,7 @@ export default function SettingsPage() {
           'Content-Type': 'application/json',
         },
         credentials: 'include', // 🔥 CRITICAL: Include cookies for iOS/Capacitor
+        body: Object.keys(requestBody).length > 0 ? JSON.stringify(requestBody) : undefined,
       });
 
       const data = await response.json();
@@ -1831,6 +1843,13 @@ export default function SettingsPage() {
 
       // 🔥 CRITICAL: Clear all session data
       console.log('[Settings] Clearing all session data...');
+      
+      // 🔥 APPLE GUIDELINE 5.1.1: Clear guest user from localStorage
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('guest_user');
+        localStorage.removeItem('user_email');
+        console.log('[Settings] ✅ Guest user cleared from localStorage');
+      }
       
       // Sign out from NextAuth
       if (status === 'authenticated') {

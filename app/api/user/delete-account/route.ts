@@ -19,11 +19,26 @@ export async function DELETE(request: NextRequest) {
     // Check authentication
     const session = await getServerSession(authOptions);
     
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    // 🔥 APPLE GUIDELINE 5.1.1: Support guest user deletion
+    // Guest users don't have session, email comes from request body
+    let userEmail = session?.user?.email;
+    
+    if (!userEmail) {
+      // Check for guest email in request body
+      try {
+        const body = await request.json();
+        userEmail = body.email;
+        
+        if (userEmail && userEmail.startsWith('guest_')) {
+          console.log('[Delete Account] Guest user deletion request:', userEmail);
+        } else if (!userEmail) {
+          return NextResponse.json({ error: 'Unauthorized - email required' }, { status: 401 });
+        }
+      } catch (e) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
-
-    const userEmail = session.user.email;
+    
     console.log('[Delete Account] Request from:', userEmail);
 
     const sql = getSql();
