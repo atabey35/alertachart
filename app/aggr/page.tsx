@@ -26,6 +26,15 @@ export default function AggrPage() {
     if (hasCheckedRef.current) return;
     hasCheckedRef.current = true;
     
+    // 🔥 DEBUG: Check localStorage for guest user
+    if (typeof window !== 'undefined') {
+      const guestUserStr = localStorage.getItem('guest_user');
+      console.log('[Aggr] 🔍 useEffect - localStorage check:', {
+        hasGuestUser: !!guestUserStr,
+        guestUserStr: guestUserStr ? guestUserStr.substring(0, 100) : null,
+      });
+    }
+    
     checkAuthAndPremium();
   }, []);
 
