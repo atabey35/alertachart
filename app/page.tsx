@@ -69,6 +69,10 @@ export default function Home() {
   const [logoutError, setLogoutError] = useState('');
   const logoutProcessingRef = useRef(false); // iOS double-tap prevention
 
+  // 🔥 CRITICAL: Dynamic viewport height for iOS sync fix
+  // iOS'ta ilk açılışta viewport height doğru hesaplanmıyor, bu state ile düzeltiyoruz
+  const [viewportHeight, setViewportHeight] = useState<number | null>(null);
+
   // Premium state
   const [userPlan, setUserPlan] = useState<{
     plan: 'free' | 'premium';
@@ -1471,10 +1475,24 @@ export default function Home() {
   };
   
   // Get optimal height based on layout
+  // 🔥 CRITICAL: Use dynamic viewport height for iOS to prevent initial load sync issues
   const getGridHeight = () => {
-    // Mobile & Tablet (iPad): use full available height with minimal margins (up to 1024px)
+    // Mobile & Tablet (iPad): use dynamic viewport height with safe area insets
     if (typeof window !== 'undefined' && window.innerWidth < 1024) {
-      return 'calc(100vh - 200px)'; // Reduced margin for mobile/iPad (includes bottom nav)
+      // Use viewportHeight state if available (iOS sync fix)
+      // Otherwise fallback to 100dvh (dynamic viewport height) which accounts for browser UI changes
+      // Subtract header (~56px) and bottom nav (~56px) + safe area insets
+      if (viewportHeight) {
+        const safeAreaTop = typeof window !== 'undefined' 
+          ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-top') || '0', 10) || 0
+          : 0;
+        const safeAreaBottom = typeof window !== 'undefined'
+          ? parseInt(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0', 10) || 0
+          : 0;
+        return `${viewportHeight - safeAreaTop - safeAreaBottom - 112}px`; // 112px = header + bottom nav
+      }
+      // Fallback to calc with 100dvh
+      return 'calc(100dvh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 112px)';
     }
     // Desktop (1024px+): Use flex-1 to fill available space, don't use fixed calc
     // The parent flex container will handle the height distribution
@@ -1782,7 +1800,18 @@ export default function Home() {
   }
 
   return (
-    <main className="flex h-screen flex-col overflow-hidden">
+    <main 
+      className="flex flex-col overflow-hidden"
+      style={{
+        // 🔥 CRITICAL: Use dynamic viewport height for iOS sync fix
+        // iOS'ta ilk açılışta viewport height doğru hesaplanmıyor
+        height: viewportHeight 
+          ? `${viewportHeight}px` 
+          : typeof window !== 'undefined' && window.innerWidth < 1024
+            ? '100dvh' // Fallback to dynamic viewport height for mobile/iPad
+            : '100vh' // Desktop: use regular viewport height
+      }}
+    >
       {/* Header - TradingView style - Top section hidden on iPad, bottom section (timeframe/pair) visible */}
       <header className="border-b border-gray-800 bg-black flex-shrink-0">
         <div className="px-2 py-2 lg:px-6 lg:py-3">
