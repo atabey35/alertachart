@@ -28,6 +28,7 @@ import ChartSettings, { ChartSettingsType, DEFAULT_SETTINGS } from './ChartSetti
 import DrawingToolbar, { DrawingTool } from './DrawingToolbar';
 import DrawingRenderer from './DrawingRenderer';
 import DrawingPropertiesModal from './DrawingPropertiesModal';
+import ErrorBoundary from '../ErrorBoundary';
 
 // GLOBAL worker counter for unique IDs across all instances
 let globalWorkerCounter = 0;
@@ -4784,13 +4785,20 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       {/* Drawing Toolbar (Mobile & Tablet/iPad - Bottom) */}
       <div className="lg:hidden">
         {showDrawingTools && (
-          <DrawingToolbar
-            activeTool={activeTool}
-            onToolChange={handleToolChange}
-            onClearAll={handleClearAllDrawings}
-            onUndo={handleUndo}
-            canUndo={historyPointer > 0} // ✅ FIX #4: Use historyPointer for accurate state
-          />
+          <ErrorBoundary
+            logError={true}
+            onError={(error, errorInfo) => {
+              console.error('[Chart] DrawingToolbar error on mobile:', error, errorInfo);
+            }}
+          >
+            <DrawingToolbar
+              activeTool={activeTool}
+              onToolChange={handleToolChange}
+              onClearAll={handleClearAllDrawings}
+              onUndo={handleUndo}
+              canUndo={historyPointer > 0} // ✅ FIX #4: Use historyPointer for accurate state
+            />
+          </ErrorBoundary>
         )}
       </div>
 
@@ -4970,13 +4978,20 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         {!hideToolbar && (
           <div className="hidden md:block absolute left-0 top-0 h-full z-[100] pointer-events-none">
             <div className="pointer-events-auto">
-              <DrawingToolbar
-                activeTool={activeTool}
-                onToolChange={handleToolChange}
-                onClearAll={handleClearAllDrawings}
-                onUndo={handleUndo}
-                canUndo={historyPointer > 0} // ✅ FIX #4: Use historyPointer for accurate state
-              />
+              <ErrorBoundary
+                logError={true}
+                onError={(error, errorInfo) => {
+                  console.error('[Chart] DrawingToolbar error on desktop:', error, errorInfo);
+                }}
+              >
+                <DrawingToolbar
+                  activeTool={activeTool}
+                  onToolChange={handleToolChange}
+                  onClearAll={handleClearAllDrawings}
+                  onUndo={handleUndo}
+                  canUndo={historyPointer > 0} // ✅ FIX #4: Use historyPointer for accurate state
+                />
+              </ErrorBoundary>
             </div>
           </div>
         )}

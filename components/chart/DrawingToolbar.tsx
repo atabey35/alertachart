@@ -60,6 +60,16 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
   const [isMobileExpanded, setIsMobileExpanded] = useState(initialExpanded);
   const toolbarRef = React.useRef<HTMLDivElement>(null);
 
+  // ✅ VALIDATE activeTool: Ensure it's defined, fallback to 'none' if invalid
+  const safeActiveTool: DrawingTool = React.useMemo(() => {
+    if (!activeTool || typeof activeTool !== 'string') {
+      console.warn('[DrawingToolbar] Invalid activeTool:', activeTool, '- falling back to "none"');
+      return 'none';
+    }
+    // Additional validation happens in getToolInfo which has access to toolCategories
+    return activeTool;
+  }, [activeTool]);
+
   // Close popup when clicking outside
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -225,7 +235,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
 
   // Check if any tool in a category is active
   const isCategoryActive = (category: ToolCategory) => {
-    return category.tools.some(tool => tool.id === activeTool);
+    return category.tools.some(tool => tool.id === safeActiveTool);
   };
 
   const handleCategoryClick = (categoryId: string, defaultTool: DrawingTool) => {
@@ -246,6 +256,42 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
     }
   };
 
+  // ✅ SAFE TOOL LOOKUP: Helper function to safely get tool information
+  const getToolInfo = (toolId: DrawingTool): { label: string; icon: React.ReactElement } => {
+    // Default fallback
+    const defaultLabel = 'Drawing Tool';
+    const defaultIcon = (
+      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <line x1="4" y1="20" x2="20" y2="4" strokeWidth="2"/>
+      </svg>
+    );
+
+    // Return early for 'none' tool
+    if (toolId === 'none') {
+      return { label: 'Select Tool', icon: defaultIcon };
+    }
+
+    try {
+      // Safely find the tool - check toolCategories exists first
+      if (!toolCategories || !Array.isArray(toolCategories)) {
+        console.warn('[DrawingToolbar] toolCategories not available');
+        return { label: defaultLabel, icon: defaultIcon };
+      }
+      
+      const allTools = toolCategories.flatMap(c => c?.tools || []);
+      const tool = allTools.find(t => t && t.id === toolId);
+      
+      if (tool && tool.label && tool.icon) {
+        return { label: tool.label, icon: tool.icon };
+      }
+    } catch (error) {
+      console.warn('[DrawingToolbar] Error looking up tool:', toolId, error);
+    }
+
+    // Fallback to default if tool not found or error
+    return { label: defaultLabel, icon: defaultIcon };
+  };
+
   return (
     <>
       {/* ✅ FIX #3: MOBILE - Modern FAB (Floating Action Button) + Glassmorphism Bottom Sheet */}
@@ -261,7 +307,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
             }}
           >
             {/* Icon changes based on active tool */}
-            {activeTool === 'none' ? (
+            {safeActiveTool === 'none' ? (
               <svg className="w-7 h-7" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
               </svg>
@@ -298,7 +344,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-1.5 bg-gray-600 rounded-full"></div>
                   <span className="text-sm font-semibold text-gray-300">
-                    {activeTool === 'none' ? 'Select Tool' : toolCategories.flatMap(c => c.tools).find(t => t.id === activeTool)?.label || 'Drawing'}
+                    {getToolInfo(safeActiveTool).label}
                   </span>
                 </div>
                 <button
@@ -327,7 +373,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
                       setIsMobileExpanded(false);
                     }}
                     className={`w-full flex items-center gap-4 p-4 rounded-xl transition-all active:scale-98 ${
-                      activeTool === 'none'
+                      safeActiveTool === 'none'
                         ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
                         : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
                     }`}
@@ -357,7 +403,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
                             setIsMobileExpanded(false);
                           }}
                           className={`flex items-center gap-3 p-3 rounded-xl transition-all active:scale-95 ${
-                            activeTool === tool.id
+                            safeActiveTool === tool.id
                               ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/20'
                               : 'bg-gray-800/60 text-gray-300 hover:bg-gray-700/60'
                           }`}
@@ -418,7 +464,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
               setOpenCategory(null);
             }}
             className={`w-10 h-10 rounded flex items-center justify-center transition-all ${
-              activeTool === 'none'
+              safeActiveTool === 'none'
                 ? 'bg-blue-600 text-white'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
             }`}
@@ -473,7 +519,7 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
                           setOpenCategory(null);
                         }}
                         className={`w-full flex items-center gap-3 px-3 py-2 rounded text-sm transition-all ${
-                          activeTool === tool.id
+                          safeActiveTool === tool.id
                             ? 'bg-blue-600 text-white'
                             : 'text-gray-300 hover:bg-gray-800 hover:text-white'
                         }`}
