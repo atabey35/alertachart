@@ -38,6 +38,7 @@ interface DrawingToolbarProps {
   onClearAll: () => void;
   onUndo?: () => void;
   canUndo?: boolean; // Whether undo is available
+  initialExpanded?: boolean; // Whether to start in expanded state on mobile (default: true)
 }
 
 interface ToolItem {
@@ -54,9 +55,9 @@ interface ToolCategory {
   tools: ToolItem[];
 }
 
-export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, onUndo, canUndo = false }: DrawingToolbarProps) {
+export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, onUndo, canUndo = false, initialExpanded = true }: DrawingToolbarProps) {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
-  const [isMobileExpanded, setIsMobileExpanded] = useState(false);
+  const [isMobileExpanded, setIsMobileExpanded] = useState(initialExpanded);
   const toolbarRef = React.useRef<HTMLDivElement>(null);
 
   // Close popup when clicking outside
