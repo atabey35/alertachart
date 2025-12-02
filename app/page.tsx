@@ -73,7 +73,7 @@ export default function Home() {
   // iOS'ta ilk açılışta viewport height doğru hesaplanmıyor, bu state ile düzeltiyoruz
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
 
-  // Premium state
+  // Premium state - 🔥 Cache-first: State her zaman null ile başlar (Hydration-safe)
   const [userPlan, setUserPlan] = useState<{
     plan: 'free' | 'premium';
     isTrial: boolean;
@@ -82,6 +82,23 @@ export default function Home() {
     hasPremiumAccess?: boolean;
   } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  // 🔥 Hydration-safe: Component mount olduktan hemen sonra cache'i oku
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('user_plan_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          console.log('[App] ⚡️ Plan loaded from cache immediately:', parsed);
+          setUserPlan(parsed);
+        }
+      } catch (e) {
+        console.error('[App] Cache parse error:', e);
+        localStorage.removeItem('user_plan_cache');
+      }
+    }
+  }, []);
   const [fullUser, setFullUser] = useState<User | null>(null);
   
   // Simple premium access check - use userPlan.hasPremiumAccess (from API) or fallback to fullUser
@@ -1109,17 +1126,20 @@ export default function Home() {
     };
   }, [session, status, update]);
 
-  // Fetch user plan when user changes
-  useEffect(() => {
+  // 🔥 Cache-first: fetchUserPlan fonksiyonunu useCallback'e al
+  const fetchUserPlan = useCallback(async () => {
     if (!user) {
+      // User yoksa cache'i de temizle
       setUserPlan(null);
       setFullUser(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user_plan_cache');
+      }
       return;
     }
 
-    const fetchUserPlan = async () => {
-      try {
-        // 🔥 APPLE GUIDELINE 5.1.1: For guest users, send email as query param
+    try {
+      // 🔥 APPLE GUIDELINE 5.1.1: For guest users, send email as query param
         let url = `/api/user/plan?t=${Date.now()}`;
         const isGuest = (user as any)?.provider === 'guest';
         if (isGuest && user.email) {
@@ -1137,13 +1157,22 @@ export default function Home() {
         if (response.ok) {
           const data = await response.json();
           console.log('[App] User plan fetched:', { email: user.email, plan: data.plan, hasPremiumAccess: data.hasPremiumAccess, isGuest });
-          setUserPlan({
+          const newPlanData = {
             plan: data.plan || 'free',
             isTrial: data.isTrial || false,
             trialRemainingDays: data.trialRemainingDays || 0,
             expiryDate: data.expiryDate || null,
             hasPremiumAccess: data.hasPremiumAccess || false,
-          });
+          };
+
+          // 1. State'i güncelle (UI anında güncellenir)
+          setUserPlan(newPlanData);
+          
+          // 🔥 2. Değişiklik: Cache'i güncelle (Bir sonraki açılış için)
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('user_plan_cache', JSON.stringify(newPlanData));
+            console.log('[App] ✅ User plan cached for next launch');
+          }
 
           // Set full user object for premium utilities
           setFullUser({
@@ -1162,20 +1191,32 @@ export default function Home() {
       } catch (error) {
         console.error('[App] Error fetching user plan:', error);
       }
+  }, [user]);
+
+  // Fetch user plan when user changes
+  useEffect(() => {
+    fetchUserPlan();
+  }, [fetchUserPlan]);
+
+  // 🔥 3. Değişiklik: App Resume / Visibility Change Listener
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Kullanıcı uygulamaya geri döndüğünde (ve user varsa)
+      if (document.visibilityState === 'visible' && user) {
+        console.log('[App] 🔄 App resumed - Refreshing plan...');
+        fetchUserPlan();
+      }
     };
 
-    fetchUserPlan();
-    
-    // Refresh user plan when window gains focus (user comes back to app)
-    const handleFocus = () => {
-      fetchUserPlan();
-    };
-    window.addEventListener('focus', handleFocus);
-    
+    // Event listener ekle
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange); // Web için focus da ekleyelim
+
     return () => {
-      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
     };
-  }, [user]);
+  }, [user, fetchUserPlan]);
 
   // Save active chart ID whenever it changes
   useEffect(() => {
@@ -1510,6 +1551,13 @@ export default function Home() {
     logoutProcessingRef.current = true;
     setLogoutError('');
     setIsLoggingOut(true);
+
+    // 🔥 4. Değişiklik: Logout sırasında cache'i temizle
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('user_plan_cache');
+      console.log('[Logout] ✅ User plan cache cleared');
+    }
+    setUserPlan(null);
 
     try {
       if (status === 'authenticated') {
@@ -2727,19 +2775,8 @@ export default function Home() {
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
         onUpgrade={() => {
-          // Refresh user plan after upgrade
-          if (user) {
-            fetch(`/api/user/plan?t=${Date.now()}`, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } })
-              .then(res => res.json())
-              .then(data => {
-                setUserPlan({
-                  plan: data.plan || 'free',
-                  isTrial: data.isTrial || false,
-                  trialRemainingDays: data.trialRemainingDays || 0,
-                  expiryDate: data.expiryDate || null,
-                });
-              });
-          }
+          // 🔥 Upgrade/Restore sonrası cache ile birlikte yenile
+          fetchUserPlan();
         }}
         currentPlan={userPlan?.plan || 'free'}
         isTrial={userPlan?.isTrial || false}

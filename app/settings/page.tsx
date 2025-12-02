@@ -25,6 +25,7 @@ export default function SettingsPage() {
 
   // User state
   const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
+  // Premium state - 🔥 Cache-first: State her zaman null ile başlar (Hydration-safe)
   const [userPlan, setUserPlan] = useState<{
     plan: 'free' | 'premium';
     isTrial: boolean;
@@ -61,6 +62,23 @@ export default function SettingsPage() {
   
   // Info tooltip state
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+
+  // 🔥 Hydration-safe: Component mount olduktan hemen sonra cache'i oku
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('user_plan_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          console.log('[Settings] ⚡️ Plan loaded from cache immediately:', parsed);
+          setUserPlan(parsed);
+        }
+      } catch (e) {
+        console.error('[Settings] Cache parse error:', e);
+        localStorage.removeItem('user_plan_cache');
+      }
+    }
+  }, []);
 
   // Load layout, market type, and language from localStorage
   useEffect(() => {
@@ -586,65 +604,100 @@ export default function SettingsPage() {
     }
   }, [session]);
 
-  // Fetch user plan when user changes
-  useEffect(() => {
+  // 🔥 Cache-first: fetchUserPlan fonksiyonunu useCallback'e al
+  const fetchUserPlan = useCallback(async () => {
     if (!user) {
+      // User yoksa cache'i de temizle
       setUserPlan(null);
       setFullUser(null);
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('user_plan_cache');
+      }
       return;
     }
 
-    const fetchUserPlan = async () => {
-      try {
-        // 🔥 APPLE GUIDELINE 5.1.1: Include guest email in request if available
-        let url = `/api/user/plan?t=${Date.now()}`;
-        if (user?.email && typeof window !== 'undefined') {
-          const guestUser = localStorage.getItem('guest_user');
-          if (guestUser) {
-            // Guest user - add email as query param since no session exists
-            url += `&email=${encodeURIComponent(user.email)}`;
-            console.log('[Settings] Guest user - adding email to plan request:', user.email);
-          }
+    try {
+      // 🔥 APPLE GUIDELINE 5.1.1: Include guest email in request if available
+      let url = `/api/user/plan?t=${Date.now()}`;
+      if (user?.email && typeof window !== 'undefined') {
+        const guestUser = localStorage.getItem('guest_user');
+        if (guestUser) {
+          // Guest user - add email as query param since no session exists
+          url += `&email=${encodeURIComponent(user.email)}`;
+          console.log('[Settings] Guest user - adding email to plan request:', user.email);
         }
+      }
+      
+      const response = await fetch(url, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        },
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[Settings] User plan fetched:', data);
         
-        const response = await fetch(url, {
-          cache: 'no-store',
-          headers: {
-            'Cache-Control': 'no-cache',
-          },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          console.log('[Settings] User plan fetched:', data);
-          setUserPlan({
-            plan: data.plan || 'free',
-            isTrial: data.isTrial || false,
-            trialRemainingDays: data.trialDaysRemaining || 0,
-            expiryDate: data.expiryDate || null,
-            hasPremiumAccess: data.hasPremiumAccess || false,
-          });
+        const newPlanData = {
+          plan: data.plan || 'free',
+          isTrial: data.isTrial || false,
+          trialRemainingDays: data.trialDaysRemaining || 0,
+          expiryDate: data.expiryDate || null,
+          hasPremiumAccess: data.hasPremiumAccess || false,
+        };
 
-          // Set full user object for premium utilities
-          setFullUser({
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            plan: data.plan || 'free',
-            expiry_date: data.expiryDate || null,
-            trial_started_at: data.trialStartedAt || null,
-            trial_ended_at: data.trialEndedAt || null,
-            subscription_started_at: data.subscriptionStartedAt || null,
-            subscription_platform: data.subscriptionPlatform || null,
-            subscription_id: null,
-          });
+        // 1. State'i güncelle (UI anında güncellenir)
+        setUserPlan(newPlanData);
+        
+        // 🔥 2. Değişiklik: Cache'i güncelle (Bir sonraki açılış için)
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('user_plan_cache', JSON.stringify(newPlanData));
+          console.log('[Settings] ✅ User plan cached for next launch');
         }
-      } catch (error) {
-        console.error('[Settings] Error fetching user plan:', error);
+
+        // Set full user object for premium utilities
+        setFullUser({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          plan: data.plan || 'free',
+          expiry_date: data.expiryDate || null,
+          trial_started_at: data.trialStartedAt || null,
+          trial_ended_at: data.trialEndedAt || null,
+          subscription_started_at: data.subscriptionStartedAt || null,
+          subscription_platform: data.subscriptionPlatform || null,
+          subscription_id: null,
+        });
+      }
+    } catch (error) {
+      console.error('[Settings] Error fetching user plan:', error);
+    }
+  }, [user]);
+
+  // Fetch user plan when user changes
+  useEffect(() => {
+    fetchUserPlan();
+  }, [fetchUserPlan]);
+
+  // 🔥 3. Değişiklik: App Resume / Visibility Change Listener
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      // Kullanıcı uygulamaya geri döndüğünde (ve user varsa)
+      if (document.visibilityState === 'visible' && user) {
+        console.log('[Settings] 🔄 App resumed - Refreshing plan...');
+        fetchUserPlan();
       }
     };
 
-    fetchUserPlan();
-  }, [user]);
+    // Event listener ekle
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange); // Web için focus da ekleyelim
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
+  }, [user, fetchUserPlan]);
 
   // Fetch custom alerts when user has premium access
   useEffect(() => {
@@ -1776,13 +1829,16 @@ export default function SettingsPage() {
       console.log('[Settings] 🚪 Starting logout process...');
       
       // 🔥 APPLE GUIDELINE 5.1.1: Clear guest user from localStorage
+      // 🔥 4. Değişiklik: Logout sırasında cache'i temizle
       if (typeof window !== 'undefined') {
         localStorage.removeItem('guest_user');
         localStorage.removeItem('user_email');
         localStorage.removeItem('native_device_id');
         localStorage.removeItem('device_id');
-        console.log('[Settings] ✅ Guest user cleared from localStorage');
+        localStorage.removeItem('user_plan_cache');
+        console.log('[Settings] ✅ Guest user and plan cache cleared from localStorage');
       }
+      setUserPlan(null);
       
       // 🔥 CRITICAL: Clear NextAuth session first
       if (status === 'authenticated') {
@@ -3373,8 +3429,9 @@ export default function SettingsPage() {
         onClose={() => setShowUpgradeModal(false)}
         language={language}
         onUpgrade={() => {
+          // 🔥 Upgrade/Restore sonrası cache ile birlikte yenile
+          fetchUserPlan();
           setShowUpgradeModal(false);
-          // Handle upgrade action
         }}
         currentPlan={userPlan?.plan || 'free'}
         isTrial={userPlan?.isTrial || false}
