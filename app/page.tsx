@@ -113,77 +113,6 @@ export default function Home() {
   const redirectingRef = useRef(false);
   const callbackProcessedRef = useRef(false);
 
-  // Development mode: Auto-login with test@gmail.com
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    
-    // Check if we're in development mode (client-side check)
-    const isDevelopment = window.location.hostname === 'localhost' || 
-                         window.location.hostname === '127.0.0.1' ||
-                         window.location.hostname.includes('localhost');
-    
-    if (!isDevelopment) return;
-    
-    // Only auto-login if user is not set and status is unauthenticated or loading
-    if (!user && (status === 'unauthenticated' || status === 'loading')) {
-      console.log('[Dev] 🧪 Development mode detected - Auto-logging in as test@gmail.com');
-      console.log('[Dev] Current status:', status, 'user:', user);
-      
-      // Call dev-login API to get/create test user
-      fetch('/api/auth/dev-login', { method: 'POST' })
-        .then(res => res.json())
-        .then(data => {
-          if (data.success && data.user) {
-            console.log('[Dev] ✅ Test user logged in:', data.user);
-            const mockUser = {
-              id: data.user.id,
-              email: data.user.email,
-              name: data.user.name,
-            };
-            
-            // Set user immediately
-            setUser(mockUser);
-            localStorage.setItem('user_email', data.user.email);
-            
-            // Fetch user plan for test user
-            return fetch('/api/user/plan');
-          } else {
-            throw new Error('Dev login failed');
-          }
-        })
-        .then(res => res?.json())
-        .then(data => {
-          if (data) {
-            console.log('[Dev] User plan fetched:', data);
-            setUserPlan({
-              plan: data.plan || 'free',
-              isTrial: data.isTrial || false,
-              trialRemainingDays: data.trialRemainingDays || 0,
-              expiryDate: data.expiryDate,
-              hasPremiumAccess: data.hasPremiumAccess || false,
-            });
-          }
-        })
-        .catch((err) => {
-          console.error('[Dev] Failed to auto-login:', err);
-          // If API fails, set default user and plan
-          const mockUser = {
-            id: 1,
-            email: 'test@gmail.com',
-            name: 'Test User',
-          };
-          setUser(mockUser);
-          localStorage.setItem('user_email', 'test@gmail.com');
-          setUserPlan({
-            plan: 'free',
-            isTrial: false,
-            trialRemainingDays: 0,
-            hasPremiumAccess: false,
-          });
-        });
-    }
-  }, [user, status]);
-
   // Capacitor ve iPad kontrolü
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -2674,13 +2603,13 @@ export default function Home() {
               setShowUpgradeModal(true);
             }
           }}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative cursor-pointer ${
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative cursor-pointer group ${
             mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'
-          }`}
+          } ${!hasPremiumAccessValue ? 'hover:scale-105' : ''}`}
           style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
           <div className="relative">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-6 h-6 transition-colors duration-300 ${!hasPremiumAccessValue ? 'text-cyan-400' : mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
             </svg>
             {!hasPremiumAccessValue && (
@@ -2702,13 +2631,13 @@ export default function Home() {
               setShowUpgradeModal(true);
             }
           }}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative cursor-pointer ${
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative cursor-pointer group ${
             mobileTab === 'liquidations' ? 'text-blue-400' : 'text-gray-500'
-          }`}
+          } ${!hasPremiumAccessValue ? 'hover:scale-105' : ''}`}
           style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
           <div className="relative">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className={`w-6 h-6 transition-colors duration-300 ${!hasPremiumAccessValue ? 'text-red-500' : mobileTab === 'liquidations' ? 'text-blue-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
             {!hasPremiumAccessValue && (
