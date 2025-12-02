@@ -5,7 +5,7 @@ import { useSession, signOut, signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { TrendingUp, BarChart3, Bell, Sparkles, Clock, FileText, Shield } from 'lucide-react';
 import { Dialog } from '@capacitor/dialog';
-import { App } from '@capacitor/app';
+import { Browser } from '@capacitor/browser';
 import { handleGoogleWebLogin, handleAppleWebLogin } from '@/utils/webAuth';
 import { isNativePlatform } from '@/utils/platformDetection';
 import { authService } from '@/services/authService';
@@ -1766,9 +1766,9 @@ export default function SettingsPage() {
         const appStoreId = '6755160060';
         const appStoreUrl = `https://apps.apple.com/app/id${appStoreId}?action=write-review`;
         
-        // Try to open with Capacitor App plugin first
+        // Try to open with Capacitor Browser plugin
         try {
-          await App.openUrl({ url: appStoreUrl });
+          await Browser.open({ url: appStoreUrl });
         } catch (e) {
           // Fallback to window.open
           window.open(appStoreUrl, '_blank');
@@ -1778,9 +1778,9 @@ export default function SettingsPage() {
         const packageName = 'com.kriptokirmizi.alerta';
         const playStoreUrl = `https://play.google.com/store/apps/details?id=${packageName}`;
         
-        // Try to open with Capacitor App plugin first
+        // Try to open with Capacitor Browser plugin
         try {
-          await App.openUrl({ url: playStoreUrl });
+          await Browser.open({ url: playStoreUrl });
         } catch (e) {
           // Fallback to window.open
           window.open(playStoreUrl, '_blank');
