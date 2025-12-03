@@ -53,7 +53,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; symbol: string } | null>(null);
   const [symbolsWithAlerts, setSymbolsWithAlerts] = useState<Set<string>>(new Set());
   const [showSettings, setShowSettings] = useState(false);
-  const [backgroundColor, setBackgroundColor] = useState<string>('gradient-gray');
+  const [backgroundColor, setBackgroundColor] = useState<string>('solid-dark');
   const [isIPad, setIsIPad] = useState(false);
 
   // Detect client-side for responsive width

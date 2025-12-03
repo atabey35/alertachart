@@ -2124,28 +2124,55 @@ export default function SettingsPage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-black p-4 pt-12">
-      <div className={`${isDesktop ? 'max-w-4xl' : 'max-w-md'} mx-auto space-y-8`}>
+    <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-black p-3 pt-10">
+      <div className={`${isDesktop ? 'max-w-4xl' : 'max-w-md'} mx-auto space-y-4`}>
         {/* Header */}
-        <div className="flex items-center justify-between mt-4">
+        <div className="flex items-center justify-between">
           <button
             onClick={() => router.push('/')}
-            className="p-2 text-slate-400 hover:text-blue-200 transition-colors rounded-lg hover:bg-blue-950/20"
+            className="p-1.5 text-slate-400 hover:text-blue-200 transition-colors rounded-lg hover:bg-blue-950/20"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
           </button>
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 via-cyan-400 to-blue-500 bg-clip-text text-transparent">
-            Settings
-          </h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl font-semibold text-white tracking-tight drop-shadow-sm">
+              {language === 'tr' ? 'Ayarlar' : 'Settings'}
+            </h1>
+            {/* Language Selector */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setLanguage('tr')}
+                className={`p-1.5 rounded-lg border transition-all backdrop-blur-sm ${
+                  language === 'tr'
+                    ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
+                    : 'border-blue-500/10 bg-slate-900/50 text-slate-400 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-slate-300'
+                }`}
+                title="Türkçe"
+              >
+                <span className="text-sm">🇹🇷</span>
+              </button>
+              <button
+                onClick={() => setLanguage('en')}
+                className={`p-1.5 rounded-lg border transition-all backdrop-blur-sm ${
+                  language === 'en'
+                    ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
+                    : 'border-blue-500/10 bg-slate-900/50 text-slate-400 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-slate-300'
+                }`}
+                title="English"
+              >
+                <span className="text-sm">🇬🇧</span>
+              </button>
+            </div>
+          </div>
           {/* Help Center Button */}
           <button
             onClick={() => router.push('/help')}
-            className="p-2 text-slate-400 hover:text-blue-300 transition-colors group relative rounded-lg hover:bg-blue-950/20"
+            className="p-1.5 text-slate-400 hover:text-blue-300 transition-colors group relative rounded-lg hover:bg-blue-950/20"
             title="Help Center"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             {/* Tooltip */}
@@ -2156,7 +2183,7 @@ export default function SettingsPage() {
         </div>
 
         {/* Navigation Buttons - Quick access to other tabs */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-5 gap-2">
           {/* Liquidations - Show for all users, but premium check on click */}
           {user && (
             <button
@@ -2167,54 +2194,50 @@ export default function SettingsPage() {
                   setShowUpgradeModal(true);
                 }
               }}
-              className="group p-4 rounded-xl border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative overflow-hidden"
+              className="group p-2 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-cyan-500/0 group-hover:from-blue-500/10 group-hover:to-cyan-500/5 transition-all duration-300"></div>
-              <div className="flex flex-col items-center gap-1.5 relative z-10">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center gap-1 relative z-10">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-                <span className="text-xs font-medium">{language === 'tr' ? 'Liquidations' : 'Liquidations'}</span>
+                <span className="text-[10px] font-medium leading-tight text-center">{language === 'tr' ? 'Liquidations' : 'Liquidations'}</span>
                 {!hasPremiumAccessValue && (
-                  <span className="absolute top-1.5 right-1.5 text-[10px] opacity-70">🔒</span>
+                  <span className="absolute top-0.5 right-0.5 text-[8px] opacity-70">🔒</span>
                 )}
               </div>
             </button>
           )}
           <button
             onClick={() => handleNavigateToTab('chart')}
-            className="group p-4 rounded-xl border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative overflow-hidden"
+            className="group p-2 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-cyan-500/0 group-hover:from-blue-500/10 group-hover:to-cyan-500/5 transition-all duration-300"></div>
-            <div className="flex flex-col items-center gap-1.5 relative z-10">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col items-center gap-1 relative z-10">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              <span className="text-xs font-medium">{language === 'tr' ? 'Grafik' : 'Chart'}</span>
+              <span className="text-[10px] font-medium leading-tight text-center">{language === 'tr' ? 'Grafik' : 'Chart'}</span>
             </div>
           </button>
           <button
             onClick={() => handleNavigateToTab('watchlist')}
-            className="group p-4 rounded-xl border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative overflow-hidden"
+            className="group p-2 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-cyan-500/0 group-hover:from-blue-500/10 group-hover:to-cyan-500/5 transition-all duration-300"></div>
-            <div className="flex flex-col items-center gap-1.5 relative z-10">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col items-center gap-1 relative z-10">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
-              <span className="text-xs font-medium">{language === 'tr' ? 'İzleme' : 'Watchlist'}</span>
+              <span className="text-[10px] font-medium leading-tight text-center">{language === 'tr' ? 'İzleme' : 'Watchlist'}</span>
             </div>
           </button>
           <button
             onClick={() => handleNavigateToTab('alerts')}
-            className="group p-4 rounded-xl border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative overflow-hidden"
+            className="group p-2 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative"
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-cyan-500/0 group-hover:from-blue-500/10 group-hover:to-cyan-500/5 transition-all duration-300"></div>
-            <div className="flex flex-col items-center gap-1.5 relative z-10">
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col items-center gap-1 relative z-10">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              <span className="text-xs font-medium">{language === 'tr' ? 'Alarmlar' : 'Alerts'}</span>
+              <span className="text-[10px] font-medium leading-tight text-center">{language === 'tr' ? 'Alarmlar' : 'Alerts'}</span>
             </div>
           </button>
           {user && (
@@ -2226,16 +2249,15 @@ export default function SettingsPage() {
                   setShowUpgradeModal(true);
                 }
               }}
-              className="group p-4 rounded-xl border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative overflow-hidden"
+              className="group p-2 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative"
             >
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 to-cyan-500/0 group-hover:from-blue-500/10 group-hover:to-cyan-500/5 transition-all duration-300"></div>
-              <div className="flex flex-col items-center gap-1.5 relative z-10">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="flex flex-col items-center gap-1 relative z-10">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
                 </svg>
-                <span className="text-xs font-medium">Aggr</span>
+                <span className="text-[10px] font-medium leading-tight text-center">Aggr</span>
                 {!hasPremiumAccessValue && (
-                  <span className="absolute top-1.5 right-1.5 text-[10px] opacity-70">🔒</span>
+                  <span className="absolute top-0.5 right-0.5 text-[8px] opacity-70">🔒</span>
                 )}
               </div>
             </button>
@@ -2243,39 +2265,38 @@ export default function SettingsPage() {
         </div>
 
         {/* Auth Section */}
-        <div className="space-y-4">
-          <label className="block text-sm font-medium text-slate-300">Hesap</label>
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">Hesap</label>
           {user ? (
-            <div className="space-y-4">
+            <div className="space-y-2">
               {/* User Info Card */}
-              <div className="p-5 rounded-2xl border border-blue-500/10 bg-slate-900/50 backdrop-blur-md shadow-xl shadow-blue-900/10 relative overflow-hidden">
+              <div className="p-3 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md shadow-lg shadow-blue-900/10 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-cyan-500/5"></div>
-                <div className="flex items-start gap-4 relative z-10">
+                <div className="flex items-center gap-3 relative z-10">
                   {/* User Avatar */}
                   <div className="flex-shrink-0 relative">
-                    <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-blue-500/30 ring-2 ring-blue-500/30 ring-offset-2 ring-offset-slate-900/50">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md shadow-blue-500/30 ring-1 ring-blue-500/30">
                       {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
                     </div>
-                    <div className="absolute -inset-1 bg-gradient-to-br from-blue-500/20 to-cyan-500/20 rounded-2xl blur-sm -z-10"></div>
                   </div>
                       
                   {/* User Details */}
-                  <div className="flex-1 min-w-0 space-y-1.5">
+                  <div className="flex-1 min-w-0 space-y-0.5">
                     {user.name && (
-                      <div className="text-lg font-bold text-white truncate">
+                      <div className="text-sm font-semibold text-white truncate">
                         {user.name}
                       </div>
                     )}
-                    <div className="text-sm text-slate-300 truncate font-medium">
+                    <div className="text-xs text-slate-400 truncate">
                       {user.email}
                     </div>
                         
                     {/* Badges */}
-                    <div className="flex flex-wrap gap-2 mt-2.5">
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
                       {(session?.user as any)?.provider && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-500/20 text-blue-300 text-xs font-semibold rounded-full border border-blue-500/30 backdrop-blur-sm">
+                        <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-500/20 text-blue-300 text-[10px] font-medium rounded border border-blue-500/30 backdrop-blur-sm">
                           {(session?.user as any).provider === 'google' && (
-                            <svg className="w-3 h-3" viewBox="0 0 24 24">
+                            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24">
                               <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                               <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
                               <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
@@ -2283,11 +2304,11 @@ export default function SettingsPage() {
                             </svg>
                           )}
                           {(session?.user as any).provider === 'apple' && (
-                            <svg className="w-3 h-3" viewBox="0 0 24 24" fill="currentColor">
+                            <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor">
                               <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                             </svg>
                           )}
-                          <span className="capitalize">{(session?.user as any).provider}</span>
+                          <span className="capitalize text-[10px]">{(session?.user as any).provider}</span>
                         </span>
                       )}
                       {hasPremiumAccessValue && (
@@ -2302,7 +2323,7 @@ export default function SettingsPage() {
                     </div>
                         
                     {/* User ID */}
-                    <div className="text-[10px] text-slate-500 font-mono mt-2">
+                    <div className="text-[9px] text-slate-500 font-mono mt-1">
                       ID: #{user.id}
                     </div>
                   </div>
@@ -2313,11 +2334,11 @@ export default function SettingsPage() {
               {!hasPremiumAccessValue && (
                 <button
                   onClick={() => setShowUpgradeModal(true)}
-                  className="w-full px-5 py-3.5 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 hover:from-blue-500 hover:via-cyan-500 hover:to-blue-600 text-white rounded-xl font-bold transition-all duration-300 shadow-lg shadow-blue-900/30 hover:shadow-xl hover:shadow-blue-900/40 active:scale-[0.98] relative overflow-hidden border border-blue-500/30"
+                  className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 hover:from-blue-500 hover:via-cyan-500 hover:to-blue-600 text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-md shadow-blue-900/30 hover:shadow-lg hover:shadow-blue-900/40 active:scale-[0.98] relative overflow-hidden border border-blue-500/30"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-cyan-400/20 to-blue-400/20 animate-pulse"></div>
-                  <div className="relative flex items-center justify-center gap-2 z-10">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="relative flex items-center justify-center gap-1.5 z-10">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                     </svg>
                     <span>{language === 'tr' ? 'Premium\'a Geç' : 'Go Premium'}</span>
@@ -2370,11 +2391,11 @@ export default function SettingsPage() {
                   }
                 }}
                 disabled={loading}
-                className="w-full px-4 py-3 bg-slate-900/50 hover:bg-red-950/30 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 rounded-xl font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation backdrop-blur-sm"
+                className="w-full px-3 py-2 bg-slate-900/50 hover:bg-red-950/30 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 rounded-lg text-sm font-medium transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation backdrop-blur-sm"
                 style={{ WebkitTapHighlightColor: 'transparent' }}
               >
-                <div className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center justify-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                   </svg>
                   <span>
@@ -2389,11 +2410,11 @@ export default function SettingsPage() {
               {isCapacitor && (
                 <button
                   onClick={handleRateApp}
-                  className="w-full px-4 py-3 bg-gradient-to-r from-blue-600 via-cyan-600 to-indigo-600 hover:from-blue-500 hover:via-cyan-500 hover:to-indigo-500 text-white rounded-xl font-bold transition-all duration-300 shadow-lg shadow-blue-900/30 hover:shadow-xl hover:shadow-blue-900/40 active:scale-[0.98] touch-manipulation border border-blue-500/30"
+                  className="w-full px-3 py-2 bg-gradient-to-r from-blue-600 via-cyan-600 to-indigo-600 hover:from-blue-500 hover:via-cyan-500 hover:to-indigo-500 text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-md shadow-blue-900/30 hover:shadow-lg hover:shadow-blue-900/40 active:scale-[0.98] touch-manipulation border border-blue-500/30"
                   style={{ WebkitTapHighlightColor: 'transparent' }}
                 >
-                  <div className="flex items-center justify-center gap-2">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center justify-center gap-1.5">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
                     <span>
@@ -2422,11 +2443,11 @@ export default function SettingsPage() {
                   }
                 }}
                 disabled={isLoggingOut || logoutProcessingRef.current}
-                className="w-full px-4 py-3 bg-slate-900/50 hover:bg-red-950/30 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 rounded-xl font-semibold transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation backdrop-blur-sm"
+                className="w-full px-3 py-2 bg-slate-900/50 hover:bg-red-950/30 border border-red-500/30 hover:border-red-500/50 text-red-400 hover:text-red-300 rounded-lg text-sm font-medium transition-all duration-200 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed touch-manipulation backdrop-blur-sm"
                 style={{ WebkitTapHighlightColor: 'transparent' }}
               >
-                <div className="flex items-center justify-center gap-2">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="flex items-center justify-center gap-1.5">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
                   <span>
@@ -2474,7 +2495,9 @@ export default function SettingsPage() {
               ) : (
               <div className="space-y-3">
                 <p className="text-sm text-slate-300 mb-4">
-                  Sign in to access premium features and sync your data
+                  {language === 'tr' 
+                    ? 'Premium özelliklere erişmek ve verilerinizi senkronize etmek için giriş yapın!' 
+                    : 'Sign in to access premium features and sync your data!'}
                 </p>
 
                 {/* Error Message */}
@@ -2634,86 +2657,86 @@ export default function SettingsPage() {
 
         {/* Premium Features Section - For non-premium users */}
         {!hasPremiumAccessValue && (
-          <div className="space-y-4">
-            <label className="block text-sm font-medium text-slate-300">{language === 'tr' ? 'Premium Özellikler' : 'Premium Features'}</label>
-            <div className="space-y-3">
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{language === 'tr' ? 'Premium Özellikler' : 'Premium Features'}</label>
+            <div className="space-y-1.5">
               {/* Liquidations */}
-              <div className="group p-4 rounded-xl border border-cyan-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-cyan-500/30 hover:bg-cyan-950/20 transition-all shadow-lg shadow-cyan-900/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 border border-cyan-500/30 flex items-center justify-center shadow-md shadow-cyan-500/20">
-                    <TrendingUp className="w-6 h-6 text-white" />
+              <div className="group p-2.5 rounded-lg border border-cyan-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-cyan-500/30 hover:bg-cyan-950/20 transition-all">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 border border-cyan-500/30 flex items-center justify-center shadow-sm">
+                    <TrendingUp className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <div className="font-semibold text-white">Liquidations Dashboard</div>
-                    <div className="text-xs text-slate-400">{language === 'tr' ? 'Gerçek zamanlı liquidation verileri' : 'Real-time liquidation data'}</div>
+                    <div className="text-sm font-medium text-white">Liquidations Dashboard</div>
+                    <div className="text-[11px] text-slate-400">{language === 'tr' ? 'Gerçek zamanlı liquidation verileri' : 'Real-time liquidation data'}</div>
                   </div>
                 </div>
-                <span className="text-xs px-2.5 py-1 bg-cyan-500/20 text-cyan-300 rounded-full border border-cyan-500/30 backdrop-blur-sm font-medium">Premium</span>
+                <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 text-cyan-300 rounded border border-cyan-500/30 backdrop-blur-sm font-medium">Premium</span>
               </div>
 
               {/* Aggr */}
-              <div className="group p-4 rounded-xl border border-indigo-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-indigo-500/30 hover:bg-indigo-950/20 transition-all shadow-lg shadow-indigo-900/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-600 border border-indigo-500/30 flex items-center justify-center shadow-md shadow-indigo-500/20">
-                    <BarChart3 className="w-6 h-6 text-white" />
+              <div className="group p-2.5 rounded-lg border border-indigo-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-indigo-500/30 hover:bg-indigo-950/20 transition-all">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 border border-indigo-500/30 flex items-center justify-center shadow-sm">
+                    <BarChart3 className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <div className="font-semibold text-white">Aggr Trade</div>
-                    <div className="text-xs text-slate-400">{language === 'tr' ? 'Gelişmiş trading analizi' : 'Advanced trading analysis'}</div>
+                    <div className="text-sm font-medium text-white">Aggr Trade</div>
+                    <div className="text-[11px] text-slate-400">{language === 'tr' ? 'Gelişmiş trading analizi' : 'Advanced trading analysis'}</div>
                   </div>
                 </div>
-                <span className="text-xs px-2.5 py-1 bg-indigo-500/20 text-indigo-300 rounded-full border border-indigo-500/30 backdrop-blur-sm font-medium">Premium</span>
+                <span className="text-[10px] px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30 backdrop-blur-sm font-medium">Premium</span>
               </div>
 
               {/* Custom Coin Alerts */}
-              <div className="group p-4 rounded-xl border border-blue-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-blue-500/30 hover:bg-blue-950/20 transition-all shadow-lg shadow-blue-900/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center shadow-md shadow-blue-500/20">
-                    <Bell className="w-6 h-6 text-white" />
+              <div className="group p-2.5 rounded-lg border border-blue-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-blue-500/30 hover:bg-blue-950/20 transition-all">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center shadow-sm">
+                    <Bell className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <div className="font-semibold text-white">Custom Coin Alerts</div>
-                    <div className="text-xs text-slate-400">{language === 'tr' ? 'Herhangi bir coin için özel fiyat alarmları' : 'Custom price alerts for any coin'}</div>
+                    <div className="text-sm font-medium text-white">Custom Coin Alerts</div>
+                    <div className="text-[11px] text-slate-400">{language === 'tr' ? 'Herhangi bir coin için özel fiyat alarmları' : 'Custom price alerts for any coin'}</div>
                   </div>
                 </div>
-                <span className="text-xs px-2.5 py-1 bg-blue-500/20 text-blue-300 rounded-full border border-blue-500/30 backdrop-blur-sm font-medium">Premium</span>
+                <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30 backdrop-blur-sm font-medium">Premium</span>
               </div>
 
               {/* Advanced Layouts */}
-              <div className="group p-4 rounded-xl border border-violet-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-violet-500/30 hover:bg-violet-950/20 transition-all shadow-lg shadow-violet-900/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-500 border border-violet-500/30 flex items-center justify-center shadow-md shadow-violet-500/20">
-                    <Sparkles className="w-6 h-6 text-white" />
+              <div className="group p-2.5 rounded-lg border border-violet-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-violet-500/30 hover:bg-violet-950/20 transition-all">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 border border-violet-500/30 flex items-center justify-center shadow-sm">
+                    <Sparkles className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <div className="font-semibold text-white">{language === 'tr' ? 'Gelişmiş Grafik Düzenleri' : 'Advanced Chart Layouts'}</div>
-                    <div className="text-xs text-slate-400">{language === 'tr' ? '2x2 ve 3x3 çoklu grafik düzenleri' : '2x2 and 3x3 multi-chart layouts'}</div>
+                    <div className="text-sm font-medium text-white">{language === 'tr' ? 'Gelişmiş Grafik Düzenleri' : 'Advanced Chart Layouts'}</div>
+                    <div className="text-[11px] text-slate-400">{language === 'tr' ? '2x2 ve 3x3 çoklu grafik düzenleri' : '2x2 and 3x3 multi-chart layouts'}</div>
                   </div>
                 </div>
-                <span className="text-xs px-2.5 py-1 bg-violet-500/20 text-violet-300 rounded-full border border-violet-500/30 backdrop-blur-sm font-medium">Premium</span>
+                <span className="text-[10px] px-2 py-0.5 bg-violet-500/20 text-violet-300 rounded border border-violet-500/30 backdrop-blur-sm font-medium">Premium</span>
               </div>
 
               {/* 10s & 30s Timeframe */}
-              <div className="group p-4 rounded-xl border border-blue-400/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-blue-400/30 hover:bg-blue-950/20 transition-all shadow-lg shadow-blue-900/10">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-400 border border-blue-400/30 flex items-center justify-center shadow-md shadow-blue-400/20">
-                    <Clock className="w-6 h-6 text-white" />
+              <div className="group p-2.5 rounded-lg border border-blue-400/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-blue-400/30 hover:bg-blue-950/20 transition-all">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-400 border border-blue-400/30 flex items-center justify-center shadow-sm">
+                    <Clock className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <div className="font-semibold text-white">10s & 30s Timeframe</div>
-                    <div className="text-xs text-slate-400">{language === 'tr' ? 'Yüksek frekanslı veri analizi' : 'High-frequency data analysis'}</div>
+                    <div className="text-sm font-medium text-white">10s & 30s Timeframe</div>
+                    <div className="text-[11px] text-slate-400">{language === 'tr' ? 'Yüksek frekanslı veri analizi' : 'High-frequency data analysis'}</div>
                   </div>
                 </div>
-                <span className="text-xs px-2.5 py-1 bg-blue-400/20 text-blue-300 rounded-full border border-blue-400/30 backdrop-blur-sm font-medium">Premium</span>
+                <span className="text-[10px] px-2 py-0.5 bg-blue-400/20 text-blue-300 rounded border border-blue-400/30 backdrop-blur-sm font-medium">Premium</span>
               </div>
             </div>
           </div>
         )}
             
         {/* Layout Selection */}
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-slate-300">Chart Layout</label>
-          <div className="grid grid-cols-4 gap-3">
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">Chart Layout</label>
+          <div className="grid grid-cols-4 gap-2">
             {[1, 2, 4, 9].map((layoutOption) => {
               const isActive = layout === layoutOption;
               const layoutLabel = layoutOption === 1 ? '1x1' : layoutOption === 2 ? '1x2' : layoutOption === 4 ? '2x2' : '3x3';
@@ -2730,9 +2753,9 @@ export default function SettingsPage() {
                       setShowUpgradeModal(true);
                     }
                   }}
-                  className={`flex flex-col items-center justify-center gap-2 p-3 rounded-xl border transition-all relative backdrop-blur-md ${
+                  className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg border transition-all relative backdrop-blur-md ${
                     isActive
-                      ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
+                      ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
                       : hasAccess
                       ? 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
                       : 'border-blue-500/5 bg-slate-900/30 text-slate-500 opacity-60'
@@ -2740,9 +2763,9 @@ export default function SettingsPage() {
                   title={!hasAccess ? `${layoutLabel} (Premium)` : layoutLabel}
                 >
                   {getGridIcon(layoutOption, isActive, hasAccess)}
-                  <span className="text-xs font-medium">{layoutLabel}</span>
+                  <span className="text-[10px] font-medium">{layoutLabel}</span>
                   {!hasAccess && (
-                    <span className="absolute top-1 right-1 text-[10px] opacity-70">🔒</span>
+                    <span className="absolute top-0.5 right-0.5 text-[8px] opacity-70">🔒</span>
                   )}
                 </button>
               );
@@ -2751,14 +2774,14 @@ export default function SettingsPage() {
         </div>
 
         {/* Market Type */}
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-slate-300">{language === 'tr' ? 'Market Tipi' : 'Market Type'}</label>
-          <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{language === 'tr' ? 'Market Tipi' : 'Market Type'}</label>
+          <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setMarketType('spot')}
-              className={`p-3.5 rounded-xl border transition-all backdrop-blur-md font-medium ${
+              className={`py-2 px-3 rounded-lg border transition-all backdrop-blur-md text-sm font-medium ${
                 marketType === 'spot'
-                  ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
+                  ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
                   : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
               }`}
             >
@@ -2766,9 +2789,9 @@ export default function SettingsPage() {
             </button>
             <button
               onClick={() => setMarketType('futures')}
-              className={`p-3.5 rounded-xl border transition-all backdrop-blur-md font-medium ${
+              className={`py-2 px-3 rounded-lg border transition-all backdrop-blur-md text-sm font-medium ${
                 marketType === 'futures'
-                  ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
+                  ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
                   : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
               }`}
             >
@@ -2777,39 +2800,12 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Language Selection */}
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-slate-300">{language === 'tr' ? 'Dil' : 'Language'}</label>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setLanguage('tr')}
-              className={`p-3.5 rounded-xl border transition-all backdrop-blur-md font-medium ${
-                language === 'tr'
-                  ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
-                  : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
-              }`}
-            >
-              🇹🇷 Türkçe
-            </button>
-            <button
-              onClick={() => setLanguage('en')}
-              className={`p-3.5 rounded-xl border transition-all backdrop-blur-md font-medium ${
-                language === 'en'
-                  ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
-                  : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
-              }`}
-            >
-              🇬🇧 English
-            </button>
-          </div>
-        </div>
-
         {/* Legal Links - Terms & Privacy */}
-        <div className="space-y-3">
-          <label className="block text-sm font-medium text-slate-300">
+        <div className="space-y-2">
+          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">
             {language === 'tr' ? 'Yasal Bilgiler' : 'Legal Information'}
           </label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             {/* Terms of Use */}
             <button
               onClick={async () => {
@@ -2828,10 +2824,10 @@ export default function SettingsPage() {
                   window.open(url, '_blank', 'noopener,noreferrer');
                 }
               }}
-              className="group flex items-center justify-center gap-2 p-3.5 rounded-xl border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white transition-all"
+              className="group flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white transition-all"
             >
-              <FileText className="w-4 h-4" />
-              <span className="text-sm font-medium">{language === 'tr' ? 'Kullanım Koşulları' : 'Terms of Use'}</span>
+              <FileText className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">{language === 'tr' ? 'Kullanım Koşulları' : 'Terms of Use'}</span>
             </button>
 
             {/* Privacy Policy */}
@@ -2852,10 +2848,10 @@ export default function SettingsPage() {
                   window.open(url, '_blank', 'noopener,noreferrer');
                 }
               }}
-              className="group flex items-center justify-center gap-2 p-3.5 rounded-xl border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white transition-all"
+              className="group flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white transition-all"
             >
-              <Shield className="w-4 h-4" />
-              <span className="text-sm font-medium">{language === 'tr' ? 'Gizlilik Politikası' : 'Privacy Policy'}</span>
+              <Shield className="w-3.5 h-3.5" />
+              <span className="text-xs font-medium">{language === 'tr' ? 'Gizlilik Politikası' : 'Privacy Policy'}</span>
             </button>
           </div>
         </div>
