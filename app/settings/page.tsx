@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSession, signOut, signIn } from 'next-auth/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { TrendingUp, BarChart3, Bell, Sparkles, Clock, FileText, Shield } from 'lucide-react';
 import { Dialog } from '@capacitor/dialog';
 import { Browser } from '@capacitor/browser';
@@ -24,6 +24,7 @@ export default function SettingsPage() {
   const logoutProcessingRef = useRef(false); // iOS double-tap prevention
   const { data: session, status, update } = useSession();
   const router = useRouter();
+  const pathname = usePathname();
 
   // User state
   const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
@@ -65,13 +66,50 @@ export default function SettingsPage() {
   // Info tooltip state
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
-  // 🔥 Initial page loading - 1.5 seconds delay
+  // 🔥 Show loading on mount and when page becomes visible (for tab switching)
   useEffect(() => {
+    // Show loading on initial mount
+    setPageLoading(true);
+    
     const timer = setTimeout(() => {
       setPageLoading(false);
     }, 1500);
+
     return () => clearTimeout(timer);
-  }, []);
+  }, []); // Only on mount
+
+  // 🔥 Also show loading when page becomes visible (handles tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && pathname === '/settings') {
+        // Page became visible while on settings - show loading to refresh premium status
+        setPageLoading(true);
+        const timer = setTimeout(() => {
+          setPageLoading(false);
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    };
+
+    // Also check on focus (for better tab switching support)
+    const handleFocus = () => {
+      if (pathname === '/settings') {
+        setPageLoading(true);
+        const timer = setTimeout(() => {
+          setPageLoading(false);
+        }, 1500);
+        return () => clearTimeout(timer);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+    
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [pathname]);
 
   // 🔥 Hydration-safe: Component mount olduktan hemen sonra cache'i oku
   useEffect(() => {
