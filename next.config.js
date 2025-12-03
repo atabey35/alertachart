@@ -8,11 +8,6 @@ const nextConfig = {
   //   unoptimized: true, // Required for static export
   // },
   
-  // Disable ESLint during build to prevent warnings from blocking deployment
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  
   // Disable source maps in production to hide file sources
   productionBrowserSourceMaps: false,
   
@@ -50,6 +45,10 @@ const nextConfig = {
       },
     ];
   },
+  
+  // Next.js 16: Turbopack is default, but we still need webpack for worker-loader
+  // Add empty turbopack config to silence the warning
+  turbopack: {},
   
   webpack: (config, { dev, isServer }) => {
     config.module.rules.push({
