@@ -38,6 +38,7 @@ export default function SettingsPage() {
   } | null>(null);
   const [fullUser, setFullUser] = useState<User | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [userPlanFetched, setUserPlanFetched] = useState(false); // Track if userPlan has been fetched
 
   // Layout and market type state (synced with localStorage)
   const [layout, setLayout] = useState<1 | 2 | 4 | 9>(1);
@@ -66,39 +67,76 @@ export default function SettingsPage() {
   // Info tooltip state
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
 
-  // 🔥 Show loading on mount and when page becomes visible (for tab switching)
-  useEffect(() => {
-    // Show loading on initial mount
-    setPageLoading(true);
-    
-    const timer = setTimeout(() => {
-      setPageLoading(false);
-    }, 1500);
+  // 🔥 Track when we started loading to ensure minimum 1.5s
+  const loadingStartTimeRef = useRef<number | null>(null);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-    return () => clearTimeout(timer);
-  }, []); // Only on mount
-
-  // 🔥 Also show loading when page becomes visible (handles tab switching)
+  // 🔥 Show loading until user and premium data is ready (minimum 1.5s)
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'visible' && pathname === '/settings') {
-        // Page became visible while on settings - show loading to refresh premium status
-        setPageLoading(true);
-        const timer = setTimeout(() => {
-          setPageLoading(false);
-        }, 1500);
-        return () => clearTimeout(timer);
+    // Start loading timer when component mounts
+    if (isInitialLoad) {
+      setPageLoading(true);
+      loadingStartTimeRef.current = Date.now();
+      setIsInitialLoad(false);
+      setUserPlanFetched(false); // Reset on mount
+    }
+
+    // Check if data is ready to show content
+    const checkDataReady = () => {
+      // Session must be resolved (not loading)
+      if (status === 'loading') return false;
+      
+      // If unauthenticated and no user, we're ready (will show login)
+      if (status === 'unauthenticated' && !user) return true;
+      
+      // If authenticated but no user yet, wait
+      if (status === 'authenticated' && !user) return false;
+      
+      // If user exists, we need to wait for userPlan to be fetched
+      if (user) {
+        return userPlanFetched; // Wait for fetchUserPlan to complete
+      }
+      
+      return false;
+    };
+
+    // Check if we can hide loading
+    const hideLoadingIfReady = () => {
+      if (!loadingStartTimeRef.current) return;
+      
+      const now = Date.now();
+      const minTime = 1500; // Minimum 1.5 seconds
+      const elapsed = now - loadingStartTimeRef.current;
+      
+      // Must wait at least 1.5 seconds AND data must be ready
+      if (elapsed >= minTime && checkDataReady()) {
+        setPageLoading(false);
       }
     };
 
-    // Also check on focus (for better tab switching support)
+    // Check immediately and set up interval
+    hideLoadingIfReady();
+    const interval = setInterval(hideLoadingIfReady, 100);
+
+    return () => clearInterval(interval);
+  }, [status, user, userPlanFetched, isInitialLoad]);
+
+  // 🔥 Reset loading when page becomes visible (for tab switching)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible' && pathname === '/settings') {
+        // Reset loading when page becomes visible
+        setPageLoading(true);
+        loadingStartTimeRef.current = Date.now();
+        setUserPlanFetched(false); // Reset to wait for fresh fetch
+      }
+    };
+
     const handleFocus = () => {
       if (pathname === '/settings') {
         setPageLoading(true);
-        const timer = setTimeout(() => {
-          setPageLoading(false);
-        }, 1500);
-        return () => clearTimeout(timer);
+        loadingStartTimeRef.current = Date.now();
+        setUserPlanFetched(false); // Reset to wait for fresh fetch
       }
     };
 
@@ -120,10 +158,15 @@ export default function SettingsPage() {
           const parsed = JSON.parse(cached);
           console.log('[Settings] ⚡️ Plan loaded from cache immediately:', parsed);
           setUserPlan(parsed);
+          setUserPlanFetched(true); // Cache'den okundu, fetch tamamlandı sayılır
+        } else {
+          // No cache, will be fetched by fetchUserPlan
+          setUserPlanFetched(false);
         }
       } catch (e) {
         console.error('[Settings] Cache parse error:', e);
         localStorage.removeItem('user_plan_cache');
+        setUserPlanFetched(false);
       }
     }
   }, []);
@@ -587,11 +630,15 @@ export default function SettingsPage() {
       // User yoksa cache'i de temizle
       setUserPlan(null);
       setFullUser(null);
+      setUserPlanFetched(true); // Mark as fetched (no user = no plan needed)
       if (typeof window !== 'undefined') {
         localStorage.removeItem('user_plan_cache');
       }
       return;
     }
+
+    // Reset fetched flag when starting new fetch
+    setUserPlanFetched(false);
 
     try {
       // 🔥 APPLE GUIDELINE 5.1.1: Include guest email in request if available
@@ -646,8 +693,13 @@ export default function SettingsPage() {
           subscription_id: null,
         });
       }
+      
+      // Mark as fetched (success or failure, we've checked)
+      setUserPlanFetched(true);
     } catch (error) {
       console.error('[Settings] Error fetching user plan:', error);
+      // Mark as fetched even on error (so loading doesn't hang forever)
+      setUserPlanFetched(true);
     }
   }, [user]);
 
