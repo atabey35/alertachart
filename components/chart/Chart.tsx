@@ -176,14 +176,49 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [useMagnet, setUseMagnet] = useState(true); // Magnet mode enabled by default
   const lastSnappedPriceRef = useRef<number | null>(null); // Track last snapped price for haptic feedback
   const rafUpdateRef = useRef<number | null>(null); // RequestAnimationFrame ID for performance optimization
+  const loadHistoricalDataRef = useRef<() => Promise<void>>(() => Promise.resolve()); // ✅ Ref to latest loadHistoricalData function
+
 
   // Cleanup RAF on unmount and background/visibility change
   useEffect(() => {
     const handleVisibilityChange = () => {
-      // Cancel RAF when app goes to background
-      if (document.hidden && rafUpdateRef.current !== null) {
-        cancelAnimationFrame(rafUpdateRef.current);
-        rafUpdateRef.current = null;
+      // 1. Uygulama Arka Plana Gittiğinde (Background)
+      if (document.hidden) {
+        console.log('[Chart] ⏸️ App backgrounded - pausing updates');
+        if (rafUpdateRef.current !== null) {
+          cancelAnimationFrame(rafUpdateRef.current);
+          rafUpdateRef.current = null;
+        }
+        // İsteğe bağlı: Worker'ı duraklatabilirsin ama terminate etmek daha temiz bir dönüş sağlar
+      } 
+      // 2. Uygulama Ön Plana Geldiğinde (Foreground) - TRADINGVIEW GİBİ DAVRAN
+      else {
+        console.log('[Chart] ▶️ App foregrounded - checking data freshness');
+        
+        // RAF bayrağını temizle ki yeni çizimler kuyruğa girebilsin
+        updateQueuedRef.current = false;
+
+        // Son verinin zamanını kontrol et
+        const bars = cacheRef.current?.getAllBars();
+        const lastBar = bars && bars.length > 0 ? bars[bars.length - 1] : null;
+        const now = Date.now();
+        
+        // Eğer son veri yoksa VEYA son veri 2 mum süresinden daha eskiyse (Gap oluşmuşsa)
+        // VEYA soket bağlantısı kopmuşsa
+        const isStale = !lastBar || (now - lastBar.time > timeframe * 1000 * 2);
+        
+        if (isStale || !wsConnected) {
+          console.log('[Chart] 🔄 Data is stale or disconnected. Refreshing chart...');
+          // En güncel loadHistoricalData fonksiyonunu çağır
+          // Bu fonksiyon: Cache'i temizler, eksik mumları API'den çeker ve Worker'ı yeniden başlatır.
+          loadHistoricalDataRef.current();
+        } else {
+          console.log('[Chart] ✅ Data is fresh enough, continuing...');
+          // Veri taze ise sadece görünürlüğü güncelle (Force render)
+          if (chartRef.current) {
+            chartRef.current.timeScale().scrollToRealTime();
+          }
+        }
       }
     };
 
@@ -197,7 +232,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, []);
+  }, []); // Dependency array boş kalabilir çünkü ref kullanıyoruz
 
   // Keep refs to the latest callbacks to avoid dependency issues
   const onConnectionChangeRef = useRef(onConnectionChange);
@@ -2099,6 +2134,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       setIsLoading(false);
     }
   };
+
+  // ✅ Update loadHistoricalDataRef whenever loadHistoricalData changes
+  // This ensures visibility change handler always calls the latest version
+  useEffect(() => {
+    loadHistoricalDataRef.current = loadHistoricalData;
+  }, [loadHistoricalData]);
 
   /**
    * Load older candles (lazy loading)
