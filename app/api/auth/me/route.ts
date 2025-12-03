@@ -183,7 +183,14 @@ export async function GET(request: NextRequest) {
 // Handle OPTIONS request for CORS preflight
 export async function OPTIONS(request: NextRequest) {
   const origin = request.headers.get('origin') || '';
-  const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://data.alertachart.com'];
+  const allowedOrigins = [
+    'https://alertachart.com', 
+    'https://www.alertachart.com', 
+    'https://aggr.alertachart.com', 
+    'https://www.aggr.alertachart.com',
+    'https://data.alertachart.com',
+    'https://www.data.alertachart.com'
+  ];
   
   const response = new NextResponse(null, { status: 204 });
   
