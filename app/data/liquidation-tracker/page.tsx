@@ -34,7 +34,7 @@ export default function LiquidationTrackerPage() {
       // Check if we're already on the correct subdomain
       if (typeof window !== 'undefined') {
         const currentHost = window.location.hostname;
-        if (currentHost === 'data.alertachart.com') {
+        if (currentHost === 'data.alertachart.com' || currentHost === 'www.data.alertachart.com') {
           // Already on correct subdomain, check premium access
           console.log('[LiquidationTracker] Already on data.alertachart.com, checking premium access');
           await checkPremiumAccess();
@@ -238,7 +238,36 @@ export default function LiquidationTrackerPage() {
   }
 
   if (isAuthenticated && hasPremium) {
-    // Will redirect, but show loading in the meantime
+    // Check if we're on the subdomain - if so, content is already loaded from kkterminal-main
+    // This page is just for auth check, actual content is served by kkterminal-main deployment
+    if (typeof window !== 'undefined') {
+      const currentHost = window.location.hostname;
+      const isOnSubdomain = currentHost === 'data.alertachart.com' || currentHost === 'www.data.alertachart.com';
+      
+      if (isOnSubdomain) {
+        // Already on subdomain and premium - content from kkterminal-main should be visible
+        // Don't render anything that blocks the content, just return empty div
+        // The actual liquidation tracker content is served by kkterminal-main via middleware rewrite
+        return <div className="min-h-screen w-full bg-gray-950" />;
+      } else {
+        // Not on subdomain, redirect
+        if (!redirectingRef.current) {
+          redirectingRef.current = true;
+          console.log('[LiquidationTracker] User authenticated and premium, redirecting to data.alertachart.com');
+          window.location.replace('https://data.alertachart.com/liquidation-tracker?embed=true');
+        }
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-950">
+            <div className="text-center">
+              <div className="w-16 h-16 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+              <p className="text-gray-400">Yönlendiriliyor...</p>
+            </div>
+          </div>
+        );
+      }
+    }
+    
+    // Fallback: show loading
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-950">
         <div className="text-center">
