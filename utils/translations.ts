@@ -456,7 +456,7 @@ const translations: Translations = {
     ja: '質問に対する即座のヘルプを取得',
     ko: '질문에 대한 즉각적인 도움 받기',
   },
-  'supportRequest': {
+  'supportRequestTitle': {
     tr: 'Destek Talebi',
     en: 'Support requests',
     ar: 'طلبات الدعم',

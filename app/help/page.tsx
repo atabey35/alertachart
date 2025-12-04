@@ -817,7 +817,7 @@ export default function HelpCenter() {
               <Mail className="w-7 h-7 text-green-400" />
             </div>
             <h3 className="text-xl font-semibold mb-2">
-              {t('supportRequest', language)}
+              {t('supportRequestTitle', language)}
             </h3>
             <p className="text-gray-400 text-sm">
               {language === 'tr' 
