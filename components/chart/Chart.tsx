@@ -186,8 +186,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       if (document.hidden) {
         console.log('[Chart] ⏸️ App backgrounded - pausing updates');
         if (rafUpdateRef.current !== null) {
-          cancelAnimationFrame(rafUpdateRef.current);
-          rafUpdateRef.current = null;
+        cancelAnimationFrame(rafUpdateRef.current);
+        rafUpdateRef.current = null;
         }
         // İsteğe bağlı: Worker'ı duraklatabilirsin ama terminate etmek daha temiz bir dönüş sağlar
       } 
