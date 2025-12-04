@@ -216,9 +216,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/icon.png', sizes: 'any' },
+      // Google Arama sonuçları için gerekli boyutlar (minimum 48x48 ve katları)
       { url: '/icon.png', type: 'image/png', sizes: '512x512' },
       { url: '/icon.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon.png', type: 'image/png', sizes: '144x144' }, // Google önerisi
       { url: '/icon.png', type: 'image/png', sizes: '96x96' },
+      { url: '/icon.png', type: 'image/png', sizes: '48x48' }, // Google minimum gereksinimi
       { url: '/icon.png', type: 'image/png', sizes: '32x32' },
       { url: '/icon.png', type: 'image/png', sizes: '16x16' },
     ],
