@@ -13,6 +13,7 @@ import PremiumBadge from '@/components/PremiumBadge';
 import TrialIndicator from '@/components/TrialIndicator';
 import UpgradeModal from '@/components/UpgradeModal';
 import { hasPremiumAccess, User } from '@/utils/premium';
+import { t, Language } from '@/utils/translations';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
@@ -43,7 +44,8 @@ export default function SettingsPage() {
   // Layout and market type state (synced with localStorage)
   const [layout, setLayout] = useState<1 | 2 | 4 | 9>(1);
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
-  const [language, setLanguage] = useState<'tr' | 'en'>('tr');
+  const [language, setLanguage] = useState<'tr' | 'en' | 'ar' | 'zh-Hant' | 'fr' | 'de' | 'ja' | 'ko'>('tr');
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   // Custom coin alerts state
   const [customAlerts, setCustomAlerts] = useState<any[]>([]);
@@ -185,8 +187,9 @@ export default function SettingsPage() {
       }
 
       const savedLanguage = localStorage.getItem('language');
-      if (savedLanguage === 'tr' || savedLanguage === 'en') {
-        setLanguage(savedLanguage);
+      const validLanguages = ['tr', 'en', 'ar', 'zh-Hant', 'fr', 'de', 'ja', 'ko'];
+      if (savedLanguage && validLanguages.includes(savedLanguage)) {
+        setLanguage(savedLanguage as 'tr' | 'en' | 'ar' | 'zh-Hant' | 'fr' | 'de' | 'ja' | 'ko');
       }
     }
   }, []);
@@ -1851,7 +1854,7 @@ export default function SettingsPage() {
       if (!hasCapacitor) {
         // Web: Show message
         if (language === 'tr') {
-          alert('Mobil uygulamayı App Store veya Play Store\'dan değerlendirebilirsiniz.');
+          alert(t('rateAppMessage', language));
         } else {
           alert('You can rate the mobile app from App Store or Play Store.');
         }
@@ -1887,7 +1890,7 @@ export default function SettingsPage() {
       } else {
         // Web or unknown platform
         if (language === 'tr') {
-          alert('Mobil uygulamayı App Store veya Play Store\'dan değerlendirebilirsiniz.');
+          alert(t('rateAppMessage', language));
         } else {
           alert('You can rate the mobile app from App Store or Play Store.');
         }
@@ -1895,7 +1898,7 @@ export default function SettingsPage() {
     } catch (error) {
       console.error('[Settings] Error opening store:', error);
       if (language === 'tr') {
-        alert('Mağaza açılırken bir hata oluştu.');
+        alert(t('storeOpenError', language));
       } else {
         alert('An error occurred while opening the store.');
       }
@@ -2002,9 +2005,7 @@ export default function SettingsPage() {
       }
       
     } catch (err: any) {
-      const fallbackMessage = language === 'tr'
-        ? 'Çıkış yapılamadı. Lütfen tekrar deneyin.'
-        : 'Unable to logout. Please try again.';
+      const fallbackMessage = t('unableToLogout', language);
       const message = err?.message || fallbackMessage;
       setLogoutError(message);
       console.error('[Settings] Logout failed:', err);
@@ -2079,9 +2080,7 @@ export default function SettingsPage() {
       console.log('[Settings] ✅ Account deleted successfully');
 
       // Show success message
-      const successMessage = language === 'tr'
-        ? '✅ Hesabınız başarıyla silindi. Yönlendiriliyorsunuz...'
-        : '✅ Account deleted successfully. Redirecting...';
+      const successMessage = t('accountDeletedSuccessfully', language);
 
       // Show subscription note if exists
       if (data.note) {
@@ -2089,7 +2088,7 @@ export default function SettingsPage() {
         try {
           const Dialog = (await import('@capacitor/dialog')).Dialog;
           await Dialog.alert({
-            title: language === 'tr' ? 'Hesap Silindi' : 'Account Deleted',
+            title: t('accountDeleted', language),
             message: fullMessage,
           });
         } catch {
@@ -2150,9 +2149,7 @@ export default function SettingsPage() {
         router.refresh();
       }
     } catch (err: any) {
-      const fallbackMessage = language === 'tr'
-        ? 'Hesap silinemedi. Lütfen tekrar deneyin.'
-        : 'Failed to delete account. Please try again.';
+      const fallbackMessage = t('failedToDeleteAccount', language);
       const message = err?.message || fallbackMessage;
       setError(message);
       console.error('[Settings] Delete account failed:', err);
@@ -2234,7 +2231,7 @@ export default function SettingsPage() {
             </svg>
           </div>
           <p className="text-slate-400 text-sm font-medium">
-            {language === 'tr' ? 'Yükleniyor...' : 'Loading...'}
+            {t('loading', language)}
           </p>
         </div>
       </div>
@@ -2256,33 +2253,28 @@ export default function SettingsPage() {
           </button>
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-white tracking-tight drop-shadow-sm">
-              {language === 'tr' ? 'Ayarlar' : 'Settings'}
+              {t('settings', language)}
             </h1>
             {/* Language Selector */}
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => setLanguage('tr')}
-                className={`p-1.5 rounded-lg border transition-all backdrop-blur-sm ${
-                  language === 'tr'
-                    ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
-                    : 'border-blue-500/10 bg-slate-900/50 text-slate-400 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-slate-300'
-                }`}
-                title="Türkçe"
-              >
-                <span className="text-sm">🇹🇷</span>
-              </button>
-              <button
-                onClick={() => setLanguage('en')}
-                className={`p-1.5 rounded-lg border transition-all backdrop-blur-sm ${
-                  language === 'en'
-                    ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
-                    : 'border-blue-500/10 bg-slate-900/50 text-slate-400 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-slate-300'
-                }`}
-                title="English"
-              >
-                <span className="text-sm">🇬🇧</span>
-              </button>
-            </div>
+            <button
+              onClick={() => setShowLanguageModal(true)}
+              className="p-1.5 rounded-lg border border-blue-500/30 bg-slate-900/50 backdrop-blur-sm text-slate-300 hover:border-blue-500/50 hover:bg-blue-950/20 hover:text-white transition-all flex items-center gap-1.5"
+              title={t('selectLanguage', language)}
+            >
+              <span className="text-sm">
+                {language === 'tr' ? '🇹🇷' : 
+                 language === 'en' ? '🇬🇧' :
+                 language === 'ar' ? '🇸🇦' :
+                 language === 'zh-Hant' ? '🇹🇼' :
+                 language === 'fr' ? '🇫🇷' :
+                 language === 'de' ? '🇩🇪' :
+                 language === 'ja' ? '🇯🇵' :
+                 language === 'ko' ? '🇰🇷' : '🌐'}
+              </span>
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
           </div>
           {/* Help Center Button */}
           <button
@@ -2295,7 +2287,7 @@ export default function SettingsPage() {
             </svg>
             {/* Tooltip */}
             <span className="absolute -bottom-8 right-0 bg-slate-900/95 backdrop-blur-md border border-blue-500/20 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg shadow-blue-900/20">
-              {language === 'tr' ? 'Yardım Merkezi' : 'Help Center'}
+              {t('helpCenter', language)}
             </span>
           </button>
         </div>
@@ -2318,7 +2310,7 @@ export default function SettingsPage() {
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
-                <span className="text-[10px] font-medium leading-tight text-center">{language === 'tr' ? 'Liquidations' : 'Liquidations'}</span>
+                <span className="text-[10px] font-medium leading-tight text-center">{t('liquidations', language)}</span>
                 {!hasPremiumAccessValue && (
                   <span className="absolute top-0.5 right-0.5 text-[8px] opacity-70">🔒</span>
                 )}
@@ -2333,7 +2325,7 @@ export default function SettingsPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
               </svg>
-              <span className="text-[10px] font-medium leading-tight text-center">{language === 'tr' ? 'Grafik' : 'Chart'}</span>
+              <span className="text-[10px] font-medium leading-tight text-center">{t('chart', language)}</span>
             </div>
           </button>
           <button
@@ -2344,7 +2336,7 @@ export default function SettingsPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
               </svg>
-              <span className="text-[10px] font-medium leading-tight text-center">{language === 'tr' ? 'İzleme' : 'Watchlist'}</span>
+              <span className="text-[10px] font-medium leading-tight text-center">{t('watchlist', language)}</span>
             </div>
           </button>
           <button
@@ -2355,7 +2347,7 @@ export default function SettingsPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              <span className="text-[10px] font-medium leading-tight text-center">{language === 'tr' ? 'Alarmlar' : 'Alerts'}</span>
+              <span className="text-[10px] font-medium leading-tight text-center">{t('alerts', language)}</span>
             </div>
           </button>
           {user && (
@@ -2459,7 +2451,7 @@ export default function SettingsPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
                     </svg>
-                    <span>{language === 'tr' ? 'Premium\'a Geç' : 'Go Premium'}</span>
+                    <span>{t('goPremium', language)}</span>
                   </div>
                 </button>
               )}
@@ -2471,13 +2463,11 @@ export default function SettingsPage() {
                     console.log('[Settings] Delete button clicked');
                     
                     // 🔥 iOS Fix: Use Capacitor Dialog instead of window.confirm
-                    const confirmMessage = language === 'tr'
-                      ? 'Hesabınızı kalıcı olarak silmek istediğinizden emin misiniz? Bu işlem geri alınamaz ve tüm verileriniz silinecektir.'
-                      : 'Are you sure you want to permanently delete your account? This action cannot be undone and all your data will be deleted.';
+                    const confirmMessage = t('confirmDeleteAccount', language);
                     
-                    const confirmTitle = language === 'tr' ? 'Hesabı Sil' : 'Delete Account';
-                    const confirmButton = language === 'tr' ? 'Sil' : 'Delete';
-                    const cancelButton = language === 'tr' ? 'İptal' : 'Cancel';
+                    const confirmTitle = t('deleteAccount', language);
+                    const confirmButton = t('delete', language);
+                    const cancelButton = t('cancel', language);
 
                     // Use Capacitor Dialog (works on both web and native)
                     let confirmed = false;
@@ -2518,8 +2508,8 @@ export default function SettingsPage() {
                   </svg>
                   <span>
                     {loading
-                      ? language === 'tr' ? 'Siliniyor...' : 'Deleting...'
-                      : language === 'tr' ? 'Hesabı Sil' : 'Delete Account'}
+                      ? t('deleting', language)
+                      : t('deleteAccount', language)}
                   </span>
                 </div>
               </button>
@@ -2536,7 +2526,7 @@ export default function SettingsPage() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                     </svg>
                     <span>
-                      {language === 'tr' ? 'Bizi Değerlendirin' : 'Rate Us'}
+                      {t('rateUs', language)}
                     </span>
                   </div>
                 </button>
@@ -2570,8 +2560,8 @@ export default function SettingsPage() {
                   </svg>
                   <span>
                     {isLoggingOut
-                      ? language === 'tr' ? 'Çıkış yapılıyor...' : 'Logging out...'
-                      : language === 'tr' ? 'Çıkış Yap' : 'Logout'}
+                      ? t('loggingOut', language)
+                      : t('logout', language)}
                   </span>
                 </div>
               </button>
@@ -2595,17 +2585,13 @@ export default function SettingsPage() {
                         </svg>
                       </div>
                       <h3 className="text-xl font-bold text-white mb-2">
-                        {language === 'tr' ? 'Giriş Yapın' : 'Sign In'}
+                        {t('signIn', language)}
                       </h3>
                       <p className="text-sm text-slate-300 mb-6">
-                        {language === 'tr' 
-                          ? 'Premium özelliklere erişmek ve verilerinizi senkronize etmek için giriş yapın' 
-                          : 'Sign in to access premium features and sync your data'}
+                        {t('signInToAccessPremium', language)}
                       </p>
                       <p className="text-xs text-slate-500">
-                        {language === 'tr' 
-                          ? 'PC\'de giriş yapmak için ana sayfadaki "Giriş Yap" butonunu kullanın' 
-                          : 'Use the "Sign In" button on the main page to sign in on desktop'}
+                        {t('useSignInButtonOnMainPage', language)}
                       </p>
                     </div>
                   </div>
@@ -2613,9 +2599,7 @@ export default function SettingsPage() {
               ) : (
               <div className="space-y-3">
                 <p className="text-sm text-slate-300 mb-4">
-                  {language === 'tr' 
-                    ? 'Premium özelliklere erişmek ve verilerinizi senkronize etmek için giriş yapın!' 
-                    : 'Sign in to access premium features and sync your data!'}
+                  {t('signInToAccessPremiumExclamation', language)}
                 </p>
 
                 {/* Error Message */}
@@ -2733,10 +2717,8 @@ export default function SettingsPage() {
                           // Show success message
                           if (isCapacitor) {
                             await Dialog.alert({
-                              title: language === 'tr' ? 'Misafir Modu Aktif' : 'Guest Mode Active',
-                              message: language === 'tr' 
-                                ? 'Uygulamayı misafir olarak kullanabilirsiniz. Premium özellikler için satın alma yapabilirsiniz.'
-                                : 'You can now use the app as a guest. You can purchase premium features anytime.',
+                              title: t('guestModeActive', language),
+                              message: t('guestModeActiveMessage', language),
                             });
                           }
                           
@@ -2747,7 +2729,7 @@ export default function SettingsPage() {
                         }
                       } catch (err: any) {
                         console.error('[Settings] Guest login failed:', err);
-                        setError(err.message || (language === 'tr' ? 'Misafir girişi başarısız oldu.' : 'Guest login failed.'));
+                        setError(err.message || t('guestLoginFailed', language));
                       } finally {
                         setLoading(false);
                       }
@@ -2761,8 +2743,8 @@ export default function SettingsPage() {
                     </svg>
                     <span>
                       {loading 
-                        ? (language === 'tr' ? 'Oluşturuluyor...' : 'Creating...') 
-                        : (language === 'tr' ? 'Misafir Olarak Devam Et' : 'Continue as Guest')
+                        ? t('creating', language)
+                        : t('continueAsGuest', language)
                       }
                     </span>
                   </button>
@@ -2776,7 +2758,7 @@ export default function SettingsPage() {
         {/* Premium Features Section - For non-premium users */}
         {!hasPremiumAccessValue && (
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{language === 'tr' ? 'Premium Özellikler' : 'Premium Features'}</label>
+            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{t('premiumFeatures', language)}</label>
             <div className="space-y-1.5">
               {/* Liquidations */}
               <div className="group p-2.5 rounded-lg border border-cyan-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-cyan-500/30 hover:bg-cyan-950/20 transition-all">
@@ -2786,7 +2768,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <div className="text-sm font-medium text-white">Liquidations Dashboard</div>
-                    <div className="text-[11px] text-slate-400">{language === 'tr' ? 'Gerçek zamanlı liquidation verileri' : 'Real-time liquidation data'}</div>
+                    <div className="text-[11px] text-slate-400">{t('realTimeLiquidationData', language)}</div>
                   </div>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 text-cyan-300 rounded border border-cyan-500/30 backdrop-blur-sm font-medium">Premium</span>
@@ -2800,7 +2782,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <div className="text-sm font-medium text-white">Aggr Trade</div>
-                    <div className="text-[11px] text-slate-400">{language === 'tr' ? 'Gelişmiş trading analizi' : 'Advanced trading analysis'}</div>
+                    <div className="text-[11px] text-slate-400">{t('advancedTradingAnalysis', language)}</div>
                   </div>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30 backdrop-blur-sm font-medium">Premium</span>
@@ -2814,7 +2796,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <div className="text-sm font-medium text-white">Custom Coin Alerts</div>
-                    <div className="text-[11px] text-slate-400">{language === 'tr' ? 'Herhangi bir coin için özel fiyat alarmları' : 'Custom price alerts for any coin'}</div>
+                    <div className="text-[11px] text-slate-400">{t('customPriceAlerts', language)}</div>
                   </div>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30 backdrop-blur-sm font-medium">Premium</span>
@@ -2827,8 +2809,8 @@ export default function SettingsPage() {
                     <Sparkles className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-white">{language === 'tr' ? 'Gelişmiş Grafik Düzenleri' : 'Advanced Chart Layouts'}</div>
-                    <div className="text-[11px] text-slate-400">{language === 'tr' ? '2x2 ve 3x3 çoklu grafik düzenleri' : '2x2 and 3x3 multi-chart layouts'}</div>
+                    <div className="text-sm font-medium text-white">{t('advancedChartLayouts', language)}</div>
+                    <div className="text-[11px] text-slate-400">{t('multiChartLayouts', language)}</div>
                   </div>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 bg-violet-500/20 text-violet-300 rounded border border-violet-500/30 backdrop-blur-sm font-medium">Premium</span>
@@ -2842,7 +2824,7 @@ export default function SettingsPage() {
                   </div>
                   <div>
                     <div className="text-sm font-medium text-white">10s & 30s Timeframe</div>
-                    <div className="text-[11px] text-slate-400">{language === 'tr' ? 'Yüksek frekanslı veri analizi' : 'High-frequency data analysis'}</div>
+                    <div className="text-[11px] text-slate-400">{t('highFrequencyDataAnalysis', language)}</div>
                   </div>
                 </div>
                 <span className="text-[10px] px-2 py-0.5 bg-blue-400/20 text-blue-300 rounded border border-blue-400/30 backdrop-blur-sm font-medium">Premium</span>
@@ -2853,7 +2835,7 @@ export default function SettingsPage() {
             
         {/* Layout Selection */}
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">Chart Layout</label>
+          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{t('chartLayout', language)}</label>
           <div className="grid grid-cols-4 gap-2">
             {[1, 2, 4, 9].map((layoutOption) => {
               const isActive = layout === layoutOption;
@@ -2893,7 +2875,7 @@ export default function SettingsPage() {
 
         {/* Market Type */}
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{language === 'tr' ? 'Market Tipi' : 'Market Type'}</label>
+          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{t('marketType', language)}</label>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setMarketType('spot')}
@@ -2921,7 +2903,7 @@ export default function SettingsPage() {
         {/* Legal Links - Terms & Privacy */}
         <div className="space-y-2">
           <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">
-            {language === 'tr' ? 'Yasal Bilgiler' : 'Legal Information'}
+            {t('legalInformation', language)}
           </label>
           <div className="grid grid-cols-2 gap-2">
             {/* Terms of Use */}
@@ -2945,7 +2927,7 @@ export default function SettingsPage() {
               className="group flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white transition-all"
             >
               <FileText className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">{language === 'tr' ? 'Kullanım Koşulları' : 'Terms of Use'}</span>
+              <span className="text-xs font-medium">{t('termsOfUse', language)}</span>
             </button>
 
             {/* Privacy Policy */}
@@ -2969,7 +2951,7 @@ export default function SettingsPage() {
               className="group flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white transition-all"
             >
               <Shield className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">{language === 'tr' ? 'Gizlilik Politikası' : 'Privacy Policy'}</span>
+              <span className="text-xs font-medium">{t('privacyPolicy', language)}</span>
             </button>
           </div>
         </div>
@@ -3552,6 +3534,79 @@ export default function SettingsPage() {
                 <p><strong>Yukarı (📈):</strong> Fiyat hedefin altında ve yukarı doğru yaklaşıyor. Fiyat (hedef - delta) ile hedef aralığında bildirim gönderilir.</p>
                 <p className="mt-2"><strong>Aşağı (📉):</strong> Fiyat hedefin üstünde ve aşağı doğru yaklaşıyor. Fiyat hedef ile (hedef + delta) aralığında bildirim gönderilir.</p>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Language Selection Modal */}
+      {showLanguageModal && (
+        <div 
+          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          onClick={() => setShowLanguageModal(false)}
+        >
+          <div 
+            className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-md w-full shadow-2xl shadow-blue-900/20"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-bold text-white">
+                {language === 'tr' ? 'Dil Seç' : 
+                 language === 'en' ? 'Select Language' :
+                 language === 'ar' ? 'اختر اللغة' :
+                 language === 'zh-Hant' ? '選擇語言' :
+                 language === 'fr' ? 'Choisir la langue' :
+                 language === 'de' ? 'Sprache wählen' :
+                 language === 'ja' ? '言語を選択' :
+                 language === 'ko' ? '언어 선택' : 'Select Language'}
+              </h2>
+              <button
+                onClick={() => setShowLanguageModal(false)}
+                className="text-slate-400 hover:text-white transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {[
+                { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
+                { code: 'en', name: 'English', flag: '🇬🇧' },
+                { code: 'ar', name: 'العربية', flag: '🇸🇦' },
+                { code: 'zh-Hant', name: '繁體中文', flag: '🇹🇼' },
+                { code: 'fr', name: 'Français', flag: '🇫🇷' },
+                { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+                { code: 'ja', name: '日本語', flag: '🇯🇵' },
+                { code: 'ko', name: '한국어', flag: '🇰🇷' },
+              ].map((lang) => (
+                <button
+                  key={lang.code}
+                  onClick={() => {
+                    setLanguage(lang.code as 'tr' | 'en' | 'ar' | 'zh-Hant' | 'fr' | 'de' | 'ja' | 'ko');
+                    if (typeof window !== 'undefined') {
+                      localStorage.setItem('language', lang.code);
+                    }
+                    setShowLanguageModal(false);
+                    // Reload page to apply language changes
+                    window.location.reload();
+                  }}
+                  className={`w-full p-4 rounded-xl border transition-all backdrop-blur-sm flex items-center gap-3 ${
+                    language === lang.code
+                      ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
+                      : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white'
+                  }`}
+                >
+                  <span className="text-2xl">{lang.flag}</span>
+                  <span className="font-medium text-lg flex-1 text-left">{lang.name}</span>
+                  {language === lang.code && (
+                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                    </svg>
+                  )}
+                </button>
+              ))}
             </div>
           </div>
         </div>

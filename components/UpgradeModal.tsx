@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Play, Sparkles, Bell, BarChart3, Clock, TrendingUp, RefreshCw } from 'lucide-react';
 import FeatureVideoModal from './FeatureVideoModal';
 import { initializeIAP, purchaseProduct, isIAPAvailable, getProducts, restorePurchases } from '@/services/iapService';
+import { t, Language } from '@/utils/translations';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -12,7 +13,7 @@ interface UpgradeModalProps {
   currentPlan?: 'free' | 'premium';
   isTrial?: boolean;
   trialRemainingDays?: number;
-  language?: 'tr' | 'en';
+  language?: 'tr' | 'en' | 'ar' | 'zh-Hant' | 'fr' | 'de' | 'ja' | 'ko';
 }
 
 export default function UpgradeModal({
@@ -24,6 +25,9 @@ export default function UpgradeModal({
   trialRemainingDays = 0,
   language = 'tr',
 }: UpgradeModalProps) {
+  // Normalize language for compatibility (use 'en' as fallback for unsupported languages)
+  const normalizedLanguage: Language = (language === 'tr' || language === 'en') ? language : 'en';
+  
   const [deviceId, setDeviceId] = useState<string>('');
   const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
   const [loading, setLoading] = useState(false);
@@ -499,7 +503,7 @@ export default function UpgradeModal({
       
       if (!result.success) {
         console.error('[UpgradeModal] Restore failed:', result.error);
-        setError(result.error || (language === 'tr' ? 'Satın almalar geri yüklenemedi.' : 'Failed to restore purchases.'));
+        setError(result.error || t('failedToRestorePurchases', normalizedLanguage));
         setLoading(false);
         return;
       }
@@ -507,7 +511,7 @@ export default function UpgradeModal({
       // Check if we have any purchases
       if (!result.purchases || result.purchases.length === 0) {
         console.log('[UpgradeModal] No purchases found to restore');
-        setError(language === 'tr' ? 'Geri yüklenecek satın alma bulunamadı.' : 'No purchases found to restore.');
+        setError(t('noPurchasesFound', normalizedLanguage));
         setLoading(false);
         return;
       }
@@ -555,13 +559,13 @@ export default function UpgradeModal({
         console.log('[UpgradeModal] ✅ Restore successful!');
         onUpgrade(); // Trigger refresh
         onClose();
-        alert(language === 'tr' ? 'Satın almalar başarıyla geri yüklendi!' : 'Purchases restored successfully!');
+        alert(t('purchasesRestoredSuccessfully', normalizedLanguage));
       } else {
-        setError(language === 'tr' ? 'Satın almalar doğrulanamadı.' : 'Could not verify purchases.');
+        setError(t('couldNotVerifyPurchases', normalizedLanguage));
       }
     } catch (err: any) {
       console.error('[UpgradeModal] Error in restore:', err);
-      setError(language === 'tr' ? 'Bir hata oluştu. Lütfen tekrar deneyin.' : 'An error occurred. Please try again.');
+      setError(t('errorOccurred', normalizedLanguage));
     } finally {
       setLoading(false);
     }
@@ -587,8 +591,8 @@ export default function UpgradeModal({
   const premiumFeatures = [
     {
       icon: TrendingUp,
-      title: language === 'tr' ? 'Liquidations Dashboard' : 'Liquidations Dashboard',
-      description: language === 'tr' ? 'Gerçek zamanlı liquidation verileri' : 'Real-time liquidation data',
+      title: t('liquidationDashboard', normalizedLanguage),
+      description: t('realTimeLiquidationData', normalizedLanguage),
       videoUrl: '/videos/liquidations.mp4',
       color: 'from-blue-500 to-cyan-500',
       bgColor: 'bg-blue-500/10',
@@ -596,8 +600,8 @@ export default function UpgradeModal({
     },
     {
       icon: BarChart3,
-      title: language === 'tr' ? 'AGGR Menüsü' : 'AGGR Menu',
-      description: language === 'tr' ? 'Gelişmiş analiz araçlarına erişim' : 'Access to advanced analysis tools',
+      title: t('aggrMenu', normalizedLanguage),
+      description: t('advancedAnalysisTools', normalizedLanguage),
       videoUrl: '/videos/aggr-menu.mp4',
       color: 'from-blue-600 to-indigo-600',
       bgColor: 'bg-blue-600/10',
@@ -605,8 +609,8 @@ export default function UpgradeModal({
     },
     {
       icon: Bell,
-      title: language === 'tr' ? 'Otomatik Fiyat Takibi' : 'Automatic Price Tracking',
-      description: language === 'tr' ? 'Backend üzerinden otomatik bildirimler' : 'Automatic notifications via backend',
+      title: t('automaticPriceTracking', normalizedLanguage),
+      description: t('automaticNotifications', normalizedLanguage),
       videoUrl: '/videos/auto-price-tracking.mp4',
       color: 'from-cyan-500 to-blue-500',
       bgColor: 'bg-cyan-500/10',
@@ -614,8 +618,8 @@ export default function UpgradeModal({
     },
     {
       icon: Sparkles,
-      title: language === 'tr' ? '4-9 Lu Grafik' : '4-9 Chart Layouts',
-      description: language === 'tr' ? 'Çoklu grafik düzenleri' : 'Multiple chart layouts',
+      title: t('chartLayouts', normalizedLanguage),
+      description: t('multiChartLayouts', normalizedLanguage),
       videoUrls: [
         { label: '4 Chart', url: '/videos/4chart.mp4' },
         { label: '9 Chart', url: '/videos/9chart.mp4' },
@@ -627,7 +631,7 @@ export default function UpgradeModal({
     {
       icon: Clock,
       title: '10s & 30s Timeframe',
-      description: language === 'tr' ? 'Yüksek frekanslı veri analizi' : 'High-frequency data analysis',
+      description: t('highFrequencyDataAnalysis', normalizedLanguage),
       videoUrl: '/videos/timeframe.mp4',
       color: 'from-blue-400 to-cyan-400',
       bgColor: 'bg-blue-400/10',
@@ -654,11 +658,11 @@ export default function UpgradeModal({
               <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 via-blue-600 to-cyan-500 mb-3 shadow-lg shadow-blue-500/40 border border-blue-400/30">
                 <Sparkles className="w-8 h-8 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-white mb-1.5">{language === 'tr' ? 'Premium\'a Geç' : 'Go Premium'}</h2>
+              <h2 className="text-xl font-bold text-white mb-1.5">{t('goPremium', normalizedLanguage)}</h2>
               <p className="text-gray-400 text-xs">
                 {isTrial
-                  ? (language === 'tr' ? `${trialRemainingDays} gün deneme sürümü kaldı` : `${trialRemainingDays} days of trial remaining`)
-                  : (language === 'tr' ? 'Tüm özelliklere erişim kazan' : 'Gain access to all features')}
+                  ? `${trialRemainingDays} ${t('daysTrialRemaining', normalizedLanguage)}`
+                  : t('gainAccessToAllFeatures', normalizedLanguage)}
               </p>
             </div>
           </div>
@@ -712,11 +716,11 @@ export default function UpgradeModal({
             {/* Pricing Info - APPLE GUIDELINE 3.1.2: Price MUST be clearly visible */}
             <div className="text-center">
               <p className="text-xs text-gray-400 mb-1">
-                {language === 'tr' ? 'Abonelik Detayları' : 'Subscription Details'}
+                {t('subscriptionDetails', normalizedLanguage)}
               </p>
               <div className="flex items-center justify-center gap-2 mb-1">
                 <span className="text-white font-semibold text-sm">
-                  {language === 'tr' ? 'Aylık Abonelik' : 'Monthly Subscription'}
+                  {t('monthlySubscription', normalizedLanguage)}
                 </span>
                 {products.length > 0 && products[0].price && (
                   <>
@@ -732,14 +736,14 @@ export default function UpgradeModal({
                 <div className="flex items-center justify-center gap-2 py-2">
                   <span className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
                   <p className="text-xs text-blue-400 font-medium">
-                    {language === 'tr' ? 'Fiyat yükleniyor...' : 'Loading price...'}
+                    {t('loadingPrice', normalizedLanguage)}
                   </p>
                 </div>
               )}
               {/* Show trial info on iOS */}
               {platform === 'ios' && products.length > 0 && (
                 <p className="text-xs text-gray-400 mt-1">
-                  {language === 'tr' ? '3 gün ücretsiz, ardından aylık ödeme' : '3 days free, then monthly'}
+                  {t('threeDaysFreeThenMonthly', normalizedLanguage)}
                 </p>
               )}
             </div>
@@ -767,7 +771,7 @@ export default function UpgradeModal({
               }}
               className="text-gray-400 hover:text-blue-400 underline transition-colors cursor-pointer"
             >
-              {language === 'tr' ? 'Kullanım Koşulları' : 'Terms of Use'}
+              {t('termsOfUse', normalizedLanguage)}
             </button>
             <span className="text-gray-600">•</span>
             <button
@@ -791,7 +795,7 @@ export default function UpgradeModal({
               }}
               className="text-gray-400 hover:text-blue-400 underline transition-colors cursor-pointer"
             >
-              {language === 'tr' ? 'Gizlilik Politikası' : 'Privacy Policy'}
+              {t('privacyPolicy', normalizedLanguage)}
             </button>
           </div>
           </div>
@@ -814,10 +818,10 @@ export default function UpgradeModal({
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {language === 'tr' ? 'Başlatılıyor...' : 'Starting...'}
+                    {t('starting', normalizedLanguage)}
                   </span>
                 ) : (
-                  language === 'tr' ? '3 Gün Ücretsiz Dene' : 'Try 3 Days Free'
+                  t('try3DaysFree', normalizedLanguage)
                 )}
               </button>
             )}
@@ -891,22 +895,22 @@ export default function UpgradeModal({
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
                   <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {language === 'tr' ? 'Satın Alınıyor...' : 'Purchasing...'}
+                  {t('purchasing', normalizedLanguage)}
                 </span>
               ) : !productsLoaded || products.length === 0 ? (
                 // 🔥 APPLE GUIDELINE 3.1.2: Show fallback text if IAP initialized but products empty (App Store Review scenario)
                 // If iapInitialized is true, show fallback text instead of loading spinner
                 iapInitialized ? (
                   platform === 'ios'
-                    ? (language === 'tr' ? '3 Gün Ücretsiz Dene & Abone Ol' : 'Try 3 Days Free & Subscribe')
+                    ? t('try3DaysFreeAndSubscribe', normalizedLanguage)
                     : platform === 'android'
-                    ? (language === 'tr' ? '3 Gün Ücretsiz Dene & Abone Ol' : 'Try 3 Days Free & Subscribe')
-                    : (language === 'tr' ? 'Premium\'a Geç' : 'Go Premium')
+                    ? t('try3DaysFreeAndSubscribe', normalizedLanguage)
+                    : t('goPremium', normalizedLanguage)
                 ) : (
                   // Only show loading if IAP is not yet initialized
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    {language === 'tr' ? 'Yükleniyor...' : 'Loading...'}
+                    {t('loading', normalizedLanguage)}
                   </span>
                 )
               ) : (
@@ -915,13 +919,13 @@ export default function UpgradeModal({
                 // 🔥 APPLE GUIDELINE 2.1: Show trial info in button to attract users
                 platform === 'ios'
                   ? (products[0]?.price 
-                      ? (language === 'tr' ? `3 Gün Ücretsiz Dene, Sonra ${products[0].price}/Ay` : `Try 3 Days Free, Then ${products[0].price}/Month`)
-                      : (language === 'tr' ? '3 Gün Ücretsiz Dene & Abone Ol' : 'Try 3 Days Free & Subscribe'))
+                      ? `${t('try3DaysFreeThenPrice', normalizedLanguage)} ${products[0].price}/${t('month', normalizedLanguage)}`
+                      : t('try3DaysFreeAndSubscribe', normalizedLanguage))
                   : platform === 'android'
                   ? (products[0]?.price 
-                      ? (language === 'tr' ? `Google Play'den Satın Al - ${products[0].price}` : `Buy from Google Play - ${products[0].price}`)
-                      : (language === 'tr' ? 'Google Play\'den Satın Al' : 'Buy from Google Play'))
-                  : (language === 'tr' ? 'Premium\'a Geç' : 'Go Premium')
+                      ? `${t('buyFromGooglePlay', normalizedLanguage)} - ${products[0].price}`
+                      : t('buyFromGooglePlay', normalizedLanguage))
+                  : t('goPremium', normalizedLanguage)
               )}
             </button>
 
@@ -929,7 +933,7 @@ export default function UpgradeModal({
               onClick={onClose}
               className="w-full py-2.5 px-4 rounded-lg text-gray-400 hover:text-white transition-colors text-xs font-medium"
             >
-              {language === 'tr' ? 'Daha Sonra' : 'Later'}
+              {t('later', normalizedLanguage)}
             </button>
 
             {/* Restore Purchases Button - REQUIRED by Apple Guidelines 3.1.1 */}
@@ -941,8 +945,8 @@ export default function UpgradeModal({
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 {loading 
-                  ? (language === 'tr' ? 'Geri Yükleniyor...' : 'Restoring...')
-                  : (language === 'tr' ? 'Satın Alımları Geri Yükle' : 'Restore Purchases')
+                  ? t('restoring', normalizedLanguage)
+                  : t('restorePurchases', normalizedLanguage)
                 }
               </button>
             )}

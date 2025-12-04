@@ -2,23 +2,25 @@
 
 import { useState } from 'react';
 import { X, Send, Mail } from 'lucide-react';
+import { Language, t } from '@/utils/translations';
 
 interface SupportRequestModalProps {
   isOpen: boolean;
   onClose: () => void;
-  language?: 'tr' | 'en';
+  language?: Language;
 }
 
 const supportTopics = [
-  { id: 'general', labelTr: 'Genel Soru', labelEn: 'General Question' },
-  { id: 'technical', labelTr: 'Teknik Destek', labelEn: 'Technical Support' },
-  { id: 'billing', labelTr: 'Ödeme/Abonelik', labelEn: 'Billing/Subscription' },
-  { id: 'feature', labelTr: 'Özellik Önerisi', labelEn: 'Feature Request' },
-  { id: 'bug', labelTr: 'Hata Bildirimi', labelEn: 'Bug Report' },
-  { id: 'other', labelTr: 'Diğer', labelEn: 'Other' },
+  { id: 'general', labelKey: 'supportTopicGeneral' },
+  { id: 'technical', labelKey: 'supportTopicTechnical' },
+  { id: 'billing', labelKey: 'supportTopicBilling' },
+  { id: 'feature', labelKey: 'supportTopicFeature' },
+  { id: 'bug', labelKey: 'supportTopicBug' },
+  { id: 'other', labelKey: 'supportTopicOther' },
 ];
 
 export default function SupportRequestModal({ isOpen, onClose, language = 'tr' }: SupportRequestModalProps) {
+  const normalizedLanguage: Language = language || 'tr';
   const [selectedTopic, setSelectedTopic] = useState<string>('');
   const [message, setMessage] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,12 +33,12 @@ export default function SupportRequestModal({ isOpen, onClose, language = 'tr' }
     e.preventDefault();
     
     if (!selectedTopic) {
-      setError(language === 'tr' ? 'Lütfen bir konu seçin' : 'Please select a topic');
+      setError(t('supportErrorSelectTopic', normalizedLanguage));
       return;
     }
 
     if (!message.trim()) {
-      setError(language === 'tr' ? 'Lütfen mesajınızı yazın' : 'Please enter your message');
+      setError(t('supportErrorEnterMessage', normalizedLanguage));
       return;
     }
 
@@ -65,10 +67,10 @@ export default function SupportRequestModal({ isOpen, onClose, language = 'tr' }
           onClose();
         }, 3000);
       } else {
-        setError(data.error || (language === 'tr' ? 'Bir hata oluştu' : 'An error occurred'));
+        setError(data.error || t('supportErrorOccurred', normalizedLanguage));
       }
     } catch (err) {
-      setError(language === 'tr' ? 'Bağlantı hatası' : 'Connection error');
+      setError(t('supportErrorConnection', normalizedLanguage));
     } finally {
       setIsSubmitting(false);
     }
@@ -94,7 +96,7 @@ export default function SupportRequestModal({ isOpen, onClose, language = 'tr' }
               <Mail className="w-5 h-5 text-blue-400" />
             </div>
             <h2 className="text-xl font-semibold text-white">
-              {language === 'tr' ? 'Destek Talebi' : 'Support Request'}
+              {t('supportRequest', normalizedLanguage)}
             </h2>
           </div>
           <button
@@ -114,12 +116,10 @@ export default function SupportRequestModal({ isOpen, onClose, language = 'tr' }
                 <Send className="w-8 h-8 text-green-400" />
               </div>
               <h3 className="text-lg font-semibold text-white mb-2">
-                {language === 'tr' ? 'Talebiniz Alındı!' : 'Request Received!'}
+                {t('supportRequestReceived', normalizedLanguage)}
               </h3>
               <p className="text-gray-400">
-                {language === 'tr' 
-                  ? 'Ekiplerimiz en kısa sürede mail üzerinden sizinle iletişime geçecektir.'
-                  : 'Our team will contact you via email as soon as possible.'}
+                {t('supportRequestReceivedMessage', normalizedLanguage)}
               </p>
             </div>
           ) : (
@@ -127,7 +127,7 @@ export default function SupportRequestModal({ isOpen, onClose, language = 'tr' }
               {/* Topic Selection */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-3">
-                  {language === 'tr' ? 'Konu' : 'Topic'}
+                  {t('supportTopic', normalizedLanguage)}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
                   {supportTopics.map((topic) => (
@@ -145,7 +145,7 @@ export default function SupportRequestModal({ isOpen, onClose, language = 'tr' }
                       }`}
                     >
                       <span className="text-sm font-medium">
-                        {language === 'tr' ? topic.labelTr : topic.labelEn}
+                        {t(topic.labelKey, normalizedLanguage)}
                       </span>
                     </button>
                   ))}
@@ -155,7 +155,7 @@ export default function SupportRequestModal({ isOpen, onClose, language = 'tr' }
               {/* Message */}
               <div>
                 <label className="block text-sm font-medium text-gray-300 mb-3">
-                  {language === 'tr' ? 'Mesajınız' : 'Your Message'}
+                  {t('supportYourMessage', normalizedLanguage)}
                 </label>
                 <textarea
                   value={message}
@@ -163,9 +163,7 @@ export default function SupportRequestModal({ isOpen, onClose, language = 'tr' }
                     setMessage(e.target.value);
                     setError('');
                   }}
-                  placeholder={language === 'tr' 
-                    ? 'Sorunuzu veya önerinizi detaylı bir şekilde yazın...'
-                    : 'Please describe your question or suggestion in detail...'}
+                  placeholder={t('supportMessagePlaceholder', normalizedLanguage)}
                   rows={6}
                   className="w-full bg-gray-800 border border-gray-700 rounded-lg px-4 py-3 text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 transition-colors resize-none"
                   disabled={isSubmitting}
@@ -188,12 +186,12 @@ export default function SupportRequestModal({ isOpen, onClose, language = 'tr' }
                 {isSubmitting ? (
                   <>
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>{language === 'tr' ? 'Gönderiliyor...' : 'Sending...'}</span>
+                    <span>{t('supportSending', normalizedLanguage)}</span>
                   </>
                 ) : (
                   <>
                     <Send className="w-5 h-5" />
-                    <span>{language === 'tr' ? 'Gönder' : 'Send'}</span>
+                    <span>{t('supportSend', normalizedLanguage)}</span>
                   </>
                 )}
               </button>
