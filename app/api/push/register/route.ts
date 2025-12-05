@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       isPlaceholder: isPlaceholder,
       model: body.model,
       osVersion: body.osVersion,
+      language: body.language || 'not provided', // 🔥 MULTILINGUAL: Log language
     });
     
     // 🔥 CRITICAL: Reject placeholder tokens
@@ -73,6 +74,7 @@ export async function POST(request: NextRequest) {
       url: `${backendUrl}/api/push/register`,
       platform: backendBody.platform,
       deviceId: backendBody.deviceId,
+      language: backendBody.language || 'not provided', // 🔥 MULTILINGUAL: Log language
       tokenLength: backendBody.token?.length || 0,
       tokenPreview: backendBody.token ? backendBody.token.substring(0, 50) + '...' : 'null',
       hasCookies: !!cookies,
