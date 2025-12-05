@@ -78,23 +78,35 @@ export async function POST(request: NextRequest) {
     
     // Debug: Log cookie info
     const cookieNames = cookieString ? cookieString.split(';').map(c => c.split('=')[0].trim()).filter(Boolean) : [];
+    const hasAccessTokenInString = cookieString.includes('accessToken=');
+    const hasRefreshTokenInString = cookieString.includes('refreshToken=');
+    
     console.log('[Next.js API] Alert create request:', {
       hasCookieHeader: !!cookieHeader,
       hasCookiesObj: cookiesObj && cookiesObj.size > 0,
-      hasAccessToken: cookieString.includes('accessToken='),
-      hasRefreshToken: cookieString.includes('refreshToken='),
+      hasAccessToken: hasAccessTokenInString,
+      hasRefreshToken: hasRefreshTokenInString,
       cookieStringLength: cookieString.length,
       cookieCount: cookieNames.length,
       cookieNames: cookieNames,
       deviceId: body.deviceId,
       symbol: body.symbol,
+      // 🔥 DEBUG: Log actual cookie values (first 50 chars for security)
+      accessTokenPreview: cookieString.match(/accessToken=([^;]+)/)?.[1]?.substring(0, 50) || 'not found',
+      refreshTokenPreview: cookieString.match(/refreshToken=([^;]+)/)?.[1]?.substring(0, 50) || 'not found',
     });
+    
+    // 🔥 CRITICAL: Ensure cookie string is not empty and contains necessary cookies
+    if (!cookieString || (!hasAccessToken && !hasRefreshToken)) {
+      console.warn('[Next.js API] ⚠️ No authentication cookies found in request');
+      console.warn('[Next.js API] Cookie string:', cookieString ? `${cookieString.substring(0, 200)}...` : 'empty');
+    }
     
     const response = await fetch(`${backendUrl}/api/alerts/price`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Cookie': cookieString,
+        'Cookie': cookieString || '', // Ensure we always send a string (even if empty)
       },
       body: JSON.stringify(body),
     });
