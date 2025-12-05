@@ -82,6 +82,10 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
     
+    // 🔥 CRITICAL: For guest users, if no cookies but userEmail is provided, 
+    // backend should use device_id to find user and verify premium status
+    // Guest users don't have cookies, so backend needs userEmail to identify the user
+    
     // Debug: Log cookie info
     const cookieNames = cookieString ? cookieString.split(';').map(c => c.split('=')[0].trim()).filter(Boolean) : [];
     const hasAccessTokenInString = cookieString.includes('accessToken=');
@@ -97,15 +101,21 @@ export async function POST(request: NextRequest) {
       cookieNames: cookieNames,
       deviceId: body.deviceId,
       symbol: body.symbol,
+      userEmail: body.userEmail || 'not provided',
       // 🔥 DEBUG: Log actual cookie values (first 50 chars for security)
       accessTokenPreview: cookieString.match(/accessToken=([^;]+)/)?.[1]?.substring(0, 50) || 'not found',
       refreshTokenPreview: cookieString.match(/refreshToken=([^;]+)/)?.[1]?.substring(0, 50) || 'not found',
     });
     
     // 🔥 CRITICAL: Ensure cookie string is not empty and contains necessary cookies
+    // For guest users, cookies won't exist but userEmail should be provided
     if (!cookieString || (!hasAccessToken && !hasRefreshToken)) {
-      console.warn('[Next.js API] ⚠️ No authentication cookies found in request');
-      console.warn('[Next.js API] Cookie string:', cookieString ? `${cookieString.substring(0, 200)}...` : 'empty');
+      if (body.userEmail) {
+        console.log('[Next.js API] ℹ️ Guest user detected (no cookies, but userEmail provided):', body.userEmail);
+      } else {
+        console.warn('[Next.js API] ⚠️ No authentication cookies found and no userEmail provided');
+        console.warn('[Next.js API] Cookie string:', cookieString ? `${cookieString.substring(0, 200)}...` : 'empty');
+      }
     }
     
     const response = await fetch(`${backendUrl}/api/alerts/price`, {

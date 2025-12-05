@@ -3414,13 +3414,21 @@ export default function SettingsPage() {
                       return;
                     }
 
-                    const requestBody = {
+                    // 🔥 CRITICAL: For guest users, include user email so backend can find user by device_id
+                    // Guest users don't have cookies, so backend needs email to identify the user
+                    const requestBody: any = {
                       deviceId,
                       symbol: newAlert.symbol,
                       targetPrice: parseFloat(newAlert.targetPrice),
                       proximityDelta: parseFloat(newAlert.proximityDelta),
                       direction: newAlert.direction,
                     };
+
+                    // Add user email for guest users (backend needs it to find user by device_id)
+                    if (user && (user as any).provider === 'guest' && user.email) {
+                      requestBody.userEmail = user.email;
+                      console.log('[Settings] ✅ Adding user email for guest user:', user.email);
+                    }
                     
                     console.log('[Settings] Sending request to: /api/alerts/price');
                     console.log('[Settings] Request body:', requestBody);
