@@ -24,7 +24,7 @@ interface AlertsPanelProps {
 
 export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPanelProps) {
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useState(true); // Default: All pairs
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editPrice, setEditPrice] = useState<string>('');
   const [showAddAlert, setShowAddAlert] = useState(false);
@@ -37,6 +37,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState<number>(-1);
   const pairInputRef = useRef<HTMLInputElement>(null);
+  const priceInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -156,7 +157,15 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
     setNewAlertPair(symbol);
     setShowSuggestions(false);
     setSelectedSuggestionIndex(-1);
-    pairInputRef.current?.focus();
+    setFilteredSymbols([]); // Clear filtered symbols to prevent list from showing again
+    // Focus on price input after selecting coin (especially important on mobile)
+    setTimeout(() => {
+      priceInputRef.current?.focus();
+      // Scroll to price input on mobile
+      if (typeof window !== 'undefined' && window.innerWidth < 768) {
+        priceInputRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 100);
   };
 
   // Close suggestions when clicking outside
@@ -293,7 +302,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
                 : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
             }`}
           >
-            {showAll ? 'Current pair' : 'All pairs'}
+            {showAll ? 'All pairs' : 'Current pair'}
           </button>
           
           <button
@@ -343,12 +352,24 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
                   value={newAlertPair}
                   onChange={(e) => {
                     setNewAlertPair(e.target.value);
-                    setShowSuggestions(true);
+                    // Only show suggestions if there's text and it's not a complete match
+                    if (e.target.value.trim().length > 0) {
+                      setShowSuggestions(true);
+                    } else {
+                      setShowSuggestions(false);
+                    }
                   }}
                   onFocus={() => {
-                    if (filteredSymbols.length > 0) {
+                    // Only show suggestions if there's text and filtered results
+                    if (newAlertPair.trim().length > 0 && filteredSymbols.length > 0) {
                       setShowSuggestions(true);
                     }
+                  }}
+                  onBlur={() => {
+                    // Close suggestions when input loses focus (with small delay to allow click on suggestion)
+                    setTimeout(() => {
+                      setShowSuggestions(false);
+                    }, 200);
                   }}
                   onKeyDown={handleKeyDown}
                   placeholder="e.g. btcusdt, ethusdt"
@@ -436,6 +457,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-400">$</span>
                 <input
+                  ref={priceInputRef}
                   type="number"
                   value={newAlertPrice}
                   onChange={(e) => setNewAlertPrice(e.target.value)}

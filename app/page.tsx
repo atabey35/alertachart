@@ -132,9 +132,13 @@ export default function Home() {
       // In Capacitor, if it's iOS and screen is tablet-sized, assume iPad
       const isCapacitorIOS = hasCapacitor && 
         ((window as any).Capacitor?.getPlatform?.() === 'ios' || /iPad|iPhone/.test(userAgent));
-      const isIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366; // iPad can be up to 1366px wide
+      
+      // iPad size range: iPad Mini (768px) to iPad Pro 12.9" (1366px)
+      // iPad Pro 11" is ~834px (portrait) or ~1194px (landscape)
+      const isIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366;
       
       // iPad detection: User-Agent OR (Capacitor iOS + tablet size)
+      // Force mobile view on iPad even if screen is large
       const isIPadDevice = isIPadUserAgent || (isCapacitorIOS && isIPadSize);
       
       setIsIPad(isIPadDevice);
@@ -1434,14 +1438,14 @@ export default function Home() {
   
   // Get grid class based on layout
   const getGridClass = () => {
-    // Mobile & Tablet (iPad): optimize for vertical space (up to 1024px)
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+    // Mobile & Tablet (iPad): optimize for vertical space (up to 1024px OR if iPad)
+    if (typeof window !== 'undefined' && (window.innerWidth < 1024 || isIPad)) {
       if (layout === 1) return 'grid-cols-1 grid-rows-1';
       if (layout === 2) return 'grid-cols-1 grid-rows-2'; // Mobile/iPad: 1 column, 2 rows (stacked)
       if (layout === 4) return 'grid-cols-2 grid-rows-2'; // Mobile/iPad: 2x2 grid
       if (layout === 9) return 'grid-cols-3 grid-rows-3'; // Mobile/iPad: 3x3 grid
     }
-    // Desktop (1024px+): original layout
+    // Desktop (1024px+): original layout (only if NOT iPad)
     if (layout === 1) return 'grid-cols-1 grid-rows-1';
     if (layout === 2) return 'grid-cols-2 grid-rows-1';
     if (layout === 4) return 'grid-cols-2 grid-rows-2';
@@ -1453,7 +1457,7 @@ export default function Home() {
   // 🔥 CRITICAL: Use dynamic viewport height for iOS to prevent initial load sync issues
   const getGridHeight = () => {
     // Mobile & Tablet (iPad): use dynamic viewport height with safe area insets
-    if (typeof window !== 'undefined' && window.innerWidth < 1024) {
+    if (typeof window !== 'undefined' && (window.innerWidth < 1024 || isIPad)) {
       // Use viewportHeight state if available (iOS sync fix)
       // Otherwise fallback to 100dvh (dynamic viewport height) which accounts for browser UI changes
       // Subtract header (~56px) and bottom nav (~56px) + safe area insets
@@ -1806,7 +1810,7 @@ export default function Home() {
             </div>
 
             {/* Center: Navigation Menu */}
-            <nav className="hidden lg:flex items-center gap-1 lg:gap-2 flex-1 justify-center">
+            <nav className={`hidden ${isIPad ? 'lg:hidden' : 'lg:flex'} items-center gap-1 lg:gap-2 flex-1 justify-center`}>
               <button
                 onClick={() => setShowAlerts(!showAlerts)}
                 className={`px-3 py-1.5 text-sm rounded transition-colors ${
@@ -1942,7 +1946,7 @@ export default function Home() {
             </nav>
 
             {/* Right: User Icon + Auth Button - Hidden on mobile (available in bottom nav) */}
-            <div className="hidden lg:flex items-center gap-2 lg:gap-3 flex-shrink-0">
+            <div className={`hidden ${isIPad ? 'lg:hidden' : 'lg:flex'} items-center gap-2 lg:gap-3 flex-shrink-0`}>
                   {user ? (
                     <div className="flex items-center gap-2">
                   <NotificationDropdown userEmail={user.email} />
@@ -1952,7 +1956,7 @@ export default function Home() {
                     </div>
                     <div className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-red-500 rounded-full border-2 border-black"></div>
                   </div>
-                  <div className="hidden lg:flex flex-col items-start gap-0.5">
+                    <div className={`hidden ${isIPad ? 'lg:hidden' : 'lg:flex'} flex-col items-start gap-0.5`}>
                       <button
                           onTouchStart={(e) => {
                             if (isLoggingOut || logoutProcessingRef.current) {
@@ -2197,7 +2201,7 @@ export default function Home() {
           {/* Drawing Toolbar Toggle Button (Always visible on Desktop, hidden on iPad) */}
           <button
             onClick={() => setShowDrawingToolbar(!showDrawingToolbar)}
-            className={`hidden lg:flex absolute ${showDrawingToolbar ? 'left-12' : 'left-0'} top-1/2 -translate-y-1/2 z-[110] w-6 h-16 bg-gray-800/90 border border-gray-700 hover:bg-gray-700 rounded-r-lg items-center justify-center transition-all shadow-lg`}
+            className={`hidden ${isIPad ? 'lg:hidden' : 'lg:flex'} absolute ${showDrawingToolbar ? 'left-12' : 'left-0'} top-1/2 -translate-y-1/2 z-[110] w-6 h-16 bg-gray-800/90 border border-gray-700 hover:bg-gray-700 rounded-r-lg items-center justify-center transition-all shadow-lg`}
             title={showDrawingToolbar ? 'Hide Drawing Tools' : 'Show Drawing Tools'}
           >
             <svg 
@@ -2212,7 +2216,7 @@ export default function Home() {
 
           {/* Shared Drawing Toolbar (Multi-chart mode, Desktop only) - Overlay (hidden on iPad) */}
           {layout > 1 && showDrawingToolbar && (
-            <div className="hidden lg:block absolute left-0 top-0 h-full z-[100] pointer-events-none">
+            <div className={`hidden ${isIPad ? 'lg:hidden' : 'lg:block'} absolute left-0 top-0 h-full z-[100] pointer-events-none`}>
               <div className="pointer-events-auto">
                 <DrawingToolbar
                   activeTool={sharedActiveTool}
@@ -2234,8 +2238,8 @@ export default function Home() {
               className={`grid ${getGridClass()} bg-gray-950 h-full`} 
               style={{ 
                 overflow: 'hidden', // Always prevent charts from overlapping
-                // Mobile-specific grid fixes with minimal gaps
-                ...(typeof window !== 'undefined' && window.innerWidth < 768 ? {
+                // Mobile-specific grid fixes with minimal gaps (including iPad)
+                ...(typeof window !== 'undefined' && (window.innerWidth < 768 || isIPad) ? {
                   // For 9-chart layout, use zero gap for maximum space
                   gap: layout === 9 ? '0px' : '1px', // Zero gap for 9-chart, minimal for others
                   padding: layout === 9 ? '0px' : '1px', // Zero padding for 9-chart, minimal for others
@@ -2255,6 +2259,24 @@ export default function Home() {
                   } : layout === 9 ? {
                     gridTemplateColumns: '1fr 1fr 1fr', // 3 columns
                     gridTemplateRows: '1fr 1fr 1fr', // 3 rows
+                  } : {}),
+                } : isIPad ? {
+                  // iPad: Use mobile-like layout (smaller gaps, single column for multi-chart)
+                  gap: layout === 9 ? '0px' : '1px',
+                  padding: layout === 9 ? '0px' : '1px',
+                  gridAutoFlow: 'row',
+                  ...(layout === 1 ? {
+                    gridTemplateColumns: '1fr',
+                    gridTemplateRows: '1fr',
+                  } : layout === 2 ? {
+                    gridTemplateColumns: '1fr',
+                    gridTemplateRows: '1fr 1fr',
+                  } : layout === 4 ? {
+                    gridTemplateColumns: '1fr 1fr',
+                    gridTemplateRows: '1fr 1fr',
+                  } : layout === 9 ? {
+                    gridTemplateColumns: '1fr 1fr 1fr',
+                    gridTemplateRows: '1fr 1fr 1fr',
                   } : {}),
                 } : {
                   gap: '4px', // Desktop: gap-1 (4px)
@@ -2278,7 +2300,8 @@ export default function Home() {
                       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                                    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
                       
-                      if (isMobile || isIOS) {
+                      // Apply mobile styles to iPad as well
+                      if (isMobile || isIOS || isIPad) {
                         // For 4-chart and 9-chart layouts, reduce width slightly to accommodate price scale
                         const isMultiChart = layout === 4 || layout === 9;
                         
@@ -2414,7 +2437,7 @@ export default function Home() {
 
           {/* Desktop (1024px+): Alerts Panel (hidden on iPad) */}
           {showAlerts && (
-            <div className="hidden lg:block border-l border-gray-800">
+            <div className={`hidden ${isIPad ? 'lg:hidden' : 'lg:block'} border-l border-gray-800`}>
               <AlertsPanel
                 exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
                 pair={activeChart.pair}
@@ -2425,7 +2448,7 @@ export default function Home() {
 
           {/* Desktop (1024px+): Watchlist Panel */}
           {showWatchlist && (
-            <div className="hidden lg:block flex-shrink-0 h-full">
+            <div className={`hidden ${isIPad ? 'lg:hidden' : 'lg:block'} flex-shrink-0 h-full`}>
               <Watchlist 
                 onSymbolClick={handleWatchlistSymbolClick}
                 currentSymbol={activeChart.pair}
@@ -2733,7 +2756,7 @@ export default function Home() {
 
 
       {/* Footer - Desktop Only - Minimal height */}
-      <footer className="hidden lg:block border-t border-gray-800 bg-black px-2 py-1 text-[10px] text-gray-500 flex-shrink-0">
+      <footer className={`hidden ${isIPad ? 'lg:hidden' : 'lg:block'} border-t border-gray-800 bg-black px-2 py-1 text-[10px] text-gray-500 flex-shrink-0`}>
         <div className="flex flex-wrap items-center justify-center gap-1.5 md:gap-3">
           <span className="whitespace-nowrap">{layout === 1 ? 'Single' : layout === 2 ? '1x2' : layout === 4 ? '2x2' : '3x3'}</span>
           <span className="whitespace-nowrap">{activeChart.pair.toUpperCase()}</span>
