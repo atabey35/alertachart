@@ -353,7 +353,40 @@ class AlertService {
         try {
           const formattedPrice = formatPrice(alert.price);
           const upperSymbol = alert.pair.toUpperCase();
-          const directionText = alert.direction === 'above' ? 'ulaştı' : 'düştü';
+          
+          // 🔥 MULTILINGUAL: Get device language for local notification
+          let language = 'tr'; // Default to Turkish
+          try {
+            if ((window as any).Capacitor?.Plugins?.Device) {
+              const { Device } = (window as any).Capacitor.Plugins;
+              const langInfo = await Device.getLanguageCode();
+              if (langInfo && langInfo.value) {
+                language = langInfo.value.toLowerCase();
+                console.log('[AlertService] 🌍 Device language detected for local notification:', language);
+              }
+            } else if (typeof navigator !== 'undefined' && navigator.language) {
+              language = navigator.language.split('-')[0].toLowerCase();
+              console.log('[AlertService] 🌍 Browser language detected for local notification:', language);
+            }
+          } catch (langError) {
+            console.warn('[AlertService] ⚠️ Could not get device language for local notification:', langError);
+          }
+          
+          // 🔥 MULTILINGUAL: Create messages based on language
+          const isTurkish = language.startsWith('tr');
+          let title, body;
+          
+          if (isTurkish) {
+            // TR Mesajı
+            const directionText = alert.direction === 'above' ? 'ulaştı' : 'düştü';
+            title = '💰 Fiyat Alarmı';
+            body = `${upperSymbol} fiyatı ${formattedPrice} seviyesine ${directionText}!`;
+          } else {
+            // EN Mesajı (Global)
+            const directionText = alert.direction === 'above' ? 'reached' : 'dropped to';
+            title = '💰 Price Alert';
+            body = `${upperSymbol} price ${directionText} ${formattedPrice} level!`;
+          }
           
           const { LocalNotifications } = (window as any).Capacitor.Plugins;
           
@@ -365,8 +398,8 @@ class AlertService {
                 LocalNotifications.schedule({
                   notifications: [
                     {
-                      title: '💰 Fiyat Alarmı',
-                      body: `${upperSymbol} fiyatı ${formattedPrice} seviyesine ${directionText}!`,
+                      title: title,
+                      body: body,
                       id: Date.now(), // Unique ID
                       sound: 'default',
                       attachments: undefined,
@@ -381,7 +414,7 @@ class AlertService {
                     },
                   ],
                 }).then(() => {
-                  console.log('[AlertService] ✅ Local notification scheduled via Capacitor');
+                  console.log(`[AlertService] ✅ Local notification scheduled via Capacitor [${isTurkish ? 'TR' : 'EN'}]`);
                 }).catch((error: any) => {
                   console.error('[AlertService] ❌ Failed to schedule local notification:', error);
                 });
@@ -466,6 +499,35 @@ class AlertService {
           const formattedPrice = formatPrice(alert.price);
           const upperSymbol = alert.pair.toUpperCase();
 
+          // 🔥 MULTILINGUAL: Get device language for backend message
+          let language = 'tr'; // Default to Turkish
+          try {
+            if (typeof window !== 'undefined' && (window as any).Capacitor?.Plugins?.Device) {
+              const { Device } = (window as any).Capacitor.Plugins;
+              const langInfo = await Device.getLanguageCode();
+              if (langInfo && langInfo.value) {
+                language = langInfo.value.toLowerCase();
+                console.log('[AlertService] 🌍 Device language detected for backend message:', language);
+              }
+            } else if (typeof navigator !== 'undefined' && navigator.language) {
+              language = navigator.language.split('-')[0].toLowerCase();
+              console.log('[AlertService] 🌍 Browser language detected for backend message:', language);
+            }
+          } catch (langError) {
+            console.warn('[AlertService] ⚠️ Could not get device language for backend message:', langError);
+          }
+          
+          // 🔥 MULTILINGUAL: Create message based on language
+          // Backend'de zaten çeviri yapıyoruz, ama frontend'den gelen mesajı da dil bazlı oluşturalım
+          // Backend'de device language'e göre çeviri yapılacak, burada sadece fallback olarak gönderiyoruz
+          const isTurkish = language.startsWith('tr');
+          let message;
+          if (isTurkish) {
+            message = `${upperSymbol} fiyatı ${formattedPrice} seviyesine ${alert.direction === 'above' ? 'ulaştı' : 'düştü'}!`;
+          } else {
+            message = `${upperSymbol} price ${alert.direction === 'above' ? 'reached' : 'dropped to'} ${formattedPrice} level!`;
+          }
+
           const sendNotification = async (pushToken: string | null) => {
             if (pushToken) {
               this.nativePushToken = pushToken;
@@ -477,13 +539,14 @@ class AlertService {
               symbol: upperSymbol,
               deviceId: finalDeviceId,
               pushToken: pushToken ? `${pushToken.substring(0, 30)}...` : 'none',
-              message: `${upperSymbol} fiyatı ${formattedPrice} seviyesine ${alert.direction === 'above' ? 'ulaştı' : 'düştü'}!`,
+              message: message,
+              language: language,
             });
             
             const requestBody = {
                 alarmKey: alert.id,
                 symbol: upperSymbol,
-                message: `${upperSymbol} fiyatı ${formattedPrice} seviyesine ${alert.direction === 'above' ? 'ulaştı' : 'düştü'}!`,
+                message: message, // 🔥 MULTILINGUAL: Dil bazlı mesaj
                 data: {
                   id: alert.id,
                   exchange: alert.exchange,
