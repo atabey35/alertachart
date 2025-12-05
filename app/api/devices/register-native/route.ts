@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
-    const { deviceId, pushToken, platform, appVersion } = body;
+    const { deviceId, pushToken, platform, appVersion, language, model, osVersion } = body;
     
     if (!deviceId || !pushToken || !platform) {
       return NextResponse.json(
@@ -23,6 +23,9 @@ export async function POST(request: NextRequest) {
       platform,
       hasPushToken: !!pushToken,
       appVersion,
+      language: language || 'not provided', // 🔥 MULTILINGUAL: Log language
+      model: model || 'not provided',
+      osVersion: osVersion || 'not provided',
     });
     
     // Backend'e ilet (alertachart-backend port 3002)
@@ -40,6 +43,9 @@ export async function POST(request: NextRequest) {
         pushToken,
         platform,
         appVersion,
+        language: language || 'tr', // 🔥 MULTILINGUAL: Send language (default to 'tr')
+        model: model || null,
+        osVersion: osVersion || null,
       }),
     });
     
