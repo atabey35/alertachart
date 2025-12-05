@@ -58,7 +58,22 @@ interface ToolCategory {
 export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, onUndo, canUndo = false, initialExpanded = true }: DrawingToolbarProps) {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [isMobileExpanded, setIsMobileExpanded] = useState(initialExpanded);
+  const [isIPad, setIsIPad] = useState(false);
   const toolbarRef = React.useRef<HTMLDivElement>(null);
+
+  // Detect iPad for mobile view
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+      const isIPadUserAgent = /iPad/.test(userAgent) || 
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isCapacitorIOS = !!(window as any).Capacitor && 
+        ((window as any).Capacitor?.getPlatform?.() === 'ios' || /iPad|iPhone/.test(userAgent));
+      const isIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366;
+      const isIPadDevice = isIPadUserAgent || (isCapacitorIOS && isIPadSize);
+      setIsIPad(isIPadDevice);
+    }
+  }, []);
 
   // Close popup when clicking outside
   React.useEffect(() => {
@@ -249,7 +264,8 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
   return (
     <>
       {/* ✅ FIX #3: MOBILE - Modern FAB (Floating Action Button) + Glassmorphism Bottom Sheet */}
-      <div className="lg:hidden">
+      {/* Show mobile view on small screens OR iPad */}
+      <div className={isIPad ? '' : 'lg:hidden'}>
         {/* Floating Action Button (FAB) - Always Visible */}
         {!isMobileExpanded && (
           <button
@@ -409,7 +425,8 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
       </div>
 
       {/* DESKTOP: TradingView-style left toolbar with popup submenus */}
-      <div ref={toolbarRef} className="hidden md:block relative h-full">
+      {/* Hide desktop view on iPad */}
+      <div ref={toolbarRef} className={isIPad ? 'hidden' : 'hidden md:block relative h-full'}>
         <div className="flex flex-col gap-0.5 bg-gray-900/95 backdrop-blur-sm border-r border-gray-700 h-full pt-20 px-1">
           {/* Cursor/Select Tool */}
           <button

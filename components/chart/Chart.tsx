@@ -61,6 +61,21 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) // iPad on iOS 13+
   );
+  
+  // Detect iPad specifically for mobile view
+  const [isIPad, setIsIPad] = useState(false);
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+      const isIPadUserAgent = /iPad/.test(userAgent) || 
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+      const isCapacitorIOS = !!(window as any).Capacitor && 
+        ((window as any).Capacitor?.getPlatform?.() === 'ios' || /iPad|iPhone/.test(userAgent));
+      const isIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366;
+      const isIPadDevice = isIPadUserAgent || (isCapacitorIOS && isIPadSize);
+      setIsIPad(isIPadDevice);
+    }
+  }, []);
 
   // Helper function to calculate chart width dynamically to accommodate price scale
   // Only applies to mobile multi-chart layouts (4, 9), NOT single (1) or dual (2) charts
@@ -4813,7 +4828,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             setSelectedDrawingId(null);
           }
         }}
-        className={`lg:hidden absolute top-32 left-2 z-20 p-2 rounded-lg transition-all shadow-lg ${
+        className={`${isIPad ? '' : 'lg:hidden'} absolute top-32 left-2 z-20 p-2 rounded-lg transition-all shadow-lg ${
           showDrawingTools 
             ? 'bg-blue-600 text-white' 
             : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
@@ -4829,7 +4844,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       {historyPointer > 0 && (
         <button
           onClick={handleUndo}
-          className="lg:hidden absolute top-32 right-2 z-20 p-2 rounded-lg transition-all shadow-lg bg-gray-800 hover:bg-gray-700 text-blue-400 active:scale-95"
+          className={`${isIPad ? '' : 'lg:hidden'} absolute top-32 right-2 z-20 p-2 rounded-lg transition-all shadow-lg bg-gray-800 hover:bg-gray-700 text-blue-400 active:scale-95`}
           title="Undo Last Drawing"
         >
           <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
@@ -5024,8 +5039,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         }}
       >
         {/* Drawing Toolbar - Left side (Desktop only, hide if external toolbar is shown) - Overlay */}
+        {/* Hide on iPad - use mobile FAB instead */}
         {!hideToolbar && (
-          <div className="hidden md:block absolute left-0 top-0 h-full z-[100] pointer-events-none">
+          <div className={`${isIPad ? 'hidden' : 'hidden md:block'} absolute left-0 top-0 h-full z-[100] pointer-events-none`}>
             <div className="pointer-events-auto">
               <DrawingToolbar
                 activeTool={activeTool}
