@@ -38,6 +38,12 @@ export async function POST(request: NextRequest) {
     const hasAccessToken = cookieString.includes('accessToken=');
     const hasRefreshToken = cookieString.includes('refreshToken=');
     
+    console.log('[Next.js API] Cookie check before refresh:', {
+      hasAccessToken,
+      hasRefreshToken,
+      cookieStringLength: cookieString.length,
+    });
+    
     // If no accessToken but has refreshToken, try to refresh
     if (!hasAccessToken && hasRefreshToken) {
       try {
