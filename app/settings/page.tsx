@@ -1021,12 +1021,29 @@ export default function SettingsPage() {
         const { Device } = (window as any).Capacitor.Plugins;
         let model = 'Unknown';
         let osVersion = 'Unknown';
+        let language = 'tr'; // Default to Turkish
         
         if (Device) {
           try {
             const deviceInfo = await Device.getInfo();
             model = deviceInfo.model || model;
             osVersion = deviceInfo.osVersion || osVersion;
+            
+            // 🔥 MULTILINGUAL: Get device language
+            try {
+              const langInfo = await Device.getLanguageCode();
+              if (langInfo && langInfo.value) {
+                language = langInfo.value.toLowerCase();
+                console.log('[Settings] 🌍 Device language detected:', language);
+              }
+            } catch (langError) {
+              console.warn('[Settings] ⚠️ Could not get device language:', langError);
+              // Fallback: Try browser language
+              if (typeof navigator !== 'undefined' && navigator.language) {
+                language = navigator.language.split('-')[0].toLowerCase();
+                console.log('[Settings] 🌍 Browser language detected:', language);
+              }
+            }
           } catch (e) {
             console.warn('[Settings] Could not get device info:', e);
           }
@@ -1037,6 +1054,7 @@ export default function SettingsPage() {
         console.log('[Settings] Device ID:', deviceId);
         console.log('[Settings] Model:', model);
         console.log('[Settings] OS Version:', osVersion);
+        console.log('[Settings] Language:', language);
         console.log('[Settings] Token (first 50 chars):', tokenValue.substring(0, 50) + '...');
         
         // 🔥 CRITICAL: Use Next.js API route to forward cookies (for user_id)
@@ -1047,6 +1065,7 @@ export default function SettingsPage() {
           deviceId: deviceId,
           model: model,
           osVersion: osVersion,
+          language: language,
           appVersion: '1.0.0',
         };
         

@@ -225,6 +225,24 @@ function CapacitorAuthContent() {
                   if (fcmTokenFromStorage && fcmTokenFromStorage !== 'null' && fcmTokenFromStorage !== 'undefined') {
                     console.log('[CapacitorAuth] 🔔 FCM token found, registering device first...');
                     try {
+                      // 🔥 MULTILINGUAL: Get device language
+                      let language = 'tr'; // Default to Turkish
+                      try {
+                        if (typeof window !== 'undefined' && (window as any).Capacitor?.Plugins?.Device) {
+                          const { Device } = (window as any).Capacitor.Plugins;
+                          const langInfo = await Device.getLanguageCode();
+                          if (langInfo && langInfo.value) {
+                            language = langInfo.value.toLowerCase();
+                            console.log('[CapacitorAuth] 🌍 Device language detected:', language);
+                          }
+                        } else if (typeof navigator !== 'undefined' && navigator.language) {
+                          language = navigator.language.split('-')[0].toLowerCase();
+                          console.log('[CapacitorAuth] 🌍 Browser language detected:', language);
+                        }
+                      } catch (langError) {
+                        console.warn('[CapacitorAuth] ⚠️ Could not get device language:', langError);
+                      }
+                      
                       const registerResponse = await fetch('/api/devices/register-native', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -232,6 +250,7 @@ function CapacitorAuthContent() {
                           deviceId: deviceIdToLink,
                           pushToken: fcmTokenFromStorage,
                           platform: finalPlatform,
+                          language: language,
                           appVersion: typeof window !== 'undefined' ? (window as any).navigator?.appVersion : undefined,
                         }),
                       });
@@ -256,6 +275,22 @@ function CapacitorAuthContent() {
                   
                   // Now try to link device to user (backend will create device if it doesn't exist)
                   try {
+                    // 🔥 MULTILINGUAL: Get device language for link request
+                    let language = 'tr'; // Default to Turkish
+                    try {
+                      if (typeof window !== 'undefined' && (window as any).Capacitor?.Plugins?.Device) {
+                        const { Device } = (window as any).Capacitor.Plugins;
+                        const langInfo = await Device.getLanguageCode();
+                        if (langInfo && langInfo.value) {
+                          language = langInfo.value.toLowerCase();
+                        }
+                      } else if (typeof navigator !== 'undefined' && navigator.language) {
+                        language = navigator.language.split('-')[0].toLowerCase();
+                      }
+                    } catch (langError) {
+                      console.warn('[CapacitorAuth] ⚠️ Could not get device language for link:', langError);
+                    }
+                    
                     console.log('[CapacitorAuth] 📤 Sending device link request to /api/devices/link...');
                     const linkResponse = await fetch('/api/devices/link', {
                       method: 'POST',
@@ -263,6 +298,7 @@ function CapacitorAuthContent() {
                       credentials: 'include',
                       body: JSON.stringify({ 
                         deviceId: deviceIdToLink,
+                        language: language,
                         pushToken: fcmTokenFromStorage || undefined, // Include FCM token if available
                         platform: finalPlatform, // Include platform info
                       }),

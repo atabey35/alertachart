@@ -129,11 +129,33 @@ class CapacitorPushNotificationService implements PushNotificationService {
       const model = deviceInfo.model;
       const osVersion = deviceInfo.osVersion;
 
+      // 🔥 MULTILINGUAL: Get device language
+      let language = 'tr'; // Default to Turkish
+      try {
+        if (typeof window !== 'undefined' && (window as any).Capacitor?.Plugins?.Device) {
+          const { Device } = (window as any).Capacitor.Plugins;
+          const langInfo = await Device.getLanguageCode();
+          if (langInfo && langInfo.value) {
+            language = langInfo.value.toLowerCase();
+            console.log('[PushNotification] 🌍 Device language detected:', language);
+          }
+        } else {
+          // Fallback: Try browser language
+          if (typeof navigator !== 'undefined' && navigator.language) {
+            language = navigator.language.split('-')[0].toLowerCase();
+            console.log('[PushNotification] 🌍 Browser language detected:', language);
+          }
+        }
+      } catch (langError) {
+        console.warn('[PushNotification] ⚠️ Could not get device language, defaulting to tr:', langError);
+      }
+
       console.log('[PushNotification] 📱 Final device info:', {
         platform: platform,
         deviceId: deviceId,
         model: model,
         osVersion: osVersion,
+        language: language,
         originalPlatform: deviceInfo.platform,
       });
 
@@ -150,6 +172,7 @@ class CapacitorPushNotificationService implements PushNotificationService {
           deviceId: deviceId,
           model: model,
           osVersion: osVersion,
+          language: language,
           appVersion: '1.0.0',
         }),
       });

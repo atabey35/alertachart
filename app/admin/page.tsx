@@ -16,6 +16,7 @@ export default function AdminPage() {
   const [message, setMessage] = useState('');
   const [emoji, setEmoji] = useState('🔔');
   const [password, setPassword] = useState('');
+  const [targetLang, setTargetLang] = useState<'all' | 'tr' | 'en'>('all'); // 🔥 MULTILINGUAL: Dil seçimi
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
   
@@ -185,6 +186,7 @@ export default function AdminPage() {
           title: `${emoji} ${title}`,
           message,
           password,
+          targetLang, // 🔥 MULTILINGUAL: Dil seçimini backend'e gönder
         }),
       });
 
@@ -669,6 +671,50 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {/* 🔥 MULTILINGUAL: Dil Seçimi */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-300 mb-2">
+              Hedef Kitle (Target Audience)
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                onClick={() => setTargetLang('all')}
+                className={`px-4 py-3 rounded-lg font-medium transition-all ${
+                  targetLang === 'all'
+                    ? 'bg-blue-600 text-white shadow-lg scale-105'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                🌍 Herkes (All)
+              </button>
+              <button
+                onClick={() => setTargetLang('tr')}
+                className={`px-4 py-3 rounded-lg font-medium transition-all ${
+                  targetLang === 'tr'
+                    ? 'bg-blue-600 text-white shadow-lg scale-105'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                🇹🇷 Türkçe
+              </button>
+              <button
+                onClick={() => setTargetLang('en')}
+                className={`px-4 py-3 rounded-lg font-medium transition-all ${
+                  targetLang === 'en'
+                    ? 'bg-blue-600 text-white shadow-lg scale-105'
+                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                }`}
+              >
+                🌐 Global (EN)
+              </button>
+            </div>
+            <div className="text-xs text-gray-400 mt-2">
+              {targetLang === 'all' && '• Tüm kullanıcılara gönderilir'}
+              {targetLang === 'tr' && '• Sadece Türkçe dil ayarlı cihazlara gönderilir'}
+              {targetLang === 'en' && '• Türkçe olmayan tüm cihazlara gönderilir (Global)'}
+            </div>
+          </div>
+
           {/* Password Input */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -726,7 +772,7 @@ export default function AdminPage() {
                 Gönderiliyor...
               </span>
             ) : (
-              '📤 Herkese Gönder'
+              `📤 ${targetLang === 'all' ? 'Herkese' : targetLang === 'tr' ? 'Türkçe Kullanıcılara' : 'Global Kullanıcılara'} Gönder`
             )}
           </button>
 

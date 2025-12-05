@@ -8,7 +8,7 @@ import { getSql } from '@/lib/db';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { title, message, password } = body;
+    const { title, message, password, targetLang = 'all' } = body; // 🔥 MULTILINGUAL: targetLang desteği
 
     // Validasyon
     if (!title || !message || !password) {
@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
       response = await fetch(`${backendUrl}/api/admin/broadcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, message }),
+        body: JSON.stringify({ title, message, targetLang }), // 🔥 MULTILINGUAL: targetLang'i backend'e ilet
       });
       
       // Read response as text first (can be parsed as JSON or used as text)
