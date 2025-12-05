@@ -50,6 +50,9 @@ export default function Home() {
   const [sharedActiveTool, setSharedActiveTool] = useState<DrawingTool>('none');
   const [showDrawingToolbar, setShowDrawingToolbar] = useState(true);
   
+  // Ref to store clearAll callbacks for each chart (for multi-chart layout)
+  const chartClearAllRefs = useRef<Map<number, () => void>>(new Map());
+  
   // Chart refresh trigger for mobile app (prevents external browser opening)
   const [chartRefreshKey, setChartRefreshKey] = useState(0);
 
@@ -2216,7 +2219,10 @@ export default function Home() {
                   onToolChange={setSharedActiveTool}
                   onClearAll={() => {
                     // Clear all drawings from active chart
-                    // This will be handled by the Chart component via prop
+                    const clearAllFn = chartClearAllRefs.current.get(activeChartId);
+                    if (clearAllFn) {
+                      clearAllFn();
+                    }
                   }}
                 />
               </div>
@@ -2390,6 +2396,15 @@ export default function Home() {
                     hideToolbar={!showDrawingToolbar || layout > 1}
                     externalActiveTool={layout > 1 && showDrawingToolbar && chart.id === activeChartId ? sharedActiveTool : undefined}
                     onToolChange={layout > 1 && showDrawingToolbar && chart.id === activeChartId ? setSharedActiveTool : undefined}
+                    onClearAll={layout > 1 && showDrawingToolbar ? ((clearFn: () => void | undefined) => {
+                      // Register clearAll callback for this chart
+                      if (clearFn) {
+                        chartClearAllRefs.current.set(chart.id, clearFn);
+                      } else {
+                        // Cleanup: remove from ref
+                        chartClearAllRefs.current.delete(chart.id);
+                      }
+                    }) : undefined}
                     layout={layout}
                   />
                 </div>
