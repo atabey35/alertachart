@@ -28,7 +28,7 @@ export default function SettingsPage() {
   const pathname = usePathname();
 
   // User state
-  const [user, setUser] = useState<{ id: number; email: string; name?: string } | null>(null);
+  const [user, setUser] = useState<{ id: number; email: string; name?: string; provider?: string } | null>(null);
   // Premium state - 🔥 Cache-first: State her zaman null ile başlar (Hydration-safe)
   const [userPlan, setUserPlan] = useState<{
     plan: 'free' | 'premium';
@@ -3424,10 +3424,40 @@ export default function SettingsPage() {
                       direction: newAlert.direction,
                     };
 
+                    // Debug: Log user state
+                    console.log('[Settings] User state check:', {
+                      hasUser: !!user,
+                      userEmail: user?.email,
+                      userProvider: (user as any)?.provider,
+                      isGuest: user && (user as any).provider === 'guest',
+                    });
+
                     // Add user email for guest users (backend needs it to find user by device_id)
+                    // Also check localStorage as fallback
+                    let userEmailToSend = null;
                     if (user && (user as any).provider === 'guest' && user.email) {
-                      requestBody.userEmail = user.email;
-                      console.log('[Settings] ✅ Adding user email for guest user:', user.email);
+                      userEmailToSend = user.email;
+                      console.log('[Settings] ✅ Adding user email for guest user from state:', userEmailToSend);
+                    } else if (typeof window !== 'undefined') {
+                      // Fallback: Check localStorage for guest user
+                      const guestUserStr = localStorage.getItem('guest_user');
+                      if (guestUserStr) {
+                        try {
+                          const guestUser = JSON.parse(guestUserStr);
+                          if (guestUser.provider === 'guest' && guestUser.email) {
+                            userEmailToSend = guestUser.email;
+                            console.log('[Settings] ✅ Adding user email for guest user from localStorage:', userEmailToSend);
+                          }
+                        } catch (e) {
+                          console.error('[Settings] Failed to parse guest_user from localStorage:', e);
+                        }
+                      }
+                    }
+
+                    if (userEmailToSend) {
+                      requestBody.userEmail = userEmailToSend;
+                    } else {
+                      console.warn('[Settings] ⚠️ No userEmail found for guest user - alert creation may fail');
                     }
                     
                     console.log('[Settings] Sending request to: /api/alerts/price');
