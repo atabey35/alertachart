@@ -44,6 +44,7 @@ interface ChartProps {
   loadDelay?: number; // Delay before starting data fetch (for sequential loading)
   hideToolbar?: boolean; // Hide internal toolbar for multi-chart layout
   externalActiveTool?: DrawingTool; // Use external tool state for multi-chart
+  onToolChange?: (tool: DrawingTool) => void; // Callback for tool change (for multi-chart)
   layout?: 1 | 2 | 4 | 9; // Layout type: 1=single, 2=dual, 4=quad, 9=nine
   onTimeframeChange?: (timeframe: number) => void; // Callback for timeframe change
   onLayoutChange?: (layout: 1 | 2 | 4 | 9) => void; // Callback for layout change
@@ -53,7 +54,7 @@ interface ChartProps {
   hasPremiumAccess?: boolean; // Premium access for premium timeframes
 }
 
-export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, onChange24h, marketType = 'spot', loadDelay = 0, hideToolbar = false, externalActiveTool, layout = 1, onTimeframeChange, onLayoutChange, currentLayout = 1, showTimeframeSelector = false, showLayoutSelector = false, hasPremiumAccess = false }: ChartProps) {
+export default function Chart({ exchange, pair, timeframe, markets = [], onPriceUpdate, onConnectionChange, onChange24h, marketType = 'spot', loadDelay = 0, hideToolbar = false, externalActiveTool, onToolChange, layout = 1, onTimeframeChange, onLayoutChange, currentLayout = 1, showTimeframeSelector = false, showLayoutSelector = false, hasPremiumAccess = false }: ChartProps) {
   // Detect iOS/Apple devices
   const isIOS = typeof window !== 'undefined' && (
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -506,7 +507,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   // Drawing tool states (use external if provided for multi-chart)
   const [internalActiveTool, setInternalActiveTool] = useState<DrawingTool>('none');
   const activeTool = externalActiveTool !== undefined ? externalActiveTool : internalActiveTool;
-  const setActiveTool = externalActiveTool !== undefined ? () => {} : setInternalActiveTool;
+  const setActiveTool = externalActiveTool !== undefined 
+    ? (tool: DrawingTool) => { onToolChange?.(tool); } // Call parent callback for multi-chart
+    : setInternalActiveTool;
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [tempDrawing, setTempDrawing] = useState<DrawingPoint | null>(null);
   const [isDrawingBrush, setIsDrawingBrush] = useState(false);

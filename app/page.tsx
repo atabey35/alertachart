@@ -2389,6 +2389,7 @@ export default function Home() {
                     loadDelay={index * 300}
                     hideToolbar={!showDrawingToolbar || layout > 1}
                     externalActiveTool={layout > 1 && showDrawingToolbar && chart.id === activeChartId ? sharedActiveTool : undefined}
+                    onToolChange={layout > 1 && showDrawingToolbar && chart.id === activeChartId ? setSharedActiveTool : undefined}
                     layout={layout}
                   />
                 </div>
