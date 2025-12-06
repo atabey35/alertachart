@@ -831,19 +831,139 @@ Backend (Railway)
 
 ### 6.5. Premium Subscription Flow
 
+#### 6.5.1. Manuel Purchase Flow (Upgrade Modal)
+
 ```
-1. User purchases premium (iOS/Android)
+1. User clicks "Satın Al" button in Upgrade Modal
    ↓
-2. Frontend: /api/subscription/verify-purchase
+2. Native IAP plugin (purchaseProduct) handles purchase
    ↓
-3. Frontend: IAP Service ile receipt doğrula
+3. StoreKit/Google Play processes payment
    ↓
-4. Frontend: Database'e premium kaydı yap
+4. Frontend receives purchase result with receipt
    ↓
-5. Frontend: Cache'i güncelle
+5. Frontend calls /api/subscription/verify-purchase with receipt
    ↓
-6. User: Premium özelliklere erişir
+6. Backend validates receipt with Apple/Google servers
+   ↓
+7. Backend updates user premium status in database
+   ↓
+8. Frontend refreshes user plan and unlocks premium features
 ```
+
+#### 6.5.2. Otomatik Entitlement Sync Flow (YENİ - 2024)
+
+**Sorun:** Kullanıcılar deneme süresi bitince App Store ücret çekiyordu ama uygulama içinde premium status güncellenmiyordu. Kullanıcı upgrade modal'a gidip "Satın Al" butonuna basınca "Zaten abonesiniz" uyarısı görüyordu ve ancak o zaman restorePurchases çağrılıp premium aktif oluyordu.
+
+**Çözüm:** Otomatik entitlement sync mekanizması eklendi.
+
+**Akış:**
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│           OTOMATIK ENTITLEMENT SYNC MİMARİSİ                │
+└─────────────────────────────────────────────────────────────┘
+
+1. UYGULAMA AÇILIŞI (App Startup)
+   │
+   ├─► setupAutomaticEntitlementSync() çağrılır
+   │
+   ├─► 2 saniye sonra syncEntitlements() tetiklenir
+   │
+   └─► Native Plugin: checkEntitlements()
+       │
+       ├─► iOS: App Store Receipt alınır
+       │   └─► Bundle.main.appStoreReceiptURL
+       │
+       └─► Android: Active Subscription sorgulanır
+           └─► billingClient.queryPurchasesAsync()
+
+2. RECEIPT/PURCHASE TOKEN ALINIR
+   │
+   ├─► Receipt base64 encoded string
+   │
+   ├─► Product ID (premium_monthly, etc.)
+   │
+   └─► Device ID (Capacitor Device plugin)
+
+3. BACKEND VALIDATION
+   │
+   ├─► POST /api/subscription/verify-purchase
+   │   │
+   │   ├─► User Identification:
+   │   │   ├─► Session varsa → Email ile user bul
+   │   │   └─► Session yoksa → Device ID ile guest user bul/oluştur
+   │   │
+   │   ├─► Receipt Validation:
+   │   │   ├─► iOS: Apple verifyReceipt API
+   │   │   │   ├─► Production: buy.itunes.apple.com/verifyReceipt
+   │   │   │   └─► Sandbox: sandbox.itunes.apple.com/verifyReceipt (status 21007)
+   │   │   │
+   │   │   └─► Android: Google Play Developer API
+   │   │       └─► androidpublisher.googleapis.com/v3/.../tokens/{receipt}
+   │   │
+   │   └─► Database Update:
+   │       ├─► plan = 'premium'
+   │       ├─► expiry_date = receipt'ten alınan tarih
+   │       └─► subscription_platform = 'ios' | 'android'
+
+4. FRONTEND UPDATE
+   │
+   ├─► premiumStatusUpdated event dispatch edilir
+   │
+   ├─► User plan cache temizlenir
+   │
+   └─► UI otomatik güncellenir (premium unlock)
+
+5. PERİYODİK SYNC (Her 5 dakikada bir)
+   │
+   └─► Auto-renewal'ları yakalamak için
+       └─► App Store/Play Store arka planda işlem yapabilir
+```
+
+**Sync Tetikleme Noktaları:**
+
+1. **App Startup:** Uygulama açıldığında (2 saniye delay)
+2. **App Foreground:** Uygulama arka plandan ön plana geldiğinde
+3. **Periyodik:** Her 5 dakikada bir (auto-renewal'ları yakalamak için)
+
+**Güvenlik:**
+
+- ✅ **Server-Side Validation:** Tüm receipt'ler Apple/Google sunucularından doğrulanıyor
+- ✅ **Client-Side Manipulation:** İmkansız - receipt backend'de doğrulanıyor
+- ✅ **Expiry Check:** Receipt'teki expiry date kontrol ediliyor
+- ✅ **Purchase State:** Google Play'de purchaseState: 0 (Purchased) kontrol ediliyor
+
+**Kod Yapısı:**
+
+```
+services/
+├── entitlementSyncService.ts    # Otomatik sync servisi
+│   ├── syncEntitlements()       # Ana sync fonksiyonu
+│   └── setupAutomaticEntitlementSync()  # Setup ve listeners
+│
+ios/App/App/Plugins/InAppPurchasePlugin/
+└── InAppPurchasePlugin.swift
+    └── checkEntitlements()      # iOS receipt alma
+
+android/app/src/main/java/com/kriptokirmizi/alerta/
+└── InAppPurchasePlugin.java
+    └── checkEntitlements()      # Android subscription sorgulama
+
+app/api/subscription/verify-purchase/
+└── route.ts
+    ├── verifyAppleReceipt()     # Apple sunucularına doğrulama
+    └── verifyGoogleReceipt()    # Google sunucularına doğrulama
+```
+
+**Sonuç:**
+
+- ✅ Kullanıcı deneme süresi bitince App Store ücret çekiyor
+- ✅ Uygulama açıldığında otomatik sync çalışıyor (2 saniye sonra)
+- ✅ Receipt backend'e gönderiliyor ve Apple/Google'dan doğrulanıyor
+- ✅ Premium status otomatik güncelleniyor
+- ✅ Kullanıcının modal'a gitmesine gerek kalmıyor
+- ✅ Auto-renewal'lar periyodik sync ile yakalanıyor (her 5 dakika)
 
 ---
 
