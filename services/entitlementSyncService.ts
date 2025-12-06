@@ -222,6 +222,29 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
         }
       }
 
+      // 🔥 SECURITY: Generate a stable transaction ID from receipt hash
+      // This ensures the same receipt always maps to the same transaction ID
+      // This is critical for preventing cross-account receipt usage
+      let transactionId: string;
+      try {
+        // Create a hash of the receipt to use as transaction ID
+        // Same receipt = same hash = same transaction ID
+        const crypto = window.crypto || (window as any).msCrypto;
+        if (crypto && crypto.subtle) {
+          const receiptHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(receipt));
+          const hashArray = Array.from(new Uint8Array(receiptHash));
+          const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+          transactionId = `receipt_${hashHex.substring(0, 32)}`; // Use first 32 chars of hash
+          console.log('[Entitlement Sync] ✅ Generated stable transaction ID from receipt hash');
+        } else {
+          throw new Error('crypto.subtle not available');
+        }
+      } catch (hashError) {
+        // Fallback: Use receipt substring as transaction ID (less secure but works)
+        console.warn('[Entitlement Sync] ⚠️ Could not hash receipt, using fallback transaction ID');
+        transactionId = `sync_${receipt.substring(0, 50)}_${receipt.length}`;
+      }
+
       // Validate receipt with backend
       const validationResponse = await fetch('/api/subscription/verify-purchase', {
         method: 'POST',
@@ -231,7 +254,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
         body: JSON.stringify({
           platform: platform,
           productId: productId || 'premium_monthly', // Fallback if productId not found
-          transactionId: `sync_${Date.now()}`, // Generate a sync transaction ID
+          transactionId: transactionId,
           receipt: receipt,
           deviceId: deviceId,
         }),

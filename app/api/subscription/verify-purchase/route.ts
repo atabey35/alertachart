@@ -230,6 +230,42 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 🔥 CRITICAL SECURITY: Check if this receipt (transactionId) is already linked to another account
+    // Receipts are tied to Apple ID/Google Account, not to our app's user accounts.
+    // If a receipt is already linked to a different user, prevent cross-account usage.
+    if (transactionId) {
+      const existingSubscription = await sql`
+        SELECT id, email, device_id, subscription_id
+        FROM users
+        WHERE subscription_id = ${transactionId}
+        LIMIT 1
+      `;
+      
+      if (existingSubscription.length > 0) {
+        const existingUser = existingSubscription[0];
+        
+        // If receipt is already linked to a different user account, reject
+        if (existingUser.id !== user.id) {
+          console.error('[Verify Purchase] ❌ SECURITY: Receipt already linked to different account:', {
+            receiptTransactionId: transactionId,
+            currentUserEmail: userEmail,
+            currentUserId: user.id,
+            existingUserEmail: existingUser.email,
+            existingUserId: existingUser.id,
+          });
+          return NextResponse.json(
+            { 
+              error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
+            },
+            { status: 403 }
+          );
+        }
+        
+        // Receipt is already linked to this user - this is a re-verification (OK)
+        console.log('[Verify Purchase] ℹ️ Receipt already linked to this user, re-verifying...');
+      }
+    }
+
     // Verify receipt with Apple/Google
     const verificationResult = await verifyReceipt(platform, receipt, productId);
 
