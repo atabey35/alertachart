@@ -46,6 +46,42 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 🔥 CRITICAL SECURITY: Check device BEFORE user identification
+    // If device already has premium, prevent new accounts from claiming receipt
+    // This must be done BEFORE user identification to catch all cases
+    const sql = getSql();
+    
+    if (deviceId) {
+      const existingDevicePremium = await sql`
+        SELECT id, email, device_id, subscription_id, plan
+        FROM users
+        WHERE device_id = ${deviceId}
+          AND plan = 'premium'
+        LIMIT 1
+      `;
+      
+      if (existingDevicePremium.length > 0) {
+        const existingUser = existingDevicePremium[0];
+        // Check if this is the same user (re-verification is OK)
+        const isSameUser = session?.user?.email === existingUser.email;
+        
+        if (!isSameUser) {
+          console.error('[Verify Purchase] ❌ SECURITY: Device already has premium linked to different account (PRE-CHECK):', {
+            deviceId: deviceId,
+            sessionEmail: session?.user?.email,
+            existingUserEmail: existingUser.email,
+            existingUserId: existingUser.id,
+          });
+          return NextResponse.json(
+            { 
+              error: 'This device already has a premium subscription linked to another account. Please use the account that originally purchased the subscription, or contact support if you believe this is an error.' 
+            },
+            { status: 403 }
+          );
+        }
+      }
+    }
+    
     // 🔥 APPLE GUIDELINE 5.1.1: Allow purchases WITHOUT login (Guest Mode)
     // User identification logic:
     // 1. If session exists -> Use session.user.email
@@ -56,7 +92,6 @@ export async function POST(request: NextRequest) {
     // Receipts don't contain user email information. They are device-specific but account-bound.
     // For authenticated users, we link receipts to device_id to prevent cross-account usage.
     
-    const sql = getSql();
     let user: any;
     let userEmail: string;
 
@@ -276,11 +311,12 @@ export async function POST(request: NextRequest) {
       const receiptHashId = `receipt_${receiptHash.substring(0, 32)}`;
       
       // Check if any other user has premium with this receipt hash
-      // (This catches cases where receipt is used by different transactionId)
+      // Use exact match for first 32 chars (more reliable than LIKE)
+      const receiptHashPrefix = receiptHash.substring(0, 32);
       const existingReceiptUsers = await sql`
         SELECT id, email, device_id, subscription_id, plan
         FROM users
-        WHERE subscription_id LIKE ${`receipt_${receiptHash.substring(0, 16)}%`}
+        WHERE subscription_id LIKE ${`receipt_${receiptHashPrefix}%`}
           AND plan = 'premium'
           AND id != ${user.id}
         LIMIT 1
@@ -290,6 +326,7 @@ export async function POST(request: NextRequest) {
         const existingUser = existingReceiptUsers[0];
         console.error('[Verify Purchase] ❌ SECURITY: Same receipt already linked to different account (by receipt hash):', {
           receiptHash: receiptHashId,
+          receiptHashPrefix: receiptHashPrefix,
           currentUserEmail: userEmail,
           currentUserId: user.id,
           existingUserEmail: existingUser.email,
@@ -303,9 +340,15 @@ export async function POST(request: NextRequest) {
           { status: 403 }
         );
       }
+      
+      console.log('[Verify Purchase] ✅ Receipt hash check passed:', {
+        receiptHashPrefix: receiptHashPrefix,
+        currentUserId: user.id,
+      });
     } catch (hashError) {
-      console.warn('[Verify Purchase] ⚠️ Could not check receipt hash:', hashError);
-      // Continue anyway - transactionId check should catch most cases
+      console.error('[Verify Purchase] ❌ Could not check receipt hash:', hashError);
+      // This is critical - if hash check fails, we should be more cautious
+      // But we can't block all purchases, so log error and continue
     }
     
     // Method 3: Check by deviceId - if deviceId is already linked to another premium user
