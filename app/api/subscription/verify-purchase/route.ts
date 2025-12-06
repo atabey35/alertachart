@@ -137,68 +137,69 @@ export async function POST(request: NextRequest) {
     }
     
     // SECURITY CHECK 2: Check device BEFORE user identification
-    // If device already has premium, prevent new accounts from claiming receipt
-    // This is CRITICAL - device check must work
+    // 🔥 CRITICAL: If device already has premium, prevent ANY other account from claiming receipt
+    // This is the PRIMARY defense against cross-account receipt usage
+    // MUST work even if deviceId is provided but user is different
     if (deviceId) {
-      // Check ALL users with this device_id (not just premium)
-      // This catches cases where device is linked to another account
-      const existingDeviceUsers = await sql`
-        SELECT id, email, device_id, subscription_id, plan
+      // Check ALL users with this device_id who have premium
+      // This is CRITICAL - if device has premium, only that account can use it
+      const existingDevicePremium = await sql`
+        SELECT id, email, device_id, subscription_id, plan, subscription_platform
         FROM users
         WHERE device_id = ${deviceId}
-        ORDER BY id DESC
-        LIMIT 10
+          AND plan = 'premium'
+          AND subscription_platform IN ('ios', 'android')
+        ORDER BY subscription_started_at DESC
+        LIMIT 5
       `;
       
-      console.log('[Verify Purchase] 🔍 Device check results:', {
+      console.log('[Verify Purchase] 🔍 Device premium check results:', {
         deviceId: deviceId,
-        foundUsers: existingDeviceUsers.length,
-        users: existingDeviceUsers.map((u: any) => ({
+        foundPremiumUsers: existingDevicePremium.length,
+        premiumUsers: existingDevicePremium.map((u: any) => ({
           id: u.id,
           email: u.email,
           plan: u.plan,
           subscriptionId: u.subscription_id,
+          subscriptionPlatform: u.subscription_platform,
         })),
         sessionEmail: session?.user?.email,
       });
       
-      // Check if device has premium linked to different account
-      const existingDevicePremium = existingDeviceUsers.filter((u: any) => u.plan === 'premium');
-      
       if (existingDevicePremium.length > 0) {
-        // Check if ANY premium user is different from current user
-        const differentPremiumUser = existingDevicePremium.find((u: any) => {
-          // If no session, we can't check email, so reject if any premium user found
+        // 🔥 CRITICAL: If device has premium, check if current user is the premium user
+        // If not, REJECT immediately - receipt belongs to the premium account, not new account
+        const isPremiumUser = existingDevicePremium.some((u: any) => {
           if (!session?.user?.email) {
-            return true; // Different user (no session = different)
+            return false; // No session = not the premium user
           }
-          return u.email !== session.user.email;
+          return u.email === session.user.email;
         });
         
-        if (differentPremiumUser) {
-          console.error('[Verify Purchase] ❌ SECURITY: Device already has premium linked to different account (PRE-CHECK):', {
+        if (!isPremiumUser) {
+          const firstPremiumUser = existingDevicePremium[0];
+          console.error('[Verify Purchase] ❌ CRITICAL SECURITY: Device already has premium linked to different account (PRE-CHECK):', {
             deviceId: deviceId,
             sessionEmail: session?.user?.email,
-            existingUserEmail: differentPremiumUser.email,
-            existingUserId: differentPremiumUser.id,
-            existingSubscriptionId: differentPremiumUser.subscription_id,
-            allPremiumUsers: existingDevicePremium.length,
+            existingPremiumUserEmail: firstPremiumUser.email,
+            existingPremiumUserId: firstPremiumUser.id,
+            existingPremiumSubscriptionId: firstPremiumUser.subscription_id,
+            existingPremiumPlatform: firstPremiumUser.subscription_platform,
+            totalPremiumUsers: existingDevicePremium.length,
           });
           return NextResponse.json(
             { 
-              error: 'This device already has a premium subscription linked to another account. Please use the account that originally purchased the subscription, or contact support if you believe this is an error.' 
+              error: 'This device already has a premium subscription linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts. Please use the account that originally purchased the subscription.' 
             },
             { status: 403 }
           );
         }
+        
+        // Same user - this is a re-verification, which is OK
+        console.log('[Verify Purchase] ✅ Device premium check passed - same user re-verification');
+      } else {
+        console.log('[Verify Purchase] ✅ Device premium check passed - no existing premium on device');
       }
-      
-      console.log('[Verify Purchase] ✅ Device check passed:', {
-        deviceId: deviceId,
-        sessionEmail: session?.user?.email,
-        totalDeviceUsers: existingDeviceUsers.length,
-        premiumUsers: existingDevicePremium.length,
-      });
     } else {
       // 🔥 CRITICAL: If deviceId is missing for authenticated users, require it
       // This prevents new accounts from claiming receipts without device verification
