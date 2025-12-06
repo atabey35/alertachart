@@ -257,7 +257,12 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
  * - When transaction updates are detected
  */
 export function setupAutomaticEntitlementSync() {
-  if (typeof window === 'undefined') return;
+  console.log('[Entitlement Sync] 🔧 setupAutomaticEntitlementSync CALLED');
+  
+  if (typeof window === 'undefined') {
+    console.log('[Entitlement Sync] ⚠️ window is undefined, returning');
+    return;
+  }
 
   console.log('[Entitlement Sync] 🔧 Setting up automatic entitlement sync...');
 

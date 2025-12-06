@@ -242,10 +242,24 @@ export default function Home() {
     
     // Start checking after a short delay to ensure Capacitor is loaded
     console.log('[App] 🔍 Entitlement Sync: Scheduling checkAndSetup in 100ms...');
-    setTimeout(() => {
-      console.log('[App] 🔍 Entitlement Sync: setTimeout callback executed');
-      checkAndSetup();
-    }, 100);
+    
+    // Also try immediate check (in case Capacitor is already loaded)
+    const immediateCheck = () => {
+      console.log('[App] 🔍 Entitlement Sync: Immediate check...');
+      const hasCapacitor = !!(window as any).Capacitor;
+      if (hasCapacitor) {
+        console.log('[App] 🔍 Entitlement Sync: Capacitor already loaded, running checkAndSetup immediately');
+        checkAndSetup();
+      } else {
+        console.log('[App] 🔍 Entitlement Sync: Capacitor not loaded, will retry in setTimeout');
+        setTimeout(() => {
+          console.log('[App] 🔍 Entitlement Sync: setTimeout callback executed');
+          checkAndSetup();
+        }, 100);
+      }
+    };
+    
+    immediateCheck();
     
     console.log('[App] 🔍 Entitlement Sync: useEffect COMPLETED');
   }, []);
