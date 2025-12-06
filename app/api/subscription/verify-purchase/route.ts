@@ -46,11 +46,63 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 🔥 CRITICAL SECURITY: Check device BEFORE user identification
-    // If device already has premium, prevent new accounts from claiming receipt
-    // This must be done BEFORE user identification to catch all cases
+    // 🔥 CRITICAL SECURITY: Check receipt and device BEFORE user identification
+    // This prevents new accounts from claiming receipts that belong to other accounts
+    // Must be done BEFORE user identification to catch all cases
     const sql = getSql();
     
+    // SECURITY CHECK 1: Check receipt hash FIRST (most reliable)
+    // If same receipt is already linked to another account, reject immediately
+    try {
+      const crypto = await import('crypto');
+      const receiptHash = crypto.createHash('sha256').update(receipt).digest('hex');
+      const receiptHashPrefix = receiptHash.substring(0, 32);
+      const receiptHashId = `receipt_${receiptHashPrefix}`;
+      
+      // Check if this receipt (by hash) is already linked to a premium account
+      const existingReceiptUsers = await sql`
+        SELECT id, email, device_id, subscription_id, plan
+        FROM users
+        WHERE subscription_id LIKE ${`receipt_${receiptHashPrefix}%`}
+          AND plan = 'premium'
+        LIMIT 1
+      `;
+      
+      if (existingReceiptUsers.length > 0) {
+        const existingUser = existingReceiptUsers[0];
+        // Check if this is the same user (re-verification is OK)
+        const isSameUser = session?.user?.email === existingUser.email;
+        
+        if (!isSameUser) {
+          console.error('[Verify Purchase] ❌ SECURITY: Receipt already linked to different account (PRE-CHECK by hash):', {
+            receiptHash: receiptHashId,
+            receiptHashPrefix: receiptHashPrefix,
+            sessionEmail: session?.user?.email,
+            existingUserEmail: existingUser.email,
+            existingUserId: existingUser.id,
+            existingSubscriptionId: existingUser.subscription_id,
+          });
+          return NextResponse.json(
+            { 
+              error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
+            },
+            { status: 403 }
+          );
+        }
+      }
+      
+      console.log('[Verify Purchase] ✅ Receipt hash pre-check passed:', {
+        receiptHashPrefix: receiptHashPrefix,
+        sessionEmail: session?.user?.email,
+      });
+    } catch (hashError) {
+      console.error('[Verify Purchase] ❌ CRITICAL: Could not check receipt hash (PRE-CHECK):', hashError);
+      // This is critical - if we can't check receipt hash, we should be very cautious
+      // But we can't block all purchases, so log error and continue with other checks
+    }
+    
+    // SECURITY CHECK 2: Check device BEFORE user identification
+    // If device already has premium, prevent new accounts from claiming receipt
     if (deviceId) {
       const existingDevicePremium = await sql`
         SELECT id, email, device_id, subscription_id, plan
@@ -80,6 +132,21 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+    } else {
+      // 🔥 CRITICAL: If deviceId is missing for authenticated users, require it
+      // This prevents new accounts from claiming receipts without device verification
+      if (session?.user?.email) {
+        console.error('[Verify Purchase] ❌ SECURITY: Authenticated user but no deviceId provided:', {
+          sessionEmail: session.user.email,
+        });
+        return NextResponse.json(
+          { 
+            error: 'Device ID is required for purchase verification. Please ensure the app has proper permissions to access device information.' 
+          },
+          { status: 400 }
+        );
+      }
+      // For guest users, deviceId is required (checked later in user identification)
     }
     
     // 🔥 APPLE GUIDELINE 5.1.1: Allow purchases WITHOUT login (Guest Mode)
