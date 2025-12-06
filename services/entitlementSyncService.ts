@@ -173,13 +173,52 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
         }
       }
 
-      // Get device ID
+      // Get device ID - try multiple sources
       let deviceId: string | null = null;
       if (typeof window !== 'undefined') {
         try {
-          deviceId = localStorage.getItem('device_id') || null;
+          // Try 1: Capacitor Device plugin (most reliable for native apps)
+          const Capacitor = (window as any).Capacitor;
+          if (Capacitor?.Plugins?.Device) {
+            try {
+              const deviceInfo = await Capacitor.Plugins.Device.getId();
+              if (deviceInfo?.identifier && 
+                  deviceInfo.identifier !== 'unknown' && 
+                  deviceInfo.identifier !== 'null' &&
+                  deviceInfo.identifier !== 'undefined') {
+                deviceId = deviceInfo.identifier;
+                console.log('[Entitlement Sync] ✅ Device ID from Capacitor:', deviceId);
+              }
+            } catch (e) {
+              // Ignore
+            }
+          }
+          
+          // Try 2: localStorage native_device_id (set during login)
+          if (!deviceId) {
+            deviceId = localStorage.getItem('native_device_id') || null;
+            if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+              console.log('[Entitlement Sync] ✅ Device ID from localStorage (native_device_id):', deviceId);
+            } else {
+              deviceId = null;
+            }
+          }
+          
+          // Try 3: localStorage device_id (fallback)
+          if (!deviceId) {
+            deviceId = localStorage.getItem('device_id') || null;
+            if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
+              console.log('[Entitlement Sync] ✅ Device ID from localStorage (device_id):', deviceId);
+            } else {
+              deviceId = null;
+            }
+          }
+          
+          if (!deviceId) {
+            console.warn('[Entitlement Sync] ⚠️ No device ID found - receipt validation may fail for guest users');
+          }
         } catch (e) {
-          // Ignore
+          console.error('[Entitlement Sync] ❌ Error getting device ID:', e);
         }
       }
 
