@@ -10,6 +10,8 @@ interface EntitlementSyncResult {
   success: boolean;
   premiumActivated: boolean;
   error?: string;
+  skipped?: boolean;
+  reason?: string;
 }
 
 /**
@@ -171,6 +173,52 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
         } catch (e) {
           // Ignore
         }
+      }
+      
+      // 🔥 CRITICAL SECURITY: Check if current user already has premium
+      // Entitlement sync should ONLY work for accounts that already have premium
+      // This prevents new accounts from automatically claiming receipts
+      // Only sync if user is already premium (trial or subscription)
+      if (userEmail) {
+        try {
+          const planResponse = await fetch(`/api/user/plan?t=${Date.now()}`, {
+            cache: 'no-store',
+            headers: { 'Cache-Control': 'no-cache' },
+          });
+          
+          if (planResponse.ok) {
+            const planData = await planResponse.json();
+            const hasPremiumAccess = planData.hasPremiumAccess || planData.plan === 'premium';
+            
+            if (!hasPremiumAccess) {
+              console.log('[Entitlement Sync] ⚠️ User does not have premium access - skipping sync to prevent cross-account receipt usage:', {
+                userEmail: userEmail,
+                plan: planData.plan,
+                hasPremiumAccess: hasPremiumAccess,
+              });
+              return { 
+                success: true, 
+                premiumActivated: false,
+                skipped: true,
+                reason: 'User does not have premium access - sync skipped to prevent cross-account receipt usage'
+              };
+            }
+            
+            console.log('[Entitlement Sync] ✅ User has premium access - proceeding with sync:', {
+              userEmail: userEmail,
+              plan: planData.plan,
+              hasPremiumAccess: hasPremiumAccess,
+            });
+          }
+        } catch (planError) {
+          console.warn('[Entitlement Sync] ⚠️ Could not check user plan, proceeding with sync:', planError);
+          // Continue anyway - backend will handle security checks
+        }
+      } else {
+        // No user email - this is a guest user
+        // For guest users, we need to be more careful
+        // Only sync if device already has premium (checked by backend)
+        console.log('[Entitlement Sync] ⚠️ No user email - guest user, backend will check device security');
       }
 
       // Get device ID - try multiple sources
