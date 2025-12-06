@@ -51,6 +51,10 @@ export async function POST(request: NextRequest) {
     // 1. If session exists -> Use session.user.email
     // 2. If NO session but deviceId provided -> Create/Find guest user by deviceId
     // 3. If neither session nor deviceId -> Reject
+    //
+    // 🔥 SECURITY NOTE: Receipts are tied to Apple ID/Google Account, NOT to our app's user accounts.
+    // Receipts don't contain user email information. They are device-specific but account-bound.
+    // For authenticated users, we link receipts to device_id to prevent cross-account usage.
     
     const sql = getSql();
     let user: any;
@@ -61,18 +65,38 @@ export async function POST(request: NextRequest) {
       console.log('[Verify Purchase] ✅ Authenticated user:', session.user.email);
       userEmail = session.user.email;
       
-    const users = await sql`
-        SELECT id, email, plan, subscription_id, device_id
-      FROM users 
-        WHERE email = ${userEmail}
-      LIMIT 1
-    `;
+      // 🔥 SECURITY: For authenticated users, prefer device-based matching
+      // Receipts are device-specific. If deviceId is provided, try to find user by deviceId first
+      // This ensures receipts are linked to the correct device, not just any logged-in account
+      if (deviceId) {
+        const deviceUsers = await sql`
+          SELECT id, email, plan, subscription_id, device_id
+          FROM users 
+          WHERE device_id = ${deviceId} AND email = ${userEmail}
+          LIMIT 1
+        `;
+        
+        if (deviceUsers.length > 0) {
+          user = deviceUsers[0];
+          console.log('[Verify Purchase] ✅ Found user by device_id + email match');
+        }
+      }
+      
+      // Fallback: Find user by email only (for first-time device linking)
+      if (!user) {
+        const users = await sql`
+          SELECT id, email, plan, subscription_id, device_id
+          FROM users 
+          WHERE email = ${userEmail}
+          LIMIT 1
+        `;
 
-    if (users.length === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
+        if (users.length === 0) {
+          return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        }
 
-      user = users[0];
+        user = users[0];
+      }
     } else if (deviceId) {
       // Case 2: Guest user (no session, but deviceId provided)
       console.log('[Verify Purchase] 🔓 Guest user with deviceId:', {
@@ -183,6 +207,29 @@ export async function POST(request: NextRequest) {
       }, { status: 401 });
     }
 
+    // 🔥 SECURITY: For authenticated users, receipt must be linked to their device
+    // Receipts are device-specific and should only be applied to the device that owns them
+    // This prevents users from using receipts from other accounts/devices
+    if (session?.user?.email && deviceId) {
+      // Authenticated user with device ID: Check if receipt belongs to this device
+      // Receipts are tied to the device, not the logged-in account
+      // We need to ensure the receipt is from the same device as the user's device_id
+      if (user.device_id && user.device_id !== deviceId) {
+        console.warn('[Verify Purchase] ⚠️ Device ID mismatch for authenticated user:', {
+          userEmail: userEmail,
+          userDeviceId: user.device_id,
+          receiptDeviceId: deviceId,
+        });
+        // Allow if device_id is null (first time linking)
+        if (user.device_id !== null) {
+          return NextResponse.json(
+            { error: 'Receipt does not belong to this device. Please use the device where the purchase was made.' },
+            { status: 403 }
+          );
+        }
+      }
+    }
+
     // Verify receipt with Apple/Google
     const verificationResult = await verifyReceipt(platform, receipt, productId);
 
@@ -216,6 +263,9 @@ export async function POST(request: NextRequest) {
     // IAP purchase = direct premium, NOT trial
     // Clear any existing trial data by setting trial_ended_at to past (before now)
     const pastDate = new Date(now.getTime() - 1000); // 1 second ago
+    
+    // 🔥 SECURITY: Update device_id when receipt is verified
+    // This links the receipt to the device, preventing cross-account usage
     await sql`
       UPDATE users
       SET 
@@ -226,6 +276,7 @@ export async function POST(request: NextRequest) {
         subscription_platform = ${platform},
         subscription_id = ${transactionId},
         expiry_date = ${expiryDate.toISOString()},
+        device_id = COALESCE(device_id, ${deviceId}),
         updated_at = NOW()
       WHERE id = ${user.id}
     `;
