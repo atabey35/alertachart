@@ -160,10 +160,14 @@ export default function Home() {
   // 🔥 CRITICAL: Automatic Entitlement Sync
   // Syncs premium status with App Store/Play Store on app startup and foreground
   useEffect(() => {
+    console.log('[App] 🔍 Entitlement Sync: useEffect STARTED');
+    
     if (typeof window === 'undefined') {
       console.log('[App] ⚠️ Entitlement Sync: window is undefined (SSR)');
       return;
     }
+    
+    console.log('[App] 🔍 Entitlement Sync: window exists, setting up check...');
     
     // Wait a bit for Capacitor to load
     const checkAndSetup = () => {
@@ -237,7 +241,13 @@ export default function Home() {
     };
     
     // Start checking after a short delay to ensure Capacitor is loaded
-    setTimeout(checkAndSetup, 100);
+    console.log('[App] 🔍 Entitlement Sync: Scheduling checkAndSetup in 100ms...');
+    setTimeout(() => {
+      console.log('[App] 🔍 Entitlement Sync: setTimeout callback executed');
+      checkAndSetup();
+    }, 100);
+    
+    console.log('[App] 🔍 Entitlement Sync: useEffect COMPLETED');
   }, []);
 
   // 🔥 CRITICAL: Clean old/stale NextAuth cookies before showing login screen
