@@ -230,9 +230,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // 🔥 CRITICAL SECURITY: Check if this receipt (transactionId) is already linked to another account
+    // 🔥 CRITICAL SECURITY: Check if this receipt is already linked to another account
     // Receipts are tied to Apple ID/Google Account, not to our app's user accounts.
-    // If a receipt is already linked to a different user, prevent cross-account usage.
+    // We check both by transactionId AND by receipt hash to prevent cross-account usage.
+    
+    // Method 1: Check by transactionId (for manual purchases)
     if (transactionId) {
       const existingSubscription = await sql`
         SELECT id, email, device_id, subscription_id
@@ -246,7 +248,7 @@ export async function POST(request: NextRequest) {
         
         // If receipt is already linked to a different user account, reject
         if (existingUser.id !== user.id) {
-          console.error('[Verify Purchase] ❌ SECURITY: Receipt already linked to different account:', {
+          console.error('[Verify Purchase] ❌ SECURITY: Receipt already linked to different account (by transactionId):', {
             receiptTransactionId: transactionId,
             currentUserEmail: userEmail,
             currentUserId: user.id,
@@ -263,6 +265,76 @@ export async function POST(request: NextRequest) {
         
         // Receipt is already linked to this user - this is a re-verification (OK)
         console.log('[Verify Purchase] ℹ️ Receipt already linked to this user, re-verifying...');
+      }
+    }
+    
+    // Method 2: Check by receipt hash (for entitlement sync and cross-check)
+    // Generate receipt hash to check if same receipt is used by another account
+    try {
+      const crypto = await import('crypto');
+      const receiptHash = crypto.createHash('sha256').update(receipt).digest('hex');
+      const receiptHashId = `receipt_${receiptHash.substring(0, 32)}`;
+      
+      // Check if any other user has premium with this receipt hash
+      // (This catches cases where receipt is used by different transactionId)
+      const existingReceiptUsers = await sql`
+        SELECT id, email, device_id, subscription_id, plan
+        FROM users
+        WHERE subscription_id LIKE ${`receipt_${receiptHash.substring(0, 16)}%`}
+          AND plan = 'premium'
+          AND id != ${user.id}
+        LIMIT 1
+      `;
+      
+      if (existingReceiptUsers.length > 0) {
+        const existingUser = existingReceiptUsers[0];
+        console.error('[Verify Purchase] ❌ SECURITY: Same receipt already linked to different account (by receipt hash):', {
+          receiptHash: receiptHashId,
+          currentUserEmail: userEmail,
+          currentUserId: user.id,
+          existingUserEmail: existingUser.email,
+          existingUserId: existingUser.id,
+          existingSubscriptionId: existingUser.subscription_id,
+        });
+        return NextResponse.json(
+          { 
+            error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
+          },
+          { status: 403 }
+        );
+      }
+    } catch (hashError) {
+      console.warn('[Verify Purchase] ⚠️ Could not check receipt hash:', hashError);
+      // Continue anyway - transactionId check should catch most cases
+    }
+    
+    // Method 3: Check by deviceId - if deviceId is already linked to another premium user
+    // This prevents new accounts from claiming receipts from devices that already have premium
+    if (deviceId) {
+      const existingDeviceUsers = await sql`
+        SELECT id, email, device_id, subscription_id, plan
+        FROM users
+        WHERE device_id = ${deviceId}
+          AND plan = 'premium'
+          AND id != ${user.id}
+        LIMIT 1
+      `;
+      
+      if (existingDeviceUsers.length > 0) {
+        const existingUser = existingDeviceUsers[0];
+        console.error('[Verify Purchase] ❌ SECURITY: Device already has premium linked to different account:', {
+          deviceId: deviceId,
+          currentUserEmail: userEmail,
+          currentUserId: user.id,
+          existingUserEmail: existingUser.email,
+          existingUserId: existingUser.id,
+        });
+        return NextResponse.json(
+          { 
+            error: 'This device already has a premium subscription linked to another account. Please use the account that originally purchased the subscription, or contact support if you believe this is an error.' 
+          },
+          { status: 403 }
+        );
       }
     }
 
