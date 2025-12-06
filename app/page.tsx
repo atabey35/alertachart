@@ -43,6 +43,9 @@ interface ChartState {
 }
 
 export default function Home() {
+  // 🔥 DEBUG: Component mount log
+  console.log('[App] 🏠 Home component RENDERED');
+  
   // Multi-chart layout state
   const [layout, setLayout] = useState<1 | 2 | 4 | 9>(1); // 1x1, 1x2, 2x2, 3x3
   const [activeChartId, setActiveChartId] = useState<number>(0);
@@ -160,7 +163,8 @@ export default function Home() {
   // 🔥 CRITICAL: Automatic Entitlement Sync
   // Syncs premium status with App Store/Play Store on app startup and foreground
   useEffect(() => {
-    console.log('[App] 🔍 Entitlement Sync: useEffect STARTED');
+    console.log('[App] 🔍 Entitlement Sync: useEffect STARTED - Component mounted, useEffect executing');
+    console.log('[App] 🔍 Entitlement Sync: typeof window:', typeof window);
     
     if (typeof window === 'undefined') {
       console.log('[App] ⚠️ Entitlement Sync: window is undefined (SSR)');
