@@ -53,34 +53,63 @@ export async function POST(request: NextRequest) {
     
     // SECURITY CHECK 1: Check receipt hash FIRST (most reliable)
     // If same receipt is already linked to another account, reject immediately
+    // This is the PRIMARY security check - must work correctly
+    let receiptHashPrefix: string | null = null;
     try {
       const crypto = await import('crypto');
       const receiptHash = crypto.createHash('sha256').update(receipt).digest('hex');
-      const receiptHashPrefix = receiptHash.substring(0, 32);
+      receiptHashPrefix = receiptHash.substring(0, 32);
       const receiptHashId = `receipt_${receiptHashPrefix}`;
       
+      console.log('[Verify Purchase] 🔍 Receipt hash pre-check:', {
+        receiptHashPrefix: receiptHashPrefix,
+        receiptHashId: receiptHashId,
+        sessionEmail: session?.user?.email,
+        receiptLength: receipt.length,
+      });
+      
       // Check if this receipt (by hash) is already linked to a premium account
+      // Use exact match for first 32 chars (receipt_ prefix + 32 char hash)
+      const receiptHashPattern = `receipt_${receiptHashPrefix}%`;
       const existingReceiptUsers = await sql`
         SELECT id, email, device_id, subscription_id, plan
         FROM users
-        WHERE subscription_id LIKE ${`receipt_${receiptHashPrefix}%`}
+        WHERE subscription_id LIKE ${receiptHashPattern}
           AND plan = 'premium'
-        LIMIT 1
+        ORDER BY id DESC
+        LIMIT 5
       `;
       
+      console.log('[Verify Purchase] 🔍 Receipt hash check results:', {
+        receiptHashPattern: receiptHashPattern,
+        foundUsers: existingReceiptUsers.length,
+        users: existingReceiptUsers.map((u: any) => ({
+          id: u.id,
+          email: u.email,
+          subscriptionId: u.subscription_id,
+        })),
+      });
+      
       if (existingReceiptUsers.length > 0) {
-        const existingUser = existingReceiptUsers[0];
-        // Check if this is the same user (re-verification is OK)
-        const isSameUser = session?.user?.email === existingUser.email;
+        // Check if ANY of the existing users is different from current user
+        const differentUser = existingReceiptUsers.find((u: any) => {
+          // If no session, we can't check email, so reject if any user found
+          if (!session?.user?.email) {
+            return true; // Different user (no session = different)
+          }
+          return u.email !== session.user.email;
+        });
         
-        if (!isSameUser) {
+        if (differentUser) {
           console.error('[Verify Purchase] ❌ SECURITY: Receipt already linked to different account (PRE-CHECK by hash):', {
             receiptHash: receiptHashId,
             receiptHashPrefix: receiptHashPrefix,
+            receiptHashPattern: receiptHashPattern,
             sessionEmail: session?.user?.email,
-            existingUserEmail: existingUser.email,
-            existingUserId: existingUser.id,
-            existingSubscriptionId: existingUser.subscription_id,
+            existingUserEmail: differentUser.email,
+            existingUserId: differentUser.id,
+            existingSubscriptionId: differentUser.subscription_id,
+            allFoundUsers: existingReceiptUsers.length,
           });
           return NextResponse.json(
             { 
@@ -97,32 +126,63 @@ export async function POST(request: NextRequest) {
       });
     } catch (hashError) {
       console.error('[Verify Purchase] ❌ CRITICAL: Could not check receipt hash (PRE-CHECK):', hashError);
-      // This is critical - if we can't check receipt hash, we should be very cautious
-      // But we can't block all purchases, so log error and continue with other checks
+      // This is critical - if we can't check receipt hash, we should reject
+      // Receipt hash check is the PRIMARY security mechanism
+      return NextResponse.json(
+        { 
+          error: 'Receipt verification failed: Unable to verify receipt ownership. Please contact support.' 
+        },
+        { status: 500 }
+      );
     }
     
     // SECURITY CHECK 2: Check device BEFORE user identification
     // If device already has premium, prevent new accounts from claiming receipt
+    // This is CRITICAL - device check must work
     if (deviceId) {
-      const existingDevicePremium = await sql`
+      // Check ALL users with this device_id (not just premium)
+      // This catches cases where device is linked to another account
+      const existingDeviceUsers = await sql`
         SELECT id, email, device_id, subscription_id, plan
         FROM users
         WHERE device_id = ${deviceId}
-          AND plan = 'premium'
-        LIMIT 1
+        ORDER BY id DESC
+        LIMIT 10
       `;
       
+      console.log('[Verify Purchase] 🔍 Device check results:', {
+        deviceId: deviceId,
+        foundUsers: existingDeviceUsers.length,
+        users: existingDeviceUsers.map((u: any) => ({
+          id: u.id,
+          email: u.email,
+          plan: u.plan,
+          subscriptionId: u.subscription_id,
+        })),
+        sessionEmail: session?.user?.email,
+      });
+      
+      // Check if device has premium linked to different account
+      const existingDevicePremium = existingDeviceUsers.filter((u: any) => u.plan === 'premium');
+      
       if (existingDevicePremium.length > 0) {
-        const existingUser = existingDevicePremium[0];
-        // Check if this is the same user (re-verification is OK)
-        const isSameUser = session?.user?.email === existingUser.email;
+        // Check if ANY premium user is different from current user
+        const differentPremiumUser = existingDevicePremium.find((u: any) => {
+          // If no session, we can't check email, so reject if any premium user found
+          if (!session?.user?.email) {
+            return true; // Different user (no session = different)
+          }
+          return u.email !== session.user.email;
+        });
         
-        if (!isSameUser) {
+        if (differentPremiumUser) {
           console.error('[Verify Purchase] ❌ SECURITY: Device already has premium linked to different account (PRE-CHECK):', {
             deviceId: deviceId,
             sessionEmail: session?.user?.email,
-            existingUserEmail: existingUser.email,
-            existingUserId: existingUser.id,
+            existingUserEmail: differentPremiumUser.email,
+            existingUserId: differentPremiumUser.id,
+            existingSubscriptionId: differentPremiumUser.subscription_id,
+            allPremiumUsers: existingDevicePremium.length,
           });
           return NextResponse.json(
             { 
@@ -132,6 +192,13 @@ export async function POST(request: NextRequest) {
           );
         }
       }
+      
+      console.log('[Verify Purchase] ✅ Device check passed:', {
+        deviceId: deviceId,
+        sessionEmail: session?.user?.email,
+        totalDeviceUsers: existingDeviceUsers.length,
+        premiumUsers: existingDevicePremium.length,
+      });
     } else {
       // 🔥 CRITICAL: If deviceId is missing for authenticated users, require it
       // This prevents new accounts from claiming receipts without device verification
