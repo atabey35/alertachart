@@ -1,0 +1,11 @@
+🎉 Yeni Özellikler:
+• Misafir kullanıcılar artık premium'a yükseldiklerinde custom coin alert oluşturabilir
+• Otomatik fiyat takip bildirimleri misafir kullanıcılar için de çalışıyor
+
+🐛 Düzeltmeler:
+• Misafir kullanıcılar için alert oluşturma sorunu çözüldü
+• Premium özellikler tüm kullanıcı tipleri için optimize edildi
+
+🔧 İyileştirmeler:
+• Performans optimizasyonları
+• Kullanıcı deneyimi iyileştirmeleri

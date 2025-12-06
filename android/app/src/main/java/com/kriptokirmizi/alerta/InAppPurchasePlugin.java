@@ -296,7 +296,10 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
     
     @PluginMethod
     public void restorePurchases(PluginCall call) {
+        android.util.Log.d("InAppPurchase", "[RESTORE] restorePurchases called");
+        
         if (!isServiceConnected) {
+            android.util.Log.e("InAppPurchase", "[RESTORE] ❌ Billing service not connected");
             call.reject("Billing service not connected");
             return;
         }
@@ -307,25 +310,123 @@ public class InAppPurchasePlugin extends Plugin implements PurchasesUpdatedListe
                 .build(),
             (billingResult, purchasesList) -> {
                 if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                    android.util.Log.d("InAppPurchase", "[RESTORE] ✅ Found " + (purchasesList != null ? purchasesList.size() : 0) + " purchases");
+                    
                     JSObject result = new JSObject();
                     org.json.JSONArray transactionsArray = new org.json.JSONArray();
                     
-                    for (Purchase purchase : purchasesList) {
-                        JSObject transaction = new JSObject();
-                        transaction.put("transactionId", purchase.getOrderId());
-                        // 7.x API: getProducts() returns List<String>
-                        List<String> products = purchase.getProducts();
-                        if (!products.isEmpty()) {
-                            transaction.put("productId", products.get(0));
+                    if (purchasesList != null) {
+                        for (Purchase purchase : purchasesList) {
+                            JSObject transaction = new JSObject();
+                            transaction.put("transactionId", purchase.getOrderId());
+                            // 7.x API: getProducts() returns List<String>
+                            List<String> products = purchase.getProducts();
+                            if (!products.isEmpty()) {
+                                transaction.put("productId", products.get(0));
+                            }
+                            transaction.put("receipt", purchase.getPurchaseToken());
+                            transaction.put("purchaseToken", purchase.getPurchaseToken());
+                            transaction.put("originalJson", purchase.getOriginalJson());
+                            transactionsArray.put(transaction);
                         }
-                        transaction.put("receipt", purchase.getPurchaseToken());
-                        transactionsArray.put(transaction);
                     }
                     
                     result.put("transactions", transactionsArray);
+                    result.put("purchases", transactionsArray); // Alias for compatibility
                     call.resolve(result);
                 } else {
+                    android.util.Log.e("InAppPurchase", "[RESTORE] ❌ Failed: " + billingResult.getDebugMessage());
                     call.reject("Failed to restore purchases: " + billingResult.getDebugMessage());
+                }
+            }
+        );
+    }
+    
+    /**
+     * Check Entitlements - Get current active subscriptions
+     * This is called on app startup and when app comes to foreground
+     * to sync premium status with Google Play Store
+     */
+    @PluginMethod
+    public void checkEntitlements(PluginCall call) {
+        android.util.Log.d("InAppPurchase", "[CHECK_ENTITLEMENTS] checkEntitlements called");
+        
+        if (!isServiceConnected) {
+            android.util.Log.e("InAppPurchase", "[CHECK_ENTITLEMENTS] ❌ Billing service not connected");
+            call.resolve(new JSObject() {{
+                put("hasReceipt", false);
+                put("receipt", "");
+                put("pendingTransactions", new org.json.JSONArray());
+            }});
+            return;
+        }
+        
+        // Query for active subscriptions
+        billingClient.queryPurchasesAsync(
+            QueryPurchasesParams.newBuilder()
+                .setProductType(BillingClient.ProductType.SUBS)
+                .build(),
+            (billingResult, purchasesList) -> {
+                if (billingResult.getResponseCode() == BillingClient.BillingResponseCode.OK) {
+                    android.util.Log.d("InAppPurchase", "[CHECK_ENTITLEMENTS] ✅ Query successful");
+                    
+                    JSObject result = new JSObject();
+                    org.json.JSONArray pendingTransactions = new org.json.JSONArray();
+                    
+                    if (purchasesList != null && !purchasesList.isEmpty()) {
+                        android.util.Log.d("InAppPurchase", "[CHECK_ENTITLEMENTS] Found " + purchasesList.size() + " active subscription(s)");
+                        
+                        // Get the first active purchase (most recent)
+                        Purchase firstPurchase = purchasesList.get(0);
+                        List<String> products = firstPurchase.getProducts();
+                        
+                        if (!products.isEmpty()) {
+                            String productId = products.get(0);
+                            String purchaseToken = firstPurchase.getPurchaseToken();
+                            
+                            android.util.Log.d("InAppPurchase", "[CHECK_ENTITLEMENTS] Active subscription: " + productId);
+                            
+                            // Build result
+                            result.put("hasReceipt", true);
+                            result.put("receipt", purchaseToken); // Use purchaseToken as receipt for Android
+                            result.put("purchaseToken", purchaseToken);
+                            result.put("originalJson", firstPurchase.getOriginalJson());
+                            
+                            // Add all purchases as pending transactions
+                            for (Purchase purchase : purchasesList) {
+                                JSObject transaction = new JSObject();
+                                transaction.put("transactionId", purchase.getOrderId());
+                                List<String> purchaseProducts = purchase.getProducts();
+                                if (!purchaseProducts.isEmpty()) {
+                                    transaction.put("productId", purchaseProducts.get(0));
+                                }
+                                transaction.put("state", purchase.getPurchaseState() == Purchase.PurchaseState.PURCHASED ? "purchased" : "pending");
+                                transaction.put("purchaseToken", purchase.getPurchaseToken());
+                                pendingTransactions.put(transaction);
+                            }
+                            
+                            result.put("pendingTransactions", pendingTransactions);
+                        } else {
+                            android.util.Log.w("InAppPurchase", "[CHECK_ENTITLEMENTS] ⚠️ Purchase has no products");
+                            result.put("hasReceipt", false);
+                            result.put("receipt", "");
+                            result.put("pendingTransactions", pendingTransactions);
+                        }
+                    } else {
+                        android.util.Log.d("InAppPurchase", "[CHECK_ENTITLEMENTS] ℹ️ No active subscriptions found");
+                        result.put("hasReceipt", false);
+                        result.put("receipt", "");
+                        result.put("pendingTransactions", pendingTransactions);
+                    }
+                    
+                    call.resolve(result);
+                } else {
+                    android.util.Log.e("InAppPurchase", "[CHECK_ENTITLEMENTS] ❌ Query failed: " + billingResult.getDebugMessage());
+                    call.resolve(new JSObject() {{
+                        put("hasReceipt", false);
+                        put("receipt", "");
+                        put("pendingTransactions", new org.json.JSONArray());
+                    }});
                 }
             }
         );

@@ -20,6 +20,7 @@ import NotificationDropdown from '@/components/NotificationDropdown';
 import alertService from '@/services/alertService';
 import { authService } from '@/services/authService';
 import { pushNotificationService } from '@/services/pushNotificationService';
+import { setupAutomaticEntitlementSync, syncEntitlements } from '@/services/entitlementSyncService';
 import { PriceAlert } from '@/types/alert';
 import { TIMEFRAMES, FREE_TIMEFRAMES, PREMIUM_TIMEFRAMES } from '@/utils/constants';
 import { getTimeframeForHuman } from '@/utils/helpers';
@@ -154,6 +155,89 @@ export default function Home() {
       window.addEventListener('resize', handleResize);
       return () => window.removeEventListener('resize', handleResize);
     }
+  }, []);
+
+  // 🔥 CRITICAL: Automatic Entitlement Sync
+  // Syncs premium status with App Store/Play Store on app startup and foreground
+  useEffect(() => {
+    if (typeof window === 'undefined') {
+      console.log('[App] ⚠️ Entitlement Sync: window is undefined (SSR)');
+      return;
+    }
+    
+    // Wait a bit for Capacitor to load
+    const checkAndSetup = () => {
+      console.log('[App] 🔍 Entitlement Sync: Checking platform...');
+      const hasCapacitor = !!(window as any).Capacitor;
+      console.log('[App] 🔍 Entitlement Sync: hasCapacitor:', hasCapacitor);
+      
+      if (!hasCapacitor) {
+        console.log('[App] ⚠️ Entitlement Sync: Capacitor not loaded yet, retrying in 500ms...');
+        setTimeout(checkAndSetup, 500);
+        return;
+      }
+      
+      const platform = (window as any).Capacitor?.getPlatform?.() || 'web';
+      console.log('[App] 🔍 Entitlement Sync: platform:', platform);
+      
+      const isNative = platform === 'ios' || platform === 'android';
+      console.log('[App] 🔍 Entitlement Sync: isNative:', isNative);
+      
+      if (isNative) {
+        console.log('[App] 🔧 Setting up automatic entitlement sync...');
+        setupAutomaticEntitlementSync();
+        
+        // Also listen for premium status updates
+        const handlePremiumUpdate = async (event: any) => {
+        console.log('[App] 🔔 Premium status updated event received:', event.detail);
+        
+        // Refresh user plan
+        try {
+          const user = await authService.checkAuth();
+          if (user) {
+            const url = `/api/user/plan?t=${Date.now()}`;
+            const isGuest = (user as any)?.provider === 'guest';
+            const finalUrl = isGuest && user.email ? `${url}&email=${encodeURIComponent(user.email)}` : url;
+            
+            const response = await fetch(finalUrl, {
+              cache: 'no-store',
+              headers: { 'Cache-Control': 'no-cache' },
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              console.log('[App] ✅ User plan refreshed after entitlement sync:', data);
+              setUserPlan({
+                plan: data.plan || 'free',
+                isTrial: data.isTrial || false,
+                trialRemainingDays: data.trialDaysRemaining || 0,
+                expiryDate: data.expiryDate || null,
+                hasPremiumAccess: data.hasPremiumAccess || false,
+              });
+              
+              // Update cache
+              localStorage.setItem('user_plan_cache', JSON.stringify({
+                plan: data.plan || 'free',
+                isTrial: data.isTrial || false,
+                trialRemainingDays: data.trialDaysRemaining || 0,
+                expiryDate: data.expiryDate || null,
+                hasPremiumAccess: data.hasPremiumAccess || false,
+              }));
+            }
+          }
+        } catch (error) {
+          console.error('[App] ❌ Error refreshing user plan after entitlement sync:', error);
+        }
+      };
+      
+        window.addEventListener('premiumStatusUpdated', handlePremiumUpdate);
+      } else {
+        console.log('[App] ⚠️ Entitlement Sync: Not a native platform, skipping...');
+      }
+    };
+    
+    // Start checking after a short delay to ensure Capacitor is loaded
+    setTimeout(checkAndSetup, 100);
   }, []);
 
   // 🔥 CRITICAL: Clean old/stale NextAuth cookies before showing login screen

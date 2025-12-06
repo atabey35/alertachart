@@ -12,7 +12,8 @@ public class InAppPurchasePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "logDebug", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getProducts", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "restorePurchases", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "restorePurchases", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "checkEntitlements", returnType: CAPPluginReturnPromise)
     ]
     
     private var products: [String: SKProduct] = [:]
@@ -75,6 +76,67 @@ public class InAppPurchasePlugin: CAPPlugin, CAPBridgedPlugin {
         
         // Store call for later use
         objc_setAssociatedObject(self, "restoreCall", call, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+    }
+    
+    /**
+     * Check Entitlements - Get current receipt for validation
+     * This is called on app startup and when app comes to foreground
+     * to sync premium status with App Store
+     */
+    @objc func checkEntitlements(_ call: CAPPluginCall) {
+        print("[InAppPurchase] checkEntitlements: Checking current receipt...")
+        
+        guard let receiptURL = Bundle.main.appStoreReceiptURL else {
+            print("[InAppPurchase] checkEntitlements: ⚠️ Receipt URL not found")
+            call.resolve([
+                "hasReceipt": false,
+                "receipt": ""
+            ] as PluginCallResultData)
+            return
+        }
+        
+        guard let receiptData = try? Data(contentsOf: receiptURL) else {
+            print("[InAppPurchase] checkEntitlements: ⚠️ Could not read receipt data")
+            call.resolve([
+                "hasReceipt": false,
+                "receipt": ""
+            ] as PluginCallResultData)
+            return
+        }
+        
+        let receiptString = receiptData.base64EncodedString()
+        print("[InAppPurchase] checkEntitlements: ✅ Receipt found (length: \(receiptString.count))")
+        
+        // Also check for pending transactions that might not be in receipt yet
+        let pendingTransactions = SKPaymentQueue.default().transactions.filter { transaction in
+            transaction.transactionState == .purchased || transaction.transactionState == .restored
+        }
+        
+        var transactions: [[String: Any]] = []
+        for transaction in pendingTransactions {
+            transactions.append([
+                "transactionId": transaction.transactionIdentifier ?? "",
+                "productId": transaction.payment.productIdentifier,
+                "state": transactionStateToString(transaction.transactionState)
+            ])
+        }
+        
+        call.resolve([
+            "hasReceipt": true,
+            "receipt": receiptString,
+            "pendingTransactions": transactions
+        ] as PluginCallResultData)
+    }
+    
+    private func transactionStateToString(_ state: SKPaymentTransactionState) -> String {
+        switch state {
+        case .purchasing: return "purchasing"
+        case .purchased: return "purchased"
+        case .failed: return "failed"
+        case .restored: return "restored"
+        case .deferred: return "deferred"
+        @unknown default: return "unknown"
+        }
     }
     
     public override func load() {
@@ -148,8 +210,11 @@ extension InAppPurchasePlugin: SKPaymentTransactionObserver {
     }
     
     private func handlePurchased(_ transaction: SKPaymentTransaction) {
+        print("[InAppPurchase] handlePurchased: Transaction purchased - \(transaction.payment.productIdentifier)")
+        
         guard let receiptURL = Bundle.main.appStoreReceiptURL,
               let receiptData = try? Data(contentsOf: receiptURL) else {
+            print("[InAppPurchase] handlePurchased: ⚠️ Receipt not found")
             finishTransaction(transaction, success: false, error: "Receipt not found")
             return
         }
@@ -167,6 +232,8 @@ extension InAppPurchasePlugin: SKPaymentTransactionObserver {
             objc_setAssociatedObject(self, "purchaseCall", nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
         
+        // 🔥 CRITICAL: Transaction completed - JavaScript will detect via periodic sync
+        // The entitlement sync service will check for new transactions periodically
         finishTransaction(transaction, success: true)
     }
     
@@ -186,8 +253,11 @@ extension InAppPurchasePlugin: SKPaymentTransactionObserver {
     }
     
     private func handleRestored(_ transaction: SKPaymentTransaction) {
+        print("[InAppPurchase] handleRestored: Transaction restored - \(transaction.payment.productIdentifier)")
+        
         guard let receiptURL = Bundle.main.appStoreReceiptURL,
               let receiptData = try? Data(contentsOf: receiptURL) else {
+            print("[InAppPurchase] handleRestored: ⚠️ Receipt not found")
             finishTransaction(transaction, success: false)
             return
         }
@@ -208,6 +278,8 @@ extension InAppPurchasePlugin: SKPaymentTransactionObserver {
             transactionsArray.add(transactionDict)
         }
         
+        // 🔥 CRITICAL: Transaction restored - JavaScript will detect via periodic sync
+        // The entitlement sync service will check for new transactions periodically
         finishTransaction(transaction, success: true)
     }
     
