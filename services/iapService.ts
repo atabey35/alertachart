@@ -23,7 +23,7 @@ function logToNative(message: string) {
 /**
  * Get the InAppPurchase plugin from Capacitor
  */
-function getIAPPlugin(): any {
+export function getIAPPlugin(): any {
   if (typeof window === 'undefined') {
     console.log('[IAP Service] getIAPPlugin: window is undefined');
     logToNative('getIAPPlugin: window is undefined');

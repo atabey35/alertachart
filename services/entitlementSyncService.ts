@@ -67,12 +67,17 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
         
         if (result?.hasReceipt && result?.receipt) {
           receipt = result.receipt;
-          console.log('[Entitlement Sync] ✅ Receipt found (length:', receipt.length, ')');
-          
-          // If there are pending transactions, use the first one's productId
-          if (result?.pendingTransactions && result.pendingTransactions.length > 0) {
-            productId = result.pendingTransactions[0].productId;
-            console.log('[Entitlement Sync] Found pending transaction:', productId);
+          if (receipt) {
+            console.log('[Entitlement Sync] ✅ Receipt found (length:', receipt.length, ')');
+            
+            // If there are pending transactions, use the first one's productId
+            if (result?.pendingTransactions && result.pendingTransactions.length > 0) {
+              productId = result.pendingTransactions[0].productId;
+              console.log('[Entitlement Sync] Found pending transaction:', productId);
+            }
+          } else {
+            console.log('[Entitlement Sync] ⚠️ No receipt found');
+            return { success: true, premiumActivated: false }; // No receipt = no subscription
           }
         } else {
           console.log('[Entitlement Sync] ⚠️ No receipt found');
@@ -90,22 +95,27 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
         
         if (result?.hasReceipt && result?.receipt) {
           receipt = result.receipt || result.purchaseToken || '';
-          console.log('[Entitlement Sync] ✅ Receipt found (length:', receipt.length, ')');
-          
-          // If there are pending transactions, use the first one's productId
-          if (result?.pendingTransactions && result.pendingTransactions.length > 0) {
-            productId = result.pendingTransactions[0].productId;
-            console.log('[Entitlement Sync] Found active subscription:', productId);
-          } else if (result?.originalJson) {
-            // Try to extract productId from originalJson
-            try {
-              const jsonData = JSON.parse(result.originalJson);
-              if (jsonData.productIds && jsonData.productIds.length > 0) {
-                productId = jsonData.productIds[0];
+          if (receipt) {
+            console.log('[Entitlement Sync] ✅ Receipt found (length:', receipt.length, ')');
+            
+            // If there are pending transactions, use the first one's productId
+            if (result?.pendingTransactions && result.pendingTransactions.length > 0) {
+              productId = result.pendingTransactions[0].productId;
+              console.log('[Entitlement Sync] Found active subscription:', productId);
+            } else if (result?.originalJson) {
+              // Try to extract productId from originalJson
+              try {
+                const jsonData = JSON.parse(result.originalJson);
+                if (jsonData.productIds && jsonData.productIds.length > 0) {
+                  productId = jsonData.productIds[0];
+                }
+              } catch (e) {
+                // Ignore
               }
-            } catch (e) {
-              // Ignore
             }
+          } else {
+            console.log('[Entitlement Sync] ⚠️ No receipt found');
+            return { success: true, premiumActivated: false }; // No receipt = no subscription
           }
         } else {
           console.log('[Entitlement Sync] ⚠️ No receipt found');
