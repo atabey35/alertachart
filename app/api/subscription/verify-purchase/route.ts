@@ -600,10 +600,14 @@ async function verifyGoogleReceipt(
     const packageName = process.env.ANDROID_PACKAGE_NAME || 'com.kriptokirmizi.alerta';
     const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
 
-    // If service account key is not set, fall back to basic validation (for development)
+    // 🔥 SECURITY: Service account key is REQUIRED in production
+    // Never allow purchases without proper Google Play API verification
     if (!serviceAccountKey) {
-      console.warn('[Verify Purchase] ⚠️ GOOGLE_SERVICE_ACCOUNT_KEY not set, using basic validation');
-      return { valid: true };
+      console.error('[Verify Purchase] ❌ GOOGLE_SERVICE_ACCOUNT_KEY not set - REJECTING purchase for security');
+      return { 
+        valid: false, 
+        error: 'Google Play verification not configured. Purchase cannot be verified.' 
+      };
     }
 
     // Get OAuth2 access token
