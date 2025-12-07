@@ -391,15 +391,12 @@ export default function AccountPage() {
                   {/* Liquidations Button */}
                   {hasPremiumAccessValue ? (
                     <a
-                      href="https://data.alertachart.com/liquidation-tracker"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href="/data/liquidation-tracker"
                       className={`w-full p-4 rounded-xl border-2 transition-all duration-200 block ${
                         'border-blue-500/50 bg-blue-500/10 hover:border-blue-500 hover:bg-blue-500/20'
                       }`}
                       onClick={(e) => {
-                        // Only prevent default if we want to handle it manually, but with <a> tag and target="_blank", browser handles it correctly
-                        // Just ensure no other navigation happens
+                        // Navigate to internal route which will handle premium check and redirect
                         e.stopPropagation();
                       }}
                     >
@@ -451,15 +448,12 @@ export default function AccountPage() {
                   {/* Aggr Button */}
                   {hasPremiumAccessValue ? (
                     <a
-                      href="https://aggr.alertachart.com"
-                      target="_blank"
-                      rel="noopener noreferrer"
+                      href="/aggr"
                       className={`w-full p-4 rounded-xl border-2 transition-all duration-200 block ${
                         'border-blue-500/50 bg-blue-500/10 hover:border-blue-500 hover:bg-blue-500/20'
                       }`}
                       onClick={(e) => {
-                        // Only prevent default if we want to handle it manually, but with <a> tag and target="_blank", browser handles it correctly
-                        // Just ensure no other navigation happens
+                        // Navigate to internal route which will handle premium check and redirect
                         e.stopPropagation();
                       }}
                     >

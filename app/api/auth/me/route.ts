@@ -66,6 +66,17 @@ export async function GET(request: NextRequest) {
     
     const result = await response.json();
     
+    // 🔥 CRITICAL: Log 401 only if NextAuth session doesn't exist
+    // 401 is normal when user is not logged in - don't log as error
+    if (response.status === 401 && !hasNextAuthSession) {
+      // User is not logged in - this is normal, don't log as error
+      // Just return 401 response silently
+    } else if (response.status === 401 && hasNextAuthSession) {
+      // NextAuth session exists but backend returned 401 - this is a problem
+      // Will be handled by restore-session mechanism below
+      console.log('[Next.js API] Backend returned 401 but NextAuth session exists - will restore session');
+    }
+    
     // 🔥 CRITICAL: If backend returns 401 but NextAuth session exists, restore backend session
     // This fixes the issue where user is logged in on www.alertachart.com but backend cookies
     // don't exist on subdomain (data.alertachart.com)

@@ -2,10 +2,12 @@
 
 import { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { authService } from '@/services/authService';
 import UpgradeModal from '@/components/UpgradeModal';
 
 export default function LiquidationTrackerPage() {
+  const { data: session, status } = useSession(); // 🔥 CRITICAL: Check NextAuth session
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [hasPremium, setHasPremium] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
@@ -20,14 +22,21 @@ export default function LiquidationTrackerPage() {
   const router = useRouter();
   const redirectingRef = useRef(false); // Prevent multiple redirects
   const hasCheckedRef = useRef(false); // Prevent multiple auth checks
+  const restoreAttemptedRef = useRef(false); // Prevent multiple restore attempts
 
   useEffect(() => {
+    // Wait for NextAuth session to load
+    if (status === 'loading') {
+      console.log('[LiquidationTracker] Waiting for NextAuth session to load...');
+      return;
+    }
+    
     // Only check once
     if (hasCheckedRef.current) return;
     hasCheckedRef.current = true;
     
     checkAuthAndPremium();
-  }, []);
+  }, [status, session]);
 
   const checkAuthAndPremium = async () => {
     try {
@@ -44,16 +53,62 @@ export default function LiquidationTrackerPage() {
 
       setLoading(true);
       
+      // 🔥 CRITICAL: Check NextAuth session FIRST
+      // If NextAuth session exists but backend cookies don't, restore backend session
+      const hasNextAuthSession = status === 'authenticated' && !!session?.user?.email;
+      console.log('[LiquidationTracker] NextAuth session check:', { 
+        status, 
+        hasSession: hasNextAuthSession,
+        sessionEmail: session?.user?.email 
+      });
+      
       // 🔥 APPLE GUIDELINE 5.1.1: authService now handles guest users automatically
       // checkAuth() will check localStorage for guest user first, then API for regular users
-      const user = await authService.checkAuth();
+      let user = await authService.checkAuth();
+      
+      // 🔥 CRITICAL: If NextAuth session exists but authService returned null, try to restore session
+      if (!user && hasNextAuthSession && !restoreAttemptedRef.current) {
+        console.log('[LiquidationTracker] NextAuth session exists but backend cookies missing, attempting restore...');
+        restoreAttemptedRef.current = true;
+        
+        try {
+          // Try to restore backend session using NextAuth session
+          const restoreResponse = await fetch('/api/auth/restore-session', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+          });
+          
+          if (restoreResponse.ok) {
+            console.log('[LiquidationTracker] ✅ Session restored successfully, retrying auth check...');
+            // Retry auth check after restore
+            user = await authService.checkAuth();
+          } else {
+            console.warn('[LiquidationTracker] ⚠️ Session restore failed:', restoreResponse.status);
+          }
+        } catch (restoreError) {
+          console.error('[LiquidationTracker] ❌ Error restoring session:', restoreError);
+        }
+      }
+      
+      // 🔥 CRITICAL: If still no user but NextAuth session exists, use NextAuth session
+      if (!user && hasNextAuthSession && session?.user) {
+        console.log('[LiquidationTracker] Using NextAuth session as fallback:', session.user.email);
+        user = {
+          id: (session.user as any).id || 0,
+          email: session.user.email || '',
+          name: session.user.name || undefined,
+        } as any;
+      }
       
       setIsAuthenticated(!!user);
       console.log('[LiquidationTracker] Auth check result:', { 
         hasUser: !!user, 
         userEmail: user?.email,
         provider: (user as any)?.provider,
-        isAuthenticated: !!user 
+        isAuthenticated: !!user,
+        hasNextAuthSession,
       });
       
       if (user) {
