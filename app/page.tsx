@@ -112,56 +112,49 @@ export default function Home() {
   }, []);
 
   // Trial Promotion Modal - Show once until dismissed or deadline (10 Aralık 23:00)
+  // Only show to non-premium users
   useEffect(() => {
     if (typeof window === 'undefined') {
-      console.log('[App] Trial promotion: window is undefined (SSR)');
       return;
     }
 
-    console.log('[App] 🎯 Trial promotion: Starting check...');
+    const checkAndShowModal = () => {
+      // Check if user has premium access - don't show to premium users
+      // Use userPlan state directly (it's defined before this useEffect)
+      const hasPremium = userPlan?.hasPremiumAccess || userPlan?.plan === 'premium';
+      if (hasPremium) {
+        console.log('[App] User has premium access, not showing trial promotion');
+        return;
+      }
 
-    // Check if already dismissed
-    const dismissed = localStorage.getItem('trial_promotion_dismissed');
-    console.log('[App] 🎯 Trial promotion: dismissed check:', dismissed);
-    if (dismissed === 'true') {
-      console.log('[App] ⚠️ Trial promotion modal already dismissed - NOT showing');
-      return;
-    }
-
-    // Check deadline: 10 Aralık 2024 23:00 (Turkey timezone)
-    // Create date for December 10, 2024 at 23:00:00 in Turkey timezone (UTC+3)
-    const deadline = new Date('2024-12-10T23:00:00+03:00');
-    const now = new Date();
-    console.log('[App] 🎯 Trial promotion: deadline check');
-    console.log('[App] 🎯   - Current time:', now.toISOString(), '(', now.toLocaleString('tr-TR'), ')');
-    console.log('[App] 🎯   - Deadline:', deadline.toISOString(), '(', deadline.toLocaleString('tr-TR'), ')');
-    console.log('[App] 🎯   - Time remaining:', Math.max(0, deadline.getTime() - now.getTime()), 'ms');
-    console.log('[App] 🎯   - Now >= Deadline?', now >= deadline);
-
-    if (now >= deadline) {
-      console.log('[App] ⚠️ Trial promotion deadline has passed - NOT showing');
-      return;
-    }
-
-    // Show modal after a short delay to ensure page is loaded
-    console.log('[App] ✅ Trial promotion: All conditions met! Will show modal in 1 second');
-    const timer = setTimeout(() => {
-      console.log('[App] ✅ Trial promotion: Setting showTrialPromotionModal to TRUE');
-      setShowTrialPromotionModal(true);
-      console.log('[App] ✅ Trial promotion: showTrialPromotionModal state updated to:', true);
+      // Check if already dismissed
+      const dismissed = localStorage.getItem('trial_promotion_dismissed');
+      console.log('[App] Trial promotion check - dismissed:', dismissed);
       
-      // Verify state was set
-      setTimeout(() => {
-        console.log('[App] 🔍 Trial promotion: Verifying modal state after 100ms...');
-        // Force a re-check by reading the state (we can't directly read it, but we can trigger a re-render check)
-      }, 100);
-    }, 1000);
+      if (dismissed === 'true') {
+        console.log('[App] Modal dismissed, not showing');
+        return;
+      }
 
-    return () => {
-      console.log('[App] 🎯 Trial promotion: Cleanup - clearing timer');
-      clearTimeout(timer);
+      // Check deadline: 10 Aralık 2025 23:00 (Turkey timezone)
+      const deadline = new Date('2025-12-10T23:00:00+03:00');
+      const now = new Date();
+
+      if (now >= deadline) {
+        console.log('[App] Deadline passed, not showing');
+        return;
+      }
+
+      // Show modal after a short delay
+      console.log('[App] Showing trial promotion modal');
+      setTimeout(() => {
+        setShowTrialPromotionModal(true);
+      }, 1000);
     };
-  }, []);
+
+    // Check immediately
+    checkAndShowModal();
+  }, [userPlan]);
   const [fullUser, setFullUser] = useState<User | null>(null);
   
   // Simple premium access check - use userPlan.hasPremiumAccess (from API) or fallback to fullUser
@@ -2926,8 +2919,10 @@ export default function Home() {
         isOpen={showTrialPromotionModal}
         onClose={() => setShowTrialPromotionModal(false)}
         onUpgrade={() => {
+          setShowTrialPromotionModal(false);
           setShowUpgradeModal(true);
         }}
+        language={language}
       />
 
 

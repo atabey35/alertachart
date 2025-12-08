@@ -2,18 +2,20 @@
 
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import { Language } from '@/utils/translations';
 
 interface TrialPromotionModalProps {
   isOpen: boolean;
   onClose: () => void;
   onUpgrade?: () => void;
+  language?: Language;
 }
 
-export default function TrialPromotionModal({ isOpen, onClose, onUpgrade }: TrialPromotionModalProps) {
+export default function TrialPromotionModal({ isOpen, onClose, onUpgrade, language = 'tr' }: TrialPromotionModalProps) {
   const [isMounted, setIsMounted] = useState(false);
   const [isVisible, setIsVisible] = useState(false);
   const [imageError, setImageError] = useState(false);
-  const [timeRemaining, setTimeRemaining] = useState<{ days: number; hours: number; minutes: number } | null>(null);
+  const [timeRemaining, setTimeRemaining] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
 
   // Hydration-safe: Only render after mount
   useEffect(() => {
@@ -25,13 +27,13 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade }: Tria
     if (!isOpen || !isMounted) return;
 
     const calculateTimeRemaining = () => {
-      // Deadline: 10 Aralık 2024 23:00 Turkey time (UTC+3)
-      const deadline = new Date('2024-12-10T23:00:00+03:00');
+      // Deadline: 10 Aralık 2025 23:00 Turkey time (UTC+3)
+      const deadline = new Date('2025-12-10T23:00:00+03:00');
       const now = new Date();
       const diff = deadline.getTime() - now.getTime();
 
       if (diff <= 0) {
-        setTimeRemaining({ days: 0, hours: 0, minutes: 0 });
+        setTimeRemaining({ days: 0, hours: 0, minutes: 0, seconds: 0 });
         return;
       }
 
@@ -39,8 +41,9 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade }: Tria
       const days = Math.floor(totalSeconds / (60 * 60 * 24));
       const hours = Math.floor((totalSeconds % (60 * 60 * 24)) / (60 * 60));
       const minutes = Math.floor((totalSeconds % (60 * 60)) / 60);
+      const seconds = totalSeconds % 60;
 
-      setTimeRemaining({ days, hours, minutes });
+      setTimeRemaining({ days, hours, minutes, seconds });
     };
 
     // Calculate immediately
@@ -132,17 +135,9 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade }: Tria
         <div className="px-6 py-5 bg-gradient-to-b from-gray-950 to-black">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-white mb-3">
-              Deneme Sürümü Hakkınız'a{' '}
-              {timeRemaining && timeRemaining.days > 0 ? (
-                <span className="text-blue-400">{timeRemaining.days} gün</span>
-              ) : timeRemaining && timeRemaining.hours > 0 ? (
-                <span className="text-blue-400">{timeRemaining.hours} saat</span>
-              ) : timeRemaining && timeRemaining.minutes > 0 ? (
-                <span className="text-blue-400">{timeRemaining.minutes} dakika</span>
-              ) : (
-                <span className="text-red-400">2 gün</span>
-              )}{' '}
-              Kaldı
+              {language === 'en' 
+                ? 'Your Free Trial is Expiring!'
+                : 'Ücretsiz Deneme Hakkınız Doluyor!'}
             </h2>
             
             {/* Countdown Timer */}
@@ -153,7 +148,9 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade }: Tria
                     <>
                       <div className="flex flex-col items-center min-w-[60px]">
                         <span className="text-3xl font-black text-blue-400 tabular-nums">{String(timeRemaining.days).padStart(2, '0')}</span>
-                        <span className="text-xs text-gray-300 font-medium mt-1">Gün</span>
+                        <span className="text-xs text-gray-300 font-medium mt-1">
+                          {language === 'en' ? 'Days' : 'Gün'}
+                        </span>
                       </div>
                       <span className="text-blue-400 text-xl font-bold">:</span>
                     </>
@@ -162,25 +159,40 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade }: Tria
                     <>
                       <div className="flex flex-col items-center min-w-[60px]">
                         <span className="text-3xl font-black text-blue-400 tabular-nums">{String(timeRemaining.hours).padStart(2, '0')}</span>
-                        <span className="text-xs text-gray-300 font-medium mt-1">Saat</span>
+                        <span className="text-xs text-gray-300 font-medium mt-1">
+                          {language === 'en' ? 'Hours' : 'Saat'}
+                        </span>
                       </div>
                       <span className="text-blue-400 text-xl font-bold">:</span>
                     </>
                   )}
                   <div className="flex flex-col items-center min-w-[60px]">
                     <span className="text-3xl font-black text-blue-400 tabular-nums">{String(timeRemaining.minutes).padStart(2, '0')}</span>
-                    <span className="text-xs text-gray-300 font-medium mt-1">Dakika</span>
+                    <span className="text-xs text-gray-300 font-medium mt-1">
+                      {language === 'en' ? 'Minutes' : 'Dakika'}
+                    </span>
+                  </div>
+                  <span className="text-blue-400 text-xl font-bold">:</span>
+                  <div className="flex flex-col items-center min-w-[60px]">
+                    <span className="text-3xl font-black text-blue-400 tabular-nums">{String(timeRemaining.seconds).padStart(2, '0')}</span>
+                    <span className="text-xs text-gray-300 font-medium mt-1">
+                      {language === 'en' ? 'Seconds' : 'Saniye'}
+                    </span>
                   </div>
                 </div>
               </div>
             ) : (
               <div className="mb-3 p-4 bg-blue-500/10 border border-blue-500/30 rounded-lg">
-                <div className="text-center text-gray-400 text-sm">Yükleniyor...</div>
+                <div className="text-center text-gray-400 text-sm">
+                  {language === 'en' ? 'Loading...' : 'Yükleniyor...'}
+                </div>
               </div>
             )}
             
             <p className="text-gray-400 text-sm mb-4">
-              Premium özelliklerden yararlanmak için abone olun
+              {language === 'en'
+                ? 'The Premium trial privilege assigned to your account will expire in 2 days.'
+                : 'Hesabınıza tanımlanan Premium deneme ayrıcalığı 2 gün içinde geçersiz olacaktır.'}
             </p>
             
             {/* Upgrade Button */}
@@ -192,7 +204,7 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade }: Tria
                 }}
                 className="w-full py-3 px-4 rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 text-white font-semibold text-sm transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/40 active:scale-[0.98]"
               >
-                Premium'a Geç
+                {language === 'en' ? 'Use My Privilege Now' : 'Hakkımı Şimdi Kullan'}
               </button>
             )}
           </div>
