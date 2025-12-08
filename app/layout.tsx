@@ -217,11 +217,12 @@ export const metadata: Metadata = {
     icon: [
       { url: '/icon.png', sizes: 'any' },
       // Google Arama sonuçları için gerekli boyutlar (minimum 48x48 ve katları)
+      // Google favicon için kritik: 48x48 minimum, 144x144 önerilen
       { url: '/icon.png', type: 'image/png', sizes: '512x512' },
       { url: '/icon.png', type: 'image/png', sizes: '192x192' },
-      { url: '/icon.png', type: 'image/png', sizes: '144x144' }, // Google önerisi
+      { url: '/icon.png', type: 'image/png', sizes: '144x144' }, // Google önerisi - kritik
       { url: '/icon.png', type: 'image/png', sizes: '96x96' },
-      { url: '/icon.png', type: 'image/png', sizes: '48x48' }, // Google minimum gereksinimi
+      { url: '/icon.png', type: 'image/png', sizes: '48x48' }, // Google minimum gereksinimi - kritik
       { url: '/icon.png', type: 'image/png', sizes: '32x32' },
       { url: '/icon.png', type: 'image/png', sizes: '16x16' },
     ],
@@ -287,8 +288,12 @@ export default function RootLayout({
       logo: {
         '@type': 'ImageObject',
         url: 'https://alertachart.com/icon.png',
+        width: 512,
+        height: 512,
       },
     },
+    // Google için favicon referansı
+    image: 'https://alertachart.com/icon.png',
     keywords: 'Alerta Chart, TradingView alternative, free crypto charts, technical analysis, RSI, MACD, Bollinger Bands, Bitcoin chart, Ethereum chart, price alerts, trading tools',
     inLanguage: 'en',
     isAccessibleForFree: true,
@@ -300,6 +305,16 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
+        {/* Explicit Favicon Links for Google - Critical for Search Results */}
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon.png" />
+        <link rel="icon" type="image/png" sizes="192x192" href="/icon.png" />
+        <link rel="icon" type="image/png" sizes="144x144" href="/icon.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/icon.png" />
+        <link rel="icon" type="image/png" sizes="48x48" href="/icon.png" />
+        <link rel="icon" type="image/png" sizes="32x32" href="/icon.png" />
+        <link rel="icon" type="image/png" sizes="16x16" href="/icon.png" />
+        <link rel="shortcut icon" href="/icon.png" />
+        <link rel="apple-touch-icon" sizes="180x180" href="/icon.png" />
         {/* Google Tag Manager */}
         <Script id="google-tag-manager" strategy="afterInteractive">
           {`
