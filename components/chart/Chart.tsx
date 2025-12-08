@@ -4251,209 +4251,125 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   };
 
   const handleChartClickForDrawing = (clientX: number, clientY: number, overrideTempDrawing?: DrawingPoint | null) => {
-
-    console.log('🎯 handleChartClickForDrawing CALLED');
-    console.log('  activeTool:', activeTool);
-    console.log('  clientX:', clientX, 'clientY:', clientY);
-    console.log('  tempDrawing:', tempDrawing);
-    console.log('  overrideTempDrawing:', overrideTempDrawing);
-    
-    if (activeTool === 'none' || !containerRef.current || !chartRef.current || !seriesRef.current) {
-      console.log('❌ EARLY RETURN:', {
-        activeTool_is_none: activeTool === 'none',
-        no_container: !containerRef.current,
-        no_chart: !chartRef.current,
-        no_series: !seriesRef.current
-      });
-      return;
-    }
-    
-    // Brush is handled separately with mouse events
-    if (activeTool === 'brush') {
-      console.log('❌ BRUSH - handled separately');
-      return;
-    }
-    
-    const rect = containerRef.current.getBoundingClientRect();
-    const x = clientX - rect.left;
-    const y = clientY - rect.top;
-    
-    const timeScale = chartRef.current.timeScale();
-    const visibleRange = timeScale.getVisibleRange();
-    let time = timeScale.coordinateToTime(x as any);
-    const price = seriesRef.current.coordinateToPrice(y);
-    
-    // If time is null OR outside visible range, calculate proper time from pixel position
-    if (!time || (visibleRange && time && ((time as number) < (visibleRange.from as number) || (time as number) > (visibleRange.to as number)))) {
-      if (visibleRange) {
-        const visibleLogicalRange = timeScale.getVisibleLogicalRange();
-        if (visibleLogicalRange) {
-          const chartWidth = timeScale.width();
-          const lastBarCoordinate = timeScale.timeToCoordinate(visibleRange.to as any);
-          
-          if (lastBarCoordinate !== null && x > lastBarCoordinate) {
-            // We're clicking to the right of the last bar
-            const pixelsBeyond = x - lastBarCoordinate;
+    try {
+      console.log('🎯 handleChartClickForDrawing CALLED');
+      console.log('  activeTool:', activeTool);
+      console.log('  clientX:', clientX, 'clientY:', clientY);
+      console.log('  tempDrawing:', tempDrawing);
+      console.log('  overrideTempDrawing:', overrideTempDrawing);
+      
+      // Early return checks
+      if (activeTool === 'none' || !containerRef.current || !chartRef.current || !seriesRef.current) {
+        console.log('❌ EARLY RETURN:', {
+          activeTool_is_none: activeTool === 'none',
+          no_container: !containerRef.current,
+          no_chart: !chartRef.current,
+          no_series: !seriesRef.current
+        });
+        return;
+      }
+      
+      // Check if chart is still loading - prevent drawing during load
+      if (isLoading) {
+        console.log('❌ Chart is loading, skipping drawing');
+        return;
+      }
+      
+      // Brush is handled separately with mouse events
+      if (activeTool === 'brush') {
+        console.log('❌ BRUSH - handled separately');
+        return;
+      }
+      
+      // Safety check: Ensure chart is ready
+      let timeScale;
+      try {
+        timeScale = chartRef.current.timeScale();
+        if (!timeScale) {
+          console.warn('[Chart] TimeScale not ready yet');
+          return;
+        }
+      } catch (e) {
+        console.warn('[Chart] TimeScale error:', e);
+        return;
+      }
+      
+      const rect = containerRef.current.getBoundingClientRect();
+      const x = clientX - rect.left;
+      const y = clientY - rect.top;
+      
+      const visibleRange = timeScale.getVisibleRange();
+      if (!visibleRange) {
+        console.warn('[Chart] Visible range not available');
+        return;
+      }
+      
+      let time = timeScale.coordinateToTime(x as any);
+      const price = seriesRef.current.coordinateToPrice(y);
+      
+      // If time is null OR outside visible range, calculate proper time from pixel position
+      if (!time || (visibleRange && time && ((time as number) < (visibleRange.from as number) || (time as number) > (visibleRange.to as number)))) {
+        if (visibleRange) {
+          const visibleLogicalRange = timeScale.getVisibleLogicalRange();
+          if (visibleLogicalRange) {
+            const chartWidth = timeScale.width();
+            const lastBarCoordinate = timeScale.timeToCoordinate(visibleRange.to as any);
+            
+            // Safety check: Prevent division by zero
             const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
+            if (visibleBars <= 0 || chartWidth <= 0) {
+              console.warn('[Chart] Invalid visible bars or chart width:', { visibleBars, chartWidth });
+              return;
+            }
+            
             const pixelsPerBar = chartWidth / visibleBars;
-            const barsBeyond = pixelsBeyond / pixelsPerBar;
-            const extrapolatedTime = (visibleRange.to as number) + (barsBeyond * timeframe);
-            time = extrapolatedTime as any;
-          } else if (lastBarCoordinate !== null && x < 0) {
-            // We're clicking to the left of the first bar
-            const pixelsBefore = Math.abs(x);
-            const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
-            const pixelsPerBar = chartWidth / visibleBars;
-            const barsBefore = pixelsBefore / pixelsPerBar;
-            const extrapolatedTime = (visibleRange.from as number) - (barsBefore * timeframe);
-            time = extrapolatedTime as any;
-          } else if (x >= 0 && x <= chartWidth) {
-            // We're within the chart but coordinateToTime gave wrong value
-            // Recalculate based on pixel position
-            const firstBarCoordinate = timeScale.timeToCoordinate(visibleRange.from as any);
-            if (firstBarCoordinate !== null) {
-              const pixelsFromStart = x - firstBarCoordinate;
-              const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
-              const pixelsPerBar = chartWidth / visibleBars;
-              const barsFromStart = pixelsFromStart / pixelsPerBar;
-              const calculatedTime = (visibleRange.from as number) + (barsFromStart * timeframe);
-              time = calculatedTime as any;
+            
+            if (lastBarCoordinate !== null && x > lastBarCoordinate) {
+              // We're clicking to the right of the last bar
+              const pixelsBeyond = x - lastBarCoordinate;
+              const barsBeyond = pixelsBeyond / pixelsPerBar;
+              const extrapolatedTime = (visibleRange.to as number) + (barsBeyond * timeframe);
+              time = extrapolatedTime as any;
+            } else if (lastBarCoordinate !== null && x < 0) {
+              // We're clicking to the left of the first bar
+              const pixelsBefore = Math.abs(x);
+              const barsBefore = pixelsBefore / pixelsPerBar;
+              const extrapolatedTime = (visibleRange.from as number) - (barsBefore * timeframe);
+              time = extrapolatedTime as any;
+            } else if (x >= 0 && x <= chartWidth) {
+              // We're within the chart but coordinateToTime gave wrong value
+              // Recalculate based on pixel position
+              const firstBarCoordinate = timeScale.timeToCoordinate(visibleRange.from as any);
+              if (firstBarCoordinate !== null) {
+                const pixelsFromStart = x - firstBarCoordinate;
+                const barsFromStart = pixelsFromStart / pixelsPerBar;
+                const calculatedTime = (visibleRange.from as number) + (barsFromStart * timeframe);
+                time = calculatedTime as any;
+              }
             }
           }
         }
       }
-    }
-    
-    if (!time || price === null) return;
-    
-    // Apply magnet mode (snap to OHLC) for precise drawing
-    const finalPrice = useMagnet ? getMagnetPrice(time as number, price) : price;
-    
-    const point: DrawingPoint = { time: time as Time, price: finalPrice };
-    
-    // Single-point tools (instant creation)
-    if (activeTool === 'horizontal' || activeTool === 'vertical' || activeTool === 'price-label' || activeTool === 'text') {
-      // Save to history before adding new drawing
-      saveToHistory();
       
-      const newDrawing: Drawing = {
-        id: `drawing-${Date.now()}`,
-        type: activeTool as DrawingType,
-        points: [{ ...point }],
-        color: '#2962FF',
-        lineWidth: 2,
-        text: activeTool === 'text' ? 'Text' : undefined
-      };
+      if (!time || price === null) return;
       
+      // Apply magnet mode (snap to OHLC) for precise drawing
+      const finalPrice = useMagnet ? getMagnetPrice(time as number, price) : price;
       
-      setDrawings(prev => {
-        const updated = [...prev, newDrawing];
-        return updated;
-      });
+      const point: DrawingPoint = { time: time as Time, price: finalPrice };
       
-      // For text tool, automatically open properties modal
-      if (activeTool === 'text') {
-        setEditingDrawing(newDrawing);
-      }
-      
-      // Auto-switch to cursor mode after drawing
-      setActiveTool('none');
-      setTempDrawing(null);
-      setPreviewDrawing(null);
-      return;
-    }
-    
-    // Multi-point tools
-    const threePointTools = ['triangle', 'channel', 'gann-fan', 'speed-lines', 'pitchfork', 'trend-fib-extension'];
-    const fourPointTools = ['wedge'];
-    const pointCount = fourPointTools.includes(activeTool) ? 4 : (threePointTools.includes(activeTool) ? 3 : 2);
-    
-    // Use overrideTempDrawing if provided, otherwise use state
-    const effectiveTempDrawing = overrideTempDrawing !== undefined ? overrideTempDrawing : tempDrawing;
-    
-    // Check current temp drawing state
-    const tempDraw = drawings.find(d => d.id === 'temp');
-    const currentPointCount = tempDraw ? tempDraw.points.length : (effectiveTempDrawing ? 1 : 0);
-    
-    if (!effectiveTempDrawing && currentPointCount === 0) {
-      // First point
-      console.log('📍 First point set for', activeTool, ':', point);
-      setTempDrawing(point);
-    } else {
-      console.log('📍 Point', currentPointCount + 1, 'for', activeTool, ':', point);
-      // Second (or third/fourth) point
-      
-      // Check if we need more points
-      if (pointCount === 4 && currentPointCount === 3) {
-        // Add fourth point to temp drawing (wedge)
-        setDrawings(prev => prev.map(d => {
-          if (d.id === 'temp') {
-            return { ...d, points: [...d.points.map(p => ({ ...p })), { ...point }], id: `drawing-${Date.now()}` };
-          }
-          return d;
-        }));
-        setTempDrawing(null);
-        setPreviewDrawing(null);
-        setActiveTool('none');
-      } else if (pointCount === 3 && currentPointCount === 2) {
-        // Add third point to temp drawing
-        setDrawings(prev => prev.map(d => {
-          if (d.id === 'temp') {
-            return { ...d, points: [...d.points.map(p => ({ ...p })), { ...point }], id: `drawing-${Date.now()}` };
-          }
-          return d;
-        }));
-        setTempDrawing(null);
-        setPreviewDrawing(null);
-        setActiveTool('none');
-      } else if (pointCount === 4 && currentPointCount === 2) {
-        // Add third point to temp drawing (wedge - need 4 points)
-        setDrawings(prev => prev.map(d => {
-          if (d.id === 'temp') {
-            return { ...d, points: [...d.points.map(p => ({ ...p })), { ...point }] };
-          }
-          return d;
-        }));
-        setTempDrawing(null);
-      } else if (pointCount === 3 && currentPointCount === 1) {
-        // Create temp drawing with 2 points (need 3 total)
-        if (!effectiveTempDrawing) return; // TypeScript guard
-        const tempDraw: Drawing = {
-          id: 'temp',
-          type: activeTool as DrawingType,
-          points: [{ ...effectiveTempDrawing }, { ...point }],
-          color: '#2962FF',
-          lineWidth: 2
-        };
-        setDrawings(prev => [...prev, tempDraw]);
-        setTempDrawing(null);
-      } else if (pointCount === 4 && currentPointCount === 1) {
-        // Create temp drawing with 2 points (wedge - need 4 total)
-        if (!effectiveTempDrawing) return; // TypeScript guard
-        const tempDraw: Drawing = {
-          id: 'temp',
-          type: activeTool as DrawingType,
-          points: [{ ...effectiveTempDrawing }, { ...point }],
-          color: '#2962FF',
-          lineWidth: 2
-        };
-        setDrawings(prev => [...prev, tempDraw]);
-        setTempDrawing(null);
-      } else {
-        // Complete 2-point drawing
-        if (!effectiveTempDrawing) return; // TypeScript guard
+      // Single-point tools (instant creation)
+      if (activeTool === 'horizontal' || activeTool === 'vertical' || activeTool === 'price-label' || activeTool === 'text') {
         // Save to history before adding new drawing
         saveToHistory();
         
         const newDrawing: Drawing = {
           id: `drawing-${Date.now()}`,
           type: activeTool as DrawingType,
-          points: [{ ...effectiveTempDrawing }, { ...point }],
+          points: [{ ...point }],
           color: '#2962FF',
           lineWidth: 2,
-          fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.3)' : undefined,
-          // Trend lines extend right by default (like TradingView)
-          extendRight: activeTool === 'trend'
+          text: activeTool === 'text' ? 'Text' : undefined
         };
         
         
@@ -4461,11 +4377,131 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           const updated = [...prev, newDrawing];
           return updated;
         });
-        setTempDrawing(null);
-        setPreviewDrawing(null);
+        
+        // For text tool, automatically open properties modal
+        if (activeTool === 'text') {
+          setEditingDrawing(newDrawing);
+        }
+        
         // Auto-switch to cursor mode after drawing
         setActiveTool('none');
+        setTempDrawing(null);
+        setPreviewDrawing(null);
+        return;
       }
+      
+      // Multi-point tools
+      const threePointTools = ['triangle', 'channel', 'gann-fan', 'speed-lines', 'pitchfork', 'trend-fib-extension'];
+      const fourPointTools = ['wedge'];
+      const pointCount = fourPointTools.includes(activeTool) ? 4 : (threePointTools.includes(activeTool) ? 3 : 2);
+      
+      // Use overrideTempDrawing if provided, otherwise use state
+      const effectiveTempDrawing = overrideTempDrawing !== undefined ? overrideTempDrawing : tempDrawing;
+      
+      // Check current temp drawing state
+      const tempDraw = drawings.find(d => d.id === 'temp');
+      const currentPointCount = tempDraw ? tempDraw.points.length : (effectiveTempDrawing ? 1 : 0);
+      
+      if (!effectiveTempDrawing && currentPointCount === 0) {
+        // First point
+        console.log('📍 First point set for', activeTool, ':', point);
+        setTempDrawing(point);
+      } else {
+        console.log('📍 Point', currentPointCount + 1, 'for', activeTool, ':', point);
+        // Second (or third/fourth) point
+        
+        // Check if we need more points
+        if (pointCount === 4 && currentPointCount === 3) {
+          // Add fourth point to temp drawing (wedge)
+          setDrawings(prev => prev.map(d => {
+            if (d.id === 'temp') {
+              return { ...d, points: [...d.points.map(p => ({ ...p })), { ...point }], id: `drawing-${Date.now()}` };
+            }
+            return d;
+          }));
+          setTempDrawing(null);
+          setPreviewDrawing(null);
+          setActiveTool('none');
+        } else if (pointCount === 3 && currentPointCount === 2) {
+          // Add third point to temp drawing
+          setDrawings(prev => prev.map(d => {
+            if (d.id === 'temp') {
+              return { ...d, points: [...d.points.map(p => ({ ...p })), { ...point }], id: `drawing-${Date.now()}` };
+            }
+            return d;
+          }));
+          setTempDrawing(null);
+          setPreviewDrawing(null);
+          setActiveTool('none');
+        } else if (pointCount === 4 && currentPointCount === 2) {
+          // Add third point to temp drawing (wedge - need 4 points)
+          setDrawings(prev => prev.map(d => {
+            if (d.id === 'temp') {
+              return { ...d, points: [...d.points.map(p => ({ ...p })), { ...point }] };
+            }
+            return d;
+          }));
+          setTempDrawing(null);
+        } else if (pointCount === 3 && currentPointCount === 1) {
+          // Create temp drawing with 2 points (need 3 total)
+          if (!effectiveTempDrawing) return; // TypeScript guard
+          const tempDraw: Drawing = {
+            id: 'temp',
+            type: activeTool as DrawingType,
+            points: [{ ...effectiveTempDrawing }, { ...point }],
+            color: '#2962FF',
+            lineWidth: 2
+          };
+          setDrawings(prev => [...prev, tempDraw]);
+          setTempDrawing(null);
+        } else if (pointCount === 4 && currentPointCount === 1) {
+          // Create temp drawing with 2 points (wedge - need 4 total)
+          if (!effectiveTempDrawing) return; // TypeScript guard
+          const tempDraw: Drawing = {
+            id: 'temp',
+            type: activeTool as DrawingType,
+            points: [{ ...effectiveTempDrawing }, { ...point }],
+            color: '#2962FF',
+            lineWidth: 2
+          };
+          setDrawings(prev => [...prev, tempDraw]);
+          setTempDrawing(null);
+        } else {
+          // Complete 2-point drawing
+          if (!effectiveTempDrawing) return; // TypeScript guard
+          // Save to history before adding new drawing
+          saveToHistory();
+          
+          const newDrawing: Drawing = {
+            id: `drawing-${Date.now()}`,
+            type: activeTool as DrawingType,
+            points: [{ ...effectiveTempDrawing }, { ...point }],
+            color: '#2962FF',
+            lineWidth: 2,
+            fillColor: (activeTool === 'rectangle' || activeTool === 'circle' || activeTool === 'ellipse') ? 'rgba(41, 98, 255, 0.3)' : undefined,
+            // Trend lines extend right by default (like TradingView)
+            extendRight: activeTool === 'trend'
+          };
+          
+          
+          setDrawings(prev => {
+            const updated = [...prev, newDrawing];
+            return updated;
+          });
+          setTempDrawing(null);
+          setPreviewDrawing(null);
+          // Auto-switch to cursor mode after drawing
+          setActiveTool('none');
+        }
+      }
+    } catch (error) {
+      // Graceful error handling - prevent app crash
+      console.error('[Chart] Error in handleChartClickForDrawing:', error);
+      // Silently fail - don't show error to user to maintain mobile app feel
+      // Just reset tool state
+      setActiveTool('none');
+      setTempDrawing(null);
+      setPreviewDrawing(null);
     }
   };
 
