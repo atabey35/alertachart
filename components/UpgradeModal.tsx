@@ -974,24 +974,24 @@ export default function UpgradeModal({
                 {/* Close Button */}
                 <motion.button
                   onClick={onClose}
-                  className="absolute top-5 right-5 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-gray-900/80 hover:bg-gray-800/90 text-gray-400 hover:text-white transition-all duration-200 backdrop-blur-xl border border-gray-700/60 hover:border-gray-600/80 shadow-xl"
+                  className="absolute top-4 right-4 z-20 w-9 h-9 flex items-center justify-center rounded-full bg-gray-900/80 hover:bg-gray-800/90 text-gray-400 hover:text-white transition-all duration-200 backdrop-blur-xl border border-gray-700/60 hover:border-gray-600/80 shadow-xl"
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   aria-label="Kapat"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </motion.button>
 
                 {/* Header - Fixed */}
                 <motion.div 
-                  className="relative pt-12 pb-8 px-6 bg-gradient-to-b from-blue-600/20 via-blue-500/10 to-transparent border-b border-white/5 flex-shrink-0"
+                  className="relative pt-8 pb-4 px-5 bg-gradient-to-b from-blue-600/20 via-blue-500/10 to-transparent border-b border-white/5 flex-shrink-0"
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.4 }}
                 >
                   <div className="text-center">
                     <motion.div 
-                      className="inline-flex items-center justify-center w-24 h-24 mb-5 relative"
+                      className="inline-flex items-center justify-center w-16 h-16 mb-3 relative"
                       initial={{ scale: 0, rotate: -180 }}
                       animate={{ scale: 1, rotate: 0 }}
                       transition={{ 
@@ -1006,15 +1006,15 @@ export default function UpgradeModal({
                         <Image
                           src="/promote.png"
                           alt="Premium"
-                          width={96}
-                          height={96}
+                          width={64}
+                          height={64}
                           className="w-full h-full object-contain drop-shadow-2xl"
                           priority
                         />
                       </div>
                     </motion.div>
                     <motion.h2 
-                      className="text-3xl font-bold mb-3 tracking-tight"
+                      className="text-2xl font-bold mb-2 tracking-tight"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.4 }}
@@ -1034,7 +1034,7 @@ export default function UpgradeModal({
                       </span>
                     </motion.h2>
                     <motion.p 
-                      className="text-gray-300 text-sm leading-relaxed"
+                      className="text-gray-300 text-xs leading-relaxed"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.5 }}
@@ -1045,9 +1045,9 @@ export default function UpgradeModal({
                 </motion.div>
 
                 {/* Features List - Scrollable with Staggered Animation */}
-                <div className="px-6 py-5 flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-700/50 scrollbar-track-transparent" style={{ maxHeight: 'calc(100vh - 450px)' }}>
+                <div className="px-4 py-3 flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-gray-700/50 scrollbar-track-transparent" style={{ maxHeight: 'calc(100vh - 380px)' }}>
                   <motion.div
-                    className="grid grid-cols-1 gap-3"
+                    className="grid grid-cols-1 gap-2"
                     variants={containerVariants}
                     initial="hidden"
                     animate="visible"
@@ -1067,31 +1067,31 @@ export default function UpgradeModal({
                                 videoUrls: feature.videoUrls,
                                 description: feature.description,
                               })}
-                              className="w-full flex items-center gap-4 p-4 rounded-xl bg-gradient-to-br from-gray-900/60 to-gray-950/80 hover:from-gray-800/80 hover:to-gray-900/90 border border-gray-800/50 hover:border-blue-500/40 transition-all duration-300 touch-manipulation shadow-lg hover:shadow-xl hover:shadow-blue-500/20 relative overflow-hidden"
+                              className="w-full flex items-center gap-3 p-3 rounded-xl bg-gradient-to-br from-gray-900/60 to-gray-950/80 hover:from-gray-800/80 hover:to-gray-900/90 border border-gray-800/50 hover:border-blue-500/40 transition-all duration-300 touch-manipulation shadow-lg hover:shadow-xl hover:shadow-blue-500/20 relative overflow-hidden"
                             >
                               {/* Glowing border effect */}
                               <div className="absolute inset-0 rounded-xl border-2 border-blue-500/0 group-hover:border-blue-500/30 transition-all duration-300" />
                               
                               {/* Icon Container */}
-                              <div className={`flex-shrink-0 w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} ${feature.bgColor} border-2 ${feature.borderColor} flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:shadow-2xl group-hover:shadow-blue-500/40 transition-all duration-300 relative overflow-hidden`}>
+                              <div className={`flex-shrink-0 w-12 h-12 rounded-xl bg-gradient-to-br ${feature.color} ${feature.bgColor} border-2 ${feature.borderColor} flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:shadow-2xl group-hover:shadow-blue-500/40 transition-all duration-300 relative overflow-hidden`}>
                                 <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                                <IconComponent className="w-7 h-7 text-white relative z-10 drop-shadow-lg" />
+                                <IconComponent className="w-6 h-6 text-white relative z-10 drop-shadow-lg" />
                               </div>
                               
                               {/* Content */}
                               <div className="flex-1 min-w-0 text-left">
-                                <div className="flex items-center gap-2 mb-1.5">
-                                  <h3 className="text-white font-semibold text-sm group-hover:text-blue-400 transition-colors duration-300">
+                                <div className="flex items-center gap-2 mb-1">
+                                  <h3 className="text-white font-semibold text-xs group-hover:text-blue-400 transition-colors duration-300">
                                     {feature.title}
                                   </h3>
                                   <motion.div
                                     whileHover={{ x: 4 }}
                                     transition={{ type: 'spring', stiffness: 400 }}
                                   >
-                                    <Play className="w-4 h-4 text-gray-500 group-hover:text-blue-400 transition-colors duration-300 flex-shrink-0" />
+                                    <Play className="w-3 h-3 text-gray-500 group-hover:text-blue-400 transition-colors duration-300 flex-shrink-0" />
                                   </motion.div>
                                 </div>
-                                <p className="text-gray-400 text-xs leading-relaxed">{feature.description}</p>
+                                <p className="text-gray-400 text-[10px] leading-tight">{feature.description}</p>
                               </div>
                             </button>
                           </SpotlightCard>
@@ -1105,30 +1105,30 @@ export default function UpgradeModal({
                 <AnimatePresence>
                   {error && (
                     <motion.div
-                      className="mx-6 mb-4 p-4 rounded-xl bg-red-500/10 border border-red-500/30 flex-shrink-0 backdrop-blur-sm"
+                      className="mx-4 mb-3 p-3 rounded-xl bg-red-500/10 border border-red-500/30 flex-shrink-0 backdrop-blur-sm"
                       initial={{ opacity: 0, y: -10 }}
                       animate={{ opacity: 1, y: 0 }}
                       exit={{ opacity: 0, y: -10 }}
                       transition={{ duration: 0.2 }}
                     >
-                      <p className="text-red-400 text-sm text-center font-medium">{error}</p>
+                      <p className="text-red-400 text-xs text-center font-medium">{error}</p>
                     </motion.div>
                   )}
                 </AnimatePresence>
 
                 {/* Subscription Details & Legal Links - Apple App Store Requirement */}
-                <div className="px-6 py-5 space-y-4 border-t border-white/5 bg-gradient-to-b from-gray-950/60 to-black/80 flex-shrink-0 backdrop-blur-sm">
+                <div className="px-4 py-3 space-y-2.5 border-t border-white/5 bg-gradient-to-b from-gray-950/60 to-black/80 flex-shrink-0 backdrop-blur-sm">
                   {/* Pricing Info - APPLE GUIDELINE 3.1.2: Price MUST be clearly visible */}
                   <div className="text-center">
-                    <p className="text-xs text-gray-500 mb-3 font-medium uppercase tracking-wider">
+                    <p className="text-[10px] text-gray-500 mb-2 font-medium uppercase tracking-wider">
                       {t('subscriptionDetails', normalizedLanguage)}
                     </p>
                     {!productsLoaded && platform !== 'web' ? (
                       <PriceSkeleton />
                     ) : (
                       <>
-                        <div className="flex items-center justify-center gap-2 mb-2 flex-wrap">
-                          <span className="text-gray-400 font-light text-sm">
+                        <div className="flex items-center justify-center gap-2 mb-1.5 flex-wrap">
+                          <span className="text-gray-400 font-light text-xs">
                             {t('monthlySubscription', normalizedLanguage)}
                           </span>
                           {products.length > 0 && products[0].price && (
@@ -1136,10 +1136,10 @@ export default function UpgradeModal({
                               <span className="text-gray-600">•</span>
                               <div className="flex items-baseline gap-1">
                                 {/* Currency Symbol Icon */}
-                                <span className="text-blue-400 font-light text-lg">
+                                <span className="text-blue-400 font-light text-base">
                                   {getCurrencySymbol(products[0].price)}
                                 </span>
-                                <span className="text-blue-300 font-bold text-2xl tracking-tight">
+                                <span className="text-blue-300 font-bold text-xl tracking-tight">
                                   {products[0].price.match(/[\d,\.]+/)?.[0] || products[0].price.replace(/[^\d,\.]/g, '')}
                                 </span>
                               </div>
@@ -1148,7 +1148,7 @@ export default function UpgradeModal({
                         </div>
                         {/* Show trial info on iOS */}
                         {platform === 'ios' && products.length > 0 && (
-                          <p className="text-xs text-gray-500 mt-2">
+                          <p className="text-[10px] text-gray-500 mt-1">
                             {t('threeDaysFreeThenMonthly', normalizedLanguage)}
                           </p>
                         )}
@@ -1157,7 +1157,7 @@ export default function UpgradeModal({
                   </div>
 
                   {/* Legal Links */}
-                  <div className="flex items-center justify-center gap-4 text-xs pt-3 border-t border-white/5">
+                  <div className="flex items-center justify-center gap-3 text-[10px] pt-2 border-t border-white/5">
                     <button
                       onClick={async (e) => {
                         e.preventDefault();
@@ -1175,7 +1175,7 @@ export default function UpgradeModal({
                           window.open(url, '_blank', 'noopener,noreferrer');
                         }
                       }}
-                      className="text-gray-500 hover:text-blue-400 underline transition-colors duration-200 cursor-pointer text-xs"
+                      className="text-gray-500 hover:text-blue-400 underline transition-colors duration-200 cursor-pointer text-[10px]"
                     >
                       {t('termsOfUse', normalizedLanguage)}
                     </button>
@@ -1197,7 +1197,7 @@ export default function UpgradeModal({
                           window.open(url, '_blank', 'noopener,noreferrer');
                         }
                       }}
-                      className="text-gray-500 hover:text-blue-400 underline transition-colors duration-200 cursor-pointer text-xs"
+                      className="text-gray-500 hover:text-blue-400 underline transition-colors duration-200 cursor-pointer text-[10px]"
                     >
                       {t('privacyPolicy', normalizedLanguage)}
                     </button>
@@ -1205,7 +1205,7 @@ export default function UpgradeModal({
                 </div>
 
                 {/* Action Buttons - Fixed at bottom */}
-                <div className="px-6 pb-6 pt-4 space-y-3 border-t border-white/5 bg-gradient-to-br from-gray-950/80 via-black to-gray-950/80 flex-shrink-0 backdrop-blur-sm">
+                <div className="px-4 pb-4 pt-3 space-y-2 border-t border-white/5 bg-gradient-to-br from-gray-950/80 via-black to-gray-950/80 flex-shrink-0 backdrop-blur-sm">
                   {/* 
                     🔥 APPLE GUIDELINE 2.1: 
                     - On iOS, trials are handled automatically by App Store via introductory offers
@@ -1217,7 +1217,7 @@ export default function UpgradeModal({
                     <ShimmerButton
                       onClick={handleStartTrial}
                       disabled={loading}
-                      className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 text-white font-bold text-sm transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-blue-500/50 hover:shadow-blue-600/60 touch-manipulation"
+                      className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 text-white font-bold text-xs transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-blue-500/50 hover:shadow-blue-600/60 touch-manipulation"
                     >
                       {loading ? (
                         <span className="flex items-center justify-center gap-2">
@@ -1294,7 +1294,7 @@ export default function UpgradeModal({
                       position: 'relative',
                       WebkitTapHighlightColor: 'transparent'
                     }}
-                    className="w-full py-4 px-6 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 disabled:from-gray-800 disabled:via-gray-800 disabled:to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-sm transition-all duration-200 border-2 border-blue-400/30 hover:border-blue-300/50 shadow-2xl shadow-blue-500/50 hover:shadow-blue-600/60 touch-manipulation"
+                    className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 disabled:from-gray-800 disabled:via-gray-800 disabled:to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs transition-all duration-200 border-2 border-blue-400/30 hover:border-blue-300/50 shadow-2xl shadow-blue-500/50 hover:shadow-blue-600/60 touch-manipulation"
                   >
                     {loading ? (
                       <span className="flex items-center justify-center gap-2">
@@ -1335,7 +1335,7 @@ export default function UpgradeModal({
 
                   <motion.button
                     onClick={onClose}
-                    className="w-full py-3 px-4 rounded-xl text-gray-400 hover:text-white transition-colors duration-200 text-sm font-medium hover:bg-gray-900/50"
+                    className="w-full py-2.5 px-4 rounded-xl text-gray-400 hover:text-white transition-colors duration-200 text-xs font-medium hover:bg-gray-900/50"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -1347,11 +1347,11 @@ export default function UpgradeModal({
                     <motion.button
                       onClick={handleRestorePurchases}
                       disabled={loading || !iapAvailable || !iapInitialized}
-                      className="w-full py-3 px-4 rounded-xl text-blue-400 hover:text-blue-300 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors duration-200 text-xs font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10"
+                      className="w-full py-2.5 px-4 rounded-xl text-blue-400 hover:text-blue-300 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors duration-200 text-[10px] font-medium flex items-center justify-center gap-2 hover:bg-blue-500/10"
                       whileHover={{ scale: (loading || !iapAvailable || !iapInitialized) ? 1 : 1.02 }}
                       whileTap={{ scale: (loading || !iapAvailable || !iapInitialized) ? 1 : 0.98 }}
                     >
-                      <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
+                      <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
                       {loading 
                         ? t('restoring', normalizedLanguage)
                         : t('restorePurchases', normalizedLanguage)
