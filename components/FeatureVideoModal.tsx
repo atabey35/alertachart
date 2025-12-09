@@ -49,7 +49,7 @@ export default function FeatureVideoModal({ isOpen, onClose, feature }: FeatureV
                    (feature.videoUrl && feature.videoUrl.trim() !== '');
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 safe-area-inset">
+    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 safe-area-inset">
       <div className="relative w-full max-w-2xl bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-3xl shadow-2xl border border-gray-700/50 overflow-hidden" style={{ maxHeight: 'calc(90vh - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px))' }}>
         {/* Close Button */}
         <button
