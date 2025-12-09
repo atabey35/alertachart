@@ -218,83 +218,116 @@ const ShimmerButton = ({
   );
 };
 
-// Extract currency symbol from price string
-const getCurrencySymbol = (price: string, language?: Language): string => {
-  if (!price) {
-    // Default currency based on language if no price
-    if (language === 'tr') return '₺';
-    return '$';
+// Convert currency code to symbol
+const currencyCodeToSymbol = (currencyCode: string): string => {
+  const code = currencyCode.toUpperCase();
+  const mapping: Record<string, string> = {
+    'USD': '$',
+    'EUR': '€',
+    'GBP': '£',
+    'TRY': '₺',
+    'TL': '₺',
+    'JPY': '¥',
+    'CNY': '¥',
+    'KRW': '₩',
+    'INR': '₹',
+    'BRL': 'R$',
+    'RUB': '₽',
+    'ILS': '₪',
+    'AUD': 'A$',
+    'CAD': 'C$',
+    'CHF': 'CHF',
+    'SEK': 'kr',
+    'NOK': 'kr',
+    'DKK': 'kr',
+    'PLN': 'zł',
+    'HUF': 'Ft',
+    'CZK': 'Kč',
+    'RON': 'lei',
+    'BGN': 'лв',
+    'HRK': 'kn',
+    'AED': 'د.إ',
+    'SAR': '﷼',
+    'ZAR': 'R',
+    'MXN': '$',
+    'ARS': '$',
+    'CLP': '$',
+    'COP': '$',
+    'PEN': 'S/',
+    'NZD': 'NZ$',
+    'SGD': 'S$',
+    'MYR': 'RM',
+    'THB': '฿',
+    'IDR': 'Rp',
+    'PHP': '₱',
+    'VND': '₫',
+  };
+  return mapping[code] || currencyCode;
+};
+
+// Get currency symbol from product (currency field) or price string
+const getCurrencySymbol = (product: any, price?: string): string => {
+  // 🔥 PRIORITY 1: Use product.currency if available (most reliable)
+  if (product?.currency) {
+    return currencyCodeToSymbol(product.currency);
   }
   
-  // Try to extract currency symbol (non-digit, non-space characters at start)
-  const trimmed = price.trim();
-  const match = trimmed.match(/^[^\d\s,\.]+/);
-  
-  if (match) {
-    let symbol = match[0];
+  // 🔥 PRIORITY 2: Try to extract from price string
+  const priceStr = price || product?.price || '';
+  if (priceStr) {
+    const trimmed = priceStr.trim();
+    const match = trimmed.match(/^[^\d\s,\.]+/);
     
-    // Handle currency codes - convert to symbols
-    const upperSymbol = symbol.toUpperCase();
-    if (upperSymbol === 'USD' || upperSymbol.includes('USD')) return '$';
-    if (upperSymbol === 'EUR' || upperSymbol.includes('EUR')) return '€';
-    if (upperSymbol === 'GBP' || upperSymbol.includes('GBP')) return '£';
-    if (upperSymbol === 'TRY' || upperSymbol === 'TL' || upperSymbol.includes('TRY') || upperSymbol.includes('TL')) return '₺';
-    if (upperSymbol === 'JPY' || upperSymbol.includes('JPY')) return '¥';
-    if (upperSymbol === 'CNY' || upperSymbol.includes('CNY')) return '¥';
-    if (upperSymbol === 'KRW' || upperSymbol.includes('KRW')) return '₩';
-    if (upperSymbol === 'INR' || upperSymbol.includes('INR')) return '₹';
-    if (upperSymbol === 'BRL' || upperSymbol.includes('BRL')) return 'R$';
-    if (upperSymbol === 'RUB' || upperSymbol.includes('RUB')) return '₽';
-    if (upperSymbol === 'ILS' || upperSymbol.includes('ILS')) return '₪';
-    if (upperSymbol === 'AUD' || upperSymbol.includes('AUD')) return 'A$';
-    if (upperSymbol === 'CAD' || upperSymbol.includes('CAD')) return 'C$';
-    if (upperSymbol === 'CHF' || upperSymbol.includes('CHF')) return 'CHF';
-    if (upperSymbol === 'SEK' || upperSymbol.includes('SEK')) return 'kr';
-    if (upperSymbol === 'NOK' || upperSymbol.includes('NOK')) return 'kr';
-    if (upperSymbol === 'DKK' || upperSymbol.includes('DKK')) return 'kr';
-    if (upperSymbol === 'PLN' || upperSymbol.includes('PLN')) return 'zł';
-    if (upperSymbol === 'HUF' || upperSymbol.includes('HUF')) return 'Ft';
-    if (upperSymbol === 'CZK' || upperSymbol.includes('CZK')) return 'Kč';
-    if (upperSymbol === 'RON' || upperSymbol.includes('RON')) return 'lei';
-    if (upperSymbol === 'BGN' || upperSymbol.includes('BGN')) return 'лв';
-    if (upperSymbol === 'HRK' || upperSymbol.includes('HRK')) return 'kn';
-    if (upperSymbol === 'AED' || upperSymbol.includes('AED')) return 'د.إ';
-    if (upperSymbol === 'SAR' || upperSymbol.includes('SAR')) return '﷼';
-    if (upperSymbol === 'ZAR' || upperSymbol.includes('ZAR')) return 'R';
-    if (upperSymbol === 'MXN' || upperSymbol.includes('MXN')) return '$';
-    if (upperSymbol === 'ARS' || upperSymbol.includes('ARS')) return '$';
-    if (upperSymbol === 'CLP' || upperSymbol.includes('CLP')) return '$';
-    if (upperSymbol === 'COP' || upperSymbol.includes('COP')) return '$';
-    if (upperSymbol === 'PEN' || upperSymbol.includes('PEN')) return 'S/';
-    if (upperSymbol === 'NZD' || upperSymbol.includes('NZD')) return 'NZ$';
-    if (upperSymbol === 'SGD' || upperSymbol.includes('SGD')) return 'S$';
-    if (upperSymbol === 'MYR' || upperSymbol.includes('MYR')) return 'RM';
-    if (upperSymbol === 'THB' || upperSymbol.includes('THB')) return '฿';
-    if (upperSymbol === 'IDR' || upperSymbol.includes('IDR')) return 'Rp';
-    if (upperSymbol === 'PHP' || upperSymbol.includes('PHP')) return '₱';
-    if (upperSymbol === 'VND' || upperSymbol.includes('VND')) return '₫';
-    
-    // If it's already a symbol, return it
-    return symbol;
-  }
-  
-  // If no symbol found, try to detect from locale/browser
-  // Check if price is only numbers - likely Turkish Lira based on language
-  if (/^[\d,\.]+$/.test(trimmed)) {
-    if (language === 'tr') return '₺';
-    // Try to get locale from browser
-    if (typeof window !== 'undefined' && navigator.language) {
-      const locale = navigator.language.toLowerCase();
-      if (locale.includes('tr')) return '₺';
-      if (locale.includes('us') || locale.includes('en-us')) return '$';
-      if (locale.includes('eu') || locale.includes('de') || locale.includes('fr') || locale.includes('es') || locale.includes('it')) return '€';
-      if (locale.includes('gb') || locale.includes('en-gb')) return '£';
+    if (match) {
+      let symbol = match[0];
+      // Check if it's a currency code
+      const upperSymbol = symbol.toUpperCase();
+      if (currencyCodeToSymbol(upperSymbol) !== upperSymbol) {
+        return currencyCodeToSymbol(upperSymbol);
+      }
+      // If it's already a symbol, return it
+      return symbol;
     }
-    // Default fallback
-    return '$';
   }
   
-  return '';
+  // 🔥 PRIORITY 3: Detect from browser locale
+  if (typeof window !== 'undefined' && navigator.language) {
+    const locale = navigator.language.toLowerCase();
+    // Country code based detection
+    if (locale.includes('tr') || locale.includes('-tr')) return '₺';
+    if (locale.includes('de') || locale.includes('-de')) return '€'; // Germany
+    if (locale.includes('fr') || locale.includes('-fr')) return '€'; // France
+    if (locale.includes('es') || locale.includes('-es')) return '€'; // Spain
+    if (locale.includes('it') || locale.includes('-it')) return '€'; // Italy
+    if (locale.includes('nl') || locale.includes('-nl')) return '€'; // Netherlands
+    if (locale.includes('at') || locale.includes('-at')) return '€'; // Austria
+    if (locale.includes('be') || locale.includes('-be')) return '€'; // Belgium
+    if (locale.includes('fi') || locale.includes('-fi')) return '€'; // Finland
+    if (locale.includes('ie') || locale.includes('-ie')) return '€'; // Ireland
+    if (locale.includes('pt') || locale.includes('-pt')) return '€'; // Portugal
+    if (locale.includes('gr') || locale.includes('-gr')) return '€'; // Greece
+    if (locale.includes('us') || locale === 'en-us' || locale === 'en') return '$'; // USA
+    if (locale.includes('gb') || locale === 'en-gb') return '£'; // UK
+    if (locale.includes('ca') || locale.includes('-ca')) return 'C$'; // Canada
+    if (locale.includes('au') || locale.includes('-au')) return 'A$'; // Australia
+    if (locale.includes('jp') || locale.includes('-jp')) return '¥'; // Japan
+    if (locale.includes('kr') || locale.includes('-kr')) return '₩'; // Korea
+    if (locale.includes('cn') || locale.includes('-cn')) return '¥'; // China
+    if (locale.includes('in') || locale.includes('-in')) return '₹'; // India
+    if (locale.includes('br') || locale.includes('-br')) return 'R$'; // Brazil
+    if (locale.includes('ru') || locale.includes('-ru')) return '₽'; // Russia
+    if (locale.includes('il') || locale.includes('-il')) return '₪'; // Israel
+    if (locale.includes('ch') || locale.includes('-ch')) return 'CHF'; // Switzerland
+    if (locale.includes('se') || locale.includes('-se')) return 'kr'; // Sweden
+    if (locale.includes('no') || locale.includes('-no')) return 'kr'; // Norway
+    if (locale.includes('dk') || locale.includes('-dk')) return 'kr'; // Denmark
+    if (locale.includes('pl') || locale.includes('-pl')) return 'zł'; // Poland
+    if (locale.includes('hu') || locale.includes('-hu')) return 'Ft'; // Hungary
+    if (locale.includes('cz') || locale.includes('-cz')) return 'Kč'; // Czech Republic
+  }
+  
+  // Default fallback
+  return '$';
 };
 
 // Price Skeleton Loader
@@ -390,6 +423,16 @@ export default function UpgradeModal({
           setProducts(loadedProducts);
           setProductsLoaded(true);
           console.log('[UpgradeModal] Products loaded:', loadedProducts.length);
+          if (loadedProducts.length > 0) {
+            loadedProducts.forEach((p: any) => {
+              console.log('[UpgradeModal] Product details:', {
+                productId: p.productId,
+                price: p.price,
+                currency: p.currency,
+                detectedSymbol: getCurrencySymbol(p)
+              });
+            });
+          }
           if (loadedProducts.length === 0) {
             console.warn('[UpgradeModal] ⚠️ No products found! This will prevent purchases.');
           }
@@ -1157,7 +1200,7 @@ export default function UpgradeModal({
                               <div className="flex items-baseline gap-0.5">
                                 {/* Currency Symbol Icon */}
                                 <span className="text-blue-400 font-light text-xs">
-                                  {getCurrencySymbol(products[0].price, normalizedLanguage)}
+                                  {getCurrencySymbol(products[0])}
                                 </span>
                                 <span className="text-blue-300 font-bold text-base tracking-tight">
                                   {products[0].price.match(/[\d,\.]+/)?.[0] || products[0].price.replace(/[^\d,\.]/g, '')}
@@ -1345,7 +1388,7 @@ export default function UpgradeModal({
                         ? (products[0]?.price 
                             ? (() => {
                                 const priceNum = products[0].price.match(/[\d,\.]+/)?.[0] || products[0].price.replace(/[^\d,\.]/g, '');
-                                const currencySym = getCurrencySymbol(products[0].price, normalizedLanguage);
+                                const currencySym = getCurrencySymbol(products[0]);
                                 return `${t('try3DaysFreeThenPrice', normalizedLanguage)} ${currencySym}${priceNum}/${t('month', normalizedLanguage)}`;
                               })()
                             : t('try3DaysFreeAndSubscribe', normalizedLanguage))
@@ -1353,7 +1396,7 @@ export default function UpgradeModal({
                         ? (products[0]?.price 
                             ? (() => {
                                 const priceNum = products[0].price.match(/[\d,\.]+/)?.[0] || products[0].price.replace(/[^\d,\.]/g, '');
-                                const currencySym = getCurrencySymbol(products[0].price, normalizedLanguage);
+                                const currencySym = getCurrencySymbol(products[0]);
                                 return `${t('buyFromGooglePlay', normalizedLanguage)} - ${currencySym}${priceNum}`;
                               })()
                             : t('buyFromGooglePlay', normalizedLanguage))
