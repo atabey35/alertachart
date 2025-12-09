@@ -2285,16 +2285,25 @@ export default function Home() {
                   </svg>
                 </button>
                 <button
-                  onClick={() => setLayout(2)}
-                  className={`p-1.5 rounded transition-colors ${
+                  onClick={() => {
+                    if (hasPremiumAccessValue) {
+                      setLayout(2);
+                    } else {
+                      setShowUpgradeModal(true);
+                    }
+                  }}
+                  className={`p-1.5 rounded transition-colors relative ${
                   layout === 2 ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white hover:bg-gray-800'
-                  }`}
-                  title="2 Charts"
+                  } ${!hasPremiumAccessValue ? 'opacity-60' : ''}`}
+                  title={hasPremiumAccessValue ? '2 Charts' : '2 Charts (Premium)'}
                 >
                   <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                     <rect x="3" y="3" width="8" height="18" rx="2"/>
                     <rect x="13" y="3" width="8" height="18" rx="2"/>
                   </svg>
+                  {!hasPremiumAccessValue && (
+                    <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                  )}
                 </button>
                 <button
                   onClick={() => {

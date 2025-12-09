@@ -2859,7 +2859,7 @@ export default function SettingsPage() {
             {[1, 2, 4, 9].map((layoutOption) => {
               const isActive = layout === layoutOption;
               const layoutLabel = layoutOption === 1 ? '1x1' : layoutOption === 2 ? '1x2' : layoutOption === 4 ? '2x2' : '3x3';
-              const isPremiumLayout = layoutOption === 4 || layoutOption === 9;
+              const isPremiumLayout = layoutOption === 2 || layoutOption === 4 || layoutOption === 9;
               const hasAccess = !isPremiumLayout || hasPremiumAccessValue;
               
               return (
