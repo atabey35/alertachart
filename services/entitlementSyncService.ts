@@ -129,6 +129,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
     
     let receipt: string | null = null;
     let productId: string | null = null;
+    let orderId: string | null = null; // ✅ Store real Google Play order ID (GPA.xxxx) for Android
 
     if (platform === 'ios') {
       // iOS: Use checkEntitlements method
@@ -202,7 +203,11 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
             const purchase = restoreResult.purchases[0];
             receipt = purchase.receipt || purchase.purchaseToken || '';
             productId = purchase.productId;
-            console.log('[Entitlement Sync] ✅ Found active purchase via restore:', productId);
+            orderId = purchase.transactionId || purchase.orderId || null; // ✅ Get orderId from restore too
+            console.log('[Entitlement Sync] ✅ Found active purchase via restore:', {
+              productId,
+              orderId: orderId || 'not available',
+            });
           } else {
             return { success: true, premiumActivated: false };
           }
@@ -306,27 +311,34 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
         }
       }
 
-      // 🔥 SECURITY: Generate a stable transaction ID from receipt hash
-      // This ensures the same receipt always maps to the same transaction ID
-      // This is critical for preventing cross-account receipt usage
+      // ✅ FIX: Use real Google Play orderId if available (Android), otherwise generate hash
+      // This ensures consistency with initial purchase which uses real orderId (GPA.xxxx)
       let transactionId: string;
-      try {
-        // Create a hash of the receipt to use as transaction ID
-        // Same receipt = same hash = same transaction ID
-        const crypto = window.crypto || (window as any).msCrypto;
-        if (crypto && crypto.subtle) {
-          const receiptHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(receipt));
-          const hashArray = Array.from(new Uint8Array(receiptHash));
-          const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-          transactionId = `receipt_${hashHex.substring(0, 32)}`; // Use first 32 chars of hash
-          console.log('[Entitlement Sync] ✅ Generated stable transaction ID from receipt hash');
-        } else {
-          throw new Error('crypto.subtle not available');
+      if (orderId && platform === 'android') {
+        // ✅ Use real Google Play order ID (GPA.xxxx format)
+        // This matches what initial purchase uses, ensuring consistency
+        transactionId = orderId;
+        console.log('[Entitlement Sync] ✅ Using real Google Play orderId:', transactionId);
+      } else {
+        // Fallback: Generate hash from receipt (for iOS or if orderId not available)
+        // This ensures the same receipt always maps to the same transaction ID
+        // Critical for preventing cross-account receipt usage
+        try {
+          const crypto = window.crypto || (window as any).msCrypto;
+          if (crypto && crypto.subtle) {
+            const receiptHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(receipt));
+            const hashArray = Array.from(new Uint8Array(receiptHash));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            transactionId = `receipt_${hashHex.substring(0, 32)}`; // Use first 32 chars of hash
+            console.log('[Entitlement Sync] ✅ Generated transaction ID from receipt hash (fallback for iOS or missing orderId)');
+          } else {
+            throw new Error('crypto.subtle not available');
+          }
+        } catch (hashError) {
+          // Fallback: Use receipt substring as transaction ID (less secure but works)
+          console.warn('[Entitlement Sync] ⚠️ Could not hash receipt, using fallback transaction ID');
+          transactionId = `sync_${receipt.substring(0, 50)}_${receipt.length}`;
         }
-      } catch (hashError) {
-        // Fallback: Use receipt substring as transaction ID (less secure but works)
-        console.warn('[Entitlement Sync] ⚠️ Could not hash receipt, using fallback transaction ID');
-        transactionId = `sync_${receipt.substring(0, 50)}_${receipt.length}`;
       }
 
       // Validate receipt with backend
