@@ -1233,10 +1233,12 @@ async function verifyGoogleReceipt(
 
     const purchaseData = await response.json();
 
-    // Check purchase state
-    // purchaseState: 0 = Purchased, 1 = Canceled
+    // ✅ SECURITY: Check purchase state for refunds/cancellations
+    // purchaseState: 0 = Purchased, 1 = Canceled/Refunded
     if (purchaseData.purchaseState !== 0) {
-      return { valid: false, error: 'Purchase was canceled or refunded' };
+      console.log('[Verify Purchase] ⚠️ Google purchase canceled or refunded (purchaseState !== 0)');
+      // Mark as expired so user gets downgraded to free
+      return { valid: false, expired: true, error: 'Purchase was canceled or refunded', statusCode: 21006 };
     }
 
     // Check consumption state (for one-time purchases)

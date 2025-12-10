@@ -73,11 +73,63 @@ export async function GET(request: NextRequest) {
     }
     
     let user = users[0] as any;
+    const now = new Date();
     
-    // ✅ PROACTIVE EXPIRY CHECK: If expiry_date is in the past, downgrade to free
+    // ✅ SECURITY CHECK 1: Trial bitiş kontrolü
+    // Trial bitmişse ve subscription aktif değilse (iptal edilmiş) → free'ye düşür
+    // Apple/Google otomatik para çeker ama kullanıcı trial bitmeden iptal ederse bu kontrol gerekli
+    if (user.plan === 'premium' && user.trial_ended_at) {
+      const trialEnd = new Date(user.trial_ended_at);
+      if (trialEnd <= now) {
+        // Trial bitmiş, şimdi subscription durumunu kontrol et
+        // Eğer subscription_id yoksa veya boşsa, kullanıcı trial bitmeden iptal etmiş demektir
+        const hasValidSubscription = user.subscription_id && 
+          user.subscription_id.trim().length > 0 &&
+          user.subscription_id !== 'null' &&
+          user.subscription_id !== 'undefined';
+        
+        if (!hasValidSubscription) {
+          // Trial bitmiş ama subscription yok → İptal edilmiş, downgrade et
+          console.log('[User Plan API] ⚠️ Trial ended but subscription cancelled - downgrading to free:', {
+            userId: user.id,
+            email: userEmail,
+            trialEndedAt: user.trial_ended_at,
+            subscriptionId: user.subscription_id,
+            now: now.toISOString(),
+          });
+
+          await sql`
+            UPDATE users
+            SET 
+              plan = 'free',
+              expiry_date = NULL,
+              trial_started_at = NULL,
+              trial_ended_at = NULL,
+              subscription_platform = NULL,
+              subscription_id = NULL,
+              updated_at = NOW()
+            WHERE id = ${user.id}
+          `;
+
+          user = {
+            ...user,
+            plan: 'free',
+            expiry_date: null,
+            trial_started_at: null,
+            trial_ended_at: null,
+            subscription_platform: null,
+            subscription_id: null,
+          };
+
+          console.log(`[User Plan API] ✅ User ${user.id} downgraded to free (trial ended, subscription cancelled)`);
+        }
+      }
+    }
+    
+    // ✅ SECURITY CHECK 2: Premium expiry kontrolü
+    // expiry_date geçmişteyse → free'ye düşür
     if (user.plan === 'premium' && user.expiry_date) {
       const expiry = new Date(user.expiry_date);
-      const now = new Date();
       if (expiry <= now) {
         console.log('[User Plan API] ⚠️ Premium expired - downgrading user to free:', {
           userId: user.id,
