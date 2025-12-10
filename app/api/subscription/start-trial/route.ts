@@ -233,6 +233,44 @@ export async function POST(request: NextRequest) {
     
     console.log(`[Trial] Started for user ${user.id}, device ${deviceId}, IP ${ipAddress}, subscriptionId: ${subscriptionId || 'none'}`);
     
+    // 🔥 LOG: Log trial start to purchase_logs for admin tracking
+    try {
+      await sql`
+        INSERT INTO purchase_logs (
+          user_email,
+          user_id,
+          platform,
+          transaction_id,
+          product_id,
+          action_type,
+          status,
+          error_message,
+          details,
+          device_id
+        ) VALUES (
+          ${user.email},
+          ${user.id},
+          ${platform || 'web'},
+          ${subscriptionId || null},
+          ${productId || 'premium_monthly'},
+          'trial_started',
+          'success',
+          NULL,
+          ${JSON.stringify({ 
+            trialStartedAt: now.toISOString(),
+            trialEndsAt: trialEnd.toISOString(),
+            expiryDate: expiryDate.toISOString(),
+            ipAddress: ipAddress
+          })},
+          ${deviceId || null}
+        )
+      `;
+      console.log(`[Trial] ✅ Trial start logged to purchase_logs for user ${user.id}`);
+    } catch (logError) {
+      console.error('[Trial] ❌ Failed to log trial start to purchase_logs:', logError);
+      // Continue even if logging fails - trial already started
+    }
+    
     return NextResponse.json({
       success: true,
       trialStartedAt: now.toISOString(),

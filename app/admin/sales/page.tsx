@@ -106,6 +106,7 @@ async function AdminSalesContent() {
     android: logs.filter((log: any) => log.platform === 'android').length,
     restore: logs.filter((log: any) => log.action_type === 'restore').length,
     purchase: logs.filter((log: any) => log.action_type === 'initial_buy').length,
+    trialStarted: logs.filter((log: any) => log.action_type === 'trial_started').length,
     dailyRevenue,
     weeklyRevenue,
     totalRevenue,
@@ -183,6 +184,25 @@ async function AdminSalesContent() {
           </div>
         </div>
 
+        {/* Trial Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <div className="bg-blue-900/20 border border-blue-800 p-4 rounded-lg">
+            <div className="text-sm text-gray-400 mb-1">Deneme Başlatıldı</div>
+            <div className="text-2xl font-bold text-blue-400">{stats.trialStarted}</div>
+          </div>
+          <div className="bg-cyan-900/20 border border-cyan-800 p-4 rounded-lg">
+            <div className="text-sm text-gray-400 mb-1">Conversion Rate</div>
+            <div className="text-2xl font-bold text-cyan-400">
+              {stats.trialStarted > 0 
+                ? ((stats.purchase / stats.trialStarted) * 100).toFixed(1) 
+                : '0'}%
+            </div>
+            <div className="text-xs text-gray-500 mt-1">
+              {stats.purchase} / {stats.trialStarted} ödeme yaptı
+            </div>
+          </div>
+        </div>
+
         {/* Purchase Logs Table */}
         <div className="bg-[#1a1a1a] rounded-lg border border-gray-800 overflow-hidden">
           <div className="p-4 border-b border-gray-800">
@@ -246,6 +266,10 @@ async function AdminSalesContent() {
                         ) : log.action_type === 'entitlement_sync' ? (
                           <span className="bg-purple-900/30 text-purple-400 px-2 py-1 rounded text-xs border border-purple-800">
                             Sync
+                          </span>
+                        ) : log.action_type === 'trial_started' ? (
+                          <span className="bg-blue-900/30 text-blue-400 px-2 py-1 rounded text-xs border border-blue-800">
+                            Deneme Başladı
                           </span>
                         ) : (
                           <span className="bg-green-900/30 text-green-400 px-2 py-1 rounded text-xs border border-green-800">
