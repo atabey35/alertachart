@@ -41,6 +41,67 @@ async function AdminSalesContent() {
     // Continue with empty logs array
   }
 
+  // Get existing trial attempts that might not be in purchase_logs yet
+  let existingTrials: any[] = [];
+  try {
+    existingTrials = await sql`
+      SELECT 
+        id,
+        email as user_email,
+        user_id,
+        platform,
+        NULL::VARCHAR as transaction_id,
+        'premium_monthly' as product_id,
+        'trial_started' as action_type,
+        'success' as status,
+        NULL::TEXT as error_message,
+        jsonb_build_object(
+          'trialStartedAt', started_at::text,
+          'trialEndsAt', ended_at::text,
+          'ipAddress', ip_address,
+          'convertedToPremium', converted_to_premium
+        ) as details,
+        device_id,
+        started_at as created_at
+      FROM trial_attempts
+      WHERE NOT EXISTS (
+        SELECT 1 FROM purchase_logs 
+        WHERE purchase_logs.user_id = trial_attempts.user_id
+          AND purchase_logs.action_type = 'trial_started'
+          AND DATE(purchase_logs.created_at) = DATE(trial_attempts.started_at)
+          AND purchase_logs.device_id = trial_attempts.device_id
+      )
+      ORDER BY started_at DESC
+      LIMIT 100
+    `;
+    
+    // Merge existing trials with purchase logs
+    // Convert trial_attempts records to match purchase_logs format
+    const trialLogs = existingTrials.map((trial: any) => ({
+      id: `trial_${trial.id}`, // Prefix to avoid ID conflicts
+      user_email: trial.user_email,
+      user_id: trial.user_id,
+      platform: trial.platform || 'web',
+      transaction_id: trial.transaction_id,
+      product_id: trial.product_id,
+      action_type: trial.action_type,
+      status: trial.status,
+      error_message: trial.error_message,
+      details: typeof trial.details === 'string' ? JSON.parse(trial.details) : trial.details,
+      device_id: trial.device_id,
+      created_at: trial.created_at,
+      _isLegacyTrial: true, // Flag to indicate this is from trial_attempts table
+    }));
+
+    // Combine and sort by date
+    logs = [...logs, ...trialLogs].sort((a: any, b: any) => {
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+    }).slice(0, 200); // Keep top 200 most recent
+  } catch (error: any) {
+    console.error('[Admin Sales] Error fetching existing trials:', error);
+    // Continue with only purchase_logs if trial_attempts query fails
+  }
+
   // Price configuration (TL)
   const PRICES: { [key: string]: number } = {
     'premium_monthly': 189,
@@ -268,8 +329,12 @@ async function AdminSalesContent() {
                             Sync
                           </span>
                         ) : log.action_type === 'trial_started' ? (
-                          <span className="bg-blue-900/30 text-blue-400 px-2 py-1 rounded text-xs border border-blue-800">
-                            Deneme Başladı
+                          <span className={`px-2 py-1 rounded text-xs border ${
+                            (log as any)._isLegacyTrial 
+                              ? 'bg-gray-900/30 text-gray-400 border-gray-800' 
+                              : 'bg-blue-900/30 text-blue-400 border-blue-800'
+                          }`}>
+                            {((log as any)._isLegacyTrial ? '🕐 ' : '')}Deneme Başladı
                           </span>
                         ) : (
                           <span className="bg-green-900/30 text-green-400 px-2 py-1 rounded text-xs border border-green-800">
