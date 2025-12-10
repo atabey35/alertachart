@@ -1,0 +1,225 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSql } from '@/lib/db';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
+
+export const dynamic = 'force-dynamic'; // Her girişte veriyi taze çek
+export const revalidate = 0;
+
+/**
+ * Admin Sales Tracking Page
+ * Real-time purchase logs for admin monitoring
+ */
+export default async function AdminSalesPage() {
+  // ✅ ADMIN CHECK: Only allow authorized admins
+  const session = await getServerSession(authOptions);
+  const adminEmail = process.env.ADMIN_EMAIL || 'kriptokirmizi@gmail.com'; // Default admin email
+  
+  if (!session?.user?.email) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Unauthorized</h1>
+          <p>You must be logged in to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (session.user.email !== adminEmail) {
+    return (
+      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
+          <p>You do not have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const sql = getSql();
+
+  // Get recent purchase logs (last 200 records)
+  let logs: any[] = [];
+  try {
+    logs = await sql`
+      SELECT 
+        id,
+        user_email,
+        user_id,
+        platform,
+        transaction_id,
+        product_id,
+        action_type,
+        status,
+        error_message,
+        details,
+        device_id,
+        created_at
+      FROM purchase_logs 
+      ORDER BY created_at DESC 
+      LIMIT 200
+    `;
+  } catch (error: any) {
+    console.error('[Admin Sales] Error fetching logs:', error);
+    // Continue with empty logs array
+  }
+
+  // Calculate statistics
+  const stats = {
+    total: logs.length,
+    success: logs.filter((log: any) => log.status === 'success').length,
+    failed: logs.filter((log: any) => log.status === 'failed').length,
+    expired: logs.filter((log: any) => log.status === 'expired_downgrade').length,
+    ios: logs.filter((log: any) => log.platform === 'ios').length,
+    android: logs.filter((log: any) => log.platform === 'android').length,
+    restore: logs.filter((log: any) => log.action_type === 'restore').length,
+    purchase: logs.filter((log: any) => log.action_type === 'initial_buy').length,
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white p-8">
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">📊 Canlı Satış Takibi</h1>
+        
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
+            <div className="text-sm text-gray-400 mb-1">Toplam İşlem</div>
+            <div className="text-2xl font-bold">{stats.total}</div>
+          </div>
+          <div className="bg-green-900/20 border border-green-800 p-4 rounded-lg">
+            <div className="text-sm text-gray-400 mb-1">Başarılı</div>
+            <div className="text-2xl font-bold text-green-400">{stats.success}</div>
+          </div>
+          <div className="bg-red-900/20 border border-red-800 p-4 rounded-lg">
+            <div className="text-sm text-gray-400 mb-1">Başarısız</div>
+            <div className="text-2xl font-bold text-red-400">{stats.failed}</div>
+          </div>
+          <div className="bg-yellow-900/20 border border-yellow-800 p-4 rounded-lg">
+            <div className="text-sm text-gray-400 mb-1">Süresi Dolmuş</div>
+            <div className="text-2xl font-bold text-yellow-400">{stats.expired}</div>
+          </div>
+        </div>
+
+        {/* Platform & Action Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          <div className="bg-blue-900/20 border border-blue-800 p-4 rounded-lg">
+            <div className="text-sm text-gray-400 mb-1">iOS</div>
+            <div className="text-2xl font-bold text-blue-400">{stats.ios}</div>
+          </div>
+          <div className="bg-green-900/20 border border-green-800 p-4 rounded-lg">
+            <div className="text-sm text-gray-400 mb-1">Android</div>
+            <div className="text-2xl font-bold text-green-400">{stats.android}</div>
+          </div>
+          <div className="bg-purple-900/20 border border-purple-800 p-4 rounded-lg">
+            <div className="text-sm text-gray-400 mb-1">Satın Alma</div>
+            <div className="text-2xl font-bold text-purple-400">{stats.purchase}</div>
+          </div>
+          <div className="bg-orange-900/20 border border-orange-800 p-4 rounded-lg">
+            <div className="text-sm text-gray-400 mb-1">Restore</div>
+            <div className="text-2xl font-bold text-orange-400">{stats.restore}</div>
+          </div>
+        </div>
+
+        {/* Purchase Logs Table */}
+        <div className="bg-[#1a1a1a] rounded-lg border border-gray-800 overflow-hidden">
+          <div className="p-4 border-b border-gray-800">
+            <h2 className="text-xl font-bold">Son İşlemler (En Yeni 200)</h2>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-[#0a0a0a] border-b border-gray-800">
+                <tr>
+                  <th className="p-3 text-left text-sm font-semibold text-gray-400">Tarih</th>
+                  <th className="p-3 text-left text-sm font-semibold text-gray-400">Email</th>
+                  <th className="p-3 text-left text-sm font-semibold text-gray-400">Platform</th>
+                  <th className="p-3 text-left text-sm font-semibold text-gray-400">İşlem</th>
+                  <th className="p-3 text-left text-sm font-semibold text-gray-400">Durum</th>
+                  <th className="p-3 text-left text-sm font-semibold text-gray-400">Transaction ID</th>
+                  <th className="p-3 text-left text-sm font-semibold text-gray-400">Hata</th>
+                </tr>
+              </thead>
+              <tbody>
+                {logs.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-gray-500">
+                      Henüz işlem kaydı yok
+                    </td>
+                  </tr>
+                ) : (
+                  logs.map((log: any) => (
+                    <tr 
+                      key={log.id} 
+                      className="border-b border-gray-800 hover:bg-[#252525] transition-colors"
+                    >
+                      <td className="p-3 text-sm">
+                        {new Date(log.created_at).toLocaleString('tr-TR', {
+                          year: 'numeric',
+                          month: '2-digit',
+                          day: '2-digit',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                        })}
+                      </td>
+                      <td className="p-3 text-sm">
+                        {log.user_email || (
+                          <span className="text-gray-500 italic">Misafir</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-sm">
+                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
+                          log.platform === 'ios' 
+                            ? 'bg-blue-900/30 text-blue-400 border border-blue-800' 
+                            : 'bg-green-900/30 text-green-400 border border-green-800'
+                        }`}>
+                          {log.platform || 'N/A'}
+                        </span>
+                      </td>
+                      <td className="p-3 text-sm">
+                        {log.action_type === 'restore' ? (
+                          <span className="bg-yellow-900/30 text-yellow-400 px-2 py-1 rounded text-xs border border-yellow-800">
+                            Restore
+                          </span>
+                        ) : log.action_type === 'entitlement_sync' ? (
+                          <span className="bg-purple-900/30 text-purple-400 px-2 py-1 rounded text-xs border border-purple-800">
+                            Sync
+                          </span>
+                        ) : (
+                          <span className="bg-green-900/30 text-green-400 px-2 py-1 rounded text-xs border border-green-800">
+                            Satın Alma
+                          </span>
+                        )}
+                      </td>
+                      <td className="p-3 text-sm">
+                        {log.status === 'success' ? (
+                          <span className="text-green-400 font-semibold">✅ Başarılı</span>
+                        ) : log.status === 'expired_downgrade' ? (
+                          <span className="text-yellow-400 font-semibold">⚠️ Süresi Dolmuş</span>
+                        ) : (
+                          <span className="text-red-400 font-semibold">❌ Başarısız</span>
+                        )}
+                      </td>
+                      <td className="p-3 text-sm font-mono text-xs text-gray-400 max-w-xs truncate">
+                        {log.transaction_id || '-'}
+                      </td>
+                      <td className="p-3 text-sm text-red-400 max-w-xs truncate">
+                        {log.error_message || '-'}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Refresh Info */}
+        <div className="mt-4 text-sm text-gray-500 text-center">
+          Sayfa otomatik yenileniyor (force-dynamic). Son güncelleme: {new Date().toLocaleString('tr-TR')}
+        </div>
+      </div>
+    </div>
+  );
+}

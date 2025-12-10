@@ -628,6 +628,38 @@ export async function POST(request: NextRequest) {
 
       console.log(`[Verify Purchase] ✅ User ${user.id} downgraded to free (subscription expired)`);
 
+      // 🔥 LOG: Log expired downgrade
+      try {
+        await sql`
+          INSERT INTO purchase_logs (
+            user_email,
+            user_id,
+            platform,
+            transaction_id,
+            product_id,
+            action_type,
+            status,
+            error_message,
+            details,
+            device_id
+          ) VALUES (
+            ${userEmail},
+            ${user.id},
+            ${platform},
+            ${transactionId || null},
+            ${productId},
+            ${isRestore ? 'restore' : 'entitlement_sync'},
+            'expired_downgrade',
+            ${verificationResult.error || 'Subscription expired'},
+            ${JSON.stringify({ statusCode: verificationResult.statusCode, expiryDate: user.expiry_date })},
+            ${deviceId || null}
+          )
+        `;
+      } catch (logError) {
+        console.error('[Verify Purchase] ❌ Failed to log expired downgrade:', logError);
+        // Continue even if logging fails
+      }
+
       return NextResponse.json({
         success: false,
         expired: true,
@@ -638,6 +670,39 @@ export async function POST(request: NextRequest) {
 
     if (!verificationResult.valid) {
       console.error('[Verify Purchase] ❌ Receipt verification failed:', verificationResult.error);
+      
+      // 🔥 LOG: Log failed purchase attempt
+      try {
+        await sql`
+          INSERT INTO purchase_logs (
+            user_email,
+            user_id,
+            platform,
+            transaction_id,
+            product_id,
+            action_type,
+            status,
+            error_message,
+            details,
+            device_id
+          ) VALUES (
+            ${userEmail},
+            ${user?.id || null},
+            ${platform},
+            ${transactionId || null},
+            ${productId},
+            ${isRestore ? 'restore' : 'initial_buy'},
+            'failed',
+            ${verificationResult.error || 'Receipt verification failed'},
+            ${JSON.stringify({ statusCode: verificationResult.statusCode })},
+            ${deviceId || null}
+          )
+        `;
+      } catch (logError) {
+        console.error('[Verify Purchase] ❌ Failed to log failed purchase:', logError);
+        // Continue even if logging fails
+      }
+      
       return NextResponse.json(
         { error: verificationResult.error || 'Receipt verification failed' },
         { status: 400 }
@@ -685,6 +750,38 @@ export async function POST(request: NextRequest) {
     `;
 
     console.log(`[Verify Purchase] ✅ User ${user.id} purchase verified - Premium activated (no trial)`);
+
+    // 🔥 LOG: Log successful purchase
+    try {
+      await sql`
+        INSERT INTO purchase_logs (
+          user_email,
+          user_id,
+          platform,
+          transaction_id,
+          product_id,
+          action_type,
+          status,
+          error_message,
+          details,
+          device_id
+        ) VALUES (
+          ${userEmail},
+          ${user.id},
+          ${platform},
+          ${transactionId},
+          ${productId},
+          ${isRestore ? 'restore' : 'initial_buy'},
+          'success',
+          NULL,
+          ${JSON.stringify({ expiryDate: expiryDate.toISOString() })},
+          ${deviceId || null}
+        )
+      `;
+    } catch (logError) {
+      console.error('[Verify Purchase] ❌ Failed to log successful purchase:', logError);
+      // Continue even if logging fails
+    }
 
     return NextResponse.json({
       success: true,
