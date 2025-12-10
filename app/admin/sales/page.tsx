@@ -13,7 +13,6 @@ const ADMIN_PASSWORD = process.env.ADMIN_SALES_PASSWORD || '21311211';
  * Password-protected access
  */
 async function AdminSalesContent() {
-
   const sql = getSql();
 
   // Get recent purchase logs (last 200 records)
@@ -42,6 +41,46 @@ async function AdminSalesContent() {
     // Continue with empty logs array
   }
 
+  // Price configuration (TL)
+  const PRICES: { [key: string]: number } = {
+    'premium_monthly': 189,
+    'premium_yearly': 1890, // ~10 ay (tahmini)
+    'com.kriptokirmizi.alerta.premium.monthly': 189,
+    'com.kriptokirmizi.alerta.premium.yearly': 1890,
+    'default': 189, // Default price for unknown products
+  };
+
+  const getPrice = (productId: string | null): number => {
+    if (!productId) return PRICES.default;
+    // Check exact match
+    if (PRICES[productId]) return PRICES[productId];
+    // Check if contains 'monthly'
+    if (productId.toLowerCase().includes('monthly')) return PRICES['premium_monthly'];
+    // Check if contains 'yearly' or 'annual'
+    if (productId.toLowerCase().includes('yearly') || productId.toLowerCase().includes('annual')) {
+      return PRICES['premium_yearly'];
+    }
+    return PRICES.default;
+  };
+
+  // Filter successful purchases (only initial_buy, not restore/sync)
+  const successfulPurchases = logs.filter(
+    (log: any) => log.status === 'success' && log.action_type === 'initial_buy'
+  );
+
+  // Calculate revenue (using date ranges from above)
+
+  const dailyRevenue = successfulPurchases
+    .filter((log: any) => new Date(log.created_at) >= todayStart)
+    .reduce((sum: number, log: any) => sum + getPrice(log.product_id), 0);
+
+  const weeklyRevenue = successfulPurchases
+    .filter((log: any) => new Date(log.created_at) >= weekStart)
+    .reduce((sum: number, log: any) => sum + getPrice(log.product_id), 0);
+
+  const totalRevenue = successfulPurchases
+    .reduce((sum: number, log: any) => sum + getPrice(log.product_id), 0);
+
   // Calculate statistics
   const stats = {
     total: logs.length,
@@ -52,6 +91,9 @@ async function AdminSalesContent() {
     android: logs.filter((log: any) => log.platform === 'android').length,
     restore: logs.filter((log: any) => log.action_type === 'restore').length,
     purchase: logs.filter((log: any) => log.action_type === 'initial_buy').length,
+    dailyRevenue,
+    weeklyRevenue,
+    totalRevenue,
   };
 
   return (
@@ -59,6 +101,31 @@ async function AdminSalesContent() {
       <div className="max-w-7xl mx-auto">
         <h1 className="text-3xl font-bold mb-6">📊 Canlı Satış Takibi</h1>
         
+        {/* Revenue Statistics */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+          <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-700 p-6 rounded-lg">
+            <div className="text-sm text-gray-400 mb-2">💰 Günlük Gelir</div>
+            <div className="text-3xl font-bold text-green-400">{stats.dailyRevenue.toLocaleString('tr-TR')} ₺</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {successfulPurchases.filter((log: any) => new Date(log.created_at) >= todayStart).length} satın alma
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700 p-6 rounded-lg">
+            <div className="text-sm text-gray-400 mb-2">📈 Haftalık Gelir</div>
+            <div className="text-3xl font-bold text-blue-400">{stats.weeklyRevenue.toLocaleString('tr-TR')} ₺</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {successfulPurchases.filter((log: any) => new Date(log.created_at) >= weekStart).length} satın alma
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-700 p-6 rounded-lg">
+            <div className="text-sm text-gray-400 mb-2">🎯 Toplam Gelir</div>
+            <div className="text-3xl font-bold text-purple-400">{stats.totalRevenue.toLocaleString('tr-TR')} ₺</div>
+            <div className="text-xs text-gray-500 mt-1">
+              {successfulPurchases.length} toplam satın alma
+            </div>
+          </div>
+        </div>
+
         {/* Statistics Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-[#1a1a1a] p-4 rounded-lg border border-gray-800">
