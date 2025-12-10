@@ -170,10 +170,16 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
           if (receipt) {
             console.log('[Entitlement Sync] ✅ Receipt found (length:', receipt.length, ')');
             
-            // If there are pending transactions, use the first one's productId
+            // ✅ FIX: Get real orderId from pendingTransactions if available (Android only)
+            // Android native plugin returns transactionId as Google Play orderId (GPA.xxxx)
             if (result?.pendingTransactions && result.pendingTransactions.length > 0) {
-              productId = result.pendingTransactions[0].productId;
-              console.log('[Entitlement Sync] Found active subscription:', productId);
+              const transaction = result.pendingTransactions[0];
+              productId = transaction.productId;
+              orderId = transaction.transactionId || transaction.orderId || null; // ✅ Get real orderId (GPA.xxxx)
+              console.log('[Entitlement Sync] Found active subscription:', {
+                productId,
+                orderId: orderId || 'not available',
+              });
             } else if (result?.originalJson) {
               // Try to extract productId from originalJson
               try {
