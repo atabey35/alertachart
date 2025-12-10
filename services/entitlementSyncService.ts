@@ -21,6 +21,75 @@ interface EntitlementSyncResult {
 export async function syncEntitlements(): Promise<EntitlementSyncResult> {
   console.log('[Entitlement Sync] 🔄 Starting entitlement sync...');
 
+  // ✅ PROACTIVE EXPIRY CHECK: Check and fix expired subscriptions before sync
+  try {
+    // Get user email (from session or localStorage)
+    let userEmail: string | null = null;
+    
+    // Try to get from session
+    try {
+      const sessionResponse = await fetch('/api/auth/session');
+      if (sessionResponse.ok) {
+        const session = await sessionResponse.json();
+        userEmail = session?.user?.email || null;
+      }
+    } catch (e) {
+      // Ignore
+    }
+    
+    // Try to get from localStorage (guest user)
+    if (!userEmail && typeof window !== 'undefined') {
+      try {
+        const guestUserStr = localStorage.getItem('guest_user');
+        if (guestUserStr) {
+          const guestUser = JSON.parse(guestUserStr);
+          userEmail = guestUser.email || null;
+        }
+      } catch (e) {
+        // Ignore
+      }
+    }
+
+    // If we have user email, check plan (this will auto-downgrade expired subscriptions)
+    if (userEmail) {
+      let planApiUrl = '/api/user/plan';
+      // Add guest email as query param if no session (guest user)
+      if (typeof window !== 'undefined') {
+        const guestUserStr = localStorage.getItem('guest_user');
+        if (guestUserStr) {
+          try {
+            const guestUser = JSON.parse(guestUserStr);
+            if (guestUser.email === userEmail) {
+              planApiUrl += `?email=${encodeURIComponent(userEmail)}`;
+            }
+          } catch (e) {
+            // Ignore
+          }
+        }
+      }
+
+      const planResponse = await fetch(planApiUrl, {
+        cache: 'no-store',
+        headers: { 'Cache-Control': 'no-cache' },
+      });
+      
+      if (planResponse.ok) {
+        const planData = await planResponse.json();
+        console.log('[Entitlement Sync] ✅ User plan checked (expired subscriptions auto-downgraded if needed):', {
+          email: userEmail,
+          plan: planData.plan,
+          hasPremiumAccess: planData.hasPremiumAccess,
+          expiryDate: planData.expiryDate,
+        });
+      } else {
+        console.log('[Entitlement Sync] ⚠️ Could not check user plan for expiry (non-critical):', planResponse.status);
+      }
+    }
+  } catch (expiryCheckError) {
+    // Non-critical error - continue with sync
+    console.warn('[Entitlement Sync] ⚠️ Expiry check failed (non-critical, continuing sync):', expiryCheckError);
+  }
+
   // Only run on native platforms (iOS/Android)
   if (typeof window === 'undefined') {
     console.log('[Entitlement Sync] ⚠️ Not available in SSR');
@@ -175,49 +244,16 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
         }
       }
       
-      // 🔥 CRITICAL SECURITY: Check if current user already has premium
-      // Entitlement sync should ONLY work for accounts that already have premium
-      // This prevents new accounts from automatically claiming receipts
-      // Only sync if user is already premium (trial or subscription)
+      // ✅ SECURITY: Backend handles all security checks (receipt hash, device ID, Google Play verification)
+      // Frontend check removed to allow new purchases to be automatically verified
+      // Backend will prevent cross-account receipt usage through its multi-layer security checks
       if (userEmail) {
-        try {
-          const planResponse = await fetch(`/api/user/plan?t=${Date.now()}`, {
-            cache: 'no-store',
-            headers: { 'Cache-Control': 'no-cache' },
-          });
-          
-          if (planResponse.ok) {
-            const planData = await planResponse.json();
-            const hasPremiumAccess = planData.hasPremiumAccess || planData.plan === 'premium';
-            
-            if (!hasPremiumAccess) {
-              console.log('[Entitlement Sync] ⚠️ User does not have premium access - skipping sync to prevent cross-account receipt usage:', {
-                userEmail: userEmail,
-                plan: planData.plan,
-                hasPremiumAccess: hasPremiumAccess,
-              });
-              return { 
-                success: true, 
-                premiumActivated: false,
-                skipped: true,
-                reason: 'User does not have premium access - sync skipped to prevent cross-account receipt usage'
-              };
-            }
-            
-            console.log('[Entitlement Sync] ✅ User has premium access - proceeding with sync:', {
-              userEmail: userEmail,
-              plan: planData.plan,
-              hasPremiumAccess: hasPremiumAccess,
-            });
-          }
-        } catch (planError) {
-          console.warn('[Entitlement Sync] ⚠️ Could not check user plan, proceeding with sync:', planError);
-          // Continue anyway - backend will handle security checks
-        }
+        console.log('[Entitlement Sync] ✅ Proceeding with sync - backend will validate security:', {
+          userEmail: userEmail,
+        });
       } else {
         // No user email - this is a guest user
-        // For guest users, we need to be more careful
-        // Only sync if device already has premium (checked by backend)
+        // Backend will check device security
         console.log('[Entitlement Sync] ⚠️ No user email - guest user, backend will check device security');
       }
 

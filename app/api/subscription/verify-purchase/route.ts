@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     const body = await request.json();
-    const { platform, productId, transactionId, receipt, deviceId } = body;
+    const { platform, productId, transactionId, receipt, deviceId, isRestore } = body;
 
     console.log('[Verify Purchase] 📥 Request received:', {
       hasSession: !!session?.user?.email,
@@ -101,22 +101,41 @@ export async function POST(request: NextRequest) {
         });
         
         if (differentUser) {
-          console.error('[Verify Purchase] ❌ SECURITY: Receipt already linked to different account (PRE-CHECK by hash):', {
-            receiptHash: receiptHashId,
-            receiptHashPrefix: receiptHashPrefix,
-            receiptHashPattern: receiptHashPattern,
-            sessionEmail: session?.user?.email,
-            existingUserEmail: differentUser.email,
-            existingUserId: differentUser.id,
-            existingSubscriptionId: differentUser.subscription_id,
-            allFoundUsers: existingReceiptUsers.length,
-          });
-          return NextResponse.json(
-            { 
-              error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
-            },
-            { status: 403 }
-          );
+          // ✅ RESTORE FLEXIBILITY: If this is a restore operation, allow same device re-verification
+          // This allows users to restore purchases on the same device even if they're guest users
+          // Fraud prevention: Still check device ID match
+          if (isRestore && deviceId && differentUser.device_id === deviceId) {
+            console.log('[Verify Purchase] ✅ RESTORE: Same receipt on same device - allowing restore:', {
+              receiptHash: receiptHashId,
+              receiptHashPrefix: receiptHashPrefix,
+              sessionEmail: session?.user?.email,
+              existingUserEmail: differentUser.email,
+              existingDeviceId: differentUser.device_id,
+              currentDeviceId: deviceId,
+              isRestore: true,
+            });
+            // Allow restore - same device re-verification
+          } else {
+            console.error('[Verify Purchase] ❌ SECURITY: Receipt already linked to different account (PRE-CHECK by hash):', {
+              receiptHash: receiptHashId,
+              receiptHashPrefix: receiptHashPrefix,
+              receiptHashPattern: receiptHashPattern,
+              sessionEmail: session?.user?.email,
+              existingUserEmail: differentUser.email,
+              existingUserId: differentUser.id,
+              existingSubscriptionId: differentUser.subscription_id,
+              existingDeviceId: differentUser.device_id,
+              currentDeviceId: deviceId,
+              isRestore: isRestore || false,
+              allFoundUsers: existingReceiptUsers.length,
+            });
+            return NextResponse.json(
+              { 
+                error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
+              },
+              { status: 403 }
+            );
+          }
         }
       }
       
@@ -168,7 +187,7 @@ export async function POST(request: NextRequest) {
       
       if (existingDevicePremium.length > 0) {
         // 🔥 CRITICAL: If device has premium, check if current user is the premium user
-        // If not, REJECT immediately - receipt belongs to the premium account, not new account
+        // If not, check if this is a restore operation (same device re-verification)
         const isPremiumUser = existingDevicePremium.some((u: any) => {
           if (!session?.user?.email) {
             return false; // No session = not the premium user
@@ -177,26 +196,39 @@ export async function POST(request: NextRequest) {
         });
         
         if (!isPremiumUser) {
-          const firstPremiumUser = existingDevicePremium[0];
-          console.error('[Verify Purchase] ❌ CRITICAL SECURITY: Device already has premium linked to different account (PRE-CHECK):', {
-            deviceId: deviceId,
-            sessionEmail: session?.user?.email,
-            existingPremiumUserEmail: firstPremiumUser.email,
-            existingPremiumUserId: firstPremiumUser.id,
-            existingPremiumSubscriptionId: firstPremiumUser.subscription_id,
-            existingPremiumPlatform: firstPremiumUser.subscription_platform,
-            totalPremiumUsers: existingDevicePremium.length,
-          });
-          return NextResponse.json(
-            { 
-              error: 'This device already has a premium subscription linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts. Please use the account that originally purchased the subscription.' 
-            },
-            { status: 403 }
-          );
+          // ✅ RESTORE FLEXIBILITY: If this is a restore operation on the same device, allow it
+          // This handles guest user restore scenarios where the same device has premium
+          if (isRestore) {
+            console.log('[Verify Purchase] ✅ RESTORE: Device already has premium - allowing restore on same device:', {
+              deviceId: deviceId,
+              sessionEmail: session?.user?.email,
+              isRestore: true,
+              existingPremiumUsers: existingDevicePremium.length,
+            });
+            // Allow restore - same device re-verification
+          } else {
+            const firstPremiumUser = existingDevicePremium[0];
+            console.error('[Verify Purchase] ❌ CRITICAL SECURITY: Device already has premium linked to different account (PRE-CHECK):', {
+              deviceId: deviceId,
+              sessionEmail: session?.user?.email,
+              existingPremiumUserEmail: firstPremiumUser.email,
+              existingPremiumUserId: firstPremiumUser.id,
+              existingPremiumSubscriptionId: firstPremiumUser.subscription_id,
+              existingPremiumPlatform: firstPremiumUser.subscription_platform,
+              totalPremiumUsers: existingDevicePremium.length,
+              isRestore: false,
+            });
+            return NextResponse.json(
+              { 
+                error: 'This device already has a premium subscription linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts. Please use the account that originally purchased the subscription.' 
+              },
+              { status: 403 }
+            );
+          }
+        } else {
+          // Same user - this is a re-verification, which is OK
+          console.log('[Verify Purchase] ✅ Device premium check passed - same user re-verification');
         }
-        
-        // Same user - this is a re-verification, which is OK
-        console.log('[Verify Purchase] ✅ Device premium check passed - same user re-verification');
       } else {
         console.log('[Verify Purchase] ✅ Device premium check passed - no existing premium on device');
       }
@@ -416,25 +448,43 @@ export async function POST(request: NextRequest) {
       if (existingSubscription.length > 0) {
         const existingUser = existingSubscription[0];
         
-        // If receipt is already linked to a different user account, reject
+        // If receipt is already linked to a different user account, check if restore
         if (existingUser.id !== user.id) {
-          console.error('[Verify Purchase] ❌ SECURITY: Receipt already linked to different account (by transactionId):', {
-            receiptTransactionId: transactionId,
-            currentUserEmail: userEmail,
-            currentUserId: user.id,
-            existingUserEmail: existingUser.email,
-            existingUserId: existingUser.id,
-          });
-          return NextResponse.json(
-            { 
-              error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
-            },
-            { status: 403 }
-          );
+          // ✅ RESTORE FLEXIBILITY: If this is a restore operation, allow same device re-verification
+          if (isRestore && deviceId && existingUser.device_id === deviceId) {
+            console.log('[Verify Purchase] ✅ RESTORE: Same transaction on same device - allowing restore:', {
+              receiptTransactionId: transactionId,
+              currentUserEmail: userEmail,
+              currentUserId: user.id,
+              existingUserEmail: existingUser.email,
+              existingUserId: existingUser.id,
+              existingDeviceId: existingUser.device_id,
+              currentDeviceId: deviceId,
+              isRestore: true,
+            });
+            // Allow restore - same device re-verification
+          } else {
+            console.error('[Verify Purchase] ❌ SECURITY: Receipt already linked to different account (by transactionId):', {
+              receiptTransactionId: transactionId,
+              currentUserEmail: userEmail,
+              currentUserId: user.id,
+              existingUserEmail: existingUser.email,
+              existingUserId: existingUser.id,
+              existingDeviceId: existingUser.device_id,
+              currentDeviceId: deviceId,
+              isRestore: isRestore || false,
+            });
+            return NextResponse.json(
+              { 
+                error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
+              },
+              { status: 403 }
+            );
+          }
+        } else {
+          // Receipt is already linked to this user - this is a re-verification (OK)
+          console.log('[Verify Purchase] ℹ️ Receipt already linked to this user, re-verifying...');
         }
-        
-        // Receipt is already linked to this user - this is a re-verification (OK)
-        console.log('[Verify Purchase] ℹ️ Receipt already linked to this user, re-verifying...');
       }
     }
     
@@ -459,21 +509,42 @@ export async function POST(request: NextRequest) {
       
       if (existingReceiptUsers.length > 0) {
         const existingUser = existingReceiptUsers[0];
-        console.error('[Verify Purchase] ❌ SECURITY: Same receipt already linked to different account (by receipt hash):', {
-          receiptHash: receiptHashId,
-          receiptHashPrefix: receiptHashPrefix,
-          currentUserEmail: userEmail,
-          currentUserId: user.id,
-          existingUserEmail: existingUser.email,
-          existingUserId: existingUser.id,
-          existingSubscriptionId: existingUser.subscription_id,
-        });
-        return NextResponse.json(
-          { 
-            error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
-          },
-          { status: 403 }
-        );
+        
+        // ✅ RESTORE FLEXIBILITY: If this is a restore operation, allow same device re-verification
+        if (isRestore && deviceId && existingUser.device_id === deviceId) {
+          console.log('[Verify Purchase] ✅ RESTORE: Same receipt hash on same device - allowing restore:', {
+            receiptHash: receiptHashId,
+            receiptHashPrefix: receiptHashPrefix,
+            currentUserEmail: userEmail,
+            currentUserId: user.id,
+            existingUserEmail: existingUser.email,
+            existingUserId: existingUser.id,
+            existingSubscriptionId: existingUser.subscription_id,
+            existingDeviceId: existingUser.device_id,
+            currentDeviceId: deviceId,
+            isRestore: true,
+          });
+          // Allow restore - same device re-verification
+        } else {
+          console.error('[Verify Purchase] ❌ SECURITY: Same receipt already linked to different account (by receipt hash):', {
+            receiptHash: receiptHashId,
+            receiptHashPrefix: receiptHashPrefix,
+            currentUserEmail: userEmail,
+            currentUserId: user.id,
+            existingUserEmail: existingUser.email,
+            existingUserId: existingUser.id,
+            existingSubscriptionId: existingUser.subscription_id,
+            existingDeviceId: existingUser.device_id,
+            currentDeviceId: deviceId,
+            isRestore: isRestore || false,
+          });
+          return NextResponse.json(
+            { 
+              error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
+            },
+            { status: 403 }
+          );
+        }
       }
       
       console.log('[Verify Purchase] ✅ Receipt hash check passed:', {
@@ -500,24 +571,70 @@ export async function POST(request: NextRequest) {
       
       if (existingDeviceUsers.length > 0) {
         const existingUser = existingDeviceUsers[0];
-        console.error('[Verify Purchase] ❌ SECURITY: Device already has premium linked to different account:', {
-          deviceId: deviceId,
-          currentUserEmail: userEmail,
-          currentUserId: user.id,
-          existingUserEmail: existingUser.email,
-          existingUserId: existingUser.id,
-        });
-        return NextResponse.json(
-          { 
-            error: 'This device already has a premium subscription linked to another account. Please use the account that originally purchased the subscription, or contact support if you believe this is an error.' 
-          },
-          { status: 403 }
-        );
+        
+        // ✅ RESTORE FLEXIBILITY: If this is a restore operation on the same device, allow it
+        // This handles guest user restore scenarios where the same device has premium
+        if (isRestore) {
+          console.log('[Verify Purchase] ✅ RESTORE: Device already has premium - allowing restore on same device:', {
+            deviceId: deviceId,
+            currentUserEmail: userEmail,
+            currentUserId: user.id,
+            existingUserEmail: existingUser.email,
+            existingUserId: existingUser.id,
+            isRestore: true,
+          });
+          // Allow restore - same device re-verification
+        } else {
+          console.error('[Verify Purchase] ❌ SECURITY: Device already has premium linked to different account:', {
+            deviceId: deviceId,
+            currentUserEmail: userEmail,
+            currentUserId: user.id,
+            existingUserEmail: existingUser.email,
+            existingUserId: existingUser.id,
+            isRestore: false,
+          });
+          return NextResponse.json(
+            { 
+              error: 'This device already has a premium subscription linked to another account. Please use the account that originally purchased the subscription, or contact support if you believe this is an error.' 
+            },
+            { status: 403 }
+          );
+        }
       }
     }
 
     // Verify receipt with Apple/Google
     const verificationResult = await verifyReceipt(platform, receipt, productId);
+
+    // ✅ EXPIRED SUBSCRIPTION HANDLING: If subscription expired, downgrade user to free
+    if (verificationResult.expired) {
+      console.log('[Verify Purchase] ⚠️ Subscription expired - downgrading user to free:', {
+        userId: user.id,
+        userEmail: userEmail,
+        statusCode: verificationResult.statusCode,
+      });
+
+      // Downgrade user to free
+      await sql`
+        UPDATE users
+        SET 
+          plan = 'free',
+          expiry_date = NULL,
+          subscription_platform = NULL,
+          subscription_id = NULL,
+          updated_at = NOW()
+        WHERE id = ${user.id}
+      `;
+
+      console.log(`[Verify Purchase] ✅ User ${user.id} downgraded to free (subscription expired)`);
+
+      return NextResponse.json({
+        success: false,
+        expired: true,
+        message: 'Subscription has expired. Your account has been downgraded to free.',
+        error: verificationResult.error || 'Subscription expired',
+      }, { status: 200 }); // Return 200 with expired flag (not 400, since this is expected)
+    }
 
     if (!verificationResult.valid) {
       console.error('[Verify Purchase] ❌ Receipt verification failed:', verificationResult.error);
@@ -592,7 +709,7 @@ async function verifyReceipt(
   platform: 'ios' | 'android',
   receipt: string,
   productId: string
-): Promise<{ valid: boolean; error?: string; expiryDate?: Date }> {
+): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number }> {
   if (platform === 'ios') {
     return await verifyAppleReceipt(receipt, productId);
   } else {
@@ -609,7 +726,7 @@ async function verifyReceipt(
 async function verifyAppleReceipt(
   receipt: string,
   productId: string
-): Promise<{ valid: boolean; error?: string; expiryDate?: Date }> {
+): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number }> {
   try {
     // Basic validation
     if (!receipt || receipt.length < 10) {
@@ -759,6 +876,12 @@ async function verifyAppleReceipt(
         return { valid: true, expiryDate };
       }
 
+      // Status 21006 = Expired subscription (special case - need to downgrade user)
+      if (sandboxResult.status === 21006) {
+        console.log('[Verify Purchase] ⚠️ Status 21006 (Sandbox): Subscription expired');
+        return { valid: false, expired: true, error: 'This receipt is valid but the subscription has expired', statusCode: 21006 };
+      }
+
       // Sandbox verification also failed
       const sandboxErrorMsg = getSandboxErrorMessage(sandboxResult.status);
       console.error('[Verify Purchase] ❌ SANDBOX verification failed:', {
@@ -767,7 +890,8 @@ async function verifyAppleReceipt(
       });
       return { 
         valid: false, 
-        error: `Sandbox verification failed (status ${sandboxResult.status}): ${sandboxErrorMsg}` 
+        error: `Sandbox verification failed (status ${sandboxResult.status}): ${sandboxErrorMsg}`,
+        statusCode: sandboxResult.status
       };
     }
 
@@ -781,10 +905,16 @@ async function verifyAppleReceipt(
       };
     }
 
+    // Status 21006 = Expired subscription (special case - need to downgrade user)
+    if (productionResult.status === 21006) {
+      console.log('[Verify Purchase] ⚠️ Status 21006: Subscription expired');
+      return { valid: false, expired: true, error: 'This receipt is valid but the subscription has expired', statusCode: 21006 };
+    }
+
     // Other error statuses
     const errorMessage = getProductionErrorMessage(productionResult.status);
     console.error('[Verify Purchase] ❌ Production verification failed:', errorMessage);
-    return { valid: false, error: errorMessage };
+    return { valid: false, error: errorMessage, statusCode: productionResult.status };
   } catch (error: any) {
     console.error('[Verify Purchase] ❌ Apple verification exception:', error);
     return { valid: false, error: error.message || 'Network error during Apple verification' };
@@ -927,7 +1057,7 @@ async function createJWT(email: string, privateKey: string): Promise<string> {
 async function verifyGoogleReceipt(
   receipt: string,
   productId: string
-): Promise<{ valid: boolean; error?: string; expiryDate?: Date }> {
+): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number }> {
   try {
     // Basic validation
     if (!receipt || receipt.length < 10) {
@@ -994,6 +1124,13 @@ async function verifyGoogleReceipt(
     let expiryDate: Date | undefined;
     if (purchaseData.expiryTimeMillis) {
       expiryDate = new Date(parseInt(purchaseData.expiryTimeMillis));
+      
+      // ✅ EXPIRED CHECK: If expiry date is in the past, mark as expired
+      const now = new Date();
+      if (expiryDate <= now) {
+        console.log('[Verify Purchase] ⚠️ Google subscription expired (expiry date in past)');
+        return { valid: false, expired: true, error: 'Subscription has expired', expiryDate, statusCode: 21006 };
+      }
     }
 
     console.log('[Verify Purchase] ✅ Google purchase validated via API', {

@@ -72,7 +72,44 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
     
-    const user = users[0] as any;
+    let user = users[0] as any;
+    
+    // ✅ PROACTIVE EXPIRY CHECK: If expiry_date is in the past, downgrade to free
+    if (user.plan === 'premium' && user.expiry_date) {
+      const expiry = new Date(user.expiry_date);
+      const now = new Date();
+      if (expiry <= now) {
+        console.log('[User Plan API] ⚠️ Premium expired - downgrading user to free:', {
+          userId: user.id,
+          email: userEmail,
+          expiryDate: user.expiry_date,
+          now: now.toISOString(),
+        });
+
+        // Downgrade user to free
+        await sql`
+          UPDATE users
+          SET 
+            plan = 'free',
+            expiry_date = NULL,
+            subscription_platform = NULL,
+            subscription_id = NULL,
+            updated_at = NOW()
+          WHERE id = ${user.id}
+        `;
+
+        // Update local user object for response
+        user = {
+          ...user,
+          plan: 'free',
+          expiry_date: null,
+          subscription_platform: null,
+          subscription_id: null,
+        };
+
+        console.log(`[User Plan API] ✅ User ${user.id} downgraded to free (expired subscription)`);
+      }
+    }
     
     // Check premium and trial status using utility functions
     const premium = isPremium(user);
