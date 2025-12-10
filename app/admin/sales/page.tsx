@@ -1,41 +1,18 @@
-import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { cookies } from 'next/headers';
+import PasswordForm from './PasswordForm';
 
 export const dynamic = 'force-dynamic'; // Her girişte veriyi taze çek
 export const revalidate = 0;
 
+const ADMIN_PASSWORD = process.env.ADMIN_SALES_PASSWORD || '21311211';
+
 /**
  * Admin Sales Tracking Page
  * Real-time purchase logs for admin monitoring
+ * Password-protected access
  */
-export default async function AdminSalesPage() {
-  // ✅ ADMIN CHECK: Only allow authorized admins
-  const session = await getServerSession(authOptions);
-  const adminEmail = process.env.ADMIN_EMAIL || 'kriptokirmizi@gmail.com'; // Default admin email
-  
-  if (!session?.user?.email) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Unauthorized</h1>
-          <p>You must be logged in to access this page.</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (session.user.email !== adminEmail) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Access Denied</h1>
-          <p>You do not have permission to access this page.</p>
-        </div>
-      </div>
-    );
-  }
+async function AdminSalesContent() {
 
   const sql = getSql();
 
@@ -222,4 +199,23 @@ export default async function AdminSalesPage() {
       </div>
     </div>
   );
+}
+
+/**
+ * Main page component
+ * Checks cookie for password authentication
+ */
+export default async function AdminSalesPage() {
+  // Check if password is set in cookie
+  const cookieStore = await cookies();
+  const salesAuthCookie = cookieStore.get('admin_sales_auth');
+
+  // Check password from cookie
+  if (!salesAuthCookie || salesAuthCookie.value !== ADMIN_PASSWORD) {
+    // Show password form
+    return <PasswordForm />;
+  }
+
+  // Password is correct, show admin content
+  return <AdminSalesContent />;
 }
