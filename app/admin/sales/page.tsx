@@ -68,7 +68,11 @@ async function AdminSalesContent() {
     (log: any) => log.status === 'success' && log.action_type === 'initial_buy'
   );
 
-  // Calculate revenue (using date ranges from above)
+  // Calculate date ranges for revenue
+  const now = new Date();
+  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const weekStart = new Date(now);
+  weekStart.setDate(weekStart.getDate() - 7);
 
   const dailyRevenue = successfulPurchases
     .filter((log: any) => new Date(log.created_at) >= todayStart)
@@ -80,6 +84,17 @@ async function AdminSalesContent() {
 
   const totalRevenue = successfulPurchases
     .reduce((sum: number, log: any) => sum + getPrice(log.product_id), 0);
+
+  // Count purchases for display
+  const dailyPurchaseCount = successfulPurchases.filter((log: any) => {
+    const logDate = new Date(log.created_at);
+    return logDate >= todayStart;
+  }).length;
+
+  const weeklyPurchaseCount = successfulPurchases.filter((log: any) => {
+    const logDate = new Date(log.created_at);
+    return logDate >= weekStart;
+  }).length;
 
   // Calculate statistics
   const stats = {
@@ -94,6 +109,8 @@ async function AdminSalesContent() {
     dailyRevenue,
     weeklyRevenue,
     totalRevenue,
+    dailyPurchaseCount,
+    weeklyPurchaseCount,
   };
 
   return (
@@ -107,14 +124,14 @@ async function AdminSalesContent() {
             <div className="text-sm text-gray-400 mb-2">💰 Günlük Gelir</div>
             <div className="text-3xl font-bold text-green-400">{stats.dailyRevenue.toLocaleString('tr-TR')} ₺</div>
             <div className="text-xs text-gray-500 mt-1">
-              {successfulPurchases.filter((log: any) => new Date(log.created_at) >= todayStart).length} satın alma
+              {stats.dailyPurchaseCount} satın alma
             </div>
           </div>
           <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-700 p-6 rounded-lg">
             <div className="text-sm text-gray-400 mb-2">📈 Haftalık Gelir</div>
             <div className="text-3xl font-bold text-blue-400">{stats.weeklyRevenue.toLocaleString('tr-TR')} ₺</div>
             <div className="text-xs text-gray-500 mt-1">
-              {successfulPurchases.filter((log: any) => new Date(log.created_at) >= weekStart).length} satın alma
+              {stats.weeklyPurchaseCount} satın alma
             </div>
           </div>
           <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-700 p-6 rounded-lg">
