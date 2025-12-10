@@ -27,3 +27,7 @@
 ---
 
 **Not**: Bu güncelleme özellikle misafir kullanıcılar için önemli iyileştirmeler içermektedir. Premium özellikler artık tüm kullanıcı tipleri için sorunsuz çalışmaktadır.
+
+
+
+

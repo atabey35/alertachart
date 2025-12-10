@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     const body = await request.json();
-    const { platform, productId, transactionId, receipt, deviceId, isRestore } = body;
+    const { platform, productId, transactionId, receipt, deviceId, isRestore, isSync } = body;
 
     console.log('[Verify Purchase] 📥 Request received:', {
       hasSession: !!session?.user?.email,
@@ -608,10 +608,16 @@ export async function POST(request: NextRequest) {
 
     // ✅ EXPIRED SUBSCRIPTION HANDLING: If subscription expired, downgrade user to free
     if (verificationResult.expired) {
+      // ✅ CHECK: Was user already free? (to avoid duplicate logs from sync)
+      const wasAlreadyFree = user.plan === 'free';
+      const shouldLogExpired = isSync ? !wasAlreadyFree : true; // For sync: only log if status changed
+
       console.log('[Verify Purchase] ⚠️ Subscription expired - downgrading user to free:', {
         userId: user.id,
         userEmail: userEmail,
         statusCode: verificationResult.statusCode,
+        wasAlreadyFree,
+        shouldLogExpired,
       });
 
       // Downgrade user to free
@@ -626,38 +632,44 @@ export async function POST(request: NextRequest) {
         WHERE id = ${user.id}
       `;
 
-      console.log(`[Verify Purchase] ✅ User ${user.id} downgraded to free (subscription expired)`);
+      if (shouldLogExpired) {
+        console.log(`[Verify Purchase] ✅ User ${user.id} downgraded to free (subscription expired)`);
+      } else {
+        console.log(`[Verify Purchase] ✅ User ${user.id} already free - skipping duplicate log`);
+      }
 
-      // 🔥 LOG: Log expired downgrade
-      try {
-        await sql`
-          INSERT INTO purchase_logs (
-            user_email,
-            user_id,
-            platform,
-            transaction_id,
-            product_id,
-            action_type,
-            status,
-            error_message,
-            details,
-            device_id
-          ) VALUES (
-            ${userEmail},
-            ${user.id},
-            ${platform},
-            ${transactionId || null},
-            ${productId},
-            ${isRestore ? 'restore' : 'entitlement_sync'},
-            'expired_downgrade',
-            ${verificationResult.error || 'Subscription expired'},
-            ${JSON.stringify({ statusCode: verificationResult.statusCode, expiryDate: user.expiry_date })},
-            ${deviceId || null}
-          )
-        `;
-      } catch (logError) {
-        console.error('[Verify Purchase] ❌ Failed to log expired downgrade:', logError);
-        // Continue even if logging fails
+      // 🔥 LOG: Only log if status changed (prevent duplicate logs from entitlement sync)
+      if (shouldLogExpired) {
+        try {
+          await sql`
+            INSERT INTO purchase_logs (
+              user_email,
+              user_id,
+              platform,
+              transaction_id,
+              product_id,
+              action_type,
+              status,
+              error_message,
+              details,
+              device_id
+            ) VALUES (
+              ${userEmail},
+              ${user.id},
+              ${platform},
+              ${transactionId || null},
+              ${productId},
+              ${isSync ? 'entitlement_sync' : (isRestore ? 'restore' : 'initial_buy')},
+              'expired_downgrade',
+              ${verificationResult.error || 'Subscription expired'},
+              ${JSON.stringify({ statusCode: verificationResult.statusCode, expiryDate: user.expiry_date })},
+              ${deviceId || null}
+            )
+          `;
+        } catch (logError) {
+          console.error('[Verify Purchase] ❌ Failed to log expired downgrade:', logError);
+          // Continue even if logging fails
+        }
       }
 
       return NextResponse.json({
@@ -691,7 +703,7 @@ export async function POST(request: NextRequest) {
             ${platform},
             ${transactionId || null},
             ${productId},
-            ${isRestore ? 'restore' : 'initial_buy'},
+            ${isSync ? 'entitlement_sync' : (isRestore ? 'restore' : 'initial_buy')},
             'failed',
             ${verificationResult.error || 'Receipt verification failed'},
             ${JSON.stringify({ statusCode: verificationResult.statusCode })},
@@ -727,6 +739,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // ✅ CHECK: Was user already premium with same transaction? (to avoid duplicate logs)
+    // If this is an automatic sync (isSync), don't log if user already has premium with same transaction
+    const wasAlreadyPremium = user.plan === 'premium';
+    const hasSameTransaction = user.subscription_id === transactionId;
+    const shouldLog = isSync 
+      ? !(wasAlreadyPremium && hasSameTransaction) // For sync: only log if status changed
+      : true; // For manual restore/purchase: always log
+
     // Update user subscription
     // IAP purchase = direct premium, NOT trial
     // Clear any existing trial data by setting trial_ended_at to past (before now)
@@ -749,38 +769,44 @@ export async function POST(request: NextRequest) {
       WHERE id = ${user.id}
     `;
 
-    console.log(`[Verify Purchase] ✅ User ${user.id} purchase verified - Premium activated (no trial)`);
+    if (shouldLog) {
+      console.log(`[Verify Purchase] ✅ User ${user.id} purchase verified - Premium ${wasAlreadyPremium ? 'updated' : 'activated'} (no trial)`);
+    } else {
+      console.log(`[Verify Purchase] ✅ User ${user.id} purchase re-verified - No status change (skipping log to avoid duplicates)`);
+    }
 
-    // 🔥 LOG: Log successful purchase
-    try {
-      await sql`
-        INSERT INTO purchase_logs (
-          user_email,
-          user_id,
-          platform,
-          transaction_id,
-          product_id,
-          action_type,
-          status,
-          error_message,
-          details,
-          device_id
-        ) VALUES (
-          ${userEmail},
-          ${user.id},
-          ${platform},
-          ${transactionId},
-          ${productId},
-          ${isRestore ? 'restore' : 'initial_buy'},
-          'success',
-          NULL,
-          ${JSON.stringify({ expiryDate: expiryDate.toISOString() })},
-          ${deviceId || null}
-        )
-      `;
-    } catch (logError) {
-      console.error('[Verify Purchase] ❌ Failed to log successful purchase:', logError);
-      // Continue even if logging fails
+    // 🔥 LOG: Only log if status changed or new transaction (prevent duplicate logs from entitlement sync)
+    if (shouldLog) {
+      try {
+        await sql`
+          INSERT INTO purchase_logs (
+            user_email,
+            user_id,
+            platform,
+            transaction_id,
+            product_id,
+            action_type,
+            status,
+            error_message,
+            details,
+            device_id
+          ) VALUES (
+            ${userEmail},
+            ${user.id},
+            ${platform},
+            ${transactionId},
+            ${productId},
+            ${isSync ? 'entitlement_sync' : (isRestore ? 'restore' : 'initial_buy')},
+            'success',
+            NULL,
+            ${JSON.stringify({ expiryDate: expiryDate.toISOString(), wasAlreadyPremium })},
+            ${deviceId || null}
+          )
+        `;
+      } catch (logError) {
+        console.error('[Verify Purchase] ❌ Failed to log successful purchase:', logError);
+        // Continue even if logging fails
+      }
     }
 
     return NextResponse.json({

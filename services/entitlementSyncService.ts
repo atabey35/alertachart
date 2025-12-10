@@ -330,6 +330,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
       }
 
       // Validate receipt with backend
+      // Note: isSync flag indicates this is an automatic entitlement sync, not a manual restore or new purchase
       const validationResponse = await fetch('/api/subscription/verify-purchase', {
         method: 'POST',
         headers: {
@@ -341,6 +342,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
           transactionId: transactionId,
           receipt: receipt,
           deviceId: deviceId,
+          isSync: true, // ✅ Indicate this is an automatic sync (not manual restore or new purchase)
         }),
       });
 
