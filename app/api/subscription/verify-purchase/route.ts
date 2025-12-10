@@ -1075,31 +1075,13 @@ function getSandboxErrorMessage(status: number): string {
  */
 async function getGoogleAccessToken(): Promise<string> {
   try {
-    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+    // ✅ FIX: Use separate environment variables (GOOGLE_PLAY_CLIENT_EMAIL and GOOGLE_PLAY_PRIVATE_KEY)
+    // Instead of single JSON key (GOOGLE_SERVICE_ACCOUNT_KEY)
+    const client_email = process.env.GOOGLE_PLAY_CLIENT_EMAIL;
+    const private_key = process.env.GOOGLE_PLAY_PRIVATE_KEY?.replace(/\\n/g, '\n'); // Fix line breaks
     
-    if (!serviceAccountKey) {
-      throw new Error('GOOGLE_SERVICE_ACCOUNT_KEY not set');
-    }
-
-    // Parse service account key (can be JSON string or base64 encoded)
-    let serviceAccount: any;
-    try {
-      // Try parsing as JSON string first
-      serviceAccount = JSON.parse(serviceAccountKey);
-    } catch {
-      // If that fails, try base64 decode
-      try {
-        const decoded = Buffer.from(serviceAccountKey, 'base64').toString('utf-8');
-        serviceAccount = JSON.parse(decoded);
-      } catch {
-        throw new Error('Invalid GOOGLE_SERVICE_ACCOUNT_KEY format');
-      }
-    }
-
-    const { private_key, client_email } = serviceAccount;
-
-    if (!private_key || !client_email) {
-      throw new Error('Invalid service account key: missing private_key or client_email');
+    if (!client_email || !private_key) {
+      throw new Error('GOOGLE_PLAY_CLIENT_EMAIL or GOOGLE_PLAY_PRIVATE_KEY not set');
     }
 
     // Create JWT for OAuth2
@@ -1188,14 +1170,17 @@ async function verifyGoogleReceipt(
     }
 
     const packageName = process.env.ANDROID_PACKAGE_NAME || 'com.kriptokirmizi.alerta';
-    const serviceAccountKey = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+    
+    // ✅ FIX: Check for separate environment variables instead of single JSON key
+    const clientEmail = process.env.GOOGLE_PLAY_CLIENT_EMAIL;
+    const privateKey = process.env.GOOGLE_PLAY_PRIVATE_KEY;
 
-    // ✅ FALLBACK: For individual developer accounts, Service Account Key may not be available
+    // ✅ FALLBACK: For individual developer accounts, Service Account credentials may not be available
     // Google removed API access for individual accounts in late 2024
     // In this case, we rely on native plugin verification (Google Play Billing Library)
     // which already validates the purchase token before sending it to backend
-    if (!serviceAccountKey) {
-      console.warn('[Verify Purchase] ⚠️ GOOGLE_SERVICE_ACCOUNT_KEY not set - Using native verification fallback (individual account)');
+    if (!clientEmail || !privateKey) {
+      console.warn('[Verify Purchase] ⚠️ Google Play credentials not set - Using native verification fallback (individual account)');
       
       // ✅ SECURITY: Basic validation - ensure receipt looks like a valid Google Play purchase token
       // Google Play purchase tokens are base64-like strings, typically 20-200 characters
@@ -1304,8 +1289,8 @@ async function verifyGoogleReceipt(
     console.error('[Verify Purchase] ❌ Google verification error:', error);
     
     // If it's a known error, return specific message
-    if (error.message?.includes('GOOGLE_SERVICE_ACCOUNT_KEY')) {
-      return { valid: false, error: 'Google service account not configured' };
+    if (error.message?.includes('GOOGLE_PLAY_CLIENT_EMAIL') || error.message?.includes('GOOGLE_PLAY_PRIVATE_KEY')) {
+      return { valid: false, error: 'Google Play service account credentials not configured' };
     }
     
     return { valid: false, error: error.message || 'Google Play verification failed' };
