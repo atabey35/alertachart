@@ -606,6 +606,48 @@ export async function POST(request: NextRequest) {
     // Verify receipt with Apple/Google
     const verificationResult = await verifyReceipt(platform, receipt, productId);
 
+    // 🔥 GÜVENLİK DUVARI: Apple/Google'dan gelen GERÇEK ID'yi kullan
+    // Frontend'den gelen 'receipt_...' hash'ine güvenme, çünkü değişebilir.
+    let realTransactionId = transactionId; // Varsayılan olarak frontend'den geleni al
+
+    if (verificationResult.originalTransactionId) {
+        realTransactionId = verificationResult.originalTransactionId;
+        console.log(`[Verify Purchase] 🔒 Switching to REAL ID: ${realTransactionId}`);
+    } else if (platform === 'android' && verificationResult.valid) {
+         // Android için zaten orderId kullanıyorsun ama garanti olsun
+         // Google verify fonksiyonunda da benzer şekilde orderId döndürebilirsin
+    }
+
+    // 🔥 KRİTİK KONTROL: Bu Gerçek ID başka bir kullanıcıda var mı?
+    // Verification başarılı olsa bile, bu abonelik başkasına aitse BURADA YAKALA.
+    if (verificationResult.valid && !verificationResult.expired) {
+        const stolenCheck = await sql`
+            SELECT id, email 
+            FROM users 
+            WHERE subscription_id = ${realTransactionId} 
+              AND id != ${user.id} 
+              AND plan = 'premium'
+            LIMIT 1
+        `;
+
+        if (stolenCheck.length > 0) {
+            const thief = stolenCheck[0];
+            
+            // Eğer Restore işlemi DEĞİLSE ve kullanıcılar farklıysa -> ENGELLE
+            // (Restore ise ve cihaz aynıysa izin veriyorsun, o mantık kalabilir)
+            if (!isRestore) {
+                console.error(`[Verify Purchase] 🚨 FRAUD DETECTED: Subscription ${realTransactionId} is owned by ${thief.email}, but ${userEmail} is trying to Sync it.`);
+                
+                // Log at
+                await sql`INSERT INTO purchase_logs (user_email, action_type, status, details) VALUES (${userEmail}, 'fraud_attempt', 'blocked', 'Account sharing attempt detected')`;
+
+                return NextResponse.json({ 
+                    error: 'Bu abonelik başka bir hesaba aittir. Paylaşım yapılamaz.' 
+                }, { status: 403 });
+            }
+        }
+    }
+
     // ✅ EXPIRED SUBSCRIPTION HANDLING: If subscription expired, downgrade user to free
     if (verificationResult.expired) {
       // ✅ CHECK: Was user already free? (to avoid duplicate logs from sync)
@@ -657,7 +699,7 @@ export async function POST(request: NextRequest) {
               ${userEmail},
               ${user.id},
               ${platform},
-              ${transactionId || null},
+              ${realTransactionId || transactionId || null},
               ${productId},
               ${isSync ? 'entitlement_sync' : (isRestore ? 'restore' : 'initial_buy')},
               'expired_downgrade',
@@ -701,7 +743,7 @@ export async function POST(request: NextRequest) {
             ${userEmail},
             ${user?.id || null},
             ${platform},
-            ${transactionId || null},
+            ${realTransactionId || transactionId || null},
             ${productId},
             ${isSync ? 'entitlement_sync' : (isRestore ? 'restore' : 'initial_buy')},
             'failed',
@@ -741,8 +783,9 @@ export async function POST(request: NextRequest) {
 
     // ✅ CHECK: Was user already premium with same transaction? (to avoid duplicate logs)
     // If this is an automatic sync (isSync), don't log if user already has premium with same transaction
+    // 🔥 KRİTİK: Gerçek ID ile karşılaştır (hash değil)
     const wasAlreadyPremium = user.plan === 'premium';
-    const hasSameTransaction = user.subscription_id === transactionId;
+    const hasSameTransaction = user.subscription_id === realTransactionId;
     const shouldLog = isSync 
       ? !(wasAlreadyPremium && hasSameTransaction) // For sync: only log if status changed
       : true; // For manual restore/purchase: always log
@@ -754,6 +797,7 @@ export async function POST(request: NextRequest) {
     
     // 🔥 SECURITY: Update device_id when receipt is verified
     // This links the receipt to the device, preventing cross-account usage
+    // 🔥 KRİTİK: Gerçek ID'yi kullan (hash değil)
     await sql`
       UPDATE users
       SET 
@@ -762,7 +806,7 @@ export async function POST(request: NextRequest) {
         trial_ended_at = ${pastDate.toISOString()},
         subscription_started_at = COALESCE(subscription_started_at, ${now.toISOString()}),
         subscription_platform = ${platform},
-        subscription_id = ${transactionId},
+        subscription_id = ${realTransactionId},
         expiry_date = ${expiryDate.toISOString()},
         device_id = COALESCE(device_id, ${deviceId}),
         updated_at = NOW()
@@ -794,7 +838,7 @@ export async function POST(request: NextRequest) {
             ${userEmail},
             ${user.id},
             ${platform},
-            ${transactionId},
+            ${realTransactionId},
             ${productId},
             ${isSync ? 'entitlement_sync' : (isRestore ? 'restore' : 'initial_buy')},
             'success',
@@ -836,7 +880,7 @@ async function verifyReceipt(
   platform: 'ios' | 'android',
   receipt: string,
   productId: string
-): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number }> {
+): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number; originalTransactionId?: string }> {
   if (platform === 'ios') {
     return await verifyAppleReceipt(receipt, productId);
   } else {
@@ -853,7 +897,7 @@ async function verifyReceipt(
 async function verifyAppleReceipt(
   receipt: string,
   productId: string
-): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number }> {
+): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number; originalTransactionId?: string }> {
   try {
     // Basic validation
     if (!receipt || receipt.length < 10) {
@@ -910,14 +954,19 @@ async function verifyAppleReceipt(
     // Status 0 = SUCCESS (Production receipt)
     if (productionResult.status === 0) {
       let expiryDate: Date | undefined;
+      let originalTransactionId: string | undefined;
       
-      // Extract expiry date from receipt
+      // Extract expiry date and original_transaction_id from receipt
       if (productionResult.latest_receipt_info && productionResult.latest_receipt_info.length > 0) {
         const latestInfo = productionResult.latest_receipt_info.find(
           (info: any) => info.product_id === productId
         );
-        if (latestInfo?.expires_date_ms) {
-          expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
+        if (latestInfo) {
+          if (latestInfo.expires_date_ms) {
+            expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
+          }
+          // 🔥 KRİTİK: Gerçek ID'yi alıyoruz
+          originalTransactionId = latestInfo.original_transaction_id;
         }
       } else if (productionResult.receipt?.in_app) {
         const transactions = productionResult.receipt.in_app.filter(
@@ -927,17 +976,22 @@ async function verifyAppleReceipt(
             const latestInfo = productionResult.latest_receipt_info.find(
               (info: any) => info.product_id === productId
             );
-            if (latestInfo?.expires_date_ms) {
-              expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
-          }
+            if (latestInfo) {
+              if (latestInfo.expires_date_ms) {
+                expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
+              }
+              // 🔥 KRİTİK: Gerçek ID'yi alıyoruz
+              originalTransactionId = latestInfo.original_transaction_id;
+            }
         }
       }
 
       console.log('[Verify Purchase] ✅ PRODUCTION verification SUCCESS', {
         productId,
+        originalTransactionId,
         expiryDate: expiryDate?.toISOString()
       });
-      return { valid: true, expiryDate };
+      return { valid: true, expiryDate, originalTransactionId };
     }
 
     // Status 21007 = Sandbox receipt sent to production
@@ -985,22 +1039,28 @@ async function verifyAppleReceipt(
       // Status 0 = SUCCESS (Sandbox receipt)
       if (sandboxResult.status === 0) {
         let expiryDate: Date | undefined;
+        let originalTransactionId: string | undefined;
         
-        // Extract expiry date
+        // Extract expiry date and original_transaction_id
         if (sandboxResult.latest_receipt_info && sandboxResult.latest_receipt_info.length > 0) {
           const latestInfo = sandboxResult.latest_receipt_info.find(
             (info: any) => info.product_id === productId
           );
-          if (latestInfo?.expires_date_ms) {
-            expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
+          if (latestInfo) {
+            if (latestInfo.expires_date_ms) {
+              expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
+            }
+            // 🔥 KRİTİK: Gerçek ID'yi alıyoruz
+            originalTransactionId = latestInfo.original_transaction_id;
           }
         }
 
         console.log('[Verify Purchase] ✅ SANDBOX verification SUCCESS', {
           productId,
+          originalTransactionId,
           expiryDate: expiryDate?.toISOString()
         });
-        return { valid: true, expiryDate };
+        return { valid: true, expiryDate, originalTransactionId };
       }
 
       // Status 21006 = Expired subscription (special case - need to downgrade user)
