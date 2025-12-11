@@ -956,40 +956,56 @@ async function verifyAppleReceipt(
       let expiryDate: Date | undefined;
       let originalTransactionId: string | undefined;
       
-      // Extract expiry date and original_transaction_id from receipt
+      // 🔥 İYİLEŞTİRME: Ürün ID aramıyoruz, TARİHE göre sıralayıp EN YENİ işlemi alıyoruz.
+      // Böylece Apple'dan tarih kaçırma ihtimalimiz kalmıyor.
       if (productionResult.latest_receipt_info && productionResult.latest_receipt_info.length > 0) {
-        const latestInfo = productionResult.latest_receipt_info.find(
-          (info: any) => info.product_id === productId
-        );
+        // İşlemleri bitiş tarihine göre (Yeniden -> Eskiye) sırala
+        const sortedTransactions = productionResult.latest_receipt_info.sort((a: any, b: any) => {
+          const dateA = parseInt(a.expires_date_ms || '0');
+          const dateB = parseInt(b.expires_date_ms || '0');
+          return dateB - dateA; // Büyük tarih (yeni) en başa gelir
+        });
+
+        // En güncel işlem (Listenin başındaki)
+        const latestInfo = sortedTransactions[0];
+
         if (latestInfo) {
           if (latestInfo.expires_date_ms) {
             expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
           }
-          // 🔥 KRİTİK: Gerçek ID'yi alıyoruz
+          // Gerçek Transaction ID'yi al
           originalTransactionId = latestInfo.original_transaction_id;
+          
+          console.log('[Verify Purchase] 📅 Found LATEST transaction:', {
+            productId: latestInfo.product_id, // Gelen makbuzdaki asıl ürün
+            requestedProductId: productId, // İstenen ürün
+            expiryDate: expiryDate?.toISOString(),
+            originalId: originalTransactionId
+          });
         }
-      } else if (productionResult.receipt?.in_app) {
-        const transactions = productionResult.receipt.in_app.filter(
-          (tx: any) => tx.product_id === productId
-        );
-        if (transactions.length > 0 && productionResult.latest_receipt_info) {
-            const latestInfo = productionResult.latest_receipt_info.find(
-              (info: any) => info.product_id === productId
-            );
-            if (latestInfo) {
-              if (latestInfo.expires_date_ms) {
-                expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
-              }
-              // 🔥 KRİTİK: Gerçek ID'yi alıyoruz
-              originalTransactionId = latestInfo.original_transaction_id;
-            }
+      } 
+      // Yedek: latest_receipt_info boşsa receipt.in_app içine bak (Nadiren gerekir)
+      else if (productionResult.receipt?.in_app && productionResult.receipt.in_app.length > 0) {
+        // Aynı sıralama mantığı burada da geçerli
+        const sortedInApp = productionResult.receipt.in_app.sort((a: any, b: any) => {
+          const dateA = parseInt(a.expires_date_ms || '0');
+          const dateB = parseInt(b.expires_date_ms || '0');
+          return dateB - dateA;
+        });
+        const latestInApp = sortedInApp[0];
+        
+        if (latestInApp) {
+          if (latestInApp.expires_date_ms) {
+            expiryDate = new Date(parseInt(latestInApp.expires_date_ms));
+          }
+          originalTransactionId = latestInApp.original_transaction_id;
         }
       }
 
       console.log('[Verify Purchase] ✅ PRODUCTION verification SUCCESS', {
-        productId,
+        productId, // İstenen ürün
         originalTransactionId,
-        expiryDate: expiryDate?.toISOString()
+        expiryDate: expiryDate?.toISOString() // Artık burası Apple tarihi olacak
       });
       return { valid: true, expiryDate, originalTransactionId };
     }
@@ -1041,24 +1057,56 @@ async function verifyAppleReceipt(
         let expiryDate: Date | undefined;
         let originalTransactionId: string | undefined;
         
-        // Extract expiry date and original_transaction_id
+        // 🔥 İYİLEŞTİRME: Ürün ID aramıyoruz, TARİHE göre sıralayıp EN YENİ işlemi alıyoruz.
+        // Böylece Apple'dan tarih kaçırma ihtimalimiz kalmıyor.
         if (sandboxResult.latest_receipt_info && sandboxResult.latest_receipt_info.length > 0) {
-          const latestInfo = sandboxResult.latest_receipt_info.find(
-            (info: any) => info.product_id === productId
-          );
+          // İşlemleri bitiş tarihine göre (Yeniden -> Eskiye) sırala
+          const sortedTransactions = sandboxResult.latest_receipt_info.sort((a: any, b: any) => {
+            const dateA = parseInt(a.expires_date_ms || '0');
+            const dateB = parseInt(b.expires_date_ms || '0');
+            return dateB - dateA; // Büyük tarih (yeni) en başa gelir
+          });
+
+          // En güncel işlem (Listenin başındaki)
+          const latestInfo = sortedTransactions[0];
+
           if (latestInfo) {
             if (latestInfo.expires_date_ms) {
               expiryDate = new Date(parseInt(latestInfo.expires_date_ms));
             }
-            // 🔥 KRİTİK: Gerçek ID'yi alıyoruz
+            // Gerçek Transaction ID'yi al
             originalTransactionId = latestInfo.original_transaction_id;
+            
+            console.log('[Verify Purchase] 📅 Found LATEST transaction (Sandbox):', {
+              productId: latestInfo.product_id, // Gelen makbuzdaki asıl ürün
+              requestedProductId: productId, // İstenen ürün
+              expiryDate: expiryDate?.toISOString(),
+              originalId: originalTransactionId
+            });
+          }
+        }
+        // Yedek: latest_receipt_info boşsa receipt.in_app içine bak (Nadiren gerekir)
+        else if (sandboxResult.receipt?.in_app && sandboxResult.receipt.in_app.length > 0) {
+          // Aynı sıralama mantığı burada da geçerli
+          const sortedInApp = sandboxResult.receipt.in_app.sort((a: any, b: any) => {
+            const dateA = parseInt(a.expires_date_ms || '0');
+            const dateB = parseInt(b.expires_date_ms || '0');
+            return dateB - dateA;
+          });
+          const latestInApp = sortedInApp[0];
+          
+          if (latestInApp) {
+            if (latestInApp.expires_date_ms) {
+              expiryDate = new Date(parseInt(latestInApp.expires_date_ms));
+            }
+            originalTransactionId = latestInApp.original_transaction_id;
           }
         }
 
         console.log('[Verify Purchase] ✅ SANDBOX verification SUCCESS', {
-          productId,
+          productId, // İstenen ürün
           originalTransactionId,
-          expiryDate: expiryDate?.toISOString()
+          expiryDate: expiryDate?.toISOString() // Artık burası Apple tarihi olacak
         });
         return { valid: true, expiryDate, originalTransactionId };
       }
