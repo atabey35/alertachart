@@ -905,6 +905,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     
     chart.priceScale('right').applyOptions({
       visible: true, // Ensure price scale is always visible
+      minimumWidth: 75, // Fixed width to prevent jitter when price text length changes (e.g., XRP, AVAX)
       scaleMargins: {
         top: layout === 9 ? 0.02 : 0.05, // Reduce top margin for 9-chart layout
         bottom: layout === 9 ? 0.10 : 0.15, // Reduce bottom margin for 9-chart layout
@@ -1522,6 +1523,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         rightPriceScale: {
           borderColor: '#2B2B43',
         },
+      });
+
+      // Configure RSI chart price scale with fixed width to match main chart alignment
+      rsiChart.priceScale('right').applyOptions({
+        minimumWidth: 75, // Match main chart width to ensure alignment
       });
 
       const rsiSeries = rsiChart.addLineSeries({
