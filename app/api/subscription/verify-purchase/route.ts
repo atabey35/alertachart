@@ -799,7 +799,11 @@ export async function POST(request: NextRequest) {
             ${isSync ? 'entitlement_sync' : (isRestore ? 'restore' : 'initial_buy')},
             'success',
             NULL,
-            ${JSON.stringify({ expiryDate: expiryDate.toISOString(), wasAlreadyPremium })},
+            ${JSON.stringify({ 
+              expiryDate: expiryDate.toISOString(), 
+              wasAlreadyPremium,
+              isFallback: (verificationResult as any).isFallback || false // Track fallback mode
+            })},
             ${deviceId || null}
           )
         `;

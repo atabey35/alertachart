@@ -337,8 +337,23 @@ async function AdminSalesContent() {
                             {((log as any)._isLegacyTrial ? '🕐 ' : '')}Deneme Başladı
                           </span>
                         ) : (
-                          <span className="bg-green-900/30 text-green-400 px-2 py-1 rounded text-xs border border-green-800">
-                            Satın Alma
+                          <span className={`px-2 py-1 rounded text-xs border ${
+                            (() => {
+                              try {
+                                const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                                return details?.isFallback ? 'bg-orange-900/30 text-orange-400 border-orange-800' : 'bg-green-900/30 text-green-400 border-green-800';
+                              } catch {
+                                return 'bg-green-900/30 text-green-400 border-green-800';
+                              }
+                            })()}`}>
+                            {(() => {
+                              try {
+                                const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
+                                return details?.isFallback ? '🔄 Fallback' : 'Satın Alma';
+                              } catch {
+                                return 'Satın Alma';
+                              }
+                            })()}
                           </span>
                         )}
                       </td>
