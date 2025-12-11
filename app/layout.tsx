@@ -214,22 +214,9 @@ export const metadata: Metadata = {
     google: 'your-google-verification-code', // Google Search Console'dan alacaksınız
   },
   icons: {
-    icon: [
-      { url: '/icon.png', sizes: 'any' },
-      // Google Arama sonuçları için gerekli boyutlar (minimum 48x48 ve katları)
-      // Google favicon için kritik: 48x48 minimum, 144x144 önerilen
-      { url: '/icon.png', type: 'image/png', sizes: '512x512' },
-      { url: '/icon.png', type: 'image/png', sizes: '192x192' },
-      { url: '/icon.png', type: 'image/png', sizes: '144x144' }, // Google önerisi - kritik
-      { url: '/icon.png', type: 'image/png', sizes: '96x96' },
-      { url: '/icon.png', type: 'image/png', sizes: '48x48' }, // Google minimum gereksinimi - kritik
-      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
-      { url: '/icon.png', type: 'image/png', sizes: '16x16' },
-    ],
-    apple: [
-      { url: '/icon.png', sizes: '180x180', type: 'image/png' },
-    ],
-    shortcut: '/icon.png',
+    icon: '/icon.png', // Modern tarayıcılar için
+    shortcut: '/favicon.ico', // Google ve eski sistemler için
+    apple: '/icon.png', // Apple cihazlar için
   },
   manifest: '/manifest.json',
 };
@@ -305,16 +292,6 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Explicit Favicon Links for Google - Critical for Search Results */}
-        <link rel="icon" type="image/png" sizes="512x512" href="/icon.png" />
-        <link rel="icon" type="image/png" sizes="192x192" href="/icon.png" />
-        <link rel="icon" type="image/png" sizes="144x144" href="/icon.png" />
-        <link rel="icon" type="image/png" sizes="96x96" href="/icon.png" />
-        <link rel="icon" type="image/png" sizes="48x48" href="/icon.png" />
-        <link rel="icon" type="image/png" sizes="32x32" href="/icon.png" />
-        <link rel="icon" type="image/png" sizes="16x16" href="/icon.png" />
-        <link rel="shortcut icon" href="/icon.png" />
-        <link rel="apple-touch-icon" sizes="180x180" href="/icon.png" />
         {/* Google Tag Manager */}
         <Script id="google-tag-manager" strategy="afterInteractive">
           {`
