@@ -60,6 +60,8 @@ export default function AdminPage() {
   const [deleteBlogPostError, setDeleteBlogPostError] = useState('');
   const [imageUploading, setImageUploading] = useState(false);
   const [authorImageUploading, setAuthorImageUploading] = useState(false);
+  const [migratingTags, setMigratingTags] = useState(false);
+  const [migrationResult, setMigrationResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Check if already logged in (from sessionStorage)
   useEffect(() => {
@@ -318,6 +320,48 @@ export default function AdminPage() {
       console.error('Blog yazısı eklenirken hata:', error);
     } finally {
       setAddBlogPostLoading(false);
+    }
+  };
+
+  // Run blog tags migration
+  const handleMigrateBlogTags = async () => {
+    if (!confirm('Blog tags migration\'ını çalıştırmak istediğinize emin misiniz? Bu işlem tags kolonunu ekleyecek.')) return;
+    
+    setMigratingTags(true);
+    setMigrationResult(null);
+    
+    try {
+      const password = loginPassword || sessionStorage.getItem('adminPassword') || '';
+      const response = await fetch('/api/admin/migrate-blog-tags', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-admin-password': password,
+        },
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        setMigrationResult({
+          success: true,
+          message: data.alreadyExists 
+            ? '✅ Tags kolonu zaten mevcut. Migration gerekmiyor.'
+            : '✅ Migration başarıyla tamamlandı! Tags kolonu eklendi.',
+        });
+      } else {
+        setMigrationResult({
+          success: false,
+          message: data.error || 'Migration başarısız oldu.',
+        });
+      }
+    } catch (error: any) {
+      setMigrationResult({
+        success: false,
+        message: 'Bir hata oluştu: ' + (error.message || 'Bilinmeyen hata'),
+      });
+    } finally {
+      setMigratingTags(false);
     }
   };
 
@@ -873,13 +917,34 @@ export default function AdminPage() {
               {/* Blog Management */}
               <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-white">Blog Yazıları</h2>
-                <button
-                  onClick={() => setAddBlogPostOpen(!addBlogPostOpen)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
-                >
-                  {addBlogPostOpen ? 'İptal' : '+ Yeni Blog Yazısı'}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleMigrateBlogTags}
+                    disabled={migratingTags}
+                    className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-700 text-white rounded-lg font-medium transition-colors text-sm"
+                    title="Blog tags migration'ını çalıştır (tags kolonu ekler)"
+                  >
+                    {migratingTags ? '⏳ Çalışıyor...' : '🔧 Tags Migration'}
+                  </button>
+                  <button
+                    onClick={() => setAddBlogPostOpen(!addBlogPostOpen)}
+                    className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-colors"
+                  >
+                    {addBlogPostOpen ? 'İptal' : '+ Yeni Blog Yazısı'}
+                  </button>
+                </div>
               </div>
+
+              {/* Migration Result */}
+              {migrationResult && (
+                <div className={`mb-4 p-4 rounded-lg ${
+                  migrationResult.success 
+                    ? 'bg-green-900/30 border border-green-700 text-green-300' 
+                    : 'bg-red-900/30 border border-red-700 text-red-300'
+                }`}>
+                  {migrationResult.message}
+                </div>
+              )}
 
               {/* Add Blog Post Form */}
               {addBlogPostOpen && (
