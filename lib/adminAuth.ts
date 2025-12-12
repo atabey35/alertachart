@@ -15,6 +15,9 @@ if (!JWT_SECRET) {
   throw new Error('JWT_SECRET or NEXTAUTH_SECRET environment variable is required for admin authentication');
 }
 
+// Type assertion: JWT_SECRET is guaranteed to be string after the check above
+const JWT_SECRET_STRING: string = JWT_SECRET;
+
 export type AdminPanel = 'main' | 'sales' | 'preusers';
 
 export interface AdminTokenPayload {
@@ -35,7 +38,7 @@ export function createAdminToken(panel: AdminPanel, expiresIn: number = 24 * 60 
     panel,
   };
 
-  return jwt.sign(payload, JWT_SECRET, {
+  return jwt.sign(payload, JWT_SECRET_STRING, {
     expiresIn,
     issuer: 'alertachart-admin',
   });
@@ -49,7 +52,7 @@ export function createAdminToken(panel: AdminPanel, expiresIn: number = 24 * 60 
  */
 export function verifyAdminToken(token: string, expectedPanel?: AdminPanel): AdminTokenPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET, {
+    const decoded = jwt.verify(token, JWT_SECRET_STRING, {
       issuer: 'alertachart-admin',
     }) as AdminTokenPayload;
 
