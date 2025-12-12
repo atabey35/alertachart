@@ -230,6 +230,51 @@ export default function BlogPostPage() {
               }}
             />
           )}
+          
+          {/* NewsArticle Schema (for faster Google News indexing) */}
+          {post && (
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "NewsArticle",
+                  "headline": post.title,
+                  "description": post.excerpt.replace(/<[^>]*>/g, '').substring(0, 160),
+                  "image": post.coverImage ? [
+                    {
+                      "@type": "ImageObject",
+                      "url": post.coverImage.startsWith('http') ? post.coverImage : `https://alertachart.com${post.coverImage}`,
+                      "width": 1200,
+                      "height": 630
+                    }
+                  ] : undefined,
+                  "datePublished": post.publishedAt,
+                  "dateModified": post.publishedAt || post.publishedAt,
+                  "author": {
+                    "@type": "Person",
+                    "name": post.author
+                  },
+                  "publisher": {
+                    "@type": "Organization",
+                    "name": "Alerta Chart",
+                    "logo": {
+                      "@type": "ImageObject",
+                      "url": "https://alertachart.com/icon.png",
+                      "width": 512,
+                      "height": 512
+                    }
+                  },
+                  "mainEntityOfPage": {
+                    "@type": "WebPage",
+                    "@id": `https://alertachart.com/blog/${post.slug}`
+                  },
+                  "articleSection": post.category,
+                  "keywords": post.tags ? post.tags.join(', ') : post.category
+                })
+              }}
+            />
+          )}
         </article>
         
         {/* Related Posts Section */}

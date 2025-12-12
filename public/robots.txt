@@ -7,6 +7,9 @@ Allow: /
 # Sitemap location
 Sitemap: https://alertachart.com/sitemap.xml
 
+# RSS Feed location (for faster content discovery)
+# RSS Feed: https://alertachart.com/feed.xml
+
 # Crawl delay (be nice to servers)
 Crawl-delay: 1
 

@@ -30,6 +30,9 @@ export const metadata: Metadata = {
   },
   alternates: {
     canonical: 'https://alertachart.com/blog',
+    types: {
+      'application/rss+xml': 'https://alertachart.com/feed.xml',
+    },
   },
 };
 

@@ -1230,6 +1230,15 @@ export default function AdminPage() {
                               >
                                 Görüntüle
                               </a>
+                              <a
+                                href={`https://search.google.com/search-console?resource_id=sc-domain%3Aalertachart.com&url=${encodeURIComponent(`https://alertachart.com/blog/${post.slug}`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-green-400 hover:text-green-300 text-xs"
+                                title="Google Search Console'da anlık indexleme iste"
+                              >
+                                🔍 Index
+                              </a>
                               <button
                                 onClick={() => handleDeleteBlogPost(post.id)}
                                 disabled={deleteBlogPostLoading !== null}
