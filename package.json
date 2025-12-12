@@ -50,6 +50,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "@types/lodash.merge": "^4.6.9",
     "@types/node": "^22.0.0",
     "@types/react": "^19.0.0",
