@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
+import { createSafeErrorResponse } from '@/lib/errorHandler';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -55,9 +56,11 @@ export async function GET(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[Admin Support Requests API] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch support requests', details: error.message },
-      { status: 500 }
+    // 🔒 SECURITY: Use safe error handler to prevent information disclosure in production
+    return createSafeErrorResponse(
+      error,
+      500,
+      'Failed to fetch support requests'
     );
   }
 }
@@ -130,9 +133,11 @@ export async function PATCH(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[Admin Support Requests API] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to update support request', details: error.message },
-      { status: 500 }
+    // 🔒 SECURITY: Use safe error handler to prevent information disclosure in production
+    return createSafeErrorResponse(
+      error,
+      500,
+      'Failed to update support request'
     );
   }
 }

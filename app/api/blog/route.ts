@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
+import { createSafeErrorResponse } from '@/lib/errorHandler';
 
 // Force dynamic rendering for this route
 export const dynamic = 'force-dynamic';
@@ -85,9 +86,11 @@ export async function GET(request: NextRequest) {
     })));
   } catch (error: any) {
     console.error('[Blog API] Error:', error);
-    return NextResponse.json(
-      { error: 'Blog yazıları yüklenirken bir hata oluştu.', details: error.message },
-      { status: 500 }
+    // 🔒 SECURITY: Use safe error handler to prevent information disclosure in production
+    return createSafeErrorResponse(
+      error,
+      500,
+      'Blog yazıları yüklenirken bir hata oluştu.'
     );
   }
 }

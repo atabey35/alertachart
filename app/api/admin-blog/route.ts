@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
+import { createSafeErrorResponse } from '@/lib/errorHandler';
 
 export const dynamic = 'force-dynamic';
 
@@ -199,13 +200,11 @@ export async function POST(request: NextRequest) {
     } else {
       console.error('[Admin Blog API] Request data: Could not parse request body');
     }
-    return NextResponse.json(
-      { 
-        error: 'Blog yazısı eklenirken bir hata oluştu.', 
-        details: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
-      },
-      { status: 500 }
+    // 🔒 SECURITY: Use safe error handler to prevent information disclosure in production
+    return createSafeErrorResponse(
+      error,
+      500,
+      'Blog yazısı eklenirken bir hata oluştu.'
     );
   }
 }
