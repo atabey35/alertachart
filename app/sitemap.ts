@@ -1,10 +1,26 @@
 import { MetadataRoute } from 'next';
+import { getSql } from '@/lib/db';
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = 'https://alertachart.com';
   const now = new Date();
 
-  return [
+  // Fetch blog posts from database
+  let blogPosts: any[] = [];
+  try {
+    const sql = getSql();
+    blogPosts = await sql`
+      SELECT slug, published_at, updated_at 
+      FROM blog_posts 
+      ORDER BY published_at DESC
+    `;
+  } catch (error) {
+    console.error('[Sitemap] Error fetching blog posts:', error);
+    // Continue without blog posts if database error
+  }
+
+  // Build sitemap entries
+  const entries: MetadataRoute.Sitemap = [
     {
       url: baseUrl,
       lastModified: now,
@@ -25,7 +41,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
     },
     {
       url: `${baseUrl}/blog`,
-      lastModified: now,
+      lastModified: blogPosts.length > 0 && blogPosts[0]?.published_at 
+        ? new Date(blogPosts[0].published_at) 
+        : now,
       changeFrequency: 'daily',
       priority: 0.9,
     },
@@ -73,5 +91,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.6,
     },
   ];
+
+  // Add blog post URLs dynamically
+  blogPosts.forEach((post) => {
+    if (post.slug) {
+      entries.push({
+        url: `${baseUrl}/blog/${post.slug}`,
+        lastModified: post.updated_at 
+          ? new Date(post.updated_at) 
+          : post.published_at 
+            ? new Date(post.published_at) 
+            : now,
+        changeFrequency: 'weekly',
+        priority: 0.8,
+      });
+    }
+  });
+
+  return entries;
 }
 
