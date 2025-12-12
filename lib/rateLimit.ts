@@ -111,9 +111,9 @@ export const RATE_LIMITS = {
     maxRequests: 5,
     windowMs: 15 * 60 * 1000, // 15 minutes
   },
-  // Auth endpoints - strict
+  // Auth endpoints - moderate (allows multiple login attempts, session restores)
   auth: {
-    maxRequests: 10,
+    maxRequests: 30, // Increased for normal usage (login, session restore, etc.)
     windowMs: 15 * 60 * 1000, // 15 minutes
   },
   // Trial start - strict (fraud prevention)
@@ -121,9 +121,9 @@ export const RATE_LIMITS = {
     maxRequests: 3,
     windowMs: 60 * 60 * 1000, // 1 hour
   },
-  // Purchase verification - moderate
+  // Purchase verification - moderate (allows multiple purchase attempts)
   purchase: {
-    maxRequests: 20,
+    maxRequests: 50, // Increased for normal purchase flow (retries, restores, etc.)
     windowMs: 60 * 60 * 1000, // 1 hour
   },
   // Support request - moderate
