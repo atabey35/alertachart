@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import DOMPurify from 'isomorphic-dompurify';
 
 // Interface for blog posts
 interface BlogPost {
@@ -124,7 +125,7 @@ export default function BlogPostPage() {
               {post.title}
             </h1>
             {/* Post Excerpt */}
-            <div className="text-lg text-zinc-300 mb-6" dangerouslySetInnerHTML={{ __html: post.excerpt }} />
+            <div className="text-lg text-zinc-300 mb-6" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.excerpt) }} />
             <div className="flex items-center mb-8">
               <div className="flex-shrink-0 mr-4">
                 {post.authorImage ? (
@@ -177,7 +178,7 @@ export default function BlogPostPage() {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.4 }}
             className="prose prose-invert prose-lg max-w-none"
-            dangerouslySetInnerHTML={{ __html: post.content }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
           />
         </article>
         

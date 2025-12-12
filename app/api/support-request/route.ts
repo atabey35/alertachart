@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
+import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit';
 
 // Force dynamic rendering
 export const dynamic = 'force-dynamic';
@@ -9,9 +10,22 @@ export const dynamic = 'force-dynamic';
 /**
  * POST /api/support-request
  * Create a new support request
+ * 🔒 SECURITY: Rate limited to prevent spam
  */
 export async function POST(request: NextRequest) {
   try {
+    // 🔒 SECURITY: Rate limiting - prevent spam support requests
+    const rateLimitResponse = rateLimitMiddleware(request, RATE_LIMITS.support);
+    if (rateLimitResponse) {
+      return NextResponse.json(
+        JSON.parse(await rateLimitResponse.text()),
+        { 
+          status: 429,
+          headers: Object.fromEntries(rateLimitResponse.headers.entries())
+        }
+      );
+    }
+
     const body = await request.json();
     const { topic, message } = body;
 
@@ -28,6 +42,17 @@ export async function POST(request: NextRequest) {
     if (!validTopics.includes(topic)) {
       return NextResponse.json(
         { error: 'Invalid topic' },
+        { status: 400 }
+      );
+    }
+
+    // 🔒 SECURITY: Input validation - length and spam checks
+    const { validateSupportMessage } = await import('@/lib/inputValidation');
+    
+    const messageValidation = validateSupportMessage(message);
+    if (!messageValidation.valid) {
+      return NextResponse.json(
+        { error: messageValidation.error },
         { status: 400 }
       );
     }
@@ -90,9 +115,12 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[Support Request API] Error:', error);
-    return NextResponse.json(
-      { error: 'Failed to create support request', details: error.message },
-      { status: 500 }
+    // 🔒 SECURITY: Use safe error handler to prevent information disclosure
+    const { createSafeErrorResponse } = await import('@/lib/errorHandler');
+    return createSafeErrorResponse(
+      error,
+      500,
+      'Destek talebi oluşturulurken bir hata oluştu. Lütfen daha sonra tekrar deneyin.'
     );
   }
 }

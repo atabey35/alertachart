@@ -177,8 +177,10 @@ export async function GET(request: NextRequest) {
     const origin = request.headers.get('origin') || '';
     const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
     
+    // 🔒 SECURITY: Use safe error handler to prevent information disclosure
+    const { getSafeErrorMessage } = await import('@/lib/errorHandler');
     const errorResponse = NextResponse.json(
-      { error: error.message || 'Failed to get user info' },
+      { error: getSafeErrorMessage(error, 'Kullanıcı bilgileri alınırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.') },
       { status: 500 }
     );
     

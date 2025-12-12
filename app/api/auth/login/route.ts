@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit';
 
 /**
  * POST /api/auth/login
  * Proxy to backend auth login endpoint
+ * 🔒 SECURITY: Rate limited to prevent brute force attacks
  */
 export async function POST(request: NextRequest) {
   try {
+    // 🔒 SECURITY: Rate limiting - prevent brute force attacks
+    const rateLimitResponse = rateLimitMiddleware(request, RATE_LIMITS.auth);
+    if (rateLimitResponse) {
+      return NextResponse.json(
+        JSON.parse(await rateLimitResponse.text()),
+        { 
+          status: 429,
+          headers: Object.fromEntries(rateLimitResponse.headers.entries())
+        }
+      );
+    }
+
     const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
     
     // Get request body
@@ -59,8 +73,10 @@ export async function POST(request: NextRequest) {
     const origin = request.headers.get('origin') || '';
     const allowedOrigins = ['https://alertachart.com', 'https://www.alertachart.com', 'https://aggr.alertachart.com', 'https://www.aggr.alertachart.com', 'https://data.alertachart.com'];
     
+    // 🔒 SECURITY: Use safe error handler to prevent information disclosure
+    const { getSafeErrorMessage } = await import('@/lib/errorHandler');
     const errorResponse = NextResponse.json(
-      { error: error.message || 'Failed to login' },
+      { error: getSafeErrorMessage(error, 'Giriş yapılırken bir hata oluştu. Lütfen daha sonra tekrar deneyin.') },
       { status: 500 }
     );
     

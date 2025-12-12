@@ -1,13 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminToken, setAdminTokenCookie, verifyAdminPassword } from '@/lib/adminAuth';
+import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit';
 
 /**
  * POST /api/admin/sales/auth
  * Authenticate admin sales panel access
  * 🔒 SECURITY: Uses JWT tokens instead of storing passwords in cookies
+ * 🔒 SECURITY: Rate limited to prevent brute force attacks
  */
 export async function POST(request: NextRequest) {
   try {
+    // 🔒 SECURITY: Rate limiting - prevent brute force attacks
+    const rateLimitResponse = rateLimitMiddleware(request, RATE_LIMITS.admin);
+    if (rateLimitResponse) {
+      return NextResponse.json(
+        JSON.parse(await rateLimitResponse.text()),
+        { 
+          status: 429,
+          headers: Object.fromEntries(rateLimitResponse.headers.entries())
+        }
+      );
+    }
+
     const body = await request.json();
     const { password } = body;
 

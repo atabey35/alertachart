@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import Image from "next/image";
+import DOMPurify from 'isomorphic-dompurify';
 
 // Blog post interface for TypeScript
 interface BlogPost {
@@ -122,7 +123,7 @@ export default function BlogPage() {
                     {featuredPost.title}
                   </h2>
                   <p className="text-zinc-300 text-sm md:text-base line-clamp-2 mb-4" 
-                    dangerouslySetInnerHTML={{ __html: featuredPost.excerpt }}
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(featuredPost.excerpt) }}
                   />
                   <div className="flex items-center">
                     <div className="flex-shrink-0 mr-3">
@@ -208,7 +209,7 @@ export default function BlogPage() {
                         {post.title}
                       </h3>
                       <p className="text-zinc-400 text-sm line-clamp-2 mb-3"
-                        dangerouslySetInnerHTML={{ __html: post.excerpt }}
+                        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.excerpt) }}
                       />
                     </div>
                     <div className="px-6 pb-6 mt-auto">

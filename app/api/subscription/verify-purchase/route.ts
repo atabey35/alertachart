@@ -7,15 +7,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
+import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit';
 
 
 /**
  * POST /api/subscription/verify-purchase
  * 
  * Verifies purchase receipt with Apple/Google and updates user subscription
+ * 🔒 SECURITY: Rate limited to prevent spam and abuse
  */
 export async function POST(request: NextRequest) {
   try {
+    // 🔒 SECURITY: Rate limiting - prevent spam purchase verification attempts
+    const rateLimitResponse = rateLimitMiddleware(request, RATE_LIMITS.purchase);
+    if (rateLimitResponse) {
+      return NextResponse.json(
+        JSON.parse(await rateLimitResponse.text()),
+        { 
+          status: 429,
+          headers: Object.fromEntries(rateLimitResponse.headers.entries())
+        }
+      );
+    }
+
     const session = await getServerSession(authOptions);
     const body = await request.json();
     const { platform, productId, transactionId, receipt, deviceId, isRestore, isSync } = body;

@@ -35,6 +35,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 🔒 SECURITY: Input validation - length and format checks
+    const { validateLength, validateSlug, validateBlogContent } = await import('@/lib/inputValidation');
+    
+    // Validate title
+    const titleValidation = validateLength(data.title, 3, 200);
+    if (!titleValidation.valid) {
+      return NextResponse.json(
+        { error: `Başlık: ${titleValidation.error}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate slug
+    const slugValidation = validateSlug(data.slug);
+    if (!slugValidation.valid) {
+      return NextResponse.json(
+        { error: `Slug: ${slugValidation.error}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate excerpt
+    const excerptValidation = validateLength(data.excerpt, 10, 500);
+    if (!excerptValidation.valid) {
+      return NextResponse.json(
+        { error: `Özet: ${excerptValidation.error}` },
+        { status: 400 }
+      );
+    }
+
+    // Validate content
+    const contentValidation = validateBlogContent(data.content);
+    if (!contentValidation.valid) {
+      return NextResponse.json(
+        { error: `İçerik: ${contentValidation.error}` },
+        { status: 400 }
+      );
+    }
+
     // Veritabanı bağlantısını test et
     let sql;
     try {
@@ -70,14 +109,12 @@ export async function POST(request: NextRequest) {
       `;
     } catch (dbError: any) {
       console.error('[Admin Blog API] Database error checking slug:', dbError);
-      const errorMsg = dbError.message || 'Bilinmeyen veritabanı hatası';
-      return NextResponse.json(
-        { 
-          error: 'Veritabanı hatası',
-          details: errorMsg,
-          code: dbError.code,
-        },
-        { status: 500 }
+      // 🔒 SECURITY: Use safe error handler to prevent information disclosure
+      const { createSafeErrorResponse } = await import('@/lib/errorHandler');
+      return createSafeErrorResponse(
+        dbError,
+        500,
+        'Veritabanı hatası. Lütfen daha sonra tekrar deneyin.'
       );
     }
 
@@ -117,13 +154,12 @@ export async function POST(request: NextRequest) {
         code: dbError.code,
         detail: dbError.detail,
       });
-      return NextResponse.json(
-        { 
-          error: 'Veritabanı hatası: Blog yazısı eklenemedi.',
-          details: dbError.message,
-          code: dbError.code,
-        },
-        { status: 500 }
+      // 🔒 SECURITY: Use safe error handler to prevent information disclosure
+      const { createSafeErrorResponse } = await import('@/lib/errorHandler');
+      return createSafeErrorResponse(
+        dbError,
+        500,
+        'Veritabanı hatası: Blog yazısı eklenemedi. Lütfen daha sonra tekrar deneyin.'
       );
     }
 

@@ -2,15 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
+import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit';
 
 /**
  * POST /api/subscription/start-trial
  * Start 3-day trial for user (after payment)
  * Includes fraud prevention: Device ID + Email + IP checks
  * 🔥 APPLE GUIDELINE 5.1.1: Supports guest users (deviceId) OR authenticated users (session)
+ * 🔒 SECURITY: Rate limited to prevent trial fraud
  */
 export async function POST(request: NextRequest) {
   try {
+    // 🔒 SECURITY: Rate limiting - prevent trial fraud attempts
+    const rateLimitResponse = rateLimitMiddleware(request, RATE_LIMITS.trial);
+    if (rateLimitResponse) {
+      return NextResponse.json(
+        JSON.parse(await rateLimitResponse.text()),
+        { 
+          status: 429,
+          headers: Object.fromEntries(rateLimitResponse.headers.entries())
+        }
+      );
+    }
+
     const session = await getServerSession(authOptions);
     const body = await request.json();
     const { deviceId, platform, subscriptionId, productId } = body;
