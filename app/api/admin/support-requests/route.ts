@@ -10,11 +10,20 @@ export const dynamic = 'force-dynamic';
  */
 export async function GET(request: NextRequest) {
   try {
-    // Check admin password from query or header
+    // 🔒 SECURITY: Check admin password from query or header
     const password = request.headers.get('x-admin-password') || 
                      new URL(request.url).searchParams.get('password');
 
-    if (password !== process.env.ADMIN_PASSWORD) {
+    if (!password) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Verify admin password (environment variable required, no fallback)
+    const { verifyAdminPassword } = await import('@/lib/adminAuth');
+    if (!verifyAdminPassword(password, 'main')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -59,9 +68,18 @@ export async function GET(request: NextRequest) {
  */
 export async function PATCH(request: NextRequest) {
   try {
-    // Check admin password
+    // 🔒 SECURITY: Check admin password
     const password = request.headers.get('x-admin-password');
-    if (password !== process.env.ADMIN_PASSWORD) {
+    if (!password) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
+
+    // Verify admin password (environment variable required, no fallback)
+    const { verifyAdminPassword } = await import('@/lib/adminAuth');
+    if (!verifyAdminPassword(password, 'main')) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }

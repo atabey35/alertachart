@@ -18,10 +18,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Basit şifre kontrolü (production'da daha güvenli bir yöntem kullanılmalı)
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'alerta2024';
+    // 🔒 SECURITY: Verify admin password (environment variable required, no fallback)
+    const { verifyAdminPassword } = await import('@/lib/adminAuth');
     
-    if (password !== ADMIN_PASSWORD) {
+    if (!verifyAdminPassword(password, 'main')) {
       return NextResponse.json(
         { error: 'Geçersiz şifre!' },
         { status: 401 }

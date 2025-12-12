@@ -60,9 +60,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { title, summary, content, category, source, author, imageUrl, url, password } = body;
 
-    // Validate password
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'alerta2024';
-    if (password !== ADMIN_PASSWORD) {
+    // 🔒 SECURITY: Verify admin password (environment variable required, no fallback)
+    const { verifyAdminPassword } = await import('@/lib/adminAuth');
+    if (!verifyAdminPassword(password, 'main')) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
 
@@ -117,9 +117,9 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Validate password
-    const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'alerta2024';
-    if (password !== ADMIN_PASSWORD) {
+    // 🔒 SECURITY: Verify admin password (environment variable required, no fallback)
+    const { verifyAdminPassword } = await import('@/lib/adminAuth');
+    if (!verifyAdminPassword(password, 'main')) {
       return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
     }
 

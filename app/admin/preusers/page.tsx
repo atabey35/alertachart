@@ -1,11 +1,10 @@
 import { getSql } from '@/lib/db';
 import { cookies } from 'next/headers';
 import PasswordForm from './PasswordForm';
+import { getAdminTokenFromCookie } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic'; // Her girişte veriyi taze çek
 export const revalidate = 0;
-
-const ADMIN_PASSWORD = process.env.ADMIN_PREUSERS_PASSWORD || process.env.ADMIN_SALES_PASSWORD || '21311211';
 
 /**
  * Admin Premium Users Page
@@ -85,12 +84,21 @@ async function AdminPreUsersContent() {
 
   // Lifetime premium (no expiry)
   const lifetimePremium = premiumUsers.filter((u: any) => !u.expiry_date).length;
+  
+  // Check if lifetime premium is manual (has 'manual-premium' or 'permanent_premium' in subscription_id)
+  const manualLifetimePremium = premiumUsers.filter((u: any) => 
+    !u.expiry_date && 
+    (u.subscription_id?.includes('manual-premium') || 
+     u.subscription_id === 'permanent_premium' ||
+     u.subscription_platform === 'web' && !u.subscription_id)
+  ).length;
 
   const stats = {
     total: premiumUsers.length,
     active: activePremium.length,
     expired: expiredPremium.length,
     lifetime: lifetimePremium,
+    manualLifetime: manualLifetimePremium,
     ios: iosUsers,
     android: androidUsers,
     web: webUsers,
@@ -147,6 +155,9 @@ async function AdminPreUsersContent() {
             <div className="text-3xl font-bold text-green-400">{stats.active}</div>
             <div className="text-xs text-gray-500 mt-1">
               {stats.lifetime} sınırsız
+              {stats.manualLifetime > 0 && (
+                <span className="text-yellow-400 ml-1">({stats.manualLifetime} manuel)</span>
+              )}
             </div>
           </div>
           <div className="bg-gradient-to-br from-red-900/30 to-red-800/20 border border-red-700 p-6 rounded-lg">
@@ -302,7 +313,16 @@ async function AdminPreUsersContent() {
                               {formatDate(user.expiry_date)}
                             </div>
                           ) : (
-                            <span className="text-green-400 font-semibold">Sınırsız</span>
+                            <div>
+                              <span className="text-green-400 font-semibold">Sınırsız</span>
+                              {(user.subscription_id?.includes('manual-premium') || 
+                                user.subscription_id === 'permanent_premium' ||
+                                (user.subscription_platform === 'web' && !user.subscription_id)) && (
+                                <span className="text-yellow-400 text-xs ml-1" title="Manuel olarak oluşturulmuş">
+                                  (Manuel)
+                                </span>
+                              )}
+                            </div>
                           )}
                         </td>
                         <td className="p-3 text-sm">
@@ -375,16 +395,14 @@ async function AdminPreUsersContent() {
  * Checks cookie for password authentication
  */
 export default async function AdminPreUsersPage() {
-  // Check if password is set in cookie
-  const cookieStore = await cookies();
-  const preusersAuthCookie = cookieStore.get('admin_preusers_auth');
+  // 🔒 SECURITY: Verify JWT token from cookie (not password)
+  const token = await getAdminTokenFromCookie('preusers');
 
-  // Check password from cookie
-  if (!preusersAuthCookie || preusersAuthCookie.value !== ADMIN_PASSWORD) {
-    // Show password form
+  if (!token) {
+    // Not authenticated, show password form
     return <PasswordForm />;
   }
 
-  // Password is correct, show admin content
+  // Token is valid, show admin content
   return <AdminPreUsersContent />;
 }

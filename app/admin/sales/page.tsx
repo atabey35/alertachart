@@ -1,11 +1,10 @@
 import { getSql } from '@/lib/db';
 import { cookies } from 'next/headers';
 import PasswordForm from './PasswordForm';
+import { getAdminTokenFromCookie } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic'; // Her girişte veriyi taze çek
 export const revalidate = 0;
-
-const ADMIN_PASSWORD = process.env.ADMIN_SALES_PASSWORD || '21311211';
 
 /**
  * Admin Sales Tracking Page
@@ -394,16 +393,14 @@ async function AdminSalesContent() {
  * Checks cookie for password authentication
  */
 export default async function AdminSalesPage() {
-  // Check if password is set in cookie
-  const cookieStore = await cookies();
-  const salesAuthCookie = cookieStore.get('admin_sales_auth');
+  // 🔒 SECURITY: Verify JWT token from cookie (not password)
+  const token = await getAdminTokenFromCookie('sales');
 
-  // Check password from cookie
-  if (!salesAuthCookie || salesAuthCookie.value !== ADMIN_PASSWORD) {
-    // Show password form
+  if (!token) {
+    // Not authenticated, show password form
     return <PasswordForm />;
   }
 
-  // Password is correct, show admin content
+  // Token is valid, show admin content
   return <AdminSalesContent />;
 }
