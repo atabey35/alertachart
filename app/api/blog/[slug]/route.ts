@@ -35,6 +35,7 @@ export async function GET(
       readTime: post.read_time,
       publishedAt: post.published_at,
       featured: post.featured,
+      tags: post.tags || [],
     });
   } catch (error: any) {
     console.error('[Blog API] Error:', error);

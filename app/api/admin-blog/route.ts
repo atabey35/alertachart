@@ -130,6 +130,17 @@ export async function POST(request: NextRequest) {
     const readTime = parseInt(String(data.readTime), 10) || 5;
     const featured = Boolean(data.featured);
     
+    // Process tags: convert string to array if needed
+    let tags: string[] = [];
+    if (data.tags) {
+      if (Array.isArray(data.tags)) {
+        tags = data.tags.filter((tag: string) => tag && tag.trim());
+      } else if (typeof data.tags === 'string') {
+        // Support comma-separated string: "tag1, tag2, tag3"
+        tags = data.tags.split(',').map((tag: string) => tag.trim()).filter((tag: string) => tag);
+      }
+    }
+    
     console.log('[Admin Blog API] Inserting blog post:', {
       title: data.title,
       slug: data.slug,
@@ -137,6 +148,7 @@ export async function POST(request: NextRequest) {
       author: data.author,
       readTime,
       featured,
+      tags: tags.length > 0 ? tags : 'none',
       coverImage: data.coverImage ? 'present' : 'null',
       authorImage: data.authorImage ? 'present' : 'null',
     });
@@ -144,8 +156,8 @@ export async function POST(request: NextRequest) {
     let result;
     try {
       result = await sql`
-        INSERT INTO blog_posts (title, slug, excerpt, content, cover_image, category, author, author_image, read_time, featured)
-        VALUES (${data.title}, ${data.slug}, ${data.excerpt}, ${data.content}, ${data.coverImage || null}, ${data.category}, ${data.author}, ${data.authorImage || null}, ${readTime}, ${featured})
+        INSERT INTO blog_posts (title, slug, excerpt, content, cover_image, category, author, author_image, read_time, featured, tags)
+        VALUES (${data.title}, ${data.slug}, ${data.excerpt}, ${data.content}, ${data.coverImage || null}, ${data.category}, ${data.author}, ${data.authorImage || null}, ${readTime}, ${featured}, ${tags.length > 0 ? tags : sql`ARRAY[]::TEXT[]`})
         RETURNING *
       `;
     } catch (dbError: any) {
@@ -189,6 +201,7 @@ export async function POST(request: NextRequest) {
       readTime: blogPost.read_time,
       publishedAt: blogPost.published_at ? new Date(blogPost.published_at).toISOString() : new Date().toISOString(),
       featured: Boolean(blogPost.featured),
+      tags: blogPost.tags || [],
     };
 
     return NextResponse.json(response, { status: 200 });
@@ -257,6 +270,7 @@ export async function GET(request: NextRequest) {
       readTime: post.read_time,
       publishedAt: post.published_at,
       featured: post.featured,
+      tags: post.tags || [],
     })));
   } catch (error: any) {
     console.error('[Admin Blog API] Error:', error);

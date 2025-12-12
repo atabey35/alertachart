@@ -21,6 +21,7 @@ interface BlogPost {
   readTime: number;
   publishedAt: string;
   featured: boolean;
+  tags?: string[];
 }
 
 export default function BlogPostPage() {
@@ -118,9 +119,19 @@ export default function BlogPostPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-indigo-500/20 text-indigo-300 mb-4">
-              {post.category}
-            </span>
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <span className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-indigo-500/20 text-indigo-300">
+                {post.category}
+              </span>
+              {post.tags && post.tags.length > 0 && post.tags.map((tag, index) => (
+                <span 
+                  key={index}
+                  className="inline-block px-3 py-1 text-xs font-medium rounded-full bg-zinc-700/50 text-zinc-300 hover:bg-zinc-600/50 transition-colors"
+                >
+                  #{tag}
+                </span>
+              ))}
+            </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tight text-white mb-6">
               {post.title}
             </h1>
@@ -180,6 +191,45 @@ export default function BlogPostPage() {
             className="prose prose-invert prose-lg max-w-none"
             dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(post.content) }}
           />
+          
+          {/* Structured Data (JSON-LD) for SEO */}
+          {post && (
+            <script
+              type="application/ld+json"
+              dangerouslySetInnerHTML={{
+                __html: JSON.stringify({
+                  "@context": "https://schema.org",
+                  "@type": "BlogPosting",
+                  "headline": post.title,
+                  "description": post.excerpt.replace(/<[^>]*>/g, '').substring(0, 160),
+                  "image": post.coverImage || undefined,
+                  "datePublished": post.publishedAt,
+                  "dateModified": post.publishedAt,
+                  "author": {
+                    "@type": "Person",
+                    "name": post.author,
+                    ...(post.authorImage && { "image": post.authorImage })
+                  },
+                  "publisher": {
+                    "@type": "Organization",
+                    "name": "Alerta Chart",
+                    "logo": {
+                      "@type": "ImageObject",
+                      "url": "https://alertachart.com/logo.png"
+                    }
+                  },
+                  "mainEntityOfPage": {
+                    "@type": "WebPage",
+                    "@id": `https://alertachart.com/blog/${post.slug}`
+                  },
+                  "articleSection": post.category,
+                  "keywords": post.tags ? post.tags.join(', ') : post.category,
+                  "wordCount": post.content.replace(/<[^>]*>/g, '').split(/\s+/).length,
+                  "timeRequired": `PT${post.readTime}M`
+                })
+              }}
+            />
+          )}
         </article>
         
         {/* Related Posts Section */}

@@ -20,6 +20,7 @@ interface BlogPost {
   readTime: number;
   publishedAt: string;
   featured: boolean;
+  tags?: string[];
 }
 
 export default function BlogPage() {

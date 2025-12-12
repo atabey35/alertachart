@@ -51,7 +51,8 @@ export default function AdminPage() {
     author: '',
     authorImage: '',
     readTime: '5',
-    featured: false
+    featured: false,
+    tags: '' // Comma-separated tags string
   });
   const [addBlogPostMsg, setAddBlogPostMsg] = useState('');
   const [addBlogPostLoading, setAddBlogPostLoading] = useState(false);
@@ -307,7 +308,8 @@ export default function AdminPage() {
         author: '',
         authorImage: '',
         readTime: '5',
-        featured: false
+        featured: false,
+        tags: ''
       });
       setAddBlogPostOpen(false);
       fetchBlogPosts();
@@ -1024,6 +1026,22 @@ export default function AdminPage() {
                         min="1"
                         required
                       />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-300 mb-2">
+                        Etiketler (Tags)
+                        <span className="text-xs text-gray-500 ml-2">(Virgülle ayırın: crypto, bitcoin, trading)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={addBlogPostForm.tags}
+                        onChange={(e) => setAddBlogPostForm({...addBlogPostForm, tags: e.target.value})}
+                        placeholder="crypto, bitcoin, trading, analysis"
+                        className="w-full px-4 py-3 bg-[#0a0a0a] border border-gray-900 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                      <div className="text-xs text-gray-500 mt-1">
+                        Etiketler SEO için önemlidir. Google'da arama sonuçlarında görünür.
+                      </div>
                     </div>
                     <div className="flex items-center pt-8">
                       <input
