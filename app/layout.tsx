@@ -214,7 +214,14 @@ export const metadata: Metadata = {
     google: 'your-google-verification-code', // Google Search Console'dan alacaksınız
   },
   icons: {
-    icon: '/icon.png', // Modern tarayıcılar için
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' }, // Google's preferred format
+      { url: '/icon.png', sizes: '16x16', type: 'image/png' },
+      { url: '/icon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon.png', sizes: '96x96', type: 'image/png' },
+      { url: '/icon.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icon.png', sizes: '512x512', type: 'image/png' },
+    ],
     shortcut: '/favicon.ico', // Google ve eski sistemler için
     apple: '/icon.png', // Apple cihazlar için
   },
@@ -292,11 +299,23 @@ export default function RootLayout({
   return (
     <html lang="en">
       <head>
-        {/* Favicon links for Google and all browsers */}
+        {/* Favicon links for Google and all browsers - Google requires specific formats */}
+        {/* Primary favicon - Google's preferred format */}
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+        <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
+        
+        {/* PNG icons for different sizes - Google uses these for search results */}
+        <link rel="icon" type="image/png" sizes="16x16" href="/icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icon.png" />
+        <link rel="icon" type="image/png" sizes="96x96" href="/icon.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icon.png" />
+        <link rel="icon" type="image/png" sizes="512x512" href="/icon.png" />
+        
+        {/* Apple touch icon */}
         <link rel="apple-touch-icon" sizes="180x180" href="/icon.png" />
+        
+        {/* Android Chrome */}
+        <link rel="manifest" href="/manifest.json" />
         
         {/* Google Tag Manager */}
         <Script id="google-tag-manager" strategy="afterInteractive">

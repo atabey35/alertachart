@@ -6,6 +6,11 @@
 - ✅ `app/icon.png` → `public/icon.png` kopyalandı
 - ✅ Icon boyutu: 1024x1024 (Google için yeterli)
 - ✅ Tüm icon referansları `/icon.png` olarak güncellendi
+- ✅ `public/favicon.ico` dosyası mevcut
+- ✅ **YENİ (14 Aralık 2025):** Google için favicon link'leri güncellendi
+  - ✅ `rel="shortcut icon"` eklendi (eski sistemler için)
+  - ✅ Tüm boyutlar eklendi (16x16, 32x32, 96x96, 192x192, 512x512)
+  - ✅ Metadata icons array güncellendi
 
 ### 2. Metadata (app/layout.tsx)
 - ✅ Title: "Alerta Chart - Professional Crypto Charting Platform"
@@ -40,7 +45,18 @@
 
 ## ⚠️ Yapılması Gerekenler
 
-### 1. Google Search Console
+### 1. Favicon Görünürlüğü İçin (ÖNEMLİ)
+- [ ] **Google Search Console'da URL Inspection yap:**
+  1. `https://alertachart.com` URL'ini Google Search Console'da aç
+  2. "Test Live URL" butonuna tıkla
+  3. Favicon'ın göründüğünü kontrol et
+  4. "Request Indexing" yap
+- [ ] **Favicon dosyalarının erişilebilir olduğunu test et:**
+  - `https://alertachart.com/favicon.ico` → Tarayıcıda açılmalı
+  - `https://alertachart.com/icon.png` → Tarayıcıda açılmalı
+- [ ] **Google'ın favicon'ı görmesi 1-7 gün sürebilir** (re-indexing sonrası)
+
+### 2. Google Search Console
 - [ ] Google Search Console'a site ekle
 - [ ] Sitemap'i Google'a gönder: `https://alertachart.com/sitemap.xml`
 - [ ] Google verification code'u al ve `app/layout.tsx`'e ekle:
@@ -52,25 +68,25 @@
 - [ ] URL Inspection ile ana sayfayı test et
 - [ ] "Request Indexing" yap
 
-### 2. Google Indexing Hızlandırma
+### 3. Google Indexing Hızlandırma
 - [ ] Google Search Console → Sitemaps → `https://alertachart.com/sitemap.xml` ekle
 - [ ] Ana sayfa için "Request Indexing" yap
 - [ ] Privacy, Blog, News sayfaları için "Request Indexing" yap
 - [ ] Google'ın index alması 1-7 gün sürebilir
 
-### 3. Open Graph Image Optimizasyonu (Opsiyonel)
+### 4. Open Graph Image Optimizasyonu (Opsiyonel)
 - [ ] 1200x630 boyutunda özel Open Graph image oluştur
 - [ ] Image'e logo, başlık ve açıklama ekle
 - [ ] `public/og-image.png` olarak kaydet
 - [ ] `app/layout.tsx`'de Open Graph image URL'ini güncelle
 
-### 4. Content Güncellemeleri
+### 5. Content Güncellemeleri
 - [ ] Ana sayfada "Alerta Chart" brand name'inin geçtiğinden emin ol
 - [ ] Meta description'da "TradingView alternative" vurgusu
 - [ ] H1 tag'inde "Alerta Chart" geçmeli
 - [ ] Alt text'lerde "Alerta Chart" geçmeli
 
-### 5. Backlinks ve Social Signals
+### 6. Backlinks ve Social Signals
 - [ ] Social media paylaşımları (Twitter, LinkedIn, Reddit)
 - [ ] Backlink stratejisi (crypto forums, trading communities)
 - [ ] Press release (opsiyonel)
@@ -160,6 +176,6 @@ site:alertachart.com filetype:png
 
 ---
 
-**Son Güncelleme:** 28 Kasım 2025
-**Durum:** Teknik SEO hazır, Google indexing bekleniyor
+**Son Güncelleme:** 14 Aralık 2025
+**Durum:** Favicon link'leri güncellendi, Google re-indexing bekleniyor
 
