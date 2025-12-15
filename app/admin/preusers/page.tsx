@@ -53,6 +53,10 @@ async function AdminPreUsersContent() {
     return new Date(user.expiry_date) > now;
   });
 
+  // Guest vs normal breakdown (only active premiums)
+  const activeGuestPremium = activePremium.filter((u: any) => u.provider === 'guest');
+  const activeNormalPremium = activePremium.filter((u: any) => u.provider !== 'guest');
+
   // Expired premium
   const expiredPremium = premiumUsers.filter((user: any) => {
     if (!user.expiry_date) return false; // Lifetime premium never expires
@@ -96,6 +100,8 @@ async function AdminPreUsersContent() {
   const stats = {
     total: premiumUsers.length,
     active: activePremium.length,
+    activeGuest: activeGuestPremium.length,
+    activeNormal: activeNormalPremium.length,
     expired: expiredPremium.length,
     lifetime: lifetimePremium,
     manualLifetime: manualLifetimePremium,
@@ -145,7 +151,7 @@ async function AdminPreUsersContent() {
         <h1 className="text-3xl font-bold mb-6">👑 Premium Üyeler</h1>
         
         {/* Statistics Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
           <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-700 p-6 rounded-lg">
             <div className="text-sm text-gray-400 mb-2">Toplam Premium</div>
             <div className="text-3xl font-bold text-purple-400">{stats.total}</div>
@@ -158,6 +164,20 @@ async function AdminPreUsersContent() {
               {stats.manualLifetime > 0 && (
                 <span className="text-yellow-400 ml-1">({stats.manualLifetime} manuel)</span>
               )}
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-emerald-900/30 to-emerald-800/20 border border-emerald-700 p-6 rounded-lg">
+            <div className="text-sm text-gray-400 mb-2">Aktif Premium (Normal)</div>
+            <div className="text-3xl font-bold text-emerald-400">{stats.activeNormal}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              Apple / Google / Email giriş yapanlar
+            </div>
+          </div>
+          <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 border border-yellow-700 p-6 rounded-lg">
+            <div className="text-sm text-gray-400 mb-2">Aktif Premium (Guest)</div>
+            <div className="text-3xl font-bold text-yellow-300">{stats.activeGuest}</div>
+            <div className="text-xs text-gray-500 mt-1">
+              Misafir olarak premium kullanan cihazlar
             </div>
           </div>
           <div className="bg-gradient-to-br from-red-900/30 to-red-800/20 border border-red-700 p-6 rounded-lg">
