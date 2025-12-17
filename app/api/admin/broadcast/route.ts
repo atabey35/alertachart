@@ -67,10 +67,15 @@ export async function POST(request: NextRequest) {
     }
     
     if (response.ok) {
-      // Save notification to database for all users
+      // Save notification to database for filtered users based on targetLang
       let notificationsSaved = 0;
       try {
         const sql = getSql();
+        
+        // 🔥 MULTILINGUAL: Filter users based on targetLang
+        // If targetLang is 'all', save to all users
+        // Otherwise, we'll save to all users but mark with target_lang for frontend filtering
+        // Note: We don't have user language in database yet, so we save to all and filter in frontend
         const users = await sql`SELECT id FROM users`;
         
         if (users.length > 0) {
@@ -88,36 +93,31 @@ export async function POST(request: NextRequest) {
             console.warn('[Broadcast] Could not fix sequence:', seqError.message);
           }
           
+          // 🔥 MULTILINGUAL: Add target_lang column if it doesn't exist
+          try {
+            await sql`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_lang VARCHAR(10) DEFAULT 'all'`;
+            console.log('[Broadcast] ✅ target_lang column ensured');
+          } catch (alterError: any) {
+            // Column might already exist, that's fine
+            console.log('[Broadcast] target_lang column check:', alterError.message);
+          }
+          
           // Insert notifications one by one with error handling
-          // This prevents duplicate key errors and ensures all users get the notification
+          // Note: We allow duplicate notifications (same user can receive same notification multiple times)
           for (const user of users) {
             try {
               await sql`
-                INSERT INTO notifications (user_id, title, message, is_read)
-                VALUES (${user.id}, ${title}, ${message}, false)
-                ON CONFLICT DO NOTHING
+                INSERT INTO notifications (user_id, title, message, is_read, target_lang)
+                VALUES (${user.id}, ${title}, ${message}, false, ${targetLang})
               `;
               notificationsSaved++;
             } catch (insertError: any) {
-              // If it's a duplicate key error, try to insert without specifying id
-              if (insertError.code === '23505' || insertError.message?.includes('duplicate key')) {
-                try {
-                  // Try again without ON CONFLICT (let database handle it)
-                  await sql`
-                    INSERT INTO notifications (user_id, title, message, is_read)
-                    VALUES (${user.id}, ${title}, ${message}, false)
-                  `;
-                  notificationsSaved++;
-                } catch (retryError: any) {
-                  console.warn(`[Broadcast] Failed to insert notification for user ${user.id}:`, retryError.message);
-                }
-              } else {
-                console.warn(`[Broadcast] Failed to insert notification for user ${user.id}:`, insertError.message);
-              }
+              console.warn(`[Broadcast] Failed to insert notification for user ${user.id}:`, insertError.message);
+              // Continue with next user even if one fails
             }
           }
           
-          console.log(`[Broadcast] Saved ${notificationsSaved}/${users.length} notifications to database`);
+          console.log(`[Broadcast] Saved ${notificationsSaved}/${users.length} notifications to database with targetLang=${targetLang}`);
         }
       } catch (dbError: any) {
         console.error('[Broadcast] Error saving to database:', dbError);

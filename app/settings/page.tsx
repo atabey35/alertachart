@@ -839,7 +839,17 @@ export default function SettingsPage() {
     const fetchNotifications = async () => {
       setLoadingNotifications(true);
       try {
-        const response = await fetch('/api/notifications', {
+        // 🔥 GUEST USER SUPPORT: Include email and language in query params
+        let url = '/api/notifications';
+        const params = new URLSearchParams();
+        if (user?.email) {
+          params.append('email', user.email);
+        }
+        // 🔥 MULTILINGUAL: Include user's language preference for filtering
+        params.append('lang', language);
+        url += `?${params.toString()}`;
+        
+        const response = await fetch(url, {
           credentials: 'include',
           cache: 'no-store',
         });
@@ -866,7 +876,7 @@ export default function SettingsPage() {
     return () => {
       window.removeEventListener('notification-refresh', handleNotificationRefresh);
     };
-  }, [user?.email]);
+  }, [user?.email, language]); // 🔥 MULTILINGUAL: Re-fetch when language changes
 
   // Mark notification as read
   const markNotificationAsRead = async (notificationId: number) => {
@@ -3296,13 +3306,8 @@ export default function SettingsPage() {
               {/* Action Buttons */}
               <div className="flex gap-2">
                 <button
-                  className="flex-1 px-4 py-2.5 text-xs font-semibold bg-slate-800/50 text-slate-300 border border-slate-700/50 rounded-xl hover:bg-slate-800/70 hover:border-slate-600/50 transition-all active:scale-[0.98]"
-                >
-                  {language === 'en' ? 'All pairs' : 'Tüm çiftler'}
-                </button>
-                <button
                   onClick={() => setShowAddAlertModal(true)}
-                  className="flex-1 px-4 py-2.5 text-xs font-semibold bg-gradient-to-r from-blue-600 to-blue-700 text-white border border-blue-500/30 rounded-xl hover:from-blue-500 hover:to-blue-600 hover:border-blue-400/50 transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-[0.98] flex items-center justify-center gap-1.5"
+                  className="w-full px-4 py-2.5 text-xs font-semibold bg-gradient-to-r from-blue-600 to-blue-700 text-white border border-blue-500/30 rounded-xl hover:from-blue-500 hover:to-blue-600 hover:border-blue-400/50 transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-[0.98] flex items-center justify-center gap-1.5"
                 >
                   <span className="text-base">+</span>
                   <span>{language === 'en' ? 'Add Alert' : 'Alarm Ekle'}</span>

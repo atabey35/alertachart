@@ -11,7 +11,17 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
     const isDevelopment = process.env.NODE_ENV === 'development';
-    const userEmail = session?.user?.email || (isDevelopment ? 'test@gmail.com' : null);
+    let userEmail = session?.user?.email || (isDevelopment ? 'test@gmail.com' : null);
+    
+    // 🔥 GUEST USER SUPPORT & MULTILINGUAL: Check for email and language in query params
+    const { searchParams } = new URL(request.url);
+    const emailParam = searchParams.get('email');
+    const userLang = searchParams.get('lang') || 'tr';
+    
+    if (!userEmail && emailParam) {
+      userEmail = emailParam;
+      console.log('[Notifications API] Using email from query param (guest user):', emailParam);
+    }
 
     if (!userEmail) {
       return NextResponse.json({ 
@@ -22,12 +32,13 @@ export async function GET(request: NextRequest) {
 
     const sql = getSql();
     
-    // Get user ID
+    // Get user ID (works for both authenticated and guest users)
     const users = await sql`
       SELECT id FROM users WHERE email = ${userEmail} LIMIT 1
     `;
     
     if (users.length === 0) {
+      console.log('[Notifications API] User not found for email:', userEmail);
       return NextResponse.json({ 
         unreadCount: 0,
         notifications: []
@@ -35,17 +46,25 @@ export async function GET(request: NextRequest) {
     }
 
     const userId = users[0].id;
-
+    
     // Get notifications (last 20, ordered by created_at DESC)
+    // Filter by target_lang: 'all' or matching user's language
+    // NULL target_lang is treated as 'all' (backward compatibility for old notifications)
     const notifications = await sql`
       SELECT 
         id,
         title,
         message,
         is_read,
-        created_at
+        created_at,
+        COALESCE(target_lang, 'all') as target_lang
       FROM notifications
       WHERE user_id = ${userId}
+        AND (
+          target_lang IS NULL 
+          OR target_lang = 'all' 
+          OR target_lang = ${userLang}
+        )
       ORDER BY created_at DESC
       LIMIT 20
     `;
