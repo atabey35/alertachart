@@ -47,25 +47,63 @@ export async function GET(request: NextRequest) {
 
     const userId = users[0].id;
     
+    // 🔥 CRITICAL: Ensure target_lang column exists before querying
+    try {
+      await sql`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_lang VARCHAR(10) DEFAULT 'all'`;
+      console.log('[Notifications API] ✅ target_lang column ensured');
+    } catch (alterError: any) {
+      // Column might already exist or error occurred, continue anyway
+      console.log('[Notifications API] target_lang column check:', alterError.message);
+    }
+    
+    // 🔥 GLOBAL NOTIFICATIONS: Ensure notification_reads table exists
+    try {
+      await sql`
+        CREATE TABLE IF NOT EXISTS notification_reads (
+          id SERIAL PRIMARY KEY,
+          notification_id INTEGER NOT NULL,
+          user_id INTEGER NOT NULL,
+          read_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (notification_id) REFERENCES notifications(id) ON DELETE CASCADE,
+          FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+          UNIQUE(notification_id, user_id)
+        )
+      `;
+      await sql`CREATE INDEX IF NOT EXISTS idx_notification_reads_notification_id ON notification_reads(notification_id)`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_notification_reads_user_id ON notification_reads(user_id)`;
+      console.log('[Notifications API] ✅ notification_reads table ensured');
+    } catch (tableError: any) {
+      console.log('[Notifications API] notification_reads table check:', tableError.message);
+    }
+    
     // Get notifications (last 20, ordered by created_at DESC)
+    // Include both:
+    // 1. Global notifications (user_id IS NULL) - visible to all users
+    // 2. Personal notifications (user_id = userId) - specific to this user
     // Filter by target_lang: 'all' or matching user's language
     // NULL target_lang is treated as 'all' (backward compatibility for old notifications)
+    // For global notifications, check notification_reads table for read status
     const notifications = await sql`
       SELECT 
-        id,
-        title,
-        message,
-        is_read,
-        created_at,
-        COALESCE(target_lang, 'all') as target_lang
-      FROM notifications
-      WHERE user_id = ${userId}
+        n.id,
+        n.title,
+        n.message,
+        CASE 
+          WHEN n.user_id IS NULL THEN 
+            CASE WHEN nr.id IS NOT NULL THEN true ELSE false END
+          ELSE n.is_read
+        END as is_read,
+        n.created_at,
+        COALESCE(n.target_lang, 'all') as target_lang
+      FROM notifications n
+      LEFT JOIN notification_reads nr ON n.id = nr.notification_id AND nr.user_id = ${userId}
+      WHERE (n.user_id IS NULL OR n.user_id = ${userId})
         AND (
-          target_lang IS NULL 
-          OR target_lang = 'all' 
-          OR target_lang = ${userLang}
+          n.target_lang IS NULL 
+          OR n.target_lang = 'all' 
+          OR n.target_lang = ${userLang}
         )
-      ORDER BY created_at DESC
+      ORDER BY n.created_at DESC
       LIMIT 20
     `;
 
@@ -123,6 +161,17 @@ export async function POST(request: NextRequest) {
 
     if (markAllAsRead) {
       // Mark all as read
+      // For global notifications (user_id IS NULL), insert into notification_reads
+      // For personal notifications (user_id = userId), update is_read
+      await sql`
+        INSERT INTO notification_reads (notification_id, user_id)
+        SELECT id, ${userId}
+        FROM notifications
+        WHERE user_id IS NULL
+          AND id NOT IN (SELECT notification_id FROM notification_reads WHERE user_id = ${userId})
+        ON CONFLICT (notification_id, user_id) DO NOTHING
+      `;
+      
       await sql`
         UPDATE notifications
         SET is_read = true
@@ -130,11 +179,26 @@ export async function POST(request: NextRequest) {
       `;
     } else if (notificationId) {
       // Mark specific notification as read
-      await sql`
-        UPDATE notifications
-        SET is_read = true
-        WHERE id = ${notificationId} AND user_id = ${userId}
+      // Check if it's a global notification (user_id IS NULL)
+      const notification = await sql`
+        SELECT user_id FROM notifications WHERE id = ${notificationId} LIMIT 1
       `;
+      
+      if (notification.length > 0 && notification[0].user_id === null) {
+        // Global notification - insert into notification_reads
+        await sql`
+          INSERT INTO notification_reads (notification_id, user_id)
+          VALUES (${notificationId}, ${userId})
+          ON CONFLICT (notification_id, user_id) DO NOTHING
+        `;
+      } else {
+        // Personal notification - update is_read
+        await sql`
+          UPDATE notifications
+          SET is_read = true
+          WHERE id = ${notificationId} AND user_id = ${userId}
+        `;
+      }
     }
 
     return NextResponse.json({ success: true });

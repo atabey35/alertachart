@@ -67,57 +67,41 @@ export async function POST(request: NextRequest) {
     }
     
     if (response.ok) {
-      // Save notification to database for filtered users based on targetLang
+      // Save notification to database as a SINGLE global record (visible to all users)
       let notificationsSaved = 0;
       try {
         const sql = getSql();
         
-        // 🔥 MULTILINGUAL: Filter users based on targetLang
-        // If targetLang is 'all', save to all users
-        // Otherwise, we'll save to all users but mark with target_lang for frontend filtering
-        // Note: We don't have user language in database yet, so we save to all and filter in frontend
-        const users = await sql`SELECT id FROM users`;
+        // 🔥 MULTILINGUAL: Add target_lang column if it doesn't exist
+        try {
+          await sql`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_lang VARCHAR(10) DEFAULT 'all'`;
+          console.log('[Broadcast] ✅ target_lang column ensured');
+        } catch (alterError: any) {
+          // Column might already exist, that's fine
+          console.log('[Broadcast] target_lang column check:', alterError.message);
+        }
         
-        if (users.length > 0) {
-          // Fix sequence if it's out of sync (handles duplicate key errors)
-          try {
-            await sql`
-              SELECT setval(
-                pg_get_serial_sequence('notifications', 'id'),
-                COALESCE((SELECT MAX(id) FROM notifications), 1),
-                true
-              )
-            `;
-            console.log('[Broadcast] Fixed notifications sequence');
-          } catch (seqError: any) {
-            console.warn('[Broadcast] Could not fix sequence:', seqError.message);
-          }
-          
-          // 🔥 MULTILINGUAL: Add target_lang column if it doesn't exist
-          try {
-            await sql`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_lang VARCHAR(10) DEFAULT 'all'`;
-            console.log('[Broadcast] ✅ target_lang column ensured');
-          } catch (alterError: any) {
-            // Column might already exist, that's fine
-            console.log('[Broadcast] target_lang column check:', alterError.message);
-          }
-          
-          // Insert notifications one by one with error handling
-          // Note: We allow duplicate notifications (same user can receive same notification multiple times)
-          for (const user of users) {
-            try {
-              await sql`
-                INSERT INTO notifications (user_id, title, message, is_read, target_lang)
-                VALUES (${user.id}, ${title}, ${message}, false, ${targetLang})
-              `;
-              notificationsSaved++;
-            } catch (insertError: any) {
-              console.warn(`[Broadcast] Failed to insert notification for user ${user.id}:`, insertError.message);
-              // Continue with next user even if one fails
-            }
-          }
-          
-          console.log(`[Broadcast] Saved ${notificationsSaved}/${users.length} notifications to database with targetLang=${targetLang}`);
+        // 🔥 GLOBAL NOTIFICATIONS: Make user_id nullable for global notifications
+        try {
+          await sql`ALTER TABLE notifications ALTER COLUMN user_id DROP NOT NULL`;
+          console.log('[Broadcast] ✅ user_id column made nullable for global notifications');
+        } catch (alterError: any) {
+          // Column might already be nullable, that's fine
+          console.log('[Broadcast] user_id nullable check:', alterError.message);
+        }
+        
+        // 🔥 SINGLE RECORD: Insert ONE global notification (user_id = NULL)
+        // This single record will be visible to all users based on target_lang filtering
+        try {
+          await sql`
+            INSERT INTO notifications (user_id, title, message, is_read, target_lang)
+            VALUES (NULL, ${title}, ${message}, false, ${targetLang})
+          `;
+          notificationsSaved = 1;
+          console.log(`[Broadcast] ✅ Saved 1 global notification to database with targetLang=${targetLang}`);
+        } catch (insertError: any) {
+          console.error('[Broadcast] Failed to insert global notification:', insertError.message);
+          // Don't fail the request if database save fails
         }
       } catch (dbError: any) {
         console.error('[Broadcast] Error saving to database:', dbError);
