@@ -156,7 +156,7 @@ const translations: Translations = {
     ko: '평가하기',
   },
   'marketType': {
-    tr: 'Market Tipi',
+    tr: 'MARKET TİPİ',
     en: 'Market Type',
     ar: 'نوع السوق',
     'zh-Hant': '市場類型',
@@ -166,7 +166,7 @@ const translations: Translations = {
     ko: '시장 유형',
   },
   'legalInformation': {
-    tr: 'Yasal Bilgiler',
+    tr: 'YASAL BİLGİLER',
     en: 'Legal Information',
     ar: 'المعلومات القانونية',
     'zh-Hant': '法律資訊',
@@ -196,7 +196,7 @@ const translations: Translations = {
     ko: '개인정보 보호정책',
   },
   'premiumFeatures': {
-    tr: 'Premium Özellikler',
+    tr: 'PRO Özellikler',
     en: 'Premium Features',
     ar: 'ميزات Premium',
     'zh-Hant': 'Premium 功能',
@@ -356,7 +356,7 @@ const translations: Translations = {
     ko: '고주파 데이터 분석',
   },
   'chartLayout': {
-    tr: 'Chart Layout',
+    tr: 'GRAFİK DÜZENİ',
     en: 'Chart Layout',
     ar: 'تخطيط الرسم البياني',
     'zh-Hant': '圖表佈局',

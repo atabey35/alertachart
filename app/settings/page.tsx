@@ -55,10 +55,12 @@ export default function SettingsPage() {
   const [newAlert, setNewAlert] = useState({
     symbol: '',
     notifyWhenAway: '', // Kaç dolar kaldığında bildirim gelsin
+    direction: 'down' as 'up' | 'down', // Yön seçimi
   });
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
+  const priceUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   
   // Coin search state
   const [symbolSuggestions, setSymbolSuggestions] = useState<any[]>([]);
@@ -1014,6 +1016,57 @@ export default function SettingsPage() {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [showSuggestions]);
+
+  // Real-time price updates when symbol is selected and modal is open
+  useEffect(() => {
+    // Clear existing interval
+    if (priceUpdateIntervalRef.current) {
+      clearInterval(priceUpdateIntervalRef.current);
+      priceUpdateIntervalRef.current = null;
+    }
+
+    // Only start price updates if modal is open and symbol is valid
+    if (!showAddAlertModal || !newAlert.symbol || newAlert.symbol.length < 6) {
+      setCurrentPrice(null);
+      return;
+    }
+
+    const symbol = newAlert.symbol.toUpperCase();
+    
+    // Initial price fetch
+    const fetchPrice = async () => {
+      try {
+        const baseUrl = marketType === 'futures' 
+          ? `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`
+          : `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
+        
+        const response = await fetch(baseUrl);
+        if (response.ok) {
+          const data = await response.json();
+          const price = parseFloat(data.price || data.lastPrice || '0');
+          if (price > 0) {
+            setCurrentPrice(price);
+          }
+        }
+      } catch (error) {
+        console.error('[Settings] Error fetching real-time price:', error);
+      }
+    };
+
+    // Fetch immediately
+    fetchPrice();
+
+    // Then update every 2 seconds
+    priceUpdateIntervalRef.current = setInterval(fetchPrice, 2000);
+
+    // Cleanup on unmount or when dependencies change
+    return () => {
+      if (priceUpdateIntervalRef.current) {
+        clearInterval(priceUpdateIntervalRef.current);
+        priceUpdateIntervalRef.current = null;
+      }
+    };
+  }, [showAddAlertModal, newAlert.symbol, marketType]);
 
   // Capacitor kontrolü: Session restore ve push notification init (sadece native app için)
   useEffect(() => {
@@ -3229,7 +3282,9 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <div className="w-1 h-4 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
-                  <span className="text-sm font-semibold text-white">{t('alerts', language)}</span>
+                  <span className="text-sm font-semibold text-white">
+                    {language === 'en' ? 'Custom Price Tracking' : 'Özel Fiyat Takibi'}
+                  </span>
                   {customAlerts.length > 0 && (
                     <span className="text-xs text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
                       {customAlerts.length} {language === 'en' ? 'active' : 'aktif'}
@@ -3414,9 +3469,13 @@ export default function SettingsPage() {
                             </span>
                           </div>
                           
-                          {/* Price */}
-                          <div className="text-xl font-bold text-white font-mono mb-2 bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
-                            ${parseFloat(alert.target_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          {/* Price - Show current price if available, otherwise target price */}
+                          <div className="text-xl font-bold text-white font-mono mb-2">
+                            ${(() => {
+                              const currentPrice = alert.last_price || alert.current_price;
+                              const displayPrice = currentPrice || alert.target_price;
+                              return parseFloat(displayPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                            })()}
                           </div>
                           
                           {/* Created Date */}
@@ -3505,13 +3564,25 @@ export default function SettingsPage() {
                             </button>
                           </div>
                           
-                          {/* Percentage Badge */}
+                          {/* Percentage Badge - Calculate percentage from target price */}
                           <div className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${
                             alert.direction === 'up'
                               ? 'bg-green-500/10 text-green-400 border-green-500/30'
                               : 'bg-red-500/10 text-red-400 border-red-500/30'
                           }`}>
-                            {alert.direction === 'up' ? '+' : '-'}0.0%
+                            {(() => {
+                              const currentPrice = alert.last_price || alert.current_price;
+                              const targetPrice = parseFloat(alert.target_price);
+                              
+                              if (currentPrice && targetPrice) {
+                                const percentage = ((currentPrice - targetPrice) / targetPrice) * 100;
+                                const sign = percentage >= 0 ? '+' : '';
+                                return `${sign}${percentage.toFixed(1)}%`;
+                              }
+                              
+                              // If no current price, show 0.0% with direction sign
+                              return `${alert.direction === 'up' ? '+' : '-'}0.0%`;
+                            })()}
                           </div>
                         </div>
                       </div>
@@ -3572,7 +3643,7 @@ export default function SettingsPage() {
               <button
                   onClick={() => {
                     setShowAddAlertModal(false);
-                    setNewAlert({ symbol: '', notifyWhenAway: '' });
+                    setNewAlert({ symbol: '', notifyWhenAway: '', direction: 'down' });
                     setCurrentPrice(null);
                     setError('');
                   }}
@@ -3598,30 +3669,11 @@ export default function SettingsPage() {
                   ref={symbolInputRef}
                   type="text"
                   value={newAlert.symbol}
-                  onChange={async (e) => {
+                  onChange={(e) => {
                     const symbol = e.target.value.toUpperCase();
                     setNewAlert({ ...newAlert, symbol });
                     setShowSuggestions(true);
-                    
-                    // Mevcut fiyatı otomatik al
-                    if (symbol && symbol.length >= 6) {
-                      setLoadingPrice(true);
-                      try {
-                        const response = await fetch(`/api/ticker/spot?symbols=${symbol}`);
-                        if (response.ok) {
-                          const data = await response.json();
-                          if (data && data[symbol] && data[symbol].price) {
-                            setCurrentPrice(parseFloat(data[symbol].price));
-                          }
-                        }
-                      } catch (error) {
-                        console.error('[Settings] Error fetching current price:', error);
-                      } finally {
-                        setLoadingPrice(false);
-                      }
-                    } else {
-                      setCurrentPrice(null);
-                    }
+                    // Price will be updated automatically by useEffect
                   }}
                   onFocus={() => {
                     if (filteredSymbols.length > 0) {
@@ -3644,25 +3696,10 @@ export default function SettingsPage() {
                       return (
                         <div
                           key={symbol.symbol}
-                          onClick={async () => {
+                          onClick={() => {
                             setNewAlert({ ...newAlert, symbol: symbol.symbol });
                             setShowSuggestions(false);
-                            
-                            // Mevcut fiyatı otomatik al
-                            setLoadingPrice(true);
-                            try {
-                              const response = await fetch(`/api/ticker/spot?symbols=${symbol.symbol}`);
-                              if (response.ok) {
-                                const data = await response.json();
-                                if (data && data[symbol.symbol] && data[symbol.symbol].price) {
-                                  setCurrentPrice(parseFloat(data[symbol.symbol].price));
-                                }
-                              }
-                            } catch (error) {
-                              console.error('[Settings] Error fetching current price:', error);
-                            } finally {
-                              setLoadingPrice(false);
-                            }
+                            // Price will be updated automatically by useEffect
                           }}
                           className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-blue-950/30 transition-colors"
                         >
@@ -3707,21 +3744,62 @@ export default function SettingsPage() {
                 )}
               </div>
 
-              {/* Current Price Display */}
-              {currentPrice !== null && (
-                <div className="p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-slate-400">Current Price / Mevcut Fiyat:</span>
-                    <span className="text-lg font-bold text-blue-400">${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</span>
+              {/* Current Price Display - Real-time */}
+              {newAlert.symbol && newAlert.symbol.length >= 6 ? (
+                currentPrice !== null ? (
+                  <div className="p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl relative overflow-hidden">
+                    {/* Live indicator */}
+                    <div className="absolute top-2 right-2 flex items-center gap-1.5">
+                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <span className="text-[10px] text-green-400 font-medium">{language === 'en' ? 'LIVE' : 'CANLI'}</span>
+                    </div>
+                    <div className="flex items-center justify-between pr-16">
+                      <span className="text-sm text-slate-400">{language === 'en' ? 'Current Price' : 'Mevcut Fiyat'}:</span>
+                      <span className="text-lg font-bold text-blue-400 font-mono">
+                        ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div className="p-3 bg-slate-900/50 border border-blue-500/20 rounded-xl text-center">
+                    <div className="flex items-center justify-center gap-2">
+                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+                      <span className="text-sm text-slate-400">{language === 'en' ? 'Loading current price...' : 'Fiyat yükleniyor...'}</span>
+                    </div>
+                  </div>
+                )
+              ) : null}
 
-              {loadingPrice && (
-                <div className="p-3 bg-slate-900/50 border border-blue-500/20 rounded-xl text-center">
-                  <span className="text-sm text-slate-400">Loading current price...</span>
+              {/* Direction Selection */}
+              <div>
+                <label className="block text-sm font-medium text-slate-300 mb-2">
+                  {language === 'en' ? 'Direction / Yön' : 'Yön'}
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => setNewAlert({ ...newAlert, direction: 'up' })}
+                    className={`p-3 rounded-xl border transition-all flex items-center justify-center gap-2 ${
+                      newAlert.direction === 'up'
+                        ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                        : 'bg-slate-900/50 border-slate-700/50 text-slate-400 hover:border-green-500/30 hover:bg-green-500/10'
+                    }`}
+                  >
+                    <TrendingUp className="w-5 h-5" />
+                    <span className="font-semibold">{language === 'en' ? 'Up / Yukarı' : 'Yukarı'}</span>
+                  </button>
+                  <button
+                    onClick={() => setNewAlert({ ...newAlert, direction: 'down' })}
+                    className={`p-3 rounded-xl border transition-all flex items-center justify-center gap-2 ${
+                      newAlert.direction === 'down'
+                        ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                        : 'bg-slate-900/50 border-slate-700/50 text-slate-400 hover:border-red-500/30 hover:bg-red-500/10'
+                    }`}
+                  >
+                    <TrendingDown className="w-5 h-5" />
+                    <span className="font-semibold">{language === 'en' ? 'Down / Aşağı' : 'Aşağı'}</span>
+                  </button>
                 </div>
-              )}
+              </div>
 
               <div>
                 <div className="flex items-center gap-2 mb-2">
@@ -3747,19 +3825,22 @@ export default function SettingsPage() {
                 <p className="text-xs text-slate-500 mt-1.5">
                   {currentPrice !== null && newAlert.notifyWhenAway && parseFloat(newAlert.notifyWhenAway) > 0 ? (() => {
                     const notifyAway = parseFloat(newAlert.notifyWhenAway);
-                    const targetPriceUp = currentPrice + notifyAway;
-                    const targetPriceDown = currentPrice - notifyAway;
-                    const direction = targetPriceDown > 0 ? 'down' : 'up';
-                    const targetPrice = direction === 'down' ? targetPriceDown : targetPriceUp;
+                    const targetPrice = newAlert.direction === 'up' 
+                      ? currentPrice + notifyAway 
+                      : currentPrice - notifyAway;
                     
                     return (
                       <>
-                        Alert will trigger when price reaches ${targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} 
-                        ({direction === 'down' ? '📉' : '📈'} {direction === 'down' ? 'down' : 'up'} from ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })})
+                        {language === 'en' 
+                          ? `Alert will trigger when price reaches $${targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} (${newAlert.direction === 'down' ? '📉 down' : '📈 up'} from $${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })})`
+                          : `Alarm, fiyat $${targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} seviyesine ulaştığında tetiklenecek ($${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}'dan ${newAlert.direction === 'down' ? '📉 aşağı' : '📈 yukarı'})`
+                        }
                       </>
                     );
                   })() : (
-                    'Enter how many dollars away from current price to receive notification / Mevcut fiyattan kaç dolar uzakta bildirim almak istediğinizi girin'
+                    language === 'en'
+                      ? 'Enter how many dollars away from current price to receive notification'
+                      : 'Mevcut fiyattan kaç dolar uzakta bildirim almak istediğinizi girin'
                   )}
                 </p>
               </div>
@@ -3785,26 +3866,20 @@ export default function SettingsPage() {
                     return;
                   }
 
-                  // Otomatik hesaplamalar ve yön tespiti
-                  // Kullanıcı "kaç dolar kaldığında" derken, hem yukarı hem aşağı için kullanabilir
-                  // Sistem otomatik olarak hangi yönün daha mantıklı olduğunu tespit eder
+                  // Kullanıcının seçtiği yöne göre hedef fiyatı hesapla
+                  const direction = newAlert.direction;
+                  const targetPrice = direction === 'up' 
+                    ? currentPrice + notifyAway  // Yukarı yön: mevcut fiyat + değer
+                    : currentPrice - notifyAway;  // Aşağı yön: mevcut fiyat - değer
                   
-                  const targetPriceUp = currentPrice + notifyAway; // Yukarı yön: mevcut fiyat + değer
-                  const targetPriceDown = currentPrice - notifyAway; // Aşağı yön: mevcut fiyat - değer
-                  
-                  // Yön tespiti: Eğer aşağı yön geçerli bir fiyat veriyorsa (0'dan büyükse), aşağı yönü seç
-                  // Aksi halde yukarı yönü seç
-                  let direction: 'up' | 'down';
-                  let targetPrice: number;
-                  
-                  if (targetPriceDown > 0) {
-                    // Aşağı yön geçerli - kullanıcı muhtemelen aşağı yönü istiyor
-                    direction = 'down';
-                    targetPrice = targetPriceDown;
-                  } else {
-                    // Aşağı yön geçersiz (negatif fiyat) - yukarı yönü seç
-                    direction = 'up';
-                    targetPrice = targetPriceUp;
+                  // Aşağı yön için negatif fiyat kontrolü
+                  if (direction === 'down' && targetPrice <= 0) {
+                    setError(language === 'en' 
+                      ? 'Target price cannot be zero or negative. Please reduce the amount or select "Up" direction.'
+                      : 'Hedef fiyat sıfır veya negatif olamaz. Lütfen miktarı azaltın veya "Yukarı" yönünü seçin.'
+                    );
+                    setLoading(false);
+                    return;
                   }
                   
                   const proximityDelta = Math.max(0.01, notifyAway * 0.1); // Proximity delta = kullanıcının girdiği değerin %10'u (minimum 0.01$)
@@ -3955,7 +4030,7 @@ export default function SettingsPage() {
                       console.log('[Settings] Alert created successfully:', data);
                       setCustomAlerts([...customAlerts, data.alert]);
                       setShowAddAlertModal(false);
-                      setNewAlert({ symbol: '', notifyWhenAway: '' });
+                      setNewAlert({ symbol: '', notifyWhenAway: '', direction: 'down' });
                       setCurrentPrice(null);
                       setError('');
                     } else {
