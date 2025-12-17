@@ -6,8 +6,11 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { Bell } from 'lucide-react';
 import { PriceAlert } from '@/types/alert';
 import alertService from '@/services/alertService';
+import { Language, t } from '@/utils/translations';
 
 interface SymbolInfo {
   symbol: string;
@@ -20,9 +23,10 @@ interface AlertsPanelProps {
   exchange: string;
   pair: string;
   currentPrice?: number;
+  language?: Language;
 }
 
-export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPanelProps) {
+export default function AlertsPanel({ exchange, pair, currentPrice, language = 'tr' }: AlertsPanelProps) {
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [showAll, setShowAll] = useState(true); // Default: All pairs
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -268,59 +272,54 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
   };
 
   return (
-    <div className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 flex flex-col h-full w-full overflow-hidden backdrop-blur-sm">
+    <div className="bg-black flex flex-col h-full w-full overflow-hidden">
       {/* Header */}
-      <div className="border-b border-gray-800/50 bg-gradient-to-r from-gray-900/50 to-gray-900/30 backdrop-blur-sm px-4 py-3 shadow-sm">
+      <div className="border-b border-slate-800/50 bg-black px-4 py-4 shadow-sm">
         <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2.5">
-            <div className="relative">
-              <div className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></div>
-              <div className="absolute inset-0 w-2.5 h-2.5 bg-red-500 rounded-full animate-ping opacity-75"></div>
-            </div>
-            <h3 className="text-base font-bold text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-orange-400">
-              Alerts
+          <div className="flex items-center gap-3">
+            <div className="w-1 h-5 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+            <h3 className="text-lg font-bold text-white">
+              {t('alerts', language)}
             </h3>
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-gray-400 font-medium">
-              <span className="text-blue-400 font-bold">{activeAlerts.length}</span> active
-            </span>
-            {triggeredAlerts.length > 0 && (
-              <span className="text-xs text-gray-400 font-medium">
-                <span className="text-green-400 font-bold">{triggeredAlerts.length}</span> triggered
+            {activeAlerts.length > 0 && (
+              <span className="text-xs text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                {activeAlerts.length} {language === 'en' ? 'active' : 'aktif'}
               </span>
             )}
           </div>
+          {triggeredAlerts.length > 0 && (
+            <span className="text-xs text-green-400 font-medium bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+              {triggeredAlerts.length} {language === 'en' ? 'triggered' : 'tetiklendi'}
+            </span>
+          )}
         </div>
         
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAll(!showAll)}
-            className={`text-xs px-3 py-1.5 rounded-lg transition-all duration-200 font-medium ${
+            className={`text-xs px-4 py-2 rounded-xl transition-all duration-200 font-semibold ${
               showAll
-                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
-                : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
-            }`}
+                ? 'bg-slate-800/50 text-slate-300 border border-slate-700/50'
+                : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 border border-blue-500/30'
+            } hover:opacity-90 active:scale-[0.98]`}
           >
-            {showAll ? 'All pairs' : 'Current pair'}
+            {showAll ? (language === 'en' ? 'All pairs' : 'Tüm çiftler') : (language === 'en' ? 'Current pair' : 'Mevcut çift')}
           </button>
           
           <button
             onClick={() => setShowAddAlert(true)}
-            className="text-xs px-3 py-1.5 bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 text-white rounded-lg transition-all duration-200 font-medium shadow-lg shadow-green-500/20 hover:shadow-green-500/30 active:scale-95 flex items-center gap-1.5"
+            className="text-xs px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-[0.98] flex items-center gap-1.5"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-            </svg>
-            Add Alert
+            <span className="text-base">+</span>
+            <span>{language === 'en' ? 'Add Alert' : 'Alarm Ekle'}</span>
           </button>
           
           {triggeredAlerts.length > 0 && (
             <button
               onClick={handleClearTriggered}
-              className="text-xs px-3 py-1.5 bg-gray-800/50 text-gray-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-200 font-medium ml-auto active:scale-95"
+              className="text-xs px-3 py-2 bg-slate-800/50 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-xl transition-all duration-200 font-semibold ml-auto active:scale-[0.98] border border-transparent hover:border-red-500/20"
             >
-              Clear triggered
+              {language === 'en' ? 'Clear triggered' : 'Tetiklenenleri temizle'}
             </button>
           )}
         </div>
@@ -328,9 +327,9 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
 
       {/* Add Alert Form */}
       {showAddAlert && (
-        <div className="border-b border-gray-800/50 bg-gray-900/50 backdrop-blur-sm p-4 space-y-3">
+        <div className="border-b border-slate-800/50 bg-black p-4 space-y-3">
           <div className="flex items-center justify-between mb-2">
-            <h4 className="text-sm font-bold text-white">Add New Alert</h4>
+            <h4 className="text-sm font-bold text-white">{language === 'en' ? 'Add New Alert' : 'Yeni Alarm Ekle'}</h4>
             <button
               onClick={handleCancelAddAlert}
               className="p-1 text-gray-400 hover:text-white transition-colors"
@@ -344,7 +343,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
           <div className="space-y-3">
             {/* Coin Pair */}
             <div className="relative">
-              <label className="text-xs text-gray-400 font-medium mb-1.5 block">Coin Pair</label>
+              <label className="text-xs text-gray-400 font-medium mb-1.5 block">{language === 'en' ? 'Coin Pair' : 'Coin Çifti'}</label>
               <div className="relative">
                 <input
                   ref={pairInputRef}
@@ -436,7 +435,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
 
             {/* Exchange */}
             <div>
-              <label className="text-xs text-gray-400 font-medium mb-1.5 block">Exchange</label>
+              <label className="text-xs text-gray-400 font-medium mb-1.5 block">{language === 'en' ? 'Exchange' : 'Borsa'}</label>
               <select
                 value={newAlertExchange}
                 onChange={(e) => {
@@ -453,7 +452,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
 
             {/* Price */}
             <div>
-              <label className="text-xs text-gray-400 font-medium mb-1.5 block">Target Price</label>
+              <label className="text-xs text-gray-400 font-medium mb-1.5 block">{language === 'en' ? 'Target Price' : 'Hedef Fiyat'}</label>
               <div className="flex items-center gap-2">
                 <span className="text-sm text-gray-400">$</span>
                 <input
@@ -477,7 +476,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
 
             {/* Direction */}
             <div>
-              <label className="text-xs text-gray-400 font-medium mb-1.5 block">Direction</label>
+              <label className="text-xs text-gray-400 font-medium mb-1.5 block">{language === 'en' ? 'Direction' : 'Yön'}</label>
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setNewAlertDirection('auto')}
@@ -487,7 +486,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
                       : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
                   }`}
                 >
-                  Auto
+                  {language === 'en' ? 'Auto' : 'Otomatik'}
                 </button>
                 <button
                   onClick={() => setNewAlertDirection('above')}
@@ -497,7 +496,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
                       : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
                   }`}
                 >
-                  ↗ Above
+                  ↗ {language === 'en' ? 'Above' : 'Yukarı'}
                 </button>
                 <button
                   onClick={() => setNewAlertDirection('below')}
@@ -507,7 +506,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
                       : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
                   }`}
                 >
-                  ↘ Below
+                  ↘ {language === 'en' ? 'Below' : 'Aşağı'}
                 </button>
               </div>
             </div>
@@ -519,13 +518,13 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
                 disabled={!newAlertPair.trim() || !newAlertPrice || parseFloat(newAlertPrice) <= 0}
                 className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white text-xs py-2.5 rounded-lg transition-all duration-200 font-semibold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-95"
               >
-                Add Alert
+                {language === 'en' ? 'Add Alert' : 'Alarm Ekle'}
               </button>
               <button
                 onClick={handleCancelAddAlert}
                 className="px-4 bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 text-xs py-2.5 rounded-lg transition-all duration-200 font-semibold active:scale-95"
               >
-                Cancel
+                {language === 'en' ? 'Cancel' : 'İptal'}
               </button>
             </div>
           </div>
@@ -534,73 +533,159 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
 
       {/* Alert List */}
       {alerts.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center p-8 text-center">
-          <div>
-            <div className="mb-4">
-              <svg className="w-16 h-16 mx-auto text-gray-700/50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </div>
-            <div className="text-gray-400 text-sm mb-1 font-medium">No alerts set</div>
-            <div className="text-gray-500 text-xs mb-4">Click &quot;Add Alert&quot; button or alarm icon on chart</div>
-            <button
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+          className="flex-1 flex items-center justify-center p-8 text-center relative overflow-hidden"
+        >
+          {/* Dark background - no gradient */}
+          <div className="absolute inset-0 bg-black"></div>
+          
+          <div className="relative z-10">
+            {/* Clickable animated bell icon */}
+            <motion.button
               onClick={() => setShowAddAlert(true)}
-              className="px-4 py-2 text-xs font-semibold text-white bg-gradient-to-r from-green-600 to-green-700 hover:from-green-500 hover:to-green-600 rounded-lg transition-all duration-200 shadow-lg shadow-green-500/20 hover:shadow-green-500/30 active:scale-95"
+              className="relative mx-auto mb-6 cursor-pointer group"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              initial={{ y: 0 }}
+              animate={{
+                y: [0, -8, 0],
+              }}
+              transition={{
+                y: {
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                },
+              }}
             >
-              Add Your First Alert
-            </button>
+              {/* Outer pulse rings - only one ring, no left black ring */}
+              <motion.div
+                className="absolute inset-0 bg-blue-500/20 rounded-full"
+                animate={{
+                  scale: [1, 1.5, 1.5],
+                  opacity: [0.5, 0, 0],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeOut",
+                }}
+              />
+              
+              {/* Middle glow ring */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-blue-600/30 rounded-full blur-xl"
+                animate={{
+                  opacity: [0.3, 0.6, 0.3],
+                }}
+                transition={{
+                  duration: 2,
+                  repeat: Infinity,
+                  ease: "easeInOut",
+                }}
+              />
+              
+              {/* Icon container */}
+              <div className="relative w-24 h-24 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-full flex items-center justify-center shadow-2xl shadow-blue-500/30 border-2 border-blue-500/30 group-hover:border-blue-400/50 transition-all">
+                <Bell className="w-12 h-12 text-white drop-shadow-lg" strokeWidth={2} />
+              </div>
+              
+              {/* Shine effect on hover */}
+              <motion.div
+                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full"
+                initial={{ x: '-100%' }}
+                whileHover={{ x: '100%' }}
+                transition={{ duration: 0.6 }}
+              />
+            </motion.button>
+            
+            <h3 className="text-lg font-bold text-white mb-2">
+              {language === 'en' ? 'No alerts yet' : 'Henüz alarm yok'}
+            </h3>
+            <p className="text-sm text-slate-400 mb-6 max-w-xs mx-auto leading-relaxed">
+              {language === 'en' 
+                ? 'Tap the bell to create your first price alert and never miss important price movements'
+                : 'Zil simgesine dokunarak ilk fiyat alarmınızı oluşturun ve önemli fiyat hareketlerini kaçırmayın'}
+            </p>
+            <motion.button
+              onClick={() => setShowAddAlert(true)}
+              className="mx-auto px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-500 hover:to-blue-600 transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-95 flex items-center gap-2"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <Bell className="w-4 h-4" />
+              <span>{language === 'en' ? 'Create Alert' : 'Alarm Oluştur'}</span>
+            </motion.button>
           </div>
-        </div>
+        </motion.div>
       ) : (
-        <div className="flex-1 overflow-y-auto scrollbar-thin p-3 space-y-2.5 bg-gradient-to-b from-transparent via-gray-900/20 to-transparent">
-          {alerts.map((alert) => (
-            <div
+        <div className="flex-1 overflow-y-auto scrollbar-thin p-4 space-y-3 bg-black">
+          {alerts.map((alert, index) => (
+            <motion.div
               key={alert.id}
-              className={`group rounded-xl p-3 transition-all duration-200 ${
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.05 }}
+              className={`group relative rounded-xl p-4 transition-all duration-200 ${
                 alert.isTriggered
                   ? 'bg-gradient-to-br from-green-900/40 to-emerald-900/30 border border-green-700/50 shadow-lg shadow-green-500/10'
                   : editingId === alert.id
                   ? 'bg-gradient-to-br from-blue-900/50 to-blue-800/40 border-2 border-blue-500 shadow-xl shadow-blue-500/20'
-                  : 'bg-gradient-to-br from-gray-800/50 to-gray-800/30 border border-gray-700/50 hover:border-gray-600/70 hover:shadow-lg hover:shadow-gray-900/50 cursor-pointer'
+                  : 'bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-slate-900/80 border border-slate-800/50 hover:border-blue-500/30 hover:bg-slate-900/90 hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer'
               }`}
               onClick={() => !alert.isTriggered && editingId !== alert.id && handleEdit(alert)}
             >
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2.5">
-                  <div className={`text-lg font-bold ${
+              {/* Subtle gradient overlay on hover */}
+              {!alert.isTriggered && editingId !== alert.id && (
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-600/0 group-hover:from-blue-500/5 group-hover:to-blue-600/5 rounded-xl transition-all pointer-events-none"></div>
+              )}
+              <div className="relative flex items-center justify-between mb-3">
+                <div className="flex items-center gap-3">
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
                     alert.isTriggered 
-                      ? 'text-green-400' 
-                      : alert.direction === 'above' ? 'text-green-400' : 'text-red-400'
+                      ? 'bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30' 
+                      : alert.direction === 'above' 
+                      ? 'bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30'
+                      : 'bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30'
                   }`}>
-                    {alert.isTriggered ? (
-                      <div className="relative">
-                        <span className="relative z-10">✓</span>
-                        <div className="absolute inset-0 bg-green-400 rounded-full blur-sm opacity-50 animate-pulse"></div>
-                      </div>
-                    ) : (
-                      alert.direction === 'above' ? '↗' : '↘'
-                    )}
+                    <div className={`text-lg font-bold ${
+                      alert.isTriggered 
+                        ? 'text-green-400' 
+                        : alert.direction === 'above' ? 'text-green-400' : 'text-red-400'
+                    }`}>
+                      {alert.isTriggered ? (
+                        <div className="relative">
+                          <span className="relative z-10">✓</span>
+                          <div className="absolute inset-0 bg-green-400 rounded-full blur-sm opacity-50 animate-pulse"></div>
+                        </div>
+                      ) : (
+                        alert.direction === 'above' ? '↗' : '↘'
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-baseline gap-1.5">
-                    <span className="text-sm font-bold text-white">
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-base font-bold text-white">
                       {alert.pair.toUpperCase()}
                     </span>
-                    <span className="text-[10px] text-gray-400 font-medium">
+                    <span className="text-[10px] text-slate-400 font-medium bg-slate-800/50 px-2 py-0.5 rounded-full border border-slate-700/50">
                       {alert.exchange.replace('_', ' ')}
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
                   {!alert.isTriggered && editingId !== alert.id && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         handleEdit(alert);
                       }}
-                      className="p-1.5 text-gray-500 hover:text-blue-400 hover:bg-blue-500/10 rounded-lg transition-all duration-200 active:scale-95"
-                      title="Edit price"
+                      className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-950/40 rounded-lg transition-all active:scale-95 border border-transparent hover:border-blue-500/20"
+                      title={language === 'en' ? 'Edit price' : 'Fiyatı düzenle'}
                     >
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
                       </svg>
                     </button>
@@ -610,10 +695,10 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
                       e.stopPropagation();
                       handleRemove(alert.id);
                     }}
-                    className="p-1.5 text-gray-500 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all duration-200 active:scale-95"
-                    title="Remove alert"
+                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-950/40 rounded-lg transition-all active:scale-95 border border-transparent hover:border-red-500/20"
+                    title={language === 'en' ? 'Remove alert' : 'Alarmı kaldır'}
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -646,34 +731,34 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
                       onClick={() => handleSaveEdit(alert.id)}
                       className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white text-xs py-2 rounded-lg transition-all duration-200 font-semibold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-95"
                     >
-                      Save
+                      {language === 'en' ? 'Save' : 'Kaydet'}
                     </button>
                     <button
                       onClick={handleCancelEdit}
                       className="flex-1 bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 text-xs py-2 rounded-lg transition-all duration-200 font-semibold active:scale-95"
                     >
-                      Cancel
+                      {language === 'en' ? 'Cancel' : 'İptal'}
                     </button>
                   </div>
                 </div>
               ) : (
                 // Display Mode
                 <>
-                  <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-baseline gap-2">
-                      <span className={`text-base font-mono font-bold ${
+                      <span className={`text-xl font-mono font-bold bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent ${
                         alert.isTriggered 
-                          ? 'text-green-300 bg-green-500/20 px-2 py-1 rounded-md' 
-                          : 'text-blue-300'
+                          ? 'text-green-300' 
+                          : 'text-white'
                       }`}>
                         ${formatPrice(alert.price)}
                       </span>
                     </div>
                     {currentPrice && !alert.isTriggered && (
-                      <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${
                         alert.direction === 'above'
-                          ? 'text-green-300 bg-green-500/10'
-                          : 'text-red-300 bg-red-500/10'
+                          ? 'text-green-400 bg-green-500/10 border-green-500/30'
+                          : 'text-red-400 bg-red-500/10 border-red-500/30'
                       }`}>
                         {alert.direction === 'above' 
                           ? `+${((alert.price - currentPrice) / currentPrice * 100).toFixed(1)}%`
@@ -683,18 +768,20 @@ export default function AlertsPanel({ exchange, pair, currentPrice }: AlertsPane
                     )}
                   </div>
                   
-                  <div className="flex items-center gap-2 text-xs text-gray-400">
-                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span className="font-medium">
-                      {alert.isTriggered ? 'Triggered ' : 'Created '}
+                      {alert.isTriggered 
+                        ? (language === 'en' ? 'Triggered ' : 'Tetiklendi ') 
+                        : (language === 'en' ? 'Created ' : 'Oluşturuldu ')}
                       {formatTime(alert.isTriggered && alert.triggeredAt ? alert.triggeredAt : alert.createdAt)}
                     </span>
                   </div>
                 </>
               )}
-            </div>
+            </motion.div>
           ))}
         </div>
       )}

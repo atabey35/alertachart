@@ -2645,6 +2645,7 @@ export default function Home() {
             exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
             pair={activeChart.pair}
             currentPrice={activeChart.currentPrice}
+            language={language}
           />
         </div>
 

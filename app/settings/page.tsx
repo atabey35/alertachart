@@ -3,7 +3,8 @@
 import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSession, signOut, signIn } from 'next-auth/react';
 import { useRouter, usePathname } from 'next/navigation';
-import { TrendingUp, BarChart3, Bell, Sparkles, Clock, FileText, Shield } from 'lucide-react';
+import { TrendingUp, BarChart3, Bell, Sparkles, Clock, FileText, Shield, MessageCircle, Edit, Trash2, TrendingDown } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { Dialog } from '@capacitor/dialog';
 import { Browser } from '@capacitor/browser';
 import { handleGoogleWebLogin, handleAppleWebLogin } from '@/utils/webAuth';
@@ -46,22 +47,28 @@ export default function SettingsPage() {
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
   const [language, setLanguage] = useState<'tr' | 'en' | 'ar' | 'zh-Hant' | 'fr' | 'de' | 'ja' | 'ko'>('tr');
   const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showNotificationsModal, setShowNotificationsModal] = useState(false);
 
   // Custom coin alerts state
   const [customAlerts, setCustomAlerts] = useState<any[]>([]);
   const [showAddAlertModal, setShowAddAlertModal] = useState(false);
   const [newAlert, setNewAlert] = useState({
     symbol: '',
-    targetPrice: '',
-    proximityDelta: '',
-    direction: 'up' as 'up' | 'down',
+    notifyWhenAway: '', // Kaç dolar kaldığında bildirim gelsin
   });
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [loadingPrice, setLoadingPrice] = useState(false);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
   
   // Coin search state
   const [symbolSuggestions, setSymbolSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loadingSymbols, setLoadingSymbols] = useState(false);
+  
+  // Notification history state
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
   const [allSymbols, setAllSymbols] = useState<any[]>([]);
   const symbolInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
@@ -822,6 +829,95 @@ export default function SettingsPage() {
 
     fetchCustomAlerts();
   }, [user, hasPremiumAccessValue, status]);
+
+  // Fetch notifications history
+  useEffect(() => {
+    if (!user?.email) return;
+
+    const fetchNotifications = async () => {
+      setLoadingNotifications(true);
+      try {
+        const response = await fetch('/api/notifications', {
+          credentials: 'include',
+          cache: 'no-store',
+        });
+        if (response.ok) {
+          const data = await response.json();
+          setNotifications(data.notifications || []);
+          setUnreadCount(data.unreadCount || 0);
+        }
+      } catch (error) {
+        console.error('[Settings] Error fetching notifications:', error);
+      } finally {
+        setLoadingNotifications(false);
+      }
+    };
+
+    fetchNotifications();
+    
+    // Listen for notification refresh events
+    const handleNotificationRefresh = () => {
+      fetchNotifications();
+    };
+    
+    window.addEventListener('notification-refresh', handleNotificationRefresh);
+    return () => {
+      window.removeEventListener('notification-refresh', handleNotificationRefresh);
+    };
+  }, [user?.email]);
+
+  // Mark notification as read
+  const markNotificationAsRead = async (notificationId: number) => {
+    try {
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ notificationId }),
+      });
+      setNotifications(prev => 
+        prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
+      );
+      setUnreadCount(prev => Math.max(0, prev - 1));
+    } catch (error) {
+      console.error('[Settings] Error marking notification as read:', error);
+    }
+  };
+
+  // Mark all notifications as read
+  const markAllNotificationsAsRead = async () => {
+    try {
+      await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ markAllAsRead: true }),
+      });
+      setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+      setUnreadCount(0);
+    } catch (error) {
+      console.error('[Settings] Error marking all notifications as read:', error);
+    }
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    if (diffInSeconds < 60) {
+      return language === 'en' ? 'Just now' : 'Az önce';
+    } else if (diffInSeconds < 3600) {
+      const minutes = Math.floor(diffInSeconds / 60);
+      return language === 'en' ? `${minutes}m ago` : `${minutes} dk önce`;
+    } else if (diffInSeconds < 86400) {
+      const hours = Math.floor(diffInSeconds / 3600);
+      return language === 'en' ? `${hours}h ago` : `${hours} sa önce`;
+    } else {
+      const days = Math.floor(diffInSeconds / 86400);
+      return language === 'en' ? `${days}d ago` : `${days} gün önce`;
+    }
+  };
 
   // Fetch Binance symbols for coin search
   useEffect(() => {
@@ -2243,11 +2339,16 @@ export default function SettingsPage() {
     return (
       <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-black flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 animate-pulse">
-            <svg className="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24">
-              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+          <div className="relative w-16 h-16">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30 animate-pulse">
+              <svg className="w-8 h-8 text-white animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            </div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <img src="/icon.png" alt="AlertaChart" className="w-8 h-8 rounded-full" />
+            </div>
           </div>
           <p className="text-slate-400 text-sm font-medium">
             {t('loading', language)}
@@ -2295,20 +2396,43 @@ export default function SettingsPage() {
               </svg>
             </button>
           </div>
-          {/* Help Center Button */}
-          <button
-            onClick={() => router.push('/help')}
-            className="p-1.5 text-slate-400 hover:text-blue-300 transition-colors group relative rounded-lg hover:bg-blue-950/20"
-            title="Help Center"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            {/* Tooltip */}
-            <span className="absolute -bottom-8 right-0 bg-slate-900/95 backdrop-blur-md border border-blue-500/20 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg shadow-blue-900/20">
-              {t('helpCenter', language)}
-            </span>
-          </button>
+          <div className="flex items-center gap-2">
+            {/* Messages Button */}
+            {user && (
+              <button
+                onClick={() => setShowNotificationsModal(true)}
+                className="relative p-1.5 text-slate-400 hover:text-blue-300 transition-colors group rounded-lg hover:bg-blue-950/20"
+                title={language === 'en' ? 'Messages' : 'Mesajlar'}
+              >
+                <MessageCircle className="w-5 h-5" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+                {/* Tooltip */}
+                <span className="absolute -bottom-8 right-0 bg-slate-900/95 backdrop-blur-md border border-blue-500/20 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg shadow-blue-900/20">
+                  {language === 'en' ? 'Messages' : 'Mesajlar'}
+                  {unreadCount > 0 && ` (${unreadCount})`}
+                </span>
+              </button>
+            )}
+
+            {/* Help Center Button */}
+            <button
+              onClick={() => router.push('/help')}
+              className="p-1.5 text-slate-400 hover:text-blue-300 transition-colors group relative rounded-lg hover:bg-blue-950/20"
+              title="Help Center"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              {/* Tooltip */}
+              <span className="absolute -bottom-8 right-0 bg-slate-900/95 backdrop-blur-md border border-blue-500/20 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg shadow-blue-900/20">
+                {t('helpCenter', language)}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* Navigation Buttons - Quick access to other tabs */}
@@ -2402,10 +2526,14 @@ export default function SettingsPage() {
               <div className="p-3 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md shadow-lg shadow-blue-900/10 relative overflow-hidden">
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-cyan-500/5"></div>
                 <div className="flex items-center gap-3 relative z-10">
-                  {/* User Avatar */}
+                  {/* App Icon */}
                   <div className="flex-shrink-0 relative">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 via-cyan-500 to-blue-600 flex items-center justify-center text-white font-bold text-lg shadow-md shadow-blue-500/30 ring-1 ring-blue-500/30">
-                      {user.name ? user.name.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+                    <div className="w-12 h-12 rounded-xl bg-slate-900/50 flex items-center justify-center shadow-md shadow-blue-500/30 ring-1 ring-blue-500/30 overflow-hidden">
+                      <img 
+                        src="/icon.png" 
+                        alt="Alerta Chart" 
+                        className="w-full h-full object-cover"
+                      />
                     </div>
                   </div>
                       
@@ -2463,14 +2591,37 @@ export default function SettingsPage() {
               {!hasPremiumAccessValue && (
                 <button
                   onClick={() => setShowUpgradeModal(true)}
-                  className="w-full px-4 py-2.5 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 hover:from-blue-500 hover:via-cyan-500 hover:to-blue-600 text-white rounded-lg text-sm font-semibold transition-all duration-200 shadow-md shadow-blue-900/30 hover:shadow-lg hover:shadow-blue-900/40 active:scale-[0.98] relative overflow-hidden border border-blue-500/30"
+                  className="w-full px-3 py-2.5 bg-slate-900/90 backdrop-blur-md border-2 border-blue-500/30 hover:border-blue-500/50 rounded-lg transition-all duration-200 shadow-lg shadow-blue-900/20 hover:shadow-xl hover:shadow-blue-900/30 active:scale-[0.98] relative overflow-hidden group"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-blue-400/20 via-cyan-400/20 to-blue-400/20 animate-pulse"></div>
-                  <div className="relative flex items-center justify-center gap-1.5 z-10">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
-                    </svg>
-                    <span>{t('goPremium', language)}</span>
+                  {/* Subtle gradient overlay on hover */}
+                  <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-cyan-600/10 to-blue-700/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
+                  
+                  <div className="relative flex flex-col items-center justify-center gap-2 z-10">
+                    {/* Title and tagline in one line */}
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                      <h2 className="text-base font-bold tracking-tight">
+                        <span className="text-white">Alerta </span>
+                        <span 
+                          className="relative inline-block"
+                          style={{
+                            background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                            backgroundClip: 'text',
+                            filter: 'drop-shadow(0 0 8px rgba(59, 130, 246, 0.6)) drop-shadow(0 0 16px rgba(6, 182, 212, 0.4)) drop-shadow(0 0 24px rgba(59, 130, 246, 0.3))',
+                          }}
+                        >
+                          PRO
+                        </span>
+                      </h2>
+                      <p className="text-gray-300 text-xs leading-tight font-medium">
+                        {language === 'en' ? 'Maximum power. Zero limits.' : 'Maksimum güç. Sıfır limit.'}
+                      </p>
+                    </div>
+                    {/* CTA Button */}
+                    <div className="px-3 py-1 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 rounded-md text-white text-xs font-semibold shadow-md shadow-blue-900/30 group-hover:from-blue-500 group-hover:via-cyan-500 group-hover:to-blue-600 transition-all duration-200">
+                      {language === 'en' ? 'Upgrade to PRO!' : 'PRO\'ya Yükselt!'}
+                    </div>
                   </div>
                 </button>
               )}
@@ -2777,84 +2928,179 @@ export default function SettingsPage() {
         {/* Premium Features Section - For non-premium users */}
         {!hasPremiumAccessValue && (
           <div className="space-y-2">
-            <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{t('premiumFeatures', language)}</label>
-            <div className="space-y-1.5">
+            <label className="block text-xs font-medium text-slate-400 tracking-wide">{t('premiumFeatures', language)}</label>
+            <div className="space-y-2">
               {/* Liquidations */}
-              <div className="group p-2.5 rounded-lg border border-cyan-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-cyan-500/30 hover:bg-cyan-950/20 transition-all">
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="group w-full p-2 rounded-lg border border-cyan-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-cyan-500/50 hover:bg-cyan-950/30 hover:shadow-lg hover:shadow-cyan-500/20 transition-all duration-300 active:scale-[0.98] cursor-pointer"
+              >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 border border-cyan-500/30 flex items-center justify-center shadow-sm">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-500 to-blue-500 border border-cyan-500/30 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:shadow-cyan-500/50 transition-transform duration-300">
                     <TrendingUp className="w-4 h-4 text-white" />
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-white">Liquidations Dashboard</div>
-                    <div className="text-[11px] text-slate-400">{t('realTimeLiquidationData', language)}</div>
+                  <div className="text-left">
+                    <div className="text-xs font-semibold text-white group-hover:text-cyan-300 transition-colors">Liquidations Dashboard</div>
+                    <div className="text-[10px] text-slate-400 group-hover:text-slate-300 transition-colors">{t('realTimeLiquidationData', language)}</div>
                   </div>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 bg-cyan-500/20 text-cyan-300 rounded border border-cyan-500/30 backdrop-blur-sm font-medium">Premium</span>
-              </div>
+                <div className="flex items-center gap-1.5">
+                  <span 
+                    className="text-[9px] px-2 py-0.5 rounded-full border border-cyan-500/30 backdrop-blur-sm font-bold relative inline-block"
+                    style={{
+                      background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.6))',
+                    }}
+                  >
+                    PRO
+                  </span>
+                  <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-cyan-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
 
               {/* Aggr */}
-              <div className="group p-2.5 rounded-lg border border-indigo-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-indigo-500/30 hover:bg-indigo-950/20 transition-all">
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="group w-full p-2 rounded-lg border border-indigo-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-indigo-500/50 hover:bg-indigo-950/30 hover:shadow-lg hover:shadow-indigo-500/20 transition-all duration-300 active:scale-[0.98] cursor-pointer"
+              >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 border border-indigo-500/30 flex items-center justify-center shadow-sm">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-indigo-500 to-blue-600 border border-indigo-500/30 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:shadow-indigo-500/50 transition-transform duration-300">
                     <BarChart3 className="w-4 h-4 text-white" />
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-white">Aggr Trade</div>
-                    <div className="text-[11px] text-slate-400">{t('advancedTradingAnalysis', language)}</div>
+                  <div className="text-left">
+                    <div className="text-xs font-semibold text-white group-hover:text-indigo-300 transition-colors">Aggr Trade</div>
+                    <div className="text-[10px] text-slate-400 group-hover:text-slate-300 transition-colors">{t('advancedTradingAnalysis', language)}</div>
                   </div>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded border border-indigo-500/30 backdrop-blur-sm font-medium">Premium</span>
-              </div>
+                <div className="flex items-center gap-1.5">
+                  <span 
+                    className="text-[9px] px-2 py-0.5 rounded-full border border-indigo-500/30 backdrop-blur-sm font-bold relative inline-block"
+                    style={{
+                      background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.6))',
+                    }}
+                  >
+                    PRO
+                  </span>
+                  <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-indigo-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
 
               {/* Custom Coin Alerts */}
-              <div className="group p-2.5 rounded-lg border border-blue-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-blue-500/30 hover:bg-blue-950/20 transition-all">
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="group w-full p-2 rounded-lg border border-blue-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-blue-500/50 hover:bg-blue-950/30 hover:shadow-lg hover:shadow-blue-500/20 transition-all duration-300 active:scale-[0.98] cursor-pointer"
+              >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center shadow-sm">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:shadow-blue-500/50 transition-transform duration-300">
                     <Bell className="w-4 h-4 text-white" />
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-white">Custom Coin Alerts</div>
-                    <div className="text-[11px] text-slate-400">{t('customPriceAlerts', language)}</div>
+                  <div className="text-left">
+                    <div className="text-xs font-semibold text-white group-hover:text-blue-300 transition-colors">Custom Coin Alerts</div>
+                    <div className="text-[10px] text-slate-400 group-hover:text-slate-300 transition-colors">{t('customPriceAlerts', language)}</div>
                   </div>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 bg-blue-500/20 text-blue-300 rounded border border-blue-500/30 backdrop-blur-sm font-medium">Premium</span>
-              </div>
+                <div className="flex items-center gap-1.5">
+                  <span 
+                    className="text-[9px] px-2 py-0.5 rounded-full border border-blue-500/30 backdrop-blur-sm font-bold relative inline-block"
+                    style={{
+                      background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.6))',
+                    }}
+                  >
+                    PRO
+                  </span>
+                  <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
 
               {/* Advanced Layouts */}
-              <div className="group p-2.5 rounded-lg border border-violet-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-violet-500/30 hover:bg-violet-950/20 transition-all">
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="group w-full p-2 rounded-lg border border-violet-500/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-violet-500/50 hover:bg-violet-950/30 hover:shadow-lg hover:shadow-violet-500/20 transition-all duration-300 active:scale-[0.98] cursor-pointer"
+              >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 border border-violet-500/30 flex items-center justify-center shadow-sm">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-violet-500 to-indigo-500 border border-violet-500/30 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:shadow-violet-500/50 transition-transform duration-300">
                     <Sparkles className="w-4 h-4 text-white" />
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-white">{t('advancedChartLayouts', language)}</div>
-                    <div className="text-[11px] text-slate-400">{t('multiChartLayouts', language)}</div>
+                  <div className="text-left">
+                    <div className="text-xs font-semibold text-white group-hover:text-violet-300 transition-colors">{t('advancedChartLayouts', language)}</div>
+                    <div className="text-[10px] text-slate-400 group-hover:text-slate-300 transition-colors">{t('multiChartLayouts', language)}</div>
                   </div>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 bg-violet-500/20 text-violet-300 rounded border border-violet-500/30 backdrop-blur-sm font-medium">Premium</span>
-              </div>
+                <div className="flex items-center gap-1.5">
+                  <span 
+                    className="text-[9px] px-2 py-0.5 rounded-full border border-violet-500/30 backdrop-blur-sm font-bold relative inline-block"
+                    style={{
+                      background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.6))',
+                    }}
+                  >
+                    PRO
+                  </span>
+                  <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-violet-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
 
               {/* 10s & 30s Timeframe */}
-              <div className="group p-2.5 rounded-lg border border-blue-400/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-blue-400/30 hover:bg-blue-950/20 transition-all">
+              <button
+                onClick={() => setShowUpgradeModal(true)}
+                className="group w-full p-2 rounded-lg border border-blue-400/20 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-blue-400/50 hover:bg-blue-950/30 hover:shadow-lg hover:shadow-blue-400/20 transition-all duration-300 active:scale-[0.98] cursor-pointer"
+              >
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-400 border border-blue-400/30 flex items-center justify-center shadow-sm">
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-400 border border-blue-400/30 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:shadow-blue-400/50 transition-transform duration-300">
                     <Clock className="w-4 h-4 text-white" />
                   </div>
-                  <div>
-                    <div className="text-sm font-medium text-white">10s & 30s Timeframe</div>
-                    <div className="text-[11px] text-slate-400">{t('highFrequencyDataAnalysis', language)}</div>
+                  <div className="text-left">
+                    <div className="text-xs font-semibold text-white group-hover:text-blue-300 transition-colors">10s & 30s Timeframe</div>
+                    <div className="text-[10px] text-slate-400 group-hover:text-slate-300 transition-colors">{t('highFrequencyDataAnalysis', language)}</div>
                   </div>
                 </div>
-                <span className="text-[10px] px-2 py-0.5 bg-blue-400/20 text-blue-300 rounded border border-blue-400/30 backdrop-blur-sm font-medium">Premium</span>
-              </div>
+                <div className="flex items-center gap-1.5">
+                  <span 
+                    className="text-[9px] px-2 py-0.5 rounded-full border border-blue-400/30 backdrop-blur-sm font-bold relative inline-block"
+                    style={{
+                      background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      backgroundClip: 'text',
+                      filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.6))',
+                    }}
+                  >
+                    PRO
+                  </span>
+                  <svg className="w-3.5 h-3.5 text-slate-400 group-hover:text-blue-300 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
             </div>
           </div>
         )}
             
         {/* Layout Selection */}
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{t('chartLayout', language)}</label>
+          <label className="block text-xs font-medium text-slate-400 tracking-wide">{t('chartLayout', language)}</label>
           <div className="grid grid-cols-4 gap-2">
             {[1, 2, 4, 9].map((layoutOption) => {
               const isActive = layout === layoutOption;
@@ -2894,7 +3140,7 @@ export default function SettingsPage() {
 
         {/* Market Type */}
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">{t('marketType', language)}</label>
+          <label className="block text-xs font-medium text-slate-400 tracking-wide">{t('marketType', language)}</label>
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setMarketType('spot')}
@@ -2921,7 +3167,7 @@ export default function SettingsPage() {
 
         {/* Legal Links - Terms & Privacy */}
         <div className="space-y-2">
-          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">
+          <label className="block text-xs font-medium text-slate-400 tracking-wide">
             {t('legalInformation', language)}
           </label>
           <div className="grid grid-cols-2 gap-2">
@@ -2978,120 +3224,300 @@ export default function SettingsPage() {
         {/* Custom Coin Alerts (Premium Only) */}
         {hasPremiumAccessValue && (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <label className="block text-sm font-medium text-slate-300">Custom Coin Alerts</label>
-              <button
-                onClick={() => setShowAddAlertModal(true)}
-                className="px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl transition-all duration-200 shadow-lg shadow-blue-900/30 hover:shadow-xl font-medium border border-blue-500/30"
-              >
-                + Add Alert
-              </button>
+            {/* Header */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
+                  <span className="text-sm font-semibold text-white">{t('alerts', language)}</span>
+                  {customAlerts.length > 0 && (
+                    <span className="text-xs text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
+                      {customAlerts.length} {language === 'en' ? 'active' : 'aktif'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <button
+                  className="flex-1 px-4 py-2.5 text-xs font-semibold bg-slate-800/50 text-slate-300 border border-slate-700/50 rounded-xl hover:bg-slate-800/70 hover:border-slate-600/50 transition-all active:scale-[0.98]"
+                >
+                  {language === 'en' ? 'All pairs' : 'Tüm çiftler'}
+                </button>
+                <button
+                  onClick={() => setShowAddAlertModal(true)}
+                  className="flex-1 px-4 py-2.5 text-xs font-semibold bg-gradient-to-r from-blue-600 to-blue-700 text-white border border-blue-500/30 rounded-xl hover:from-blue-500 hover:to-blue-600 hover:border-blue-400/50 transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-[0.98] flex items-center justify-center gap-1.5"
+                >
+                  <span className="text-base">+</span>
+                  <span>{language === 'en' ? 'Add Alert' : 'Alarm Ekle'}</span>
+                </button>
+              </div>
             </div>
 
             {loadingAlerts ? (
-              <div className="text-center py-4 text-slate-400">Loading alerts...</div>
-            ) : customAlerts.length === 0 ? (
-              <div className="p-5 rounded-xl border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-center text-slate-300 text-sm">
-                No custom alerts yet. Add one to get notified when your coin approaches a price level.
+              <div className="text-center py-12 text-slate-400">
+                <div className="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                <div className="text-xs font-medium">{language === 'en' ? 'Loading alerts...' : 'Alarmlar yükleniyor...'}</div>
               </div>
+            ) : customAlerts.length === 0 ? (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.3 }}
+                className="relative py-16 px-6 rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-slate-900/80 backdrop-blur-md text-center overflow-hidden"
+              >
+                {/* Animated background gradient */}
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 animate-pulse"></div>
+                
+                {/* Clickable animated bell icon */}
+                <motion.button
+                  onClick={() => setShowAddAlertModal(true)}
+                  className="relative mx-auto mb-6 cursor-pointer group"
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                  initial={{ y: 0 }}
+                  animate={{
+                    y: [0, -8, 0],
+                  }}
+                  transition={{
+                    y: {
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    },
+                  }}
+                >
+                  {/* Outer pulse rings */}
+                  <motion.div
+                    className="absolute inset-0 bg-blue-500/20 rounded-full"
+                    animate={{
+                      scale: [1, 1.5, 1.5],
+                      opacity: [0.5, 0, 0],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeOut",
+                    }}
+                  />
+                  <motion.div
+                    className="absolute inset-0 bg-blue-500/20 rounded-full"
+                    animate={{
+                      scale: [1, 1.5, 1.5],
+                      opacity: [0.5, 0, 0],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      delay: 0.5,
+                      ease: "easeOut",
+                    }}
+                  />
+                  
+                  {/* Middle glow ring */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-blue-600/30 rounded-full blur-xl"
+                    animate={{
+                      opacity: [0.3, 0.6, 0.3],
+                    }}
+                    transition={{
+                      duration: 2,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                  />
+                  
+                  {/* Icon container */}
+                  <div className="relative w-24 h-24 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-full flex items-center justify-center shadow-2xl shadow-blue-500/30 border-2 border-blue-500/30 group-hover:border-blue-400/50 transition-all">
+                    <Bell className="w-12 h-12 text-white drop-shadow-lg" strokeWidth={2} />
+                  </div>
+                  
+                  {/* Shine effect on hover */}
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full"
+                    initial={{ x: '-100%' }}
+                    whileHover={{ x: '100%' }}
+                    transition={{ duration: 0.6 }}
+                  />
+                </motion.button>
+                
+                <div className="relative z-10">
+                  <h3 className="text-base font-bold text-white mb-2">
+                    {language === 'en' ? 'No alerts yet' : 'Henüz alarm yok'}
+                  </h3>
+                  <p className="text-sm text-slate-400 mb-4 max-w-xs mx-auto leading-relaxed">
+                    {language === 'en' 
+                      ? 'Tap the bell to create your first price alert and never miss important price movements'
+                      : 'Zil simgesine dokunarak ilk fiyat alarmınızı oluşturun ve önemli fiyat hareketlerini kaçırmayın'}
+                  </p>
+                  <motion.button
+                    onClick={() => setShowAddAlertModal(true)}
+                    className="mx-auto px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-500 hover:to-blue-600 transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-95 flex items-center gap-2"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Bell className="w-4 h-4" />
+                    <span>{language === 'en' ? 'Create Alert' : 'Alarm Oluştur'}</span>
+                  </motion.button>
+                </div>
+              </motion.div>
             ) : (
               <div className="space-y-3">
-                {customAlerts.map((alert) => (
-                  <div
-                    key={alert.id}
-                    className="p-4 rounded-xl border border-blue-500/10 bg-slate-900/50 backdrop-blur-md flex items-center justify-between hover:border-blue-500/20 hover:bg-blue-950/20 transition-all shadow-lg shadow-blue-900/10"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1.5">
-                        <span className="font-bold text-white">{alert.symbol}</span>
-                        <span className={`text-xs px-2.5 py-1 rounded-full border backdrop-blur-sm font-medium ${
-                          alert.direction === 'up' 
-                            ? 'bg-green-500/20 text-green-300 border-green-500/30' 
-                            : 'bg-red-500/20 text-red-300 border-red-500/30'
-                        }`}>
-                          {alert.direction === 'up' ? '📈 Up' : '📉 Down'}
-                        </span>
-                      </div>
-                      <div className="text-sm text-slate-400">
-                        Target: ${parseFloat(alert.target_price).toLocaleString()} 
-                        {alert.proximity_delta && ` (±$${parseFloat(alert.proximity_delta).toLocaleString()})`}
-                      </div>
-                    </div>
-                    <button
-                      onClick={async () => {
-                        // Try to get device ID from various sources
-                        let deviceId = null;
-                        
-                        // 🔥 CRITICAL: For native apps, try to get device ID from Capacitor first
-                        const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
-                        if (isCapacitor) {
-                          try {
-                            const { Device } = (window as any).Capacitor?.Plugins;
-                            if (Device && typeof Device.getId === 'function') {
-                              const deviceIdInfo = await Device.getId();
-                              const nativeId = deviceIdInfo?.identifier;
-                              
-                              if (nativeId && nativeId !== 'unknown' && nativeId !== 'null' && nativeId !== 'undefined') {
-                                deviceId = nativeId;
-                                if (typeof window !== 'undefined') {
-                                  localStorage.setItem('native_device_id', deviceId);
-                                }
-                              }
-                            }
-                          } catch (capacitorError) {
-                            console.warn('[Settings] Failed to get device ID from Capacitor:', capacitorError);
-                          }
-                        }
-                        
-                        // Fallback 1: Check localStorage for native_device_id
-                        if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
-                          deviceId = localStorage.getItem('native_device_id');
-                        }
-                        
-                        // Fallback 2: Check other localStorage keys
-                        if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
-                          deviceId = localStorage.getItem('device_id');
-                        }
-                        
-                        // Fallback 3: Use web device ID ONLY if not Capacitor
-                        if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined' && !isCapacitor) {
-                          deviceId = localStorage.getItem('web_device_id');
-                        }
-                        
-                        if (!deviceId || deviceId === 'unknown' || deviceId === 'null') {
-                          console.error('[Settings] No device ID found for delete');
-                          return;
-                        }
-
-                        try {
-                          // Use Next.js API route proxy (forwards cookies automatically)
-                          const response = await fetch('/api/alerts/price', {
-                            method: 'DELETE',
-                            headers: { 'Content-Type': 'application/json' },
-                            credentials: 'include',
-                            body: JSON.stringify({ id: alert.id, deviceId }),
-                          });
-
-                          if (response.ok) {
-                            setCustomAlerts(customAlerts.filter(a => a.id !== alert.id));
-                          } else {
-                            const errorData = await response.json();
-                            console.error('[Settings] Error deleting alert:', errorData);
-                            setError(errorData.error || 'Failed to delete alert');
-                          }
-                        } catch (error) {
-                          console.error('[Settings] Error deleting alert:', error);
-                          setError('Failed to delete alert');
-                        }
-                      }}
-                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-950/20 rounded-lg transition-all"
+                {customAlerts.map((alert, index) => {
+                  const createdDate = alert.created_at ? new Date(alert.created_at) : null;
+                  const timeAgo = createdDate ? (() => {
+                    const now = new Date();
+                    const diff = now.getTime() - createdDate.getTime();
+                    const minutes = Math.floor(diff / 60000);
+                    const hours = Math.floor(diff / 3600000);
+                    const days = Math.floor(diff / 86400000);
+                    
+                    if (minutes < 1) return language === 'en' ? 'just now' : 'az önce';
+                    if (minutes < 60) return `${minutes} ${language === 'en' ? 'min ago' : 'dakika önce'}`;
+                    if (hours < 24) return `${hours} ${language === 'en' ? 'hour ago' : 'saat önce'}`;
+                    return `${days} ${language === 'en' ? 'day ago' : 'gün önce'}`;
+                  })() : 'N/A';
+                  
+                  return (
+                    <motion.div
+                      key={alert.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.3, delay: index * 0.05 }}
+                      className="group relative p-4 rounded-xl border border-slate-800/50 bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-slate-900/80 backdrop-blur-md hover:border-blue-500/30 hover:bg-slate-900/90 transition-all shadow-lg shadow-black/20 hover:shadow-blue-500/10"
                     >
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+                      {/* Subtle gradient overlay on hover */}
+                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-600/0 group-hover:from-blue-500/5 group-hover:to-blue-600/5 rounded-xl transition-all pointer-events-none"></div>
+                      
+                      <div className="relative flex items-start gap-4">
+                        {/* Direction Icon */}
+                        <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${
+                          alert.direction === 'up' 
+                            ? 'bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30' 
+                            : 'bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30'
+                        }`}>
+                          {alert.direction === 'up' ? (
+                            <TrendingUp className="w-6 h-6 text-green-400" strokeWidth={2.5} />
+                          ) : (
+                            <TrendingDown className="w-6 h-6 text-red-400" strokeWidth={2.5} />
+                          )}
+                        </div>
+                        
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          {/* Symbol and Exchange */}
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="font-bold text-white text-base">{alert.symbol}</span>
+                            <span className="text-[10px] text-slate-400 font-medium bg-slate-800/50 px-2 py-0.5 rounded-full border border-slate-700/50">
+                              BINANCE {marketType === 'futures' ? 'FUTURES' : 'SPOT'}
+                            </span>
+                          </div>
+                          
+                          {/* Price */}
+                          <div className="text-xl font-bold text-white font-mono mb-2 bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
+                            ${parseFloat(alert.target_price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                          
+                          {/* Created Date */}
+                          <div className="flex items-center gap-1.5 text-xs text-slate-400">
+                            <Clock className="w-3.5 h-3.5" />
+                            <span>{language === 'en' ? 'Created' : 'Oluşturuldu'} {timeAgo}</span>
+                          </div>
+                        </div>
+                        
+                        {/* Right Side: Actions and Percentage */}
+                        <div className="flex flex-col items-end gap-3 flex-shrink-0">
+                          {/* Action Buttons */}
+                          <div className="flex items-center gap-1.5">
+                            <button
+                              onClick={() => {
+                                setShowAddAlertModal(true);
+                              }}
+                              className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-950/40 rounded-lg transition-all active:scale-95 border border-transparent hover:border-blue-500/20"
+                              title={language === 'en' ? 'Edit' : 'Düzenle'}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={async () => {
+                                let deviceId = null;
+                                const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
+                                if (isCapacitor) {
+                                  try {
+                                    const { Device } = (window as any).Capacitor?.Plugins;
+                                    if (Device && typeof Device.getId === 'function') {
+                                      const deviceIdInfo = await Device.getId();
+                                      const nativeId = deviceIdInfo?.identifier;
+                                      if (nativeId && nativeId !== 'unknown' && nativeId !== 'null' && nativeId !== 'undefined') {
+                                        deviceId = nativeId;
+                                        if (typeof window !== 'undefined') {
+                                          localStorage.setItem('native_device_id', deviceId);
+                                        }
+                                      }
+                                    }
+                                  } catch (capacitorError) {
+                                    console.warn('[Settings] Failed to get device ID from Capacitor:', capacitorError);
+                                  }
+                                }
+                                
+                                if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+                                  deviceId = localStorage.getItem('native_device_id');
+                                }
+                                
+                                if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
+                                  deviceId = localStorage.getItem('device_id');
+                                }
+                                
+                                if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined' && !isCapacitor) {
+                                  deviceId = localStorage.getItem('web_device_id');
+                                }
+                                
+                                if (!deviceId || deviceId === 'unknown' || deviceId === 'null') {
+                                  console.error('[Settings] No device ID found for delete');
+                                  return;
+                                }
+
+                                try {
+                                  const response = await fetch('/api/alerts/price', {
+                                    method: 'DELETE',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    credentials: 'include',
+                                    body: JSON.stringify({ id: alert.id, deviceId }),
+                                  });
+
+                                  if (response.ok) {
+                                    setCustomAlerts(customAlerts.filter(a => a.id !== alert.id));
+                                  } else {
+                                    const errorData = await response.json();
+                                    console.error('[Settings] Error deleting alert:', errorData);
+                                    setError(errorData.error || 'Failed to delete alert');
+                                  }
+                                } catch (error) {
+                                  console.error('[Settings] Error deleting alert:', error);
+                                  setError('Failed to delete alert');
+                                }
+                              }}
+                              className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-950/40 rounded-lg transition-all active:scale-95 border border-transparent hover:border-red-500/20"
+                              title={language === 'en' ? 'Delete' : 'Sil'}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          
+                          {/* Percentage Badge */}
+                          <div className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${
+                            alert.direction === 'up'
+                              ? 'bg-green-500/10 text-green-400 border-green-500/30'
+                              : 'bg-red-500/10 text-red-400 border-red-500/30'
+                          }`}>
+                            {alert.direction === 'up' ? '+' : '-'}0.0%
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -3144,11 +3570,12 @@ export default function SettingsPage() {
                 </div>
               )}
               <button
-                onClick={() => {
-                  setShowAddAlertModal(false);
-                  setNewAlert({ symbol: '', targetPrice: '', proximityDelta: '', direction: 'up' });
-                  setError('');
-                }}
+                  onClick={() => {
+                    setShowAddAlertModal(false);
+                    setNewAlert({ symbol: '', notifyWhenAway: '' });
+                    setCurrentPrice(null);
+                    setError('');
+                  }}
                 className="text-slate-400 hover:text-white transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3171,9 +3598,30 @@ export default function SettingsPage() {
                   ref={symbolInputRef}
                   type="text"
                   value={newAlert.symbol}
-                  onChange={(e) => {
-                    setNewAlert({ ...newAlert, symbol: e.target.value.toUpperCase() });
+                  onChange={async (e) => {
+                    const symbol = e.target.value.toUpperCase();
+                    setNewAlert({ ...newAlert, symbol });
                     setShowSuggestions(true);
+                    
+                    // Mevcut fiyatı otomatik al
+                    if (symbol && symbol.length >= 6) {
+                      setLoadingPrice(true);
+                      try {
+                        const response = await fetch(`/api/ticker/spot?symbols=${symbol}`);
+                        if (response.ok) {
+                          const data = await response.json();
+                          if (data && data[symbol] && data[symbol].price) {
+                            setCurrentPrice(parseFloat(data[symbol].price));
+                          }
+                        }
+                      } catch (error) {
+                        console.error('[Settings] Error fetching current price:', error);
+                      } finally {
+                        setLoadingPrice(false);
+                      }
+                    } else {
+                      setCurrentPrice(null);
+                    }
                   }}
                   onFocus={() => {
                     if (filteredSymbols.length > 0) {
@@ -3196,9 +3644,25 @@ export default function SettingsPage() {
                       return (
                         <div
                           key={symbol.symbol}
-                          onClick={() => {
+                          onClick={async () => {
                             setNewAlert({ ...newAlert, symbol: symbol.symbol });
                             setShowSuggestions(false);
+                            
+                            // Mevcut fiyatı otomatik al
+                            setLoadingPrice(true);
+                            try {
+                              const response = await fetch(`/api/ticker/spot?symbols=${symbol.symbol}`);
+                              if (response.ok) {
+                                const data = await response.json();
+                                if (data && data[symbol.symbol] && data[symbol.symbol].price) {
+                                  setCurrentPrice(parseFloat(data[symbol.symbol].price));
+                                }
+                              }
+                            } catch (error) {
+                              console.error('[Settings] Error fetching current price:', error);
+                            } finally {
+                              setLoadingPrice(false);
+                            }
                           }}
                           className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-blue-950/30 transition-colors"
                         >
@@ -3243,11 +3707,27 @@ export default function SettingsPage() {
                 )}
               </div>
 
+              {/* Current Price Display */}
+              {currentPrice !== null && (
+                <div className="p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-slate-400">Current Price / Mevcut Fiyat:</span>
+                    <span className="text-lg font-bold text-blue-400">${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}</span>
+                  </div>
+                </div>
+              )}
+
+              {loadingPrice && (
+                <div className="p-3 bg-slate-900/50 border border-blue-500/20 rounded-xl text-center">
+                  <span className="text-sm text-slate-400">Loading current price...</span>
+                </div>
+              )}
+
               <div>
                 <div className="flex items-center gap-2 mb-2">
-                  <label className="block text-sm font-medium text-slate-300">Target Price ($)</label>
+                  <label className="block text-sm font-medium text-slate-300">Notify when price is $X away / Kaç dolar kaldığında bildirim gelsin</label>
                   <button
-                    onClick={() => setActiveTooltip(activeTooltip === 'target' ? null : 'target')}
+                    onClick={() => setActiveTooltip(activeTooltip === 'notifyWhenAway' ? null : 'notifyWhenAway')}
                     className="text-slate-400 hover:text-blue-300 cursor-help transition-colors"
                   >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3257,71 +3737,31 @@ export default function SettingsPage() {
                 </div>
                 <input
                   type="number"
-                  value={newAlert.targetPrice}
-                  onChange={(e) => setNewAlert({ ...newAlert, targetPrice: e.target.value })}
-                  placeholder="50000"
+                  value={newAlert.notifyWhenAway}
+                  onChange={(e) => setNewAlert({ ...newAlert, notifyWhenAway: e.target.value })}
+                  placeholder="0.5"
                   step="0.01"
+                  min="0.01"
                   className="w-full px-4 py-2.5 bg-slate-900/50 border border-blue-500/20 rounded-xl text-white focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all backdrop-blur-sm"
                 />
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="block text-sm font-medium text-slate-300">Proximity Delta ($)</label>
-                  <button
-                    onClick={() => setActiveTooltip(activeTooltip === 'delta' ? null : 'delta')}
-                    className="text-slate-400 hover:text-blue-300 cursor-help transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </button>
-                </div>
-                <input
-                  type="number"
-                  value={newAlert.proximityDelta}
-                  onChange={(e) => setNewAlert({ ...newAlert, proximityDelta: e.target.value })}
-                  placeholder="100"
-                  step="0.01"
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-blue-500/20 rounded-xl text-white focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all backdrop-blur-sm"
-                />
-                <p className="text-xs text-slate-500 mt-1.5">Alert when price is within this range of target / Fiyat hedefe bu aralıkta yaklaştığında bildirim</p>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="block text-sm font-medium text-slate-300">Direction / Yön</label>
-                  <button
-                    onClick={() => setActiveTooltip(activeTooltip === 'direction' ? null : 'direction')}
-                    className="text-slate-400 hover:text-blue-300 cursor-help transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    onClick={() => setNewAlert({ ...newAlert, direction: 'up' })}
-                    className={`p-3 rounded-xl border backdrop-blur-sm transition-all font-medium ${
-                      newAlert.direction === 'up'
-                        ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
-                        : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
-                    }`}
-                  >
-                    📈 Approaching Up
-                  </button>
-                  <button
-                    onClick={() => setNewAlert({ ...newAlert, direction: 'down' })}
-                    className={`p-3 rounded-xl border backdrop-blur-sm transition-all font-medium ${
-                      newAlert.direction === 'down'
-                        ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
-                        : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
-                    }`}
-                  >
-                    📉 Approaching Down
-                  </button>
-                </div>
+                <p className="text-xs text-slate-500 mt-1.5">
+                  {currentPrice !== null && newAlert.notifyWhenAway && parseFloat(newAlert.notifyWhenAway) > 0 ? (() => {
+                    const notifyAway = parseFloat(newAlert.notifyWhenAway);
+                    const targetPriceUp = currentPrice + notifyAway;
+                    const targetPriceDown = currentPrice - notifyAway;
+                    const direction = targetPriceDown > 0 ? 'down' : 'up';
+                    const targetPrice = direction === 'down' ? targetPriceDown : targetPriceUp;
+                    
+                    return (
+                      <>
+                        Alert will trigger when price reaches ${targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} 
+                        ({direction === 'down' ? '📉' : '📈'} {direction === 'down' ? 'down' : 'up'} from ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })})
+                      </>
+                    );
+                  })() : (
+                    'Enter how many dollars away from current price to receive notification / Mevcut fiyattan kaç dolar uzakta bildirim almak istediğinizi girin'
+                  )}
+                </p>
               </div>
 
               <button
@@ -3329,10 +3769,45 @@ export default function SettingsPage() {
                   console.log('[Settings] Create alert button clicked');
                   setError(''); // Clear previous errors
                   
-                  if (!newAlert.symbol || !newAlert.targetPrice || !newAlert.proximityDelta) {
+                  if (!newAlert.symbol || !newAlert.notifyWhenAway) {
                     setError('Please fill all fields');
                     return;
                   }
+
+                  if (!currentPrice || currentPrice <= 0) {
+                    setError('Please wait for current price to load, or enter a valid symbol');
+                    return;
+                  }
+
+                  const notifyAway = parseFloat(newAlert.notifyWhenAway);
+                  if (isNaN(notifyAway) || notifyAway <= 0) {
+                    setError('Please enter a valid number greater than 0');
+                    return;
+                  }
+
+                  // Otomatik hesaplamalar ve yön tespiti
+                  // Kullanıcı "kaç dolar kaldığında" derken, hem yukarı hem aşağı için kullanabilir
+                  // Sistem otomatik olarak hangi yönün daha mantıklı olduğunu tespit eder
+                  
+                  const targetPriceUp = currentPrice + notifyAway; // Yukarı yön: mevcut fiyat + değer
+                  const targetPriceDown = currentPrice - notifyAway; // Aşağı yön: mevcut fiyat - değer
+                  
+                  // Yön tespiti: Eğer aşağı yön geçerli bir fiyat veriyorsa (0'dan büyükse), aşağı yönü seç
+                  // Aksi halde yukarı yönü seç
+                  let direction: 'up' | 'down';
+                  let targetPrice: number;
+                  
+                  if (targetPriceDown > 0) {
+                    // Aşağı yön geçerli - kullanıcı muhtemelen aşağı yönü istiyor
+                    direction = 'down';
+                    targetPrice = targetPriceDown;
+                  } else {
+                    // Aşağı yön geçersiz (negatif fiyat) - yukarı yönü seç
+                    direction = 'up';
+                    targetPrice = targetPriceUp;
+                  }
+                  
+                  const proximityDelta = Math.max(0.01, notifyAway * 0.1); // Proximity delta = kullanıcının girdiği değerin %10'u (minimum 0.01$)
 
                   setLoading(true);
                   try {
@@ -3419,9 +3894,9 @@ export default function SettingsPage() {
                     const requestBody: any = {
                       deviceId,
                       symbol: newAlert.symbol,
-                      targetPrice: parseFloat(newAlert.targetPrice),
-                      proximityDelta: parseFloat(newAlert.proximityDelta),
-                      direction: newAlert.direction,
+                      targetPrice: targetPrice,
+                      proximityDelta: proximityDelta,
+                      direction: direction,
                     };
 
                     // Debug: Log user state
@@ -3480,7 +3955,8 @@ export default function SettingsPage() {
                       console.log('[Settings] Alert created successfully:', data);
                       setCustomAlerts([...customAlerts, data.alert]);
                       setShowAddAlertModal(false);
-                      setNewAlert({ symbol: '', targetPrice: '', proximityDelta: '', direction: 'up' });
+                      setNewAlert({ symbol: '', notifyWhenAway: '' });
+                      setCurrentPrice(null);
                       setError('');
                     } else {
                       try {
@@ -3510,11 +3986,11 @@ export default function SettingsPage() {
       )}
 
       {/* Info Tooltip Modals */}
-      {activeTooltip === 'target' && (
+      {activeTooltip === 'notifyWhenAway' && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setActiveTooltip(null)}>
           <div className="bg-slate-900/95 backdrop-blur-md border border-blue-500/20 rounded-xl p-4 max-w-md w-full shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-3">
-              <div className="font-semibold text-white text-lg">Target Price / Hedef Fiyat</div>
+              <div className="font-semibold text-white text-lg">Notify When Away / Kaç Dolar Kaldığında Bildirim</div>
               <button
                 onClick={() => setActiveTooltip(null)}
                 className="text-slate-400 hover:text-white transition-colors"
@@ -3527,69 +4003,23 @@ export default function SettingsPage() {
             <div className="space-y-3 text-sm text-slate-300">
               <div>
                 <p className="font-semibold text-blue-400 mb-1">English:</p>
-                <p>The price level you want to be notified about. The alert will trigger when the current price approaches this target within the proximity delta range.</p>
+                <p>Enter how many dollars away from the current price you want to receive a notification. The system will automatically:</p>
+                <ul className="list-disc list-inside mt-2 space-y-1 ml-2">
+                  <li>Calculate the target price (current price + your value)</li>
+                  <li>Set the notification range automatically</li>
+                  <li>Detect the direction (always upward from current price)</li>
+                </ul>
+                <p className="mt-2"><strong>Example:</strong> Current price: $50,000, You enter: 0.5 → Alert triggers when price reaches $50,000.5</p>
               </div>
               <div>
                 <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
-                <p>Bildirim almak istediğiniz fiyat seviyesi. Mevcut fiyat, yaklaşma aralığı (proximity delta) içinde bu hedefe yaklaştığında alert tetiklenir.</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTooltip === 'delta' && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setActiveTooltip(null)}>
-          <div className="bg-slate-900/95 backdrop-blur-md border border-blue-500/20 rounded-xl p-4 max-w-md w-full shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-semibold text-white text-lg">Proximity Delta / Yaklaşma Aralığı</div>
-              <button
-                onClick={() => setActiveTooltip(null)}
-                className="text-slate-400 hover:text-white transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-3 text-sm text-slate-300">
-              <div>
-                <p className="font-semibold text-blue-400 mb-1">English:</p>
-                <p>The distance from target price that triggers the alert. Example: Target 2.25$, Delta 0.1$ → Alert triggers when price is between 2.15$ - 2.25$ (for &quot;up&quot; direction).</p>
-              </div>
-              <div>
-                <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
-                <p>Hedef fiyattan ne kadar uzaklıkta alert tetikleneceği. Örnek: Hedef 2.25$, Delta 0.1$ → Fiyat 2.15$ - 2.25$ aralığında bildirim gönderilir (&quot;yukarı&quot; yönü için).</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {activeTooltip === 'direction' && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setActiveTooltip(null)}>
-          <div className="bg-slate-900/95 backdrop-blur-md border border-blue-500/20 rounded-xl p-4 max-w-md w-full shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-semibold text-white text-lg">Direction / Yön</div>
-              <button
-                onClick={() => setActiveTooltip(null)}
-                className="text-slate-400 hover:text-white transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-3 text-sm text-slate-300">
-              <div>
-                <p className="font-semibold text-blue-400 mb-1">English:</p>
-                <p><strong>Up (📈):</strong> Price is below target and approaching upward. Alert triggers when price is in range: (target - delta) to target.</p>
-                <p className="mt-2"><strong>Down (📉):</strong> Price is above target and approaching downward. Alert triggers when price is in range: target to (target + delta).</p>
-              </div>
-              <div>
-                <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
-                <p><strong>Yukarı (📈):</strong> Fiyat hedefin altında ve yukarı doğru yaklaşıyor. Fiyat (hedef - delta) ile hedef aralığında bildirim gönderilir.</p>
-                <p className="mt-2"><strong>Aşağı (📉):</strong> Fiyat hedefin üstünde ve aşağı doğru yaklaşıyor. Fiyat hedef ile (hedef + delta) aralığında bildirim gönderilir.</p>
+                <p>Mevcut fiyattan kaç dolar uzakta bildirim almak istediğinizi girin. Sistem otomatik olarak:</p>
+                <ul className="list-disc list-inside mt-2 space-y-1 ml-2">
+                  <li>Hedef fiyatı hesaplar (mevcut fiyat + girdiğiniz değer)</li>
+                  <li>Bildirim aralığını otomatik ayarlar</li>
+                  <li>Yönü tespit eder (her zaman mevcut fiyattan yukarı)</li>
+                </ul>
+                <p className="mt-2"><strong>Örnek:</strong> Mevcut fiyat: $50,000, Siz giriyorsunuz: 0.5 → Fiyat $50,000.5&apos;e ulaştığında bildirim gönderilir</p>
               </div>
             </div>
           </div>
@@ -3664,6 +4094,121 @@ export default function SettingsPage() {
                   )}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Notifications Modal */}
+      {showNotificationsModal && user && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowNotificationsModal(false)}>
+          <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center">
+                  <Bell className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-white">
+                    {language === 'en' ? 'Notifications' : 'Bildirimler'}
+                  </h2>
+                  {unreadCount > 0 && (
+                    <p className="text-xs text-slate-400">
+                      {unreadCount} {language === 'en' ? 'unread' : 'okunmamış'}
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {unreadCount > 0 && (
+                  <button
+                    onClick={markAllNotificationsAsRead}
+                    className="px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 rounded-lg transition-all border border-blue-500/30"
+                  >
+                    {language === 'en' ? 'Mark all as read' : 'Tümünü okundu işaretle'}
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowNotificationsModal(false)}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Notifications List */}
+            <div className="flex-1 overflow-y-auto">
+              {loadingNotifications ? (
+                <div className="text-center py-12 text-slate-400">
+                  {language === 'en' ? 'Loading notifications...' : 'Bildirimler yükleniyor...'}
+                </div>
+              ) : notifications.length === 0 ? (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
+                    <Bell className="w-8 h-8 text-slate-500" />
+                  </div>
+                  <p className="text-slate-400 text-sm">
+                    {language === 'en' ? 'No notifications yet.' : 'Henüz bildirim yok.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {notifications.map((notification) => (
+                    <div
+                      key={notification.id}
+                      className={`p-4 rounded-xl border backdrop-blur-md transition-all cursor-pointer ${
+                        !notification.isRead
+                          ? 'border-blue-500/30 bg-blue-950/20 hover:bg-blue-950/30'
+                          : 'border-slate-800/50 bg-slate-900/30 hover:bg-slate-900/50'
+                      }`}
+                      onClick={() => {
+                        if (!notification.isRead) {
+                          markNotificationAsRead(notification.id);
+                        }
+                      }}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2">
+                            <h4 className={`text-sm font-semibold ${
+                              !notification.isRead ? 'text-white' : 'text-slate-300'
+                            }`}>
+                              {notification.title}
+                            </h4>
+                            {!notification.isRead && (
+                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                            )}
+                          </div>
+                          <p className="text-xs text-slate-400 mb-2 whitespace-pre-wrap leading-relaxed">
+                            {notification.message}
+                          </p>
+                          <span className="text-xs text-slate-500">
+                            {formatTimeAgo(notification.createdAt)}
+                          </span>
+                        </div>
+                        {!notification.isRead && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              markNotificationAsRead(notification.id);
+                            }}
+                            className="text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0 p-1"
+                            title={language === 'en' ? 'Mark as read' : 'Okundu işaretle'}
+                          >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
