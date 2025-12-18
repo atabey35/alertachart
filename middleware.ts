@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const hostname = request.headers.get('host') || '';
   const url = request.nextUrl.clone();
   const pathname = request.nextUrl.pathname;
@@ -36,12 +36,59 @@ export function middleware(request: NextRequest) {
   // This middleware only handles the root path redirect
   if (hostname.includes('aggr.alertachart.com')) {
     const pathname = request.nextUrl.pathname;
-    // Only rewrite root path, let all other paths (including /assets/) pass through
-    // This allows the separate deployment to handle static assets
+    
+    // 🔥 PREMIUM CHECK: Server-side premium verification for /aggr route
+    // This prevents non-premium users from accessing the premium feature
     if (pathname === '/' || pathname === '') {
-      url.pathname = '/aggr';
-      return NextResponse.rewrite(url);
+      try {
+        // Build internal API URL to check premium access
+        // Use the same host to ensure cookies are passed correctly
+        const protocol = request.headers.get('x-forwarded-proto') || 'https';
+        const baseUrl = request.headers.get('host') || 'www.alertachart.com';
+        const apiUrl = `${protocol}://${baseUrl}/api/user/plan`;
+        
+        // Make internal API call to check premium access
+        // Pass all cookies from the request
+        const cookieHeader = request.headers.get('cookie') || '';
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Cookie': cookieHeader,
+            'User-Agent': request.headers.get('user-agent') || '',
+          },
+          // Don't follow redirects
+          redirect: 'manual',
+        });
+        
+        if (response.status === 200) {
+          const planData = await response.json();
+          const hasPremiumAccess = planData.hasPremiumAccess || false;
+          
+          if (!hasPremiumAccess) {
+            // User is not premium, redirect to upgrade page
+            console.log('[Middleware] User does not have premium access for aggr.alertachart.com, redirecting to upgrade');
+            const upgradeUrl = new URL('https://www.alertachart.com/?upgrade=true');
+            return NextResponse.redirect(upgradeUrl);
+          }
+          
+          // User has premium access, allow access to /aggr
+          console.log('[Middleware] User has premium access, allowing access to aggr.alertachart.com');
+          url.pathname = '/aggr';
+          return NextResponse.rewrite(url);
+        } else {
+          // API call failed (401, 404, etc.), redirect to login
+          console.log('[Middleware] Premium check failed for aggr.alertachart.com, redirecting to login');
+          const loginUrl = new URL('https://www.alertachart.com/?login=true');
+          return NextResponse.redirect(loginUrl);
+        }
+      } catch (error) {
+        console.error('[Middleware] Error checking premium access:', error);
+        // On error, redirect to login for security
+        const loginUrl = new URL('https://www.alertachart.com/?login=true');
+        return NextResponse.redirect(loginUrl);
+      }
     }
+    
     // For all other paths on aggr subdomain, let them pass through (handled by separate deployment)
     return NextResponse.next();
   }
@@ -49,9 +96,57 @@ export function middleware(request: NextRequest) {
   // Subdomain routing: data.alertachart.com/liquidation-tracker → /data/liquidation-tracker
   if (hostname.includes('data.alertachart.com')) {
     const pathname = request.nextUrl.pathname;
+    
+    // 🔥 PREMIUM CHECK: Server-side premium verification for /liquidation-tracker route
+    // This prevents non-premium users from accessing the premium feature
     if (pathname === '/liquidation-tracker' || pathname.startsWith('/liquidation-tracker')) {
-      url.pathname = '/data/liquidation-tracker';
-      return NextResponse.rewrite(url);
+      try {
+        // Build internal API URL to check premium access
+        // Use the same host to ensure cookies are passed correctly
+        const protocol = request.headers.get('x-forwarded-proto') || 'https';
+        const baseUrl = request.headers.get('host') || 'www.alertachart.com';
+        const apiUrl = `${protocol}://${baseUrl}/api/user/plan`;
+        
+        // Make internal API call to check premium access
+        // Pass all cookies from the request
+        const cookieHeader = request.headers.get('cookie') || '';
+        const response = await fetch(apiUrl, {
+          method: 'GET',
+          headers: {
+            'Cookie': cookieHeader,
+            'User-Agent': request.headers.get('user-agent') || '',
+          },
+          // Don't follow redirects
+          redirect: 'manual',
+        });
+        
+        if (response.status === 200) {
+          const planData = await response.json();
+          const hasPremiumAccess = planData.hasPremiumAccess || false;
+          
+          if (!hasPremiumAccess) {
+            // User is not premium, redirect to upgrade page
+            console.log('[Middleware] User does not have premium access for data.alertachart.com/liquidation-tracker, redirecting to upgrade');
+            const upgradeUrl = new URL('https://www.alertachart.com/?upgrade=true');
+            return NextResponse.redirect(upgradeUrl);
+          }
+          
+          // User has premium access, allow access to /data/liquidation-tracker
+          console.log('[Middleware] User has premium access, allowing access to data.alertachart.com/liquidation-tracker');
+          url.pathname = '/data/liquidation-tracker';
+          return NextResponse.rewrite(url);
+        } else {
+          // API call failed (401, 404, etc.), redirect to login
+          console.log('[Middleware] Premium check failed for data.alertachart.com/liquidation-tracker, redirecting to login');
+          const loginUrl = new URL('https://www.alertachart.com/?login=true');
+          return NextResponse.redirect(loginUrl);
+        }
+      } catch (error) {
+        console.error('[Middleware] Error checking premium access:', error);
+        // On error, redirect to login for security
+        const loginUrl = new URL('https://www.alertachart.com/?login=true');
+        return NextResponse.redirect(loginUrl);
+      }
     }
   }
 
