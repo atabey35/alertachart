@@ -2746,74 +2746,108 @@ export default function Home() {
           })
         }}
       >
+        {/* Chart Tab */}
         <button
           onClick={() => setMobileTab('chart')}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors cursor-pointer ${mobileTab === 'chart' ? 'text-blue-400' : 'text-gray-500'
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 cursor-pointer relative ${mobileTab === 'chart' ? 'text-blue-400' : 'text-gray-500 hover:text-gray-400'
             }`}
           style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+          {mobileTab === 'chart' && (
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full" />
+          )}
+          <svg className={`w-6 h-6 transition-transform duration-200 ${mobileTab === 'chart' ? 'scale-110' : ''}`}
+            fill={mobileTab === 'chart' ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'chart' ? 1.5 : 2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          <span className="text-[10px] mt-1">{t('chart', language)}</span>
+          <span className="text-[10px] mt-1 font-medium">{t('chart', language)}</span>
         </button>
 
+        {/* Watchlist Tab */}
         <button
           onClick={() => setMobileTab('watchlist')}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors cursor-pointer ${mobileTab === 'watchlist' ? 'text-blue-400' : 'text-gray-500'
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 cursor-pointer relative ${mobileTab === 'watchlist' ? 'text-blue-400' : 'text-gray-500 hover:text-gray-400'
             }`}
           style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+          {mobileTab === 'watchlist' && (
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full" />
+          )}
+          <svg className={`w-6 h-6 transition-transform duration-200 ${mobileTab === 'watchlist' ? 'scale-110' : ''}`}
+            fill={mobileTab === 'watchlist' ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'watchlist' ? 1.5 : 2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
           </svg>
-          <span className="text-[10px] mt-1">{t('watchlist', language)}</span>
+          <span className="text-[10px] mt-1 font-medium">{t('watchlist', language)}</span>
         </button>
 
+        {/* Alerts Tab */}
         <button
           onClick={() => setMobileTab('alerts')}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors relative cursor-pointer ${mobileTab === 'alerts' ? 'text-blue-400' : 'text-gray-500'
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 cursor-pointer relative ${mobileTab === 'alerts' ? 'text-blue-400' : 'text-gray-500 hover:text-gray-400'
             }`}
           style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+          {mobileTab === 'alerts' && (
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full" />
+          )}
+          <svg className={`w-6 h-6 transition-transform duration-200 ${mobileTab === 'alerts' ? 'scale-110' : ''}`}
+            fill={mobileTab === 'alerts' ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'alerts' ? 1.5 : 2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
           </svg>
-          <span className="text-[10px] mt-1">{t('alerts', language)}</span>
+          <span className="text-[10px] mt-1 font-medium">{t('alerts', language)}</span>
         </button>
 
+        {/* AGGR Tab - Premium with Shimmer */}
         <button
           onClick={() => {
             if (!user) {
-              // Üye olmayan kullanıcıyı settings'e yönlendir
               if (typeof window !== 'undefined') {
                 window.location.href = '/settings';
               }
             } else if (hasPremiumAccessValue) {
-              // Show AGGR in same app (iframe) - cookies work in same domain
               setMobileTab('aggr');
             } else {
               setShowUpgradeModal(true);
             }
           }}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative cursor-pointer group ${mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 relative cursor-pointer group ${mobileTab === 'aggr' ? 'text-blue-400' : hasPremiumAccessValue ? 'text-gray-500 hover:text-gray-400' : 'text-cyan-400'
             } ${!hasPremiumAccessValue ? 'hover:scale-105' : ''}`}
           style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
+          {mobileTab === 'aggr' && (
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full" />
+          )}
           <div className="relative">
-            <svg className={`w-6 h-6 transition-colors duration-300 ${!hasPremiumAccessValue ? 'text-cyan-400' : mobileTab === 'aggr' ? 'text-blue-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+            <svg className={`w-6 h-6 transition-all duration-200 ${mobileTab === 'aggr' ? 'scale-110' : ''}`}
+              fill={mobileTab === 'aggr' ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'aggr' ? 1.5 : 2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
             </svg>
             {!hasPremiumAccessValue && (
-              <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
+              <>
+                <span className="absolute -top-1 -right-2 text-[8px] bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-1 rounded font-bold animate-pulse">PRO</span>
+                {/* Shimmer overlay */}
+                <div className="absolute inset-0 -m-1 rounded-lg overflow-hidden pointer-events-none">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent animate-shimmer"
+                    style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s infinite' }} />
+                </div>
+              </>
             )}
           </div>
-          <span className="text-[10px] mt-1">Aggr</span>
+          <span className="text-[10px] mt-1 font-medium">Aggr</span>
         </button>
+
+        {/* Liquidations Tab - Premium with Shimmer */}
         <button
           onClick={() => {
             if (!user) {
-              // Üye olmayan kullanıcıyı settings'e yönlendir
               if (typeof window !== 'undefined') {
                 window.location.href = '/settings';
               }
@@ -2823,35 +2857,49 @@ export default function Home() {
               setShowUpgradeModal(true);
             }
           }}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-300 relative cursor-pointer group ${mobileTab === 'liquidations' ? 'text-blue-400' : 'text-gray-500'
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 relative cursor-pointer group ${mobileTab === 'liquidations' ? 'text-blue-400' : hasPremiumAccessValue ? 'text-gray-500 hover:text-gray-400' : 'text-red-400'
             } ${!hasPremiumAccessValue ? 'hover:scale-105' : ''}`}
           style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
+          {mobileTab === 'liquidations' && (
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full" />
+          )}
           <div className="relative">
-            <svg className={`w-6 h-6 transition-colors duration-300 ${!hasPremiumAccessValue ? 'text-red-500' : mobileTab === 'liquidations' ? 'text-blue-400' : 'text-gray-500'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+            <svg className={`w-6 h-6 transition-all duration-200 ${mobileTab === 'liquidations' ? 'scale-110' : ''}`}
+              fill={mobileTab === 'liquidations' ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'liquidations' ? 1.5 : 2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
             {!hasPremiumAccessValue && (
-              <span className="absolute -top-1 -right-1 text-[8px]">🔒</span>
+              <>
+                <span className="absolute -top-1 -right-2 text-[8px] bg-gradient-to-r from-red-500 to-orange-500 text-white px-1 rounded font-bold animate-pulse">PRO</span>
+                {/* Shimmer overlay */}
+                <div className="absolute inset-0 -m-1 rounded-lg overflow-hidden pointer-events-none">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-red-400/20 to-transparent animate-shimmer"
+                    style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s infinite' }} />
+                </div>
+              </>
             )}
           </div>
-          <span className="text-[10px] mt-1">{t('liquidations', language)}</span>
+          <span className="text-[10px] mt-1 font-medium">{t('liquidations', language)}</span>
         </button>
 
+        {/* Settings Tab */}
         <button
           onClick={() => {
-            // Navigate to Settings page
             if (typeof window !== 'undefined') {
               window.location.href = '/settings';
             }
           }}
-          className="flex-1 flex flex-col items-center justify-center py-2 transition-colors text-gray-500 hover:text-blue-400"
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 cursor-pointer relative text-gray-500 hover:text-gray-400`}
+          style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
-          <span className="text-[10px] mt-1">{t('settings', language)}</span>
+          <span className="text-[10px] mt-1 font-medium">{t('settings', language)}</span>
         </button>
       </nav>
 
