@@ -91,6 +91,8 @@ export default function Home() {
     hasPremiumAccess?: boolean;
   } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  // Teaser preview state - shows blurred preview for 2-3 seconds before modal
+  const [teaserPreview, setTeaserPreview] = useState<'aggr' | 'liquidations' | null>(null);
   // Hydration-safe: Always start with false, check in useEffect
   const [showTrialPromotionModal, setShowTrialPromotionModal] = useState(false);
 
@@ -2645,6 +2647,34 @@ export default function Home() {
                 title="Aggr Trading Dashboard"
                 allow="clipboard-write; clipboard-read"
               />
+            ) : teaserPreview === 'aggr' ? (
+              // Teaser blur preview - shows blurred iframe with overlay
+              <div className="relative w-full h-full">
+                <iframe
+                  src="https://aggr.alertachart.com?embed=true"
+                  className="w-full h-full border-0 filter blur-md scale-105"
+                  title="Aggr Trading Dashboard Preview"
+                  style={{ pointerEvents: 'none' }}
+                />
+                {/* Premium overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-950/80 to-gray-950 flex flex-col items-center justify-center">
+                  <div className="text-center p-8">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-4 mx-auto animate-pulse">
+                      <span className="text-4xl">💎</span>
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Premium İçerik</h3>
+                    <p className="text-gray-300 mb-4">
+                      Gerçek zamanlı AGGR verilerine erişmek için Premium&apos;a geçin
+                    </p>
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <p className="text-gray-500 text-sm">Premium ekranı yükleniyor...</p>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4">
@@ -2692,6 +2722,34 @@ export default function Home() {
                 title="Liquidations Dashboard"
                 allow="clipboard-write; clipboard-read"
               />
+            ) : teaserPreview === 'liquidations' ? (
+              // Teaser blur preview - shows blurred iframe with overlay
+              <div className="relative w-full h-full">
+                <iframe
+                  src="https://data.alertachart.com?embed=true"
+                  className="w-full h-full border-0 filter blur-md scale-105"
+                  title="Liquidations Dashboard Preview"
+                  style={{ pointerEvents: 'none' }}
+                />
+                {/* Premium overlay */}
+                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-950/80 to-gray-950 flex flex-col items-center justify-center">
+                  <div className="text-center p-8">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center mb-4 mx-auto animate-pulse">
+                      <span className="text-4xl">💎</span>
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-2">Premium İçerik</h3>
+                    <p className="text-gray-300 mb-4">
+                      Gerçek zamanlı Liquidation verilerine erişmek için Premium&apos;a geçin
+                    </p>
+                    <div className="flex items-center justify-center gap-2 mb-4">
+                      <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                    </div>
+                    <p className="text-gray-500 text-sm">Premium ekranı yükleniyor...</p>
+                  </div>
+                </div>
+              </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-full p-8 text-center">
                 <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4">
@@ -2813,7 +2871,13 @@ export default function Home() {
             } else if (hasPremiumAccessValue) {
               setMobileTab('aggr');
             } else {
-              setShowUpgradeModal(true);
+              // Show teaser blur preview for 3 seconds, then show upgrade modal
+              setTeaserPreview('aggr');
+              setMobileTab('aggr');
+              setTimeout(() => {
+                setTeaserPreview(null);
+                setShowUpgradeModal(true);
+              }, 3000);
             }
           }}
           className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 relative cursor-pointer group ${mobileTab === 'aggr' ? 'text-blue-400' : hasPremiumAccessValue ? 'text-gray-500 hover:text-gray-400' : 'text-cyan-400'
@@ -2854,7 +2918,13 @@ export default function Home() {
             } else if (hasPremiumAccessValue) {
               setMobileTab('liquidations');
             } else {
-              setShowUpgradeModal(true);
+              // Show teaser blur preview for 3 seconds, then show upgrade modal
+              setTeaserPreview('liquidations');
+              setMobileTab('liquidations');
+              setTimeout(() => {
+                setTeaserPreview(null);
+                setShowUpgradeModal(true);
+              }, 3000);
             }
           }}
           className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 relative cursor-pointer group ${mobileTab === 'liquidations' ? 'text-blue-400' : hasPremiumAccessValue ? 'text-gray-500 hover:text-gray-400' : 'text-red-400'
