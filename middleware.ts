@@ -42,10 +42,9 @@ export async function middleware(request: NextRequest) {
     if (pathname === '/' || pathname === '') {
       try {
         // Build internal API URL to check premium access
-        // Use the same host to ensure cookies are passed correctly
+        // Use www.alertachart.com to ensure API is accessible
         const protocol = request.headers.get('x-forwarded-proto') || 'https';
-        const baseUrl = request.headers.get('host') || 'www.alertachart.com';
-        const apiUrl = `${protocol}://${baseUrl}/api/user/plan`;
+        const apiUrl = `${protocol}://www.alertachart.com/api/user/plan`;
         
         // Make internal API call to check premium access
         // Pass all cookies from the request
@@ -102,10 +101,9 @@ export async function middleware(request: NextRequest) {
     if (pathname === '/liquidation-tracker' || pathname.startsWith('/liquidation-tracker')) {
       try {
         // Build internal API URL to check premium access
-        // Use the same host to ensure cookies are passed correctly
+        // Use www.alertachart.com to ensure API is accessible
         const protocol = request.headers.get('x-forwarded-proto') || 'https';
-        const baseUrl = request.headers.get('host') || 'www.alertachart.com';
-        const apiUrl = `${protocol}://${baseUrl}/api/user/plan`;
+        const apiUrl = `${protocol}://www.alertachart.com/api/user/plan`;
         
         // Make internal API call to check premium access
         // Pass all cookies from the request
