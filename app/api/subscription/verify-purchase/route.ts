@@ -805,9 +805,13 @@ export async function POST(request: NextRequest) {
       : true; // For manual restore/purchase: always log
 
     // Update user subscription
-    // IAP purchase = direct premium, NOT trial
-    // Clear any existing trial data by setting trial_ended_at to past (before now)
-    const pastDate = new Date(now.getTime() - 1000); // 1 second ago
+    // Check if this is an Apple/Google trial period (introductory offer)
+    const isAppleTrial = verificationResult.isTrialPeriod === true;
+
+    // For trials: set trial_started_at to now and trial_ended_at to expiry date
+    // For paid subscriptions: set trial_ended_at to past to mark trial as ended
+    const trialStartedAt = isAppleTrial ? now.toISOString() : (user.trial_started_at || new Date(now.getTime() - 1000).toISOString());
+    const trialEndedAt = isAppleTrial ? expiryDate.toISOString() : new Date(now.getTime() - 1000).toISOString();
 
     // 🔥 SECURITY: Update device_id when receipt is verified
     // This links the receipt to the device, preventing cross-account usage
@@ -816,8 +820,8 @@ export async function POST(request: NextRequest) {
       UPDATE users
       SET 
         plan = 'premium',
-        trial_started_at = COALESCE(trial_started_at, ${pastDate.toISOString()}),
-        trial_ended_at = ${pastDate.toISOString()},
+        trial_started_at = ${trialStartedAt},
+        trial_ended_at = ${trialEndedAt},
         subscription_started_at = COALESCE(subscription_started_at, ${now.toISOString()}),
         subscription_platform = ${platform},
         subscription_id = ${realTransactionId},
@@ -828,7 +832,7 @@ export async function POST(request: NextRequest) {
     `;
 
     if (shouldLog) {
-      console.log(`[Verify Purchase] ✅ User ${user.id} purchase verified - Premium ${wasAlreadyPremium ? 'updated' : 'activated'} (no trial)`);
+      console.log(`[Verify Purchase] ✅ User ${user.id} purchase verified - Premium ${wasAlreadyPremium ? 'updated' : 'activated'}${isAppleTrial ? ' (Apple Trial)' : ' (Paid)'}`);
     } else {
       console.log(`[Verify Purchase] ✅ User ${user.id} purchase re-verified - No status change (skipping log to avoid duplicates)`);
     }
@@ -894,7 +898,7 @@ async function verifyReceipt(
   platform: 'ios' | 'android',
   receipt: string,
   productId: string
-): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number; originalTransactionId?: string }> {
+): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number; originalTransactionId?: string; isTrialPeriod?: boolean }> {
   if (platform === 'ios') {
     return await verifyAppleReceipt(receipt, productId);
   } else {
@@ -911,7 +915,7 @@ async function verifyReceipt(
 async function verifyAppleReceipt(
   receipt: string,
   productId: string
-): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number; originalTransactionId?: string }> {
+): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number; originalTransactionId?: string; isTrialPeriod?: boolean }> {
   try {
     // Basic validation
     if (!receipt || receipt.length < 10) {
@@ -969,6 +973,7 @@ async function verifyAppleReceipt(
     if (productionResult.status === 0) {
       let expiryDate: Date | undefined;
       let originalTransactionId: string | undefined;
+      let isTrialPeriod: boolean = false;
 
       // 🔥 İYİLEŞTİRME: Ürün ID aramıyoruz, TARİHE göre sıralayıp EN YENİ işlemi alıyoruz.
       // Böylece Apple'dan tarih kaçırma ihtimalimiz kalmıyor.
@@ -990,11 +995,16 @@ async function verifyAppleReceipt(
           // Gerçek Transaction ID'yi al
           originalTransactionId = latestInfo.original_transaction_id;
 
+          // 🔥 TRIAL DETECTION: Check if this is a trial/intro offer period
+          isTrialPeriod = latestInfo.is_trial_period === 'true' ||
+            latestInfo.is_in_intro_offer_period === 'true';
+
           console.log('[Verify Purchase] 📅 Found LATEST transaction:', {
             productId: latestInfo.product_id, // Gelen makbuzdaki asıl ürün
             requestedProductId: productId, // İstenen ürün
             expiryDate: expiryDate?.toISOString(),
-            originalId: originalTransactionId
+            originalId: originalTransactionId,
+            isTrialPeriod: isTrialPeriod
           });
         }
       }
@@ -1013,6 +1023,8 @@ async function verifyAppleReceipt(
             expiryDate = new Date(parseInt(latestInApp.expires_date_ms));
           }
           originalTransactionId = latestInApp.original_transaction_id;
+          isTrialPeriod = latestInApp.is_trial_period === 'true' ||
+            latestInApp.is_in_intro_offer_period === 'true';
         }
       }
 
@@ -1025,15 +1037,16 @@ async function verifyAppleReceipt(
       // 🔥 CRITICAL FIX: Check if subscription is already expired
       if (expiryDate && expiryDate < new Date()) {
         console.log('[Verify Purchase] ⚠️ Subscription expired:', expiryDate.toISOString());
-        return { valid: false, expired: true, error: 'Subscription expired', statusCode: 21006, expiryDate, originalTransactionId };
+        return { valid: false, expired: true, error: 'Subscription expired', statusCode: 21006, expiryDate, originalTransactionId, isTrialPeriod };
       }
 
       console.log('[Verify Purchase] ✅ PRODUCTION verification SUCCESS', {
         productId, // İstenen ürün
         originalTransactionId,
-        expiryDate: expiryDate?.toISOString() // Artık burası Apple tarihi olacak
+        expiryDate: expiryDate?.toISOString(),
+        isTrialPeriod
       });
-      return { valid: true, expiryDate, originalTransactionId };
+      return { valid: true, expiryDate, originalTransactionId, isTrialPeriod };
     }
 
     // Status 21007 = Sandbox receipt sent to production
@@ -1082,6 +1095,7 @@ async function verifyAppleReceipt(
       if (sandboxResult.status === 0) {
         let expiryDate: Date | undefined;
         let originalTransactionId: string | undefined;
+        let isTrialPeriod: boolean = false;
 
         // 🔥 İYİLEŞTİRME: Ürün ID aramıyoruz, TARİHE göre sıralayıp EN YENİ işlemi alıyoruz.
         // Böylece Apple'dan tarih kaçırma ihtimalimiz kalmıyor.
@@ -1103,11 +1117,16 @@ async function verifyAppleReceipt(
             // Gerçek Transaction ID'yi al
             originalTransactionId = latestInfo.original_transaction_id;
 
+            // 🔥 TRIAL DETECTION: Check if this is a trial/intro offer period
+            isTrialPeriod = latestInfo.is_trial_period === 'true' ||
+              latestInfo.is_in_intro_offer_period === 'true';
+
             console.log('[Verify Purchase] 📅 Found LATEST transaction (Sandbox):', {
               productId: latestInfo.product_id, // Gelen makbuzdaki asıl ürün
               requestedProductId: productId, // İstenen ürün
               expiryDate: expiryDate?.toISOString(),
-              originalId: originalTransactionId
+              originalId: originalTransactionId,
+              isTrialPeriod: isTrialPeriod
             });
           }
         }
@@ -1126,6 +1145,8 @@ async function verifyAppleReceipt(
               expiryDate = new Date(parseInt(latestInApp.expires_date_ms));
             }
             originalTransactionId = latestInApp.original_transaction_id;
+            isTrialPeriod = latestInApp.is_trial_period === 'true' ||
+              latestInApp.is_in_intro_offer_period === 'true';
           }
         }
 
@@ -1138,15 +1159,16 @@ async function verifyAppleReceipt(
         // 🔥 CRITICAL FIX: Check if subscription is already expired
         if (expiryDate && expiryDate < new Date()) {
           console.log('[Verify Purchase] ⚠️ Sandbox subscription expired:', expiryDate.toISOString());
-          return { valid: false, expired: true, error: 'Subscription expired', statusCode: 21006, expiryDate, originalTransactionId };
+          return { valid: false, expired: true, error: 'Subscription expired', statusCode: 21006, expiryDate, originalTransactionId, isTrialPeriod };
         }
 
         console.log('[Verify Purchase] ✅ SANDBOX verification SUCCESS', {
           productId, // İstenen ürün
           originalTransactionId,
-          expiryDate: expiryDate?.toISOString() // Artık burası Apple tarihi olacak
+          expiryDate: expiryDate?.toISOString(),
+          isTrialPeriod
         });
-        return { valid: true, expiryDate, originalTransactionId };
+        return { valid: true, expiryDate, originalTransactionId, isTrialPeriod };
       }
 
       // Status 21006 = Expired subscription (special case - need to downgrade user)
