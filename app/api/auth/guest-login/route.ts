@@ -1,10 +1,12 @@
 /**
  * Guest Login Endpoint
  * Creates or retrieves a guest user for Apple Guideline 5.1.1 compliance
+ * 🔒 SECURITY: Rate limited to prevent abuse
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
+import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit';
 
 /**
  * POST /api/auth/guest-login
@@ -14,6 +16,18 @@ import { getSql } from '@/lib/db';
  */
 export async function POST(request: NextRequest) {
   try {
+    // 🔒 SECURITY: Rate limiting - prevent spam guest account creation
+    const rateLimitResponse = rateLimitMiddleware(request, RATE_LIMITS.auth);
+    if (rateLimitResponse) {
+      return NextResponse.json(
+        JSON.parse(await rateLimitResponse.text()),
+        {
+          status: 429,
+          headers: Object.fromEntries(rateLimitResponse.headers.entries())
+        }
+      );
+    }
+
     const body = await request.json();
     const { deviceId } = body;
 
@@ -74,7 +88,7 @@ export async function POST(request: NextRequest) {
         // Race condition: Another request created the user between SELECT and INSERT
         console.warn('[Guest Login] ⚠️ Guest user creation failed (likely race condition):', insertError.message);
         console.log('[Guest Login] 🔄 Retrying SELECT to find existing user...');
-        
+
         // Try to find user by email (in case INSERT failed due to unique constraint)
         const retryByEmail = await sql`
           SELECT id, email, name, provider, plan, created_at
@@ -82,7 +96,7 @@ export async function POST(request: NextRequest) {
           WHERE email = ${guestEmail}
           LIMIT 1
         `;
-        
+
         if (retryByEmail.length > 0) {
           user = retryByEmail[0];
           console.log('[Guest Login] ✅ Found existing guest user by email after INSERT failure:', user.email);
@@ -95,7 +109,7 @@ export async function POST(request: NextRequest) {
             AND provider = 'guest'
             LIMIT 1
           `;
-          
+
           if (retryByDeviceId.length > 0) {
             user = retryByDeviceId[0];
             console.log('[Guest Login] ✅ Found existing guest user by deviceId after INSERT failure:', user.email);

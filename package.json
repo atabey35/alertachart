@@ -15,6 +15,7 @@
     "test:premium": "echo 'Premium utility tests - Run manually with test framework'"
   },
   "dependencies": {
+    "@apple/app-store-server-library": "^2.0.0",
     "@capacitor-community/apple-sign-in": "^7.1.0",
     "@capacitor/android": "^7.4.4",
     "@capacitor/app": "^7.1.0",
