@@ -30,11 +30,11 @@ export default function AggrPage() {
       console.log('[Aggr] Waiting for NextAuth session to load...');
       return;
     }
-    
+
     // Only check once
     if (hasCheckedRef.current) return;
     hasCheckedRef.current = true;
-    
+
     checkAuthAndPremium();
   }, [status, session]);
 
@@ -52,25 +52,25 @@ export default function AggrPage() {
       }
 
       setLoading(true);
-      
+
       // 🔥 CRITICAL: Check NextAuth session FIRST
       // If NextAuth session exists but backend cookies don't, restore backend session
       const hasNextAuthSession = status === 'authenticated' && !!session?.user?.email;
-      console.log('[Aggr] NextAuth session check:', { 
-        status, 
+      console.log('[Aggr] NextAuth session check:', {
+        status,
         hasSession: hasNextAuthSession,
-        sessionEmail: session?.user?.email 
+        sessionEmail: session?.user?.email
       });
-      
+
       // 🔥 APPLE GUIDELINE 5.1.1: authService now handles guest users automatically
       // checkAuth() will check localStorage for guest user first, then API for regular users
       let user = await authService.checkAuth();
-      
+
       // 🔥 CRITICAL: If NextAuth session exists but authService returned null, try to restore session
       if (!user && hasNextAuthSession && !restoreAttemptedRef.current) {
         console.log('[Aggr] NextAuth session exists but backend cookies missing, attempting restore...');
         restoreAttemptedRef.current = true;
-        
+
         try {
           // Try to restore backend session using NextAuth session
           const restoreResponse = await fetch('/api/auth/restore-session', {
@@ -79,7 +79,7 @@ export default function AggrPage() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({}),
           });
-          
+
           if (restoreResponse.ok) {
             console.log('[Aggr] ✅ Session restored successfully, retrying auth check...');
             // Retry auth check after restore
@@ -91,7 +91,7 @@ export default function AggrPage() {
           console.error('[Aggr] ❌ Error restoring session:', restoreError);
         }
       }
-      
+
       // 🔥 CRITICAL: If still no user but NextAuth session exists, use NextAuth session
       if (!user && hasNextAuthSession && session?.user) {
         console.log('[Aggr] Using NextAuth session as fallback:', session.user.email);
@@ -101,16 +101,16 @@ export default function AggrPage() {
           name: session.user.name || undefined,
         } as any;
       }
-      
+
       setIsAuthenticated(!!user);
-      console.log('[Aggr] Auth check result:', { 
-        hasUser: !!user, 
+      console.log('[Aggr] Auth check result:', {
+        hasUser: !!user,
         userEmail: user?.email,
         provider: (user as any)?.provider,
         isAuthenticated: !!user,
         hasNextAuthSession,
       });
-      
+
       if (user) {
         // Check premium access via API
         try {
@@ -121,21 +121,21 @@ export default function AggrPage() {
             apiUrl += `?email=${encodeURIComponent(user.email)}`;
             console.log('[Aggr] Guest user - using email in API call:', user.email);
           }
-          
+
           console.log('[Aggr] Fetching plan from:', apiUrl);
           const planResponse = await fetch(apiUrl, {
             credentials: 'include',
             cache: 'no-store',
           });
-          
+
           console.log('[Aggr] Plan response status:', planResponse.status);
-          
+
           if (planResponse.ok) {
             const planData = await planResponse.json();
             console.log('[Aggr] Plan data received:', planData);
             const premiumAccess = planData.hasPremiumAccess || false;
             setHasPremium(premiumAccess);
-            
+
             // Set user plan for UpgradeModal
             setUserPlan({
               plan: planData.plan || 'free',
@@ -144,20 +144,42 @@ export default function AggrPage() {
               expiryDate: planData.expiryDate || null,
               hasPremiumAccess: premiumAccess,
             });
-            
+
             if (!premiumAccess) {
               // User is authenticated but not premium, show upgrade message
               console.log('[Aggr] User authenticated but not premium');
               setLoading(false);
               return;
             }
-            
+
             if (!redirectingRef.current) {
-              // User is authenticated and premium, redirect to aggr with embed mode
+              // User is authenticated and premium, generate secure token and redirect
               redirectingRef.current = true;
-              console.log('[Aggr] User authenticated and premium, redirecting to aggr.alertachart.com');
-              // Use replace instead of href to prevent back button issues
-              window.location.replace('https://aggr.alertachart.com?embed=true');
+              console.log('[Aggr] User authenticated and premium, generating secure token...');
+
+              try {
+                // Generate secure embed token
+                const tokenResponse = await fetch('/api/embed/generate-token', {
+                  method: 'POST',
+                  credentials: 'include',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ type: 'aggr' }),
+                });
+
+                if (tokenResponse.ok) {
+                  const { token } = await tokenResponse.json();
+                  console.log('[Aggr] ✅ Secure token generated, redirecting...');
+                  window.location.replace(`https://aggr.alertachart.com?token=${encodeURIComponent(token)}`);
+                } else {
+                  console.error('[Aggr] ❌ Failed to generate token');
+                  setLoading(false);
+                  redirectingRef.current = false;
+                }
+              } catch (tokenError) {
+                console.error('[Aggr] ❌ Token generation error:', tokenError);
+                setLoading(false);
+                redirectingRef.current = false;
+              }
             }
           } else {
             // Plan check failed, assume not premium
@@ -190,7 +212,7 @@ export default function AggrPage() {
   const checkPremiumAccess = async () => {
     try {
       setLoading(true);
-      
+
       // 🔥 APPLE GUIDELINE 5.1.1: Check for guest user first
       let user = null;
       let guestEmail = null;
@@ -206,14 +228,14 @@ export default function AggrPage() {
           }
         }
       }
-      
+
       // If no guest user, check regular auth
       if (!user) {
         user = await authService.checkAuth();
       }
-      
+
       setIsAuthenticated(!!user);
-      
+
       if (user) {
         // Check premium access via API
         try {
@@ -222,17 +244,17 @@ export default function AggrPage() {
           if (guestEmail) {
             apiUrl += `?email=${encodeURIComponent(guestEmail)}`;
           }
-          
+
           const planResponse = await fetch(apiUrl, {
             credentials: 'include',
             cache: 'no-store',
           });
-          
+
           if (planResponse.ok) {
             const planData = await planResponse.json();
             const premiumAccess = planData.hasPremiumAccess || false;
             setHasPremium(premiumAccess);
-            
+
             // Set user plan for UpgradeModal
             setUserPlan({
               plan: planData.plan || 'free',
@@ -241,7 +263,7 @@ export default function AggrPage() {
               expiryDate: planData.expiryDate || null,
               hasPremiumAccess: premiumAccess,
             });
-            
+
             if (!premiumAccess) {
               // User is authenticated but not premium
               setLoading(false);
@@ -313,7 +335,7 @@ export default function AggrPage() {
           <div className="w-20 h-20 mx-auto mb-5 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 rounded-2xl flex items-center justify-center text-white font-bold text-4xl shadow-2xl shadow-blue-500/30">
             A
           </div>
-          
+
           {/* Title */}
           <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
             AGGR Trading Dashboard
@@ -324,7 +346,7 @@ export default function AggrPage() {
           <p className="text-gray-500 mb-8 text-xs">
             Bu özellik sadece premium üyeler için kullanılabilir.
           </p>
-          
+
           {/* Upgrade Button - Opens UpgradeModal (same as main page) */}
           <button
             onClick={() => setShowUpgradeModal(true)}
@@ -333,7 +355,7 @@ export default function AggrPage() {
             Premium&apos;a Geç
           </button>
         </div>
-        
+
         {/* UpgradeModal - Same as main page */}
         <UpgradeModal
           isOpen={showUpgradeModal}
@@ -359,7 +381,7 @@ export default function AggrPage() {
         <div className="w-20 h-20 mx-auto mb-5 bg-gradient-to-br from-blue-500 via-blue-600 to-blue-700 rounded-2xl flex items-center justify-center text-white font-bold text-4xl shadow-2xl shadow-blue-500/30">
           A
         </div>
-        
+
         {/* Title */}
         <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-blue-500 to-purple-500 bg-clip-text text-transparent">
           AGGR Trading Dashboard
@@ -367,7 +389,7 @@ export default function AggrPage() {
         <p className="text-gray-400 mb-8 text-sm">
           AGGR trading dashboard&apos;una erişmek için lütfen giriş yapın
         </p>
-        
+
         {/* Login Button */}
         <button
           onClick={handleLogin}

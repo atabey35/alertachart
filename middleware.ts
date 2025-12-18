@@ -36,7 +36,23 @@ export async function middleware(request: NextRequest) {
   // This middleware only handles the root path redirect
   if (hostname.includes('aggr.alertachart.com')) {
     const pathname = request.nextUrl.pathname;
-    
+
+    // 🔥 SECURITY: Block deprecated embed=true parameter (now replaced with token system)
+    const embedParam = request.nextUrl.searchParams.get('embed');
+    if (embedParam === 'true') {
+      console.log('[Middleware] ❌ Blocked deprecated embed=true parameter for aggr.alertachart.com');
+      const loginUrl = new URL('https://www.alertachart.com/?login=true');
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // 🔥 TOKEN CHECK: If token parameter is present, allow access (token will be verified by AGGR app)
+    const token = request.nextUrl.searchParams.get('token');
+    if (token) {
+      console.log('[Middleware] ✅ Token parameter present for aggr.alertachart.com, allowing access');
+      // Let the request through - AGGR app will verify the token via API
+      return NextResponse.next();
+    }
+
     // 🔥 PREMIUM CHECK: Server-side premium verification for /aggr route
     // This prevents non-premium users from accessing the premium feature
     if (pathname === '/' || pathname === '') {
@@ -45,7 +61,7 @@ export async function middleware(request: NextRequest) {
         // Use www.alertachart.com to ensure API is accessible
         const protocol = request.headers.get('x-forwarded-proto') || 'https';
         const apiUrl = `${protocol}://www.alertachart.com/api/user/plan`;
-        
+
         // Make internal API call to check premium access
         // Pass all cookies from the request
         const cookieHeader = request.headers.get('cookie') || '';
@@ -58,18 +74,18 @@ export async function middleware(request: NextRequest) {
           // Don't follow redirects
           redirect: 'manual',
         });
-        
+
         if (response.status === 200) {
           const planData = await response.json();
           const hasPremiumAccess = planData.hasPremiumAccess || false;
-          
+
           if (!hasPremiumAccess) {
             // User is not premium, redirect to upgrade page
             console.log('[Middleware] User does not have premium access for aggr.alertachart.com, redirecting to upgrade');
             const upgradeUrl = new URL('https://www.alertachart.com/?upgrade=true');
             return NextResponse.redirect(upgradeUrl);
           }
-          
+
           // User has premium access, allow access to /aggr
           console.log('[Middleware] User has premium access, allowing access to aggr.alertachart.com');
           url.pathname = '/aggr';
@@ -87,7 +103,7 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(loginUrl);
       }
     }
-    
+
     // For all other paths on aggr subdomain, let them pass through (handled by separate deployment)
     return NextResponse.next();
   }
@@ -95,7 +111,23 @@ export async function middleware(request: NextRequest) {
   // Subdomain routing: data.alertachart.com/liquidation-tracker → /data/liquidation-tracker
   if (hostname.includes('data.alertachart.com')) {
     const pathname = request.nextUrl.pathname;
-    
+
+    // 🔥 SECURITY: Block deprecated embed=true parameter (now replaced with token system)
+    const embedParam = request.nextUrl.searchParams.get('embed');
+    if (embedParam === 'true') {
+      console.log('[Middleware] ❌ Blocked deprecated embed=true parameter for data.alertachart.com');
+      const loginUrl = new URL('https://www.alertachart.com/?login=true');
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // 🔥 TOKEN CHECK: If token parameter is present, allow access (token will be verified by kkterminal app)
+    const token = request.nextUrl.searchParams.get('token');
+    if (token) {
+      console.log('[Middleware] ✅ Token parameter present for data.alertachart.com, allowing access');
+      // Let the request through - kkterminal app will verify the token via API
+      return NextResponse.next();
+    }
+
     // 🔥 PREMIUM CHECK: Server-side premium verification for /liquidation-tracker route
     // This prevents non-premium users from accessing the premium feature
     if (pathname === '/liquidation-tracker' || pathname.startsWith('/liquidation-tracker')) {
@@ -104,7 +136,7 @@ export async function middleware(request: NextRequest) {
         // Use www.alertachart.com to ensure API is accessible
         const protocol = request.headers.get('x-forwarded-proto') || 'https';
         const apiUrl = `${protocol}://www.alertachart.com/api/user/plan`;
-        
+
         // Make internal API call to check premium access
         // Pass all cookies from the request
         const cookieHeader = request.headers.get('cookie') || '';
@@ -117,18 +149,18 @@ export async function middleware(request: NextRequest) {
           // Don't follow redirects
           redirect: 'manual',
         });
-        
+
         if (response.status === 200) {
           const planData = await response.json();
           const hasPremiumAccess = planData.hasPremiumAccess || false;
-          
+
           if (!hasPremiumAccess) {
             // User is not premium, redirect to upgrade page
             console.log('[Middleware] User does not have premium access for data.alertachart.com/liquidation-tracker, redirecting to upgrade');
             const upgradeUrl = new URL('https://www.alertachart.com/?upgrade=true');
             return NextResponse.redirect(upgradeUrl);
           }
-          
+
           // User has premium access, allow access to /data/liquidation-tracker
           console.log('[Middleware] User has premium access, allowing access to data.alertachart.com/liquidation-tracker');
           url.pathname = '/data/liquidation-tracker';
