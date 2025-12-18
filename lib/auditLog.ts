@@ -26,12 +26,56 @@ export interface AuditLogEntry {
     severity?: AuditSeverity;
 }
 
+// Auto-migration flag
+let tableEnsured = false;
+
+/**
+ * Ensure audit_logs table exists (auto-migration)
+ */
+async function ensureAuditTable(): Promise<void> {
+    if (tableEnsured) return;
+
+    try {
+        const sql = getSql();
+        await sql`
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER,
+                user_email VARCHAR(255),
+                action VARCHAR(100) NOT NULL,
+                category VARCHAR(50) NOT NULL,
+                details JSONB,
+                ip_address VARCHAR(45),
+                user_agent TEXT,
+                severity VARCHAR(20) DEFAULT 'info',
+                created_at TIMESTAMP DEFAULT NOW()
+            )
+        `;
+
+        // Create indexes if they don't exist (PostgreSQL will ignore if exists)
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_action ON audit_logs(action)`;
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_category ON audit_logs(category)`;
+        await sql`CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at DESC)`;
+
+        tableEnsured = true;
+        console.log('[Audit Log] ✅ Table ensured');
+    } catch (error) {
+        console.error('[Audit Log] Failed to ensure table:', error);
+        // Still mark as ensured to avoid repeated attempts
+        tableEnsured = true;
+    }
+}
+
 /**
  * Log an audit event
+ * Auto-creates table if it doesn't exist
  * @param entry Audit log entry
  */
 export async function logAudit(entry: AuditLogEntry): Promise<void> {
     try {
+        // Ensure table exists on first call
+        await ensureAuditTable();
+
         const sql = getSql();
 
         await sql`
