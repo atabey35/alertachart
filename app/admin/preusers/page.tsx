@@ -66,6 +66,7 @@ async function AdminPreUsersContent() {
     ios: premiumUsers.filter(u => u.subscription_platform === 'ios').length,
     android: premiumUsers.filter(u => u.subscription_platform === 'android').length,
     guest: premiumUsers.filter(u => u.provider === 'guest' || u.email?.includes('@alertachart.local')).length,
+    trial: premiumUsers.filter(u => u.trial_started_at && u.trial_ended_at && new Date(u.trial_ended_at) > now).length,
   };
 
   return (

@@ -11,6 +11,8 @@ interface User {
     subscription_platform?: string;
     subscription_id?: string;
     subscription_started_at?: string;
+    trial_started_at?: string;
+    trial_ended_at?: string;
     created_at: string;
     provider?: string;
 }
@@ -40,6 +42,7 @@ interface Props {
         ios: number;
         android: number;
         guest: number;
+        trial: number;
     };
 }
 
@@ -155,6 +158,10 @@ export default function PreUsersClient({ users, logs, stats }: Props) {
                         <div className="text-xs text-gray-500">Android</div>
                         <div className="text-xl font-bold text-green-400">{stats.android}</div>
                     </div>
+                    <div className="bg-[#1a1a1a] p-3 rounded-lg border border-cyan-800">
+                        <div className="text-xs text-gray-500">🎁 Trial Dönem</div>
+                        <div className="text-xl font-bold text-cyan-400">{stats.trial}</div>
+                    </div>
                 </div>
 
                 {/* Search and Filter */}
@@ -260,8 +267,8 @@ export default function PreUsersClient({ users, logs, stats }: Props) {
                                                 <td className="p-3 text-sm">
                                                     {user.subscription_platform ? (
                                                         <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${user.subscription_platform === 'ios'
-                                                                ? 'bg-blue-900/30 text-blue-400'
-                                                                : 'bg-green-900/30 text-green-400'
+                                                            ? 'bg-blue-900/30 text-blue-400'
+                                                            : 'bg-green-900/30 text-green-400'
                                                             }`}>
                                                             {user.subscription_platform}
                                                         </span>
@@ -285,11 +292,23 @@ export default function PreUsersClient({ users, logs, stats }: Props) {
                                                     {formatDate(user.subscription_started_at || user.created_at)}
                                                 </td>
                                                 <td className="p-3 text-sm">
-                                                    {expired ? (
-                                                        <span className="text-red-400">❌ Süresi Dolmuş</span>
-                                                    ) : (
-                                                        <span className="text-green-400">✅ Aktif</span>
-                                                    )}
+                                                    {(() => {
+                                                        const isInTrial = user.trial_started_at && user.trial_ended_at && new Date(user.trial_ended_at) > now;
+                                                        const trialDaysLeft = isInTrial ? Math.ceil((new Date(user.trial_ended_at!).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
+                                                        if (expired) {
+                                                            return <span className="text-red-400">❌ Süresi Dolmuş</span>;
+                                                        }
+                                                        if (isInTrial) {
+                                                            return (
+                                                                <span className="flex items-center gap-1">
+                                                                    <span className="px-1.5 py-0.5 rounded bg-cyan-900/30 border border-cyan-700 text-cyan-400 text-xs">🎁 Trial</span>
+                                                                    <span className="text-cyan-400 text-xs">({trialDaysLeft} gün)</span>
+                                                                </span>
+                                                            );
+                                                        }
+                                                        return <span className="text-green-400">✅ Aktif</span>;
+                                                    })()}
                                                 </td>
                                             </tr>
                                         );
@@ -343,9 +362,9 @@ export default function PreUsersClient({ users, logs, stats }: Props) {
                                             <td className="p-2 text-xs text-gray-300">{log.action_type}</td>
                                             <td className="p-2 text-xs">
                                                 <span className={`px-1 py-0.5 rounded ${log.status === 'success' ? 'bg-green-900/30 text-green-400' :
-                                                        log.status === 'failed' ? 'bg-red-900/30 text-red-400' :
-                                                            log.status === 'expired_downgrade' ? 'bg-yellow-900/30 text-yellow-400' :
-                                                                'bg-gray-800 text-gray-400'
+                                                    log.status === 'failed' ? 'bg-red-900/30 text-red-400' :
+                                                        log.status === 'expired_downgrade' ? 'bg-yellow-900/30 text-yellow-400' :
+                                                            'bg-gray-800 text-gray-400'
                                                     }`}>
                                                     {log.status}
                                                 </span>
