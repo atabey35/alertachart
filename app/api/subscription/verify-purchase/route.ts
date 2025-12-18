@@ -23,7 +23,7 @@ export async function POST(request: NextRequest) {
     if (rateLimitResponse) {
       return NextResponse.json(
         JSON.parse(await rateLimitResponse.text()),
-        { 
+        {
           status: 429,
           headers: Object.fromEntries(rateLimitResponse.headers.entries())
         }
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
     // This prevents new accounts from claiming receipts that belong to other accounts
     // Must be done BEFORE user identification to catch all cases
     const sql = getSql();
-    
+
     // SECURITY CHECK 1: Check receipt hash FIRST (most reliable)
     // If same receipt is already linked to another account, reject immediately
     // This is the PRIMARY security check - must work correctly
@@ -74,14 +74,14 @@ export async function POST(request: NextRequest) {
       const receiptHash = crypto.createHash('sha256').update(receipt).digest('hex');
       receiptHashPrefix = receiptHash.substring(0, 32);
       const receiptHashId = `receipt_${receiptHashPrefix}`;
-      
+
       console.log('[Verify Purchase] 🔍 Receipt hash pre-check:', {
         receiptHashPrefix: receiptHashPrefix,
         receiptHashId: receiptHashId,
         sessionEmail: session?.user?.email,
         receiptLength: receipt.length,
       });
-      
+
       // Check if this receipt (by hash) is already linked to a premium account
       // Use exact match for first 32 chars (receipt_ prefix + 32 char hash)
       const receiptHashPattern = `receipt_${receiptHashPrefix}%`;
@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         ORDER BY id DESC
         LIMIT 5
       `;
-      
+
       console.log('[Verify Purchase] 🔍 Receipt hash check results:', {
         receiptHashPattern: receiptHashPattern,
         foundUsers: existingReceiptUsers.length,
@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
           subscriptionId: u.subscription_id,
         })),
       });
-      
+
       if (existingReceiptUsers.length > 0) {
         // Check if ANY of the existing users is different from current user
         const differentUser = existingReceiptUsers.find((u: any) => {
@@ -113,7 +113,7 @@ export async function POST(request: NextRequest) {
           }
           return u.email !== session.user.email;
         });
-        
+
         if (differentUser) {
           // ✅ RESTORE FLEXIBILITY: If this is a restore operation, allow same device re-verification
           // This allows users to restore purchases on the same device even if they're guest users
@@ -144,15 +144,15 @@ export async function POST(request: NextRequest) {
               allFoundUsers: existingReceiptUsers.length,
             });
             return NextResponse.json(
-              { 
-                error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
+              {
+                error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.'
               },
               { status: 403 }
             );
           }
         }
       }
-      
+
       console.log('[Verify Purchase] ✅ Receipt hash pre-check passed:', {
         receiptHashPrefix: receiptHashPrefix,
         sessionEmail: session?.user?.email,
@@ -162,13 +162,13 @@ export async function POST(request: NextRequest) {
       // This is critical - if we can't check receipt hash, we should reject
       // Receipt hash check is the PRIMARY security mechanism
       return NextResponse.json(
-        { 
-          error: 'Receipt verification failed: Unable to verify receipt ownership. Please contact support.' 
+        {
+          error: 'Receipt verification failed: Unable to verify receipt ownership. Please contact support.'
         },
         { status: 500 }
       );
     }
-    
+
     // SECURITY CHECK 2: Check device BEFORE user identification
     // 🔥 CRITICAL: If device already has premium, prevent ANY other account from claiming receipt
     // This is the PRIMARY defense against cross-account receipt usage
@@ -185,7 +185,7 @@ export async function POST(request: NextRequest) {
         ORDER BY subscription_started_at DESC
         LIMIT 5
       `;
-      
+
       console.log('[Verify Purchase] 🔍 Device premium check results:', {
         deviceId: deviceId,
         foundPremiumUsers: existingDevicePremium.length,
@@ -198,7 +198,7 @@ export async function POST(request: NextRequest) {
         })),
         sessionEmail: session?.user?.email,
       });
-      
+
       if (existingDevicePremium.length > 0) {
         // 🔥 CRITICAL: If device has premium, check if current user is the premium user
         // If not, check if this is a restore operation (same device re-verification)
@@ -208,7 +208,7 @@ export async function POST(request: NextRequest) {
           }
           return u.email === session.user.email;
         });
-        
+
         if (!isPremiumUser) {
           // ✅ RESTORE FLEXIBILITY: If this is a restore operation on the same device, allow it
           // This handles guest user restore scenarios where the same device has premium
@@ -233,8 +233,8 @@ export async function POST(request: NextRequest) {
               isRestore: false,
             });
             return NextResponse.json(
-              { 
-                error: 'This device already has a premium subscription linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts. Please use the account that originally purchased the subscription.' 
+              {
+                error: 'This device already has a premium subscription linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts. Please use the account that originally purchased the subscription.'
               },
               { status: 403 }
             );
@@ -254,15 +254,15 @@ export async function POST(request: NextRequest) {
           sessionEmail: session.user.email,
         });
         return NextResponse.json(
-          { 
-            error: 'Device ID is required for purchase verification. Please ensure the app has proper permissions to access device information.' 
+          {
+            error: 'Device ID is required for purchase verification. Please ensure the app has proper permissions to access device information.'
           },
           { status: 400 }
         );
       }
       // For guest users, deviceId is required (checked later in user identification)
     }
-    
+
     // 🔥 APPLE GUIDELINE 5.1.1: Allow purchases WITHOUT login (Guest Mode)
     // User identification logic:
     // 1. If session exists -> Use session.user.email
@@ -272,7 +272,7 @@ export async function POST(request: NextRequest) {
     // 🔥 SECURITY NOTE: Receipts are tied to Apple ID/Google Account, NOT to our app's user accounts.
     // Receipts don't contain user email information. They are device-specific but account-bound.
     // For authenticated users, we link receipts to device_id to prevent cross-account usage.
-    
+
     let user: any;
     let userEmail: string;
 
@@ -280,7 +280,7 @@ export async function POST(request: NextRequest) {
       // Case 1: Authenticated user
       console.log('[Verify Purchase] ✅ Authenticated user:', session.user.email);
       userEmail = session.user.email;
-      
+
       // 🔥 SECURITY: For authenticated users, prefer device-based matching
       // Receipts are device-specific. If deviceId is provided, try to find user by deviceId first
       // This ensures receipts are linked to the correct device, not just any logged-in account
@@ -291,13 +291,13 @@ export async function POST(request: NextRequest) {
           WHERE device_id = ${deviceId} AND email = ${userEmail}
           LIMIT 1
         `;
-        
+
         if (deviceUsers.length > 0) {
           user = deviceUsers[0];
           console.log('[Verify Purchase] ✅ Found user by device_id + email match');
         }
       }
-      
+
       // Fallback: Find user by email only (for first-time device linking)
       if (!user) {
         const users = await sql`
@@ -321,7 +321,7 @@ export async function POST(request: NextRequest) {
         deviceIdLength: deviceId?.length,
         deviceIdTrimmed: deviceId?.trim(),
       });
-      
+
       // Check if a user exists with this deviceId
       const guestUsers = await sql`
         SELECT id, email, plan, subscription_id, device_id
@@ -351,7 +351,7 @@ export async function POST(request: NextRequest) {
         // Create new guest user
         const guestEmail = `guest_${deviceId}@alertachart.local`;
         console.log('[Verify Purchase] 🆕 Creating new guest user:', guestEmail);
-        
+
         try {
           // Try to insert new guest user
           const newUsers = await sql`
@@ -379,7 +379,7 @@ export async function POST(request: NextRequest) {
           // Or unique constraint violation on email
           console.warn('[Verify Purchase] ⚠️ Guest user creation failed (likely race condition):', insertError.message);
           console.log('[Verify Purchase] 🔄 Retrying SELECT to find existing user...');
-          
+
           // Try to find user by email (in case INSERT failed due to unique constraint)
           const retryByEmail = await sql`
             SELECT id, email, plan, subscription_id, device_id
@@ -387,7 +387,7 @@ export async function POST(request: NextRequest) {
             WHERE email = ${guestEmail}
             LIMIT 1
           `;
-          
+
           if (retryByEmail.length > 0) {
             user = retryByEmail[0];
             userEmail = user.email;
@@ -400,7 +400,7 @@ export async function POST(request: NextRequest) {
               WHERE device_id = ${deviceId}
               LIMIT 1
             `;
-            
+
             if (retryByDeviceId.length > 0) {
               user = retryByDeviceId[0];
               userEmail = user.email;
@@ -408,8 +408,8 @@ export async function POST(request: NextRequest) {
             } else {
               // Still not found - this is a real error
               console.error('[Verify Purchase] ❌ Failed to create or find guest user after retry');
-              return NextResponse.json({ 
-                error: 'Failed to create guest user: ' + insertError.message 
+              return NextResponse.json({
+                error: 'Failed to create guest user: ' + insertError.message
               }, { status: 500 });
             }
           }
@@ -418,8 +418,8 @@ export async function POST(request: NextRequest) {
     } else {
       // Case 3: No session and no deviceId -> Reject
       console.error('[Verify Purchase] ❌ No session and no deviceId provided');
-      return NextResponse.json({ 
-        error: 'Authentication required. Please provide session or deviceId.' 
+      return NextResponse.json({
+        error: 'Authentication required. Please provide session or deviceId.'
       }, { status: 401 });
     }
 
@@ -449,7 +449,7 @@ export async function POST(request: NextRequest) {
     // 🔥 CRITICAL SECURITY: Check if this receipt is already linked to another account
     // Receipts are tied to Apple ID/Google Account, not to our app's user accounts.
     // We check both by transactionId AND by receipt hash to prevent cross-account usage.
-    
+
     // Method 1: Check by transactionId (for manual purchases)
     if (transactionId) {
       const existingSubscription = await sql`
@@ -458,10 +458,10 @@ export async function POST(request: NextRequest) {
         WHERE subscription_id = ${transactionId}
         LIMIT 1
       `;
-      
+
       if (existingSubscription.length > 0) {
         const existingUser = existingSubscription[0];
-        
+
         // If receipt is already linked to a different user account, check if restore
         if (existingUser.id !== user.id) {
           // ✅ RESTORE FLEXIBILITY: If this is a restore operation, allow same device re-verification
@@ -489,8 +489,8 @@ export async function POST(request: NextRequest) {
               isRestore: isRestore || false,
             });
             return NextResponse.json(
-              { 
-                error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
+              {
+                error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.'
               },
               { status: 403 }
             );
@@ -501,14 +501,14 @@ export async function POST(request: NextRequest) {
         }
       }
     }
-    
+
     // Method 2: Check by receipt hash (for entitlement sync and cross-check)
     // Generate receipt hash to check if same receipt is used by another account
     try {
       const crypto = await import('crypto');
       const receiptHash = crypto.createHash('sha256').update(receipt).digest('hex');
       const receiptHashId = `receipt_${receiptHash.substring(0, 32)}`;
-      
+
       // Check if any other user has premium with this receipt hash
       // Use exact match for first 32 chars (more reliable than LIKE)
       const receiptHashPrefix = receiptHash.substring(0, 32);
@@ -520,10 +520,10 @@ export async function POST(request: NextRequest) {
           AND id != ${user.id}
         LIMIT 1
       `;
-      
+
       if (existingReceiptUsers.length > 0) {
         const existingUser = existingReceiptUsers[0];
-        
+
         // ✅ RESTORE FLEXIBILITY: If this is a restore operation, allow same device re-verification
         if (isRestore && deviceId && existingUser.device_id === deviceId) {
           console.log('[Verify Purchase] ✅ RESTORE: Same receipt hash on same device - allowing restore:', {
@@ -553,14 +553,14 @@ export async function POST(request: NextRequest) {
             isRestore: isRestore || false,
           });
           return NextResponse.json(
-            { 
-              error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.' 
+            {
+              error: 'This purchase receipt is already linked to another account. Receipts are tied to the Apple ID/Google Account used for purchase and cannot be transferred to other accounts.'
             },
             { status: 403 }
           );
         }
       }
-      
+
       console.log('[Verify Purchase] ✅ Receipt hash check passed:', {
         receiptHashPrefix: receiptHashPrefix,
         currentUserId: user.id,
@@ -570,7 +570,7 @@ export async function POST(request: NextRequest) {
       // This is critical - if hash check fails, we should be more cautious
       // But we can't block all purchases, so log error and continue
     }
-    
+
     // Method 3: Check by deviceId - if deviceId is already linked to another premium user
     // This prevents new accounts from claiming receipts from devices that already have premium
     if (deviceId) {
@@ -582,10 +582,10 @@ export async function POST(request: NextRequest) {
           AND id != ${user.id}
         LIMIT 1
       `;
-      
+
       if (existingDeviceUsers.length > 0) {
         const existingUser = existingDeviceUsers[0];
-        
+
         // ✅ RESTORE FLEXIBILITY: If this is a restore operation on the same device, allow it
         // This handles guest user restore scenarios where the same device has premium
         if (isRestore) {
@@ -608,8 +608,8 @@ export async function POST(request: NextRequest) {
             isRestore: false,
           });
           return NextResponse.json(
-            { 
-              error: 'This device already has a premium subscription linked to another account. Please use the account that originally purchased the subscription, or contact support if you believe this is an error.' 
+            {
+              error: 'This device already has a premium subscription linked to another account. Please use the account that originally purchased the subscription, or contact support if you believe this is an error.'
             },
             { status: 403 }
           );
@@ -625,17 +625,17 @@ export async function POST(request: NextRequest) {
     let realTransactionId = transactionId; // Varsayılan olarak frontend'den geleni al
 
     if (verificationResult.originalTransactionId) {
-        realTransactionId = verificationResult.originalTransactionId;
-        console.log(`[Verify Purchase] 🔒 Switching to REAL ID: ${realTransactionId}`);
+      realTransactionId = verificationResult.originalTransactionId;
+      console.log(`[Verify Purchase] 🔒 Switching to REAL ID: ${realTransactionId}`);
     } else if (platform === 'android' && verificationResult.valid) {
-         // Android için zaten orderId kullanıyorsun ama garanti olsun
-         // Google verify fonksiyonunda da benzer şekilde orderId döndürebilirsin
+      // Android için zaten orderId kullanıyorsun ama garanti olsun
+      // Google verify fonksiyonunda da benzer şekilde orderId döndürebilirsin
     }
 
     // 🔥 KRİTİK KONTROL: Bu Gerçek ID başka bir kullanıcıda var mı?
     // Verification başarılı olsa bile, bu abonelik başkasına aitse BURADA YAKALA.
     if (verificationResult.valid && !verificationResult.expired) {
-        const stolenCheck = await sql`
+      const stolenCheck = await sql`
             SELECT id, email 
             FROM users 
             WHERE subscription_id = ${realTransactionId} 
@@ -644,22 +644,22 @@ export async function POST(request: NextRequest) {
             LIMIT 1
         `;
 
-        if (stolenCheck.length > 0) {
-            const thief = stolenCheck[0];
-            
-            // Eğer Restore işlemi DEĞİLSE ve kullanıcılar farklıysa -> ENGELLE
-            // (Restore ise ve cihaz aynıysa izin veriyorsun, o mantık kalabilir)
-            if (!isRestore) {
-                console.error(`[Verify Purchase] 🚨 FRAUD DETECTED: Subscription ${realTransactionId} is owned by ${thief.email}, but ${userEmail} is trying to Sync it.`);
-                
-                // Log at
-                await sql`INSERT INTO purchase_logs (user_email, action_type, status, details) VALUES (${userEmail}, 'fraud_attempt', 'blocked', 'Account sharing attempt detected')`;
+      if (stolenCheck.length > 0) {
+        const thief = stolenCheck[0];
 
-                return NextResponse.json({ 
-                    error: 'Bu abonelik başka bir hesaba aittir. Paylaşım yapılamaz.' 
-                }, { status: 403 });
-            }
+        // Eğer Restore işlemi DEĞİLSE ve kullanıcılar farklıysa -> ENGELLE
+        // (Restore ise ve cihaz aynıysa izin veriyorsun, o mantık kalabilir)
+        if (!isRestore) {
+          console.error(`[Verify Purchase] 🚨 FRAUD DETECTED: Subscription ${realTransactionId} is owned by ${thief.email}, but ${userEmail} is trying to Sync it.`);
+
+          // Log at
+          await sql`INSERT INTO purchase_logs (user_email, action_type, status, details) VALUES (${userEmail}, 'fraud_attempt', 'blocked', 'Account sharing attempt detected')`;
+
+          return NextResponse.json({
+            error: 'Bu abonelik başka bir hesaba aittir. Paylaşım yapılamaz.'
+          }, { status: 403 });
         }
+      }
     }
 
     // ✅ EXPIRED SUBSCRIPTION HANDLING: If subscription expired, downgrade user to free
@@ -738,7 +738,7 @@ export async function POST(request: NextRequest) {
 
     if (!verificationResult.valid) {
       console.error('[Verify Purchase] ❌ Receipt verification failed:', verificationResult.error);
-      
+
       // 🔥 LOG: Log failed purchase attempt
       try {
         await sql`
@@ -770,7 +770,7 @@ export async function POST(request: NextRequest) {
         console.error('[Verify Purchase] ❌ Failed to log failed purchase:', logError);
         // Continue even if logging fails
       }
-      
+
       return NextResponse.json(
         { error: verificationResult.error || 'Receipt verification failed' },
         { status: 400 }
@@ -781,7 +781,7 @@ export async function POST(request: NextRequest) {
     // If not provided, calculate based on product type
     const now = new Date();
     let expiryDate: Date;
-    
+
     if (verificationResult.expiryDate) {
       // Apple provides expiry date from receipt
       expiryDate = verificationResult.expiryDate;
@@ -800,7 +800,7 @@ export async function POST(request: NextRequest) {
     // 🔥 KRİTİK: Gerçek ID ile karşılaştır (hash değil)
     const wasAlreadyPremium = user.plan === 'premium';
     const hasSameTransaction = user.subscription_id === realTransactionId;
-    const shouldLog = isSync 
+    const shouldLog = isSync
       ? !(wasAlreadyPremium && hasSameTransaction) // For sync: only log if status changed
       : true; // For manual restore/purchase: always log
 
@@ -808,7 +808,7 @@ export async function POST(request: NextRequest) {
     // IAP purchase = direct premium, NOT trial
     // Clear any existing trial data by setting trial_ended_at to past (before now)
     const pastDate = new Date(now.getTime() - 1000); // 1 second ago
-    
+
     // 🔥 SECURITY: Update device_id when receipt is verified
     // This links the receipt to the device, preventing cross-account usage
     // 🔥 KRİTİK: Gerçek ID'yi kullan (hash değil)
@@ -857,11 +857,11 @@ export async function POST(request: NextRequest) {
             ${isSync ? 'entitlement_sync' : (isRestore ? 'restore' : 'initial_buy')},
             'success',
             NULL,
-            ${JSON.stringify({ 
-              expiryDate: expiryDate.toISOString(), 
-              wasAlreadyPremium,
-              isFallback: (verificationResult as any).isFallback || false // Track fallback mode
-            })},
+            ${JSON.stringify({
+          expiryDate: expiryDate.toISOString(),
+          wasAlreadyPremium,
+          isFallback: (verificationResult as any).isFallback || false // Track fallback mode
+        })},
             ${deviceId || null}
           )
         `;
@@ -921,7 +921,7 @@ async function verifyAppleReceipt(
 
     // Apple Shared Secret (from App Store Connect)
     const appleSharedSecret = process.env.APPLE_SHARED_SECRET;
-    
+
     if (!appleSharedSecret) {
       console.error('[Verify Purchase] ❌ APPLE_SHARED_SECRET not set in environment');
       return { valid: false, error: 'Server configuration error: Apple Shared Secret not configured' };
@@ -933,14 +933,14 @@ async function verifyAppleReceipt(
     let productionResponse;
     try {
       productionResponse = await fetch('https://buy.itunes.apple.com/verifyReceipt', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        'receipt-data': receipt,
-        'password': appleSharedSecret,
-        'exclude-old-transactions': true,
-      }),
-    });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          'receipt-data': receipt,
+          'password': appleSharedSecret,
+          'exclude-old-transactions': true,
+        }),
+      });
     } catch (fetchError: any) {
       console.error('[Verify Purchase] ❌ Production URL fetch failed:', fetchError.message);
       return { valid: false, error: `Network error: ${fetchError.message}` };
@@ -959,7 +959,7 @@ async function verifyAppleReceipt(
       return { valid: false, error: 'Invalid response from Apple server' };
     }
 
-    console.log('[Verify Purchase] Production result:', { 
+    console.log('[Verify Purchase] Production result:', {
       status: productionResult.status,
       hasLatestReceiptInfo: !!productionResult.latest_receipt_info,
       hasReceipt: !!productionResult.receipt
@@ -969,7 +969,7 @@ async function verifyAppleReceipt(
     if (productionResult.status === 0) {
       let expiryDate: Date | undefined;
       let originalTransactionId: string | undefined;
-      
+
       // 🔥 İYİLEŞTİRME: Ürün ID aramıyoruz, TARİHE göre sıralayıp EN YENİ işlemi alıyoruz.
       // Böylece Apple'dan tarih kaçırma ihtimalimiz kalmıyor.
       if (productionResult.latest_receipt_info && productionResult.latest_receipt_info.length > 0) {
@@ -989,7 +989,7 @@ async function verifyAppleReceipt(
           }
           // Gerçek Transaction ID'yi al
           originalTransactionId = latestInfo.original_transaction_id;
-          
+
           console.log('[Verify Purchase] 📅 Found LATEST transaction:', {
             productId: latestInfo.product_id, // Gelen makbuzdaki asıl ürün
             requestedProductId: productId, // İstenen ürün
@@ -997,7 +997,7 @@ async function verifyAppleReceipt(
             originalId: originalTransactionId
           });
         }
-      } 
+      }
       // Yedek: latest_receipt_info boşsa receipt.in_app içine bak (Nadiren gerekir)
       else if (productionResult.receipt?.in_app && productionResult.receipt.in_app.length > 0) {
         // Aynı sıralama mantığı burada da geçerli
@@ -1007,13 +1007,25 @@ async function verifyAppleReceipt(
           return dateB - dateA;
         });
         const latestInApp = sortedInApp[0];
-        
+
         if (latestInApp) {
           if (latestInApp.expires_date_ms) {
             expiryDate = new Date(parseInt(latestInApp.expires_date_ms));
           }
           originalTransactionId = latestInApp.original_transaction_id;
         }
+      }
+
+      // 🔥 CRITICAL FIX: Reject if no transaction found (empty receipt = free app download only)
+      if (!originalTransactionId) {
+        console.error('[Verify Purchase] ❌ Receipt valid but NO transactions found (free app receipt only)');
+        return { valid: false, error: 'Receipt valid but no premium subscription found' };
+      }
+
+      // 🔥 CRITICAL FIX: Check if subscription is already expired
+      if (expiryDate && expiryDate < new Date()) {
+        console.log('[Verify Purchase] ⚠️ Subscription expired:', expiryDate.toISOString());
+        return { valid: false, expired: true, error: 'Subscription expired', statusCode: 21006, expiryDate, originalTransactionId };
       }
 
       console.log('[Verify Purchase] ✅ PRODUCTION verification SUCCESS', {
@@ -1029,19 +1041,19 @@ async function verifyAppleReceipt(
     if (productionResult.status === 21007) {
       console.log('[Verify Purchase] ⚠️ Status 21007 detected (Sandbox receipt in production)');
       console.log('[Verify Purchase] 🔄 Step 2: Trying SANDBOX URL...');
-      
+
       // Step 2: Retry with Sandbox URL
       let sandboxResponse;
       try {
         sandboxResponse = await fetch('https://sandbox.itunes.apple.com/verifyReceipt', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          'receipt-data': receipt,
-          'password': appleSharedSecret,
-          'exclude-old-transactions': true,
-        }),
-      });
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            'receipt-data': receipt,
+            'password': appleSharedSecret,
+            'exclude-old-transactions': true,
+          }),
+        });
       } catch (fetchError: any) {
         console.error('[Verify Purchase] ❌ Sandbox URL fetch failed:', fetchError.message);
         return { valid: false, error: `Sandbox network error: ${fetchError.message}` };
@@ -1070,7 +1082,7 @@ async function verifyAppleReceipt(
       if (sandboxResult.status === 0) {
         let expiryDate: Date | undefined;
         let originalTransactionId: string | undefined;
-        
+
         // 🔥 İYİLEŞTİRME: Ürün ID aramıyoruz, TARİHE göre sıralayıp EN YENİ işlemi alıyoruz.
         // Böylece Apple'dan tarih kaçırma ihtimalimiz kalmıyor.
         if (sandboxResult.latest_receipt_info && sandboxResult.latest_receipt_info.length > 0) {
@@ -1090,7 +1102,7 @@ async function verifyAppleReceipt(
             }
             // Gerçek Transaction ID'yi al
             originalTransactionId = latestInfo.original_transaction_id;
-            
+
             console.log('[Verify Purchase] 📅 Found LATEST transaction (Sandbox):', {
               productId: latestInfo.product_id, // Gelen makbuzdaki asıl ürün
               requestedProductId: productId, // İstenen ürün
@@ -1108,13 +1120,25 @@ async function verifyAppleReceipt(
             return dateB - dateA;
           });
           const latestInApp = sortedInApp[0];
-          
+
           if (latestInApp) {
             if (latestInApp.expires_date_ms) {
               expiryDate = new Date(parseInt(latestInApp.expires_date_ms));
             }
             originalTransactionId = latestInApp.original_transaction_id;
           }
+        }
+
+        // 🔥 CRITICAL FIX: Reject if no transaction found (empty receipt = free app download only)
+        if (!originalTransactionId) {
+          console.error('[Verify Purchase] ❌ Sandbox receipt valid but NO transactions found (free app receipt only)');
+          return { valid: false, error: 'Receipt valid but no premium subscription found' };
+        }
+
+        // 🔥 CRITICAL FIX: Check if subscription is already expired
+        if (expiryDate && expiryDate < new Date()) {
+          console.log('[Verify Purchase] ⚠️ Sandbox subscription expired:', expiryDate.toISOString());
+          return { valid: false, expired: true, error: 'Subscription expired', statusCode: 21006, expiryDate, originalTransactionId };
         }
 
         console.log('[Verify Purchase] ✅ SANDBOX verification SUCCESS', {
@@ -1137,8 +1161,8 @@ async function verifyAppleReceipt(
         status: sandboxResult.status,
         message: sandboxErrorMsg
       });
-      return { 
-        valid: false, 
+      return {
+        valid: false,
         error: `Sandbox verification failed (status ${sandboxResult.status}): ${sandboxErrorMsg}`,
         statusCode: sandboxResult.status
       };
@@ -1174,17 +1198,17 @@ async function verifyAppleReceipt(
  * Get error message for production verification status codes
  */
 function getProductionErrorMessage(status: number): string {
-    const errorMessages: { [key: number]: string } = {
-      21000: 'The App Store could not read the JSON object you provided',
-      21002: 'The receipt data property was malformed or missing',
-      21003: 'The receipt could not be authenticated',
-      21004: 'The shared secret you provided does not match the shared secret on file',
-      21005: 'The receipt server is not currently available',
-      21006: 'This receipt is valid but the subscription has expired',
+  const errorMessages: { [key: number]: string } = {
+    21000: 'The App Store could not read the JSON object you provided',
+    21002: 'The receipt data property was malformed or missing',
+    21003: 'The receipt could not be authenticated',
+    21004: 'The shared secret you provided does not match the shared secret on file',
+    21005: 'The receipt server is not currently available',
+    21006: 'This receipt is valid but the subscription has expired',
     21007: 'This receipt is from the test environment (should retry with sandbox)',
     21008: 'This receipt is from the production environment (should retry with production)',
-      21010: 'This receipt could not be authorized',
-    };
+    21010: 'This receipt could not be authorized',
+  };
 
   return errorMessages[status] || `Unknown Apple status code: ${status}`;
 }
@@ -1205,14 +1229,14 @@ async function getGoogleAccessToken(): Promise<string> {
     // Instead of single JSON key (GOOGLE_SERVICE_ACCOUNT_KEY)
     const client_email = process.env.GOOGLE_PLAY_CLIENT_EMAIL;
     const private_key = process.env.GOOGLE_PLAY_PRIVATE_KEY?.replace(/\\n/g, '\n'); // Fix line breaks
-    
+
     if (!client_email || !private_key) {
       throw new Error('GOOGLE_PLAY_CLIENT_EMAIL or GOOGLE_PLAY_PRIVATE_KEY not set');
     }
 
     // Create JWT for OAuth2
     const jwt = await createJWT(client_email, private_key);
-    
+
     // Exchange JWT for access token
     const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
       method: 'POST',
@@ -1288,7 +1312,7 @@ async function createJWT(email: string, privateKey: string): Promise<string> {
 async function verifyGoogleReceipt(
   receipt: string,
   productId: string
-): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number }> {
+): Promise<{ valid: boolean; expired?: boolean; error?: string; expiryDate?: Date; statusCode?: number; originalTransactionId?: string }> {
   try {
     // Basic validation
     if (!receipt || receipt.length < 10) {
@@ -1296,7 +1320,7 @@ async function verifyGoogleReceipt(
     }
 
     const packageName = process.env.ANDROID_PACKAGE_NAME || 'com.kriptokirmizi.alerta';
-    
+
     // ✅ FIX: Check for separate environment variables instead of single JSON key
     const clientEmail = process.env.GOOGLE_PLAY_CLIENT_EMAIL;
     const privateKey = process.env.GOOGLE_PLAY_PRIVATE_KEY;
@@ -1307,26 +1331,26 @@ async function verifyGoogleReceipt(
     // which already validates the purchase token before sending it to backend
     if (!clientEmail || !privateKey) {
       console.warn('[Verify Purchase] ⚠️ Google Play credentials not set - Using native verification fallback (individual account)');
-      
+
       // ✅ SECURITY: Basic validation - ensure receipt has reasonable length
       // Google Play purchase tokens can contain +, /, = characters (base64 encoding)
       // In fallback mode, we trust native plugin verification, so we only check length
       // Native plugin (Google Play Billing Library) already validated the purchase
       const isValidLength = receipt.length >= 5; // Very basic check - just ensure it's not empty/too short
-      
+
       if (!isValidLength) {
         console.error('[Verify Purchase] ❌ Invalid purchase token format (too short)');
-        return { 
-          valid: false, 
-          error: 'Invalid purchase token format' 
+        return {
+          valid: false,
+          error: 'Invalid purchase token format'
         };
       }
-      
+
       // ✅ FALLBACK VERIFICATION: For individual accounts, trust native plugin verification
       // Native plugin (Google Play Billing Library) already validates the purchase
       // We just need to check token format and calculate expiry date
       console.log('[Verify Purchase] ✅ Using native verification fallback - token format valid');
-      
+
       // Calculate expiry date based on product type (monthly/yearly)
       const now = new Date();
       let expiryDate: Date;
@@ -1337,14 +1361,14 @@ async function verifyGoogleReceipt(
         expiryDate = new Date(now);
         expiryDate.setMonth(expiryDate.getMonth() + 1);
       }
-      
+
       // ⚠️ NOTE: This is less secure than API verification, but necessary for individual accounts
       // Native plugin already validated the purchase, so this is acceptable
       console.log('[Verify Purchase] ✅ Purchase validated via native plugin (fallback mode)', {
         productId,
         expiryDate: expiryDate.toISOString(),
       });
-      
+
       return { valid: true, expiryDate };
     }
 
@@ -1353,7 +1377,7 @@ async function verifyGoogleReceipt(
 
     // Verify purchase with Google Play Developer API
     const apiUrl = `https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${packageName}/purchases/products/${productId}/tokens/${receipt}`;
-    
+
     const response = await fetch(apiUrl, {
       method: 'GET',
       headers: {
@@ -1364,7 +1388,7 @@ async function verifyGoogleReceipt(
     if (!response.ok) {
       const errorText = await response.text();
       console.error('[Verify Purchase] ❌ Google Play API error:', response.status, errorText);
-      
+
       // Handle specific error codes
       if (response.status === 404) {
         return { valid: false, error: 'Purchase not found or invalid token' };
@@ -1375,7 +1399,7 @@ async function verifyGoogleReceipt(
       if (response.status === 403) {
         return { valid: false, error: 'Permission denied - check service account permissions' };
       }
-      
+
       return { valid: false, error: `Google Play API error: ${response.status}` };
     }
 
@@ -1397,7 +1421,7 @@ async function verifyGoogleReceipt(
     let expiryDate: Date | undefined;
     if (purchaseData.expiryTimeMillis) {
       expiryDate = new Date(parseInt(purchaseData.expiryTimeMillis));
-      
+
       // ✅ EXPIRED CHECK: If expiry date is in the past, mark as expired
       const now = new Date();
       if (expiryDate <= now) {
@@ -1412,15 +1436,15 @@ async function verifyGoogleReceipt(
       expiryDate: expiryDate?.toISOString(),
     });
 
-    return { valid: true, expiryDate };
+    return { valid: true, expiryDate, originalTransactionId: purchaseData.orderId };
   } catch (error: any) {
     console.error('[Verify Purchase] ❌ Google verification error:', error);
-    
+
     // If it's a known error, return specific message
     if (error.message?.includes('GOOGLE_PLAY_CLIENT_EMAIL') || error.message?.includes('GOOGLE_PLAY_PRIVATE_KEY')) {
       return { valid: false, error: 'Google Play service account credentials not configured' };
     }
-    
+
     return { valid: false, error: error.message || 'Google Play verification failed' };
   }
 }
