@@ -177,6 +177,9 @@ export async function POST(request: NextRequest) {
 
       if (!verification.valid) {
         console.error('[Webhook] ❌ Apple signature verification failed:', verification.error);
+        // 🔒 AUDIT LOG: Security incident
+        const { auditHelpers } = await import('@/lib/auditLog');
+        await auditHelpers.webhookSignatureFailed('ios', verification.error || 'Unknown error', request);
         return NextResponse.json(
           { error: 'Invalid Apple signature', details: verification.error },
           { status: 401 }
