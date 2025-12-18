@@ -2226,8 +2226,8 @@ export default function Home() {
                   key={tf}
                   onClick={() => updateActiveChart({ timeframe: tf })}
                   className={`px-2.5 py-1 text-xs font-medium rounded transition-colors ${activeChart.timeframe === tf
-                      ? 'bg-blue-600 text-white'
-                      : 'text-gray-400 hover:text-white hover:bg-gray-800'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-gray-400 hover:text-white hover:bg-gray-800'
                     }`}
                 >
                   {getTimeframeForHuman(tf)}
@@ -2248,10 +2248,10 @@ export default function Home() {
                       }
                     }}
                     className={`px-2.5 py-1 text-xs font-medium rounded transition-colors relative ${isActive
-                        ? 'bg-blue-600 text-white'
-                        : isPremium
-                          ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                          : 'text-gray-500 opacity-60 cursor-not-allowed'
+                      ? 'bg-blue-600 text-white'
+                      : isPremium
+                        ? 'text-gray-400 hover:text-white hover:bg-gray-800'
+                        : 'text-gray-500 opacity-60 cursor-not-allowed'
                       }`}
                     disabled={!isPremium}
                     title={isPremium ? getTimeframeForHuman(tf) : `${getTimeframeForHuman(tf)} (Premium)`}
@@ -2447,8 +2447,8 @@ export default function Home() {
                   key={chart.id}
                   onClick={() => setActiveChartId(chart.id)}
                   className={`relative border transition-all ${chart.id === activeChartId
-                      ? 'border-blue-500 border-2'
-                      : 'border-gray-800 hover:border-gray-700'
+                    ? 'border-blue-500 border-2'
+                    : 'border-gray-800 hover:border-gray-700'
                     }`}
                   style={{
                     // Mobile-specific fixes to prevent charts from overlapping
@@ -2469,9 +2469,7 @@ export default function Home() {
                           maxWidth: '100%', // Prevent overflow
                           minHeight: 0, // Critical: allows grid items to shrink below content size
                           maxHeight: '100%', // Prevent overflow
-                          overflow: 'hidden', // Always prevent overflow to keep charts contained
-                          overflowX: 'hidden', // Prevent horizontal overflow
-                          overflowY: 'hidden', // Prevent vertical overflow
+                          overflow: 'hidden', // Prevent overflow (covers both X and Y)
                           boxSizing: 'border-box', // Ensure padding/border included in width
                           position: 'relative',
                           flexShrink: 0, // Prevent shrinking
