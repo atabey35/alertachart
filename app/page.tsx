@@ -2657,36 +2657,36 @@ export default function Home() {
                   style={{ pointerEvents: 'none' }}
                 />
                 {/* Premium overlay */}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-950/80 to-gray-950 flex flex-col items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-b from-gray-950/60 via-gray-950/85 to-gray-950 flex flex-col items-center justify-center">
                   <div className="text-center p-8">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-4 mx-auto animate-pulse">
-                      <span className="text-4xl">💎</span>
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-cyan-500/30 shadow-xl shadow-cyan-500/20 flex items-center justify-center mb-5 mx-auto">
+                      <img src="/icon.png" alt="Alerta" className="w-12 h-12 object-contain" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Premium İçerik</h3>
-                    <p className="text-gray-300 mb-4">
+                    <h3 className="text-2xl font-bold text-white mb-2">Alerta <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">PRO</span></h3>
+                    <p className="text-gray-300 mb-4 max-w-xs mx-auto">
                       Gerçek zamanlı AGGR verilerine erişmek için Premium&apos;a geçin
                     </p>
-                    <div className="flex items-center justify-center gap-2 mb-4">
+                    <div className="flex items-center justify-center gap-1.5 mb-4">
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <p className="text-gray-500 text-sm">Premium ekranı yükleniyor...</p>
+                    <p className="text-gray-500 text-sm">Yükleniyor...</p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4">
-                  <span className="text-3xl">💎</span>
+              <div className="flex flex-col items-center justify-center h-full w-full p-8 text-center">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-blue-500/30 shadow-xl shadow-blue-500/20 flex items-center justify-center mb-5 mx-auto">
+                  <img src="/icon.png" alt="Alerta" className="w-12 h-12 object-contain" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Pro Üye Gerekli</h3>
-                <p className="text-gray-400 mb-6 text-center">
+                <h3 className="text-xl font-bold text-white mb-2">Alerta <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">PRO</span></h3>
+                <p className="text-gray-400 mb-6 text-center max-w-xs">
                   AGGR trading dashboard&apos;una erişmek için premium üyelik gereklidir.
                 </p>
                 <button
                   onClick={() => setShowUpgradeModal(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-blue-500/25"
+                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50"
                 >
                   Premium&apos;a Geç
                 </button>
@@ -2732,36 +2732,36 @@ export default function Home() {
                   style={{ pointerEvents: 'none' }}
                 />
                 {/* Premium overlay */}
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent via-gray-950/80 to-gray-950 flex flex-col items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-b from-gray-950/60 via-gray-950/85 to-gray-950 flex flex-col items-center justify-center">
                   <div className="text-center p-8">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-red-500 to-orange-600 flex items-center justify-center mb-4 mx-auto animate-pulse">
-                      <span className="text-4xl">💎</span>
+                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-red-500/30 shadow-xl shadow-red-500/20 flex items-center justify-center mb-5 mx-auto">
+                      <img src="/icon.png" alt="Alerta" className="w-12 h-12 object-contain" />
                     </div>
-                    <h3 className="text-2xl font-bold text-white mb-2">Premium İçerik</h3>
-                    <p className="text-gray-300 mb-4">
+                    <h3 className="text-2xl font-bold text-white mb-2">Alerta <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">PRO</span></h3>
+                    <p className="text-gray-300 mb-4 max-w-xs mx-auto">
                       Gerçek zamanlı Liquidation verilerine erişmek için Premium&apos;a geçin
                     </p>
-                    <div className="flex items-center justify-center gap-2 mb-4">
+                    <div className="flex items-center justify-center gap-1.5 mb-4">
                       <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                       <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                       <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <p className="text-gray-500 text-sm">Premium ekranı yükleniyor...</p>
+                    <p className="text-gray-500 text-sm">Yükleniyor...</p>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4">
-                  <span className="text-3xl">💎</span>
+              <div className="flex flex-col items-center justify-center h-full w-full p-8 text-center">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-gray-800 to-gray-900 border border-red-500/30 shadow-xl shadow-red-500/20 flex items-center justify-center mb-5 mx-auto">
+                  <img src="/icon.png" alt="Alerta" className="w-12 h-12 object-contain" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Pro Üye Gerekli</h3>
-                <p className="text-gray-400 mb-6 text-center">
+                <h3 className="text-xl font-bold text-white mb-2">Alerta <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">PRO</span></h3>
+                <p className="text-gray-400 mb-6 text-center max-w-xs">
                   Liquidations dashboard&apos;una erişmek için premium üyelik gereklidir.
                 </p>
                 <button
                   onClick={() => setShowUpgradeModal(true)}
-                  className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white rounded-lg font-medium transition-all shadow-lg shadow-blue-500/25"
+                  className="px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-red-500/30 hover:shadow-red-500/50"
                 >
                   Premium&apos;a Geç
                 </button>
