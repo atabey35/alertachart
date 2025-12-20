@@ -61,15 +61,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     /iPad|iPhone|iPod/.test(navigator.userAgent) ||
     (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) // iPad on iOS 13+
   );
-
+  
   // Detect iPad specifically for mobile view
   const [isIPad, setIsIPad] = useState(false);
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
-      const isIPadUserAgent = /iPad/.test(userAgent) ||
+      const isIPadUserAgent = /iPad/.test(userAgent) || 
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-      const isCapacitorIOS = !!(window as any).Capacitor &&
+      const isCapacitorIOS = !!(window as any).Capacitor && 
         ((window as any).Capacitor?.getPlatform?.() === 'ios' || /iPad|iPhone/.test(userAgent));
       const isIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366;
       const isIPadDevice = isIPadUserAgent || (isCapacitorIOS && isIPadSize);
@@ -77,27 +77,44 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
   }, []);
 
-  // Helper function to calculate chart width
-  // TradingView renders price scale INSIDE chart area, so we use full container width
+  // Helper function to calculate chart width dynamically to accommodate price scale
+  // Only applies to mobile multi-chart layouts (4, 9), NOT single (1) or dual (2) charts
   const calculateChartWidth = (containerWidth: number): number => {
+    // Never modify width for single (1) or dual (2) chart layouts - use full width
+    if (layout === 1 || layout === 2) {
+      return containerWidth;
+    }
+    
+    // Only apply on mobile for 4-chart and 9-chart layouts
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      // For multi-chart layouts, reserve more space for price scale
+      if (layout === 9 || containerWidth < 200) {
+        // 9-chart layout: reserve ~50% for price scale (maximum space for full visibility)
+        // Chart gets 50% of container width, price scale gets 50%
+        return containerWidth * 0.50;
+      } else if (layout === 4 || containerWidth < 400) {
+        // 4-chart layout: reserve ~35% for price scale (very aggressive for visibility)
+        return containerWidth * 0.65;
+      }
+    }
     return containerWidth;
   };
-
+  
   const containerRef = useRef<HTMLDivElement>(null);
   const rsiContainerRef = useRef<HTMLDivElement>(null);
   const macdContainerRef = useRef<HTMLDivElement>(null);
-
+  
   const chartRef = useRef<IChartApi | null>(null);
   const rsiChartRef = useRef<IChartApi | null>(null);
   const macdChartRef = useRef<IChartApi | null>(null);
-
+  
   const seriesRef = useRef<ISeriesApi<'Candlestick'> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
   const rsiSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const macdLineSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const macdSignalSeriesRef = useRef<ISeriesApi<'Line'> | null>(null);
   const macdHistogramSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null);
-
+  
   // Overlay indicators on main chart
   const bbUpperRef = useRef<ISeriesApi<'Line'> | null>(null);
   const bbMiddleRef = useRef<ISeriesApi<'Line'> | null>(null);
@@ -108,7 +125,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const sma50Ref = useRef<ISeriesApi<'Line'> | null>(null);
   const sma100Ref = useRef<ISeriesApi<'Line'> | null>(null);
   const sma200Ref = useRef<ISeriesApi<'Line'> | null>(null);
-
+  
   const cacheRef = useRef(new ChartCache());
   const workerRef = useRef<Worker | null>(null);
   const currentWorkerGenerationRef = useRef<number>(0); // Track THIS instance's current worker generation
@@ -146,7 +163,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const chartWrapperRef = useRef<HTMLDivElement>(null);
   const [showShareMenu, setShowShareMenu] = useState(false);
   const [shareLink, setShareLink] = useState('');
-
+  
   // Load settings from localStorage after mount (avoid hydration mismatch)
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -166,7 +183,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   // Alarm button state - simpler approach
   const [alarmButton, setAlarmButton] = useState<{ visible: boolean; price: number; y: number } | null>(null);
   const isHoveringButtonRef = useRef(false);
-
+  
   // Magnifier state for mobile drawing (TradingView-style)
   // NOTE: We use refs for position/price to avoid re-rendering on every frame.
   const [isMagnifierVisible, setIsMagnifierVisible] = useState(false);
@@ -186,15 +203,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       if (document.hidden) {
         console.log('[Chart] ⏸️ App backgrounded - pausing updates');
         if (rafUpdateRef.current !== null) {
-          cancelAnimationFrame(rafUpdateRef.current);
-          rafUpdateRef.current = null;
+        cancelAnimationFrame(rafUpdateRef.current);
+        rafUpdateRef.current = null;
         }
         // İsteğe bağlı: Worker'ı duraklatabilirsin ama terminate etmek daha temiz bir dönüş sağlar
-      }
+      } 
       // 2. Uygulama Ön Plana Geldiğinde (Foreground) - TRADINGVIEW GİBİ DAVRAN
       else {
         console.log('[Chart] ▶️ App foregrounded - checking data freshness');
-
+        
         // RAF bayrağını temizle ki yeni çizimler kuyruğa girebilsin
         updateQueuedRef.current = false;
 
@@ -202,11 +219,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         const bars = cacheRef.current?.getAllBars();
         const lastBar = bars && bars.length > 0 ? bars[bars.length - 1] : null;
         const now = Date.now();
-
+        
         // Eğer son veri yoksa VEYA son veri 2 mum süresinden daha eskiyse (Gap oluşmuşsa)
         // VEYA soket bağlantısı kopmuşsa
         const isStale = !lastBar || (now - lastBar.time > timeframe * 1000 * 2);
-
+        
         if (isStale || !wsConnected) {
           console.log('[Chart] 🔄 Data is stale or disconnected. Refreshing chart...');
           // En güncel loadHistoricalData fonksiyonunu çağır
@@ -238,7 +255,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const onConnectionChangeRef = useRef(onConnectionChange);
   const onPriceUpdateRef = useRef(onPriceUpdate);
   const onChange24hRef = useRef(onChange24h);
-
+  
   useEffect(() => {
     onConnectionChangeRef.current = onConnectionChange;
     onPriceUpdateRef.current = onPriceUpdate;
@@ -255,16 +272,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     if (!seriesRef.current) {
       return;
     }
-
+    
     const bars = cacheRef.current?.getAllBars() || [];
     if (bars.length === 0) {
       return;
     }
-
+    
     const avgPrice = (bars[0].open + bars[0].close) / 2;
     let precision = 2;
     let minMove = 0.01;
-
+    
     if (avgPrice < 0.001) {
       // Very low price coins (e.g., SHIB)
       precision = 8;
@@ -286,11 +303,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       precision = 3;
       minMove = 0.001;
     }
-
+    
     // Only log on first application or when precision changes
     if (!precisionSetRef.current) {
     }
-
+    
     // Always apply precision to ensure it's correct after indicator add/remove
     try {
       seriesRef.current.applyOptions({
@@ -314,7 +331,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   // Handle resize (Desktop only - disabled on mobile to prevent layout issues)
   useEffect(() => {
     if (!isResizing) return;
-
+    
     // Disable resize on mobile devices
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsResizing(false);
@@ -324,21 +341,21 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
     const handleMouseMove = (e: MouseEvent) => {
       if (!resizeStartRef.current || !resizeStartRef.current.gridItem) return;
-
+      
       // Always use initial values, never update resizeStartRef during resize
       const startData = resizeStartRef.current;
       const gridItem = startData.gridItem;
-
+      
       if (!gridItem) return; // TypeScript guard
-
+      
       // Calculate delta from the initial mouse position (never changes)
       const deltaX = e.clientX - startData.x;
       const deltaY = e.clientY - startData.y;
-
+      
       // Calculate new size based on initial size + delta
       const newWidth = Math.max(300, startData.width + deltaX);
       const newHeight = Math.max(200, startData.height + deltaY);
-
+      
       // Update grid item size (the actual container) - Desktop only
       if (typeof window !== 'undefined' && window.innerWidth >= 768) {
         gridItem.style.width = `${newWidth}px`;
@@ -346,16 +363,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         gridItem.style.gridColumn = 'span 1';
         gridItem.style.gridRow = 'span 1';
       }
-
+      
       // Resize chart to match container (with a small delay to let DOM update)
       requestAnimationFrame(() => {
         if (containerRef.current && chartRef.current) {
           const containerRect = containerRef.current.getBoundingClientRect();
           // Calculate chart width dynamically to accommodate price scale
           const chartWidth = Math.max(1, calculateChartWidth(containerRect.width));
-          chartRef.current.applyOptions({
-            width: chartWidth,
-            height: Math.max(1, containerRect.height)
+          chartRef.current.applyOptions({ 
+            width: chartWidth, 
+            height: Math.max(1, containerRect.height) 
           });
           // Ensure price scale and time scale are always visible
           chartRef.current.priceScale('right').applyOptions({
@@ -424,7 +441,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   // Export chart as screenshot
   const handleScreenshotExport = async () => {
     if (!containerRef.current || !chartRef.current) return;
-
+    
     try {
       // Use html2canvas for full chart capture including drawings
       const html2canvas = (await import('html2canvas')).default;
@@ -434,7 +451,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         logging: false,
         useCORS: true,
       });
-
+      
       canvasElement.toBlob((blob) => {
         if (blob) {
           const url = URL.createObjectURL(blob);
@@ -447,7 +464,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           URL.revokeObjectURL(url);
         }
       }, 'image/png');
-
+      
       setShowShareMenu(false);
     } catch (error) {
       console.error('Failed to export screenshot:', error);
@@ -465,7 +482,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           // Calculate 24h ago timestamp
           const now = Date.now() / 1000;
           const twentyFourHoursAgo = now - (24 * 60 * 60);
-
+          
           // Find candle closest to 24h ago
           let price24hAgo = null;
           for (let i = candlesData.length - 1; i >= 0; i--) {
@@ -474,12 +491,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
               break;
             }
           }
-
+          
           // If we don't have 24h of data, use first available candle
           if (!price24hAgo && candlesData.length > 0) {
             price24hAgo = candlesData[0].close;
           }
-
+          
           if (price24hAgo && price24hAgo > 0) {
             const change24h = ((currentPrice - price24hAgo) / price24hAgo) * 100;
             onChange24hRef.current?.(change24h);
@@ -506,7 +523,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   // Drawing tool states (use external if provided for multi-chart)
   const [internalActiveTool, setInternalActiveTool] = useState<DrawingTool>('none');
   const activeTool = externalActiveTool !== undefined ? externalActiveTool : internalActiveTool;
-  const setActiveTool = externalActiveTool !== undefined
+  const setActiveTool = externalActiveTool !== undefined 
     ? (tool: DrawingTool) => { onToolChange?.(tool); } // Call parent callback for multi-chart
     : setInternalActiveTool;
   const [drawings, setDrawings] = useState<Drawing[]>([]);
@@ -520,7 +537,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [historyStackLength, setHistoryStackLength] = useState(0); // ✅ FIX #4: Track history length for UI reactivity
   const [editingDrawing, setEditingDrawing] = useState<Drawing | null>(null); // Drawing being edited in modal
   const [draggingPoint, setDraggingPoint] = useState<{ drawingId: string; pointIndex: number } | null>(null);
-
+  
   // ✅ NEW: Direct drag ref for instant response (no React re-render delay)
   const dragStateRef = useRef<{
     isDragging: boolean;
@@ -539,7 +556,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     rafId: null,
     cleanupFn: null
   });
-
+  
   // ✅ DEPRECATED: Keep for backward compatibility but not used for event binding anymore
   const [draggingDrawing, setDraggingDrawing] = useState<{ drawingId: string; startX: number; startY: number; originalPoints: DrawingPoint[] } | null>(null);
   const [handlePositions, setHandlePositions] = useState<Array<{ x: number; y: number; drawingId: string; pointIndex: number }>>([]);
@@ -553,10 +570,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   // Lock/unlock chart pan & zoom when drawing tool is active (TradingView behavior)
   useEffect(() => {
     if (!chartRef.current) return;
-
+    
     const chart = chartRef.current;
     const isDrawing = activeTool !== 'none';
-
+    
     // Disable chart pan/zoom when drawing, enable when not drawing
     // Also disable kinetic scroll on mobile when drawing to prevent interference
     chart.applyOptions({
@@ -571,7 +588,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         mouse: false
       }
     });
-
+    
   }, [activeTool]);
 
   // Handle toolbar dragging (mouse/touch)
@@ -615,11 +632,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const horizontalLinesRef = useRef<Map<string, any>>(new Map()); // Store price lines for horizontal drawings
   const precisionSetRef = useRef<boolean>(false); // Track if precision has been set for current pair
   const drawingsLoadedRef = useRef<boolean>(false); // Track if drawings have been loaded from localStorage
-
+  
   // Update container size
   useEffect(() => {
     if (!containerRef.current) return;
-
+    
     const updateSize = () => {
       if (containerRef.current) {
         const containerRect = containerRef.current.getBoundingClientRect();
@@ -646,12 +663,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         }
       }
     };
-
+    
     updateSize();
-
+    
     const resizeObserver = new ResizeObserver(updateSize);
     resizeObserver.observe(containerRef.current);
-
+    
     return () => resizeObserver.disconnect();
   }, []);
 
@@ -665,11 +682,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         const loadedDrawings = JSON.parse(saved);
         if (Array.isArray(loadedDrawings)) {
           // Always set drawings, even if empty (preserves localStorage state)
-          setDrawings(loadedDrawings);
+        setDrawings(loadedDrawings);
         } else {
           // Invalid data, set empty array
           setDrawings([]);
-        }
+      }
       } else {
         // No saved data, set empty array
         setDrawings([]);
@@ -681,14 +698,14 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       drawingsLoadedRef.current = true; // Mark as loaded even on error
     }
   }, [exchange, pair]);
-
+  
   // Save drawings to localStorage whenever they change (only after initial load)
   useEffect(() => {
     // Don't save if drawings haven't been loaded yet (prevents overwriting with empty array)
     if (!drawingsLoadedRef.current) {
       return;
     }
-
+    
     const storageKey = `drawings_${exchange}_${pair}`;
     try {
       // Check if we're saving an empty array and if localStorage already has data
@@ -702,7 +719,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           return; // Don't overwrite existing drawings with empty array
         }
       }
-
+      
       // Save drawings state to localStorage after initial load
       // This ensures user actions (add/remove/clear) are persisted
       localStorage.setItem(storageKey, JSON.stringify(drawings));
@@ -710,7 +727,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       // Silent fail in production
     }
   }, [drawings, exchange, pair]);
-
+  
   // OHLCV legend state (TradingView-style hover info)
   const [legendData, setLegendData] = useState<{
     open: number;
@@ -729,7 +746,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const timer = setTimeout(() => {
       setShowMobileHint(false);
     }, 5000);
-
+    
     return () => clearTimeout(timer);
   }, []);
 
@@ -738,7 +755,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    */
   useEffect(() => {
     if (!containerRef.current) return;
-
+    
     const updateSize = () => {
       if (containerRef.current) {
         setContainerSize({
@@ -747,12 +764,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         });
       }
     };
-
+    
     updateSize();
-
+    
     const resizeObserver = new ResizeObserver(updateSize);
     resizeObserver.observe(containerRef.current);
-
+    
     return () => {
       resizeObserver.disconnect();
     };
@@ -763,7 +780,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    */
   useEffect(() => {
     if (!chartRef.current) return;
-
+    
     chartRef.current.applyOptions({
       handleScroll: activeTool === 'none',
       handleScale: activeTool === 'none',
@@ -784,10 +801,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Create chart
     let containerWidth = containerRef.current.clientWidth || 800;
     let height = containerRef.current.clientHeight || 600;
-
+    
     // Calculate chart width dynamically to accommodate price scale
     let width = calculateChartWidth(containerWidth);
-
+    
     // Ensure minimum dimensions - important for preventing height collapse
     if (height < 100) {
       console.warn(`[Chart] Height too small (${height}px), using minimum 400px`);
@@ -797,9 +814,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       console.warn(`[Chart] Width too small (${width}px), using minimum 600px`);
       width = 600;
     }
-
+    
     // console.log('[Chart] Creating chart with dimensions:', { width, height });
-
+    
     const chart = createChart(containerRef.current, {
       width,
       height,
@@ -808,10 +825,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         textColor: chartSettings.textColor,
       },
       grid: {
-        vertLines: {
+        vertLines: { 
           color: chartSettings.showGrid ? chartSettings.gridVerticalColor : 'transparent',
         },
-        horzLines: {
+        horzLines: { 
           color: chartSettings.showGrid ? chartSettings.gridHorizontalColor : 'transparent',
         },
       },
@@ -876,7 +893,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       },
       priceScaleId: '',
     });
-
+    
     // Configure main price scale (candlestick)
     let isMobile = false;
     let isIOSDevice = false;
@@ -885,32 +902,30 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPad on iOS 13+
     }
-
+    
     chart.priceScale('right').applyOptions({
       visible: true, // Ensure price scale is always visible
-      // Dynamic width based on layout - multi-chart needs more space for all price digits
-      // 9-chart needs at least 80px to show prices like 0.06336
-      minimumWidth: layout === 4 ? 90 : layout === 9 ? 80 : 75,
+      minimumWidth: 75, // Fixed width to prevent jitter when price text length changes (e.g., XRP, AVAX)
       scaleMargins: {
         top: layout === 9 ? 0.02 : 0.05, // Reduce top margin for 9-chart layout
         bottom: layout === 9 ? 0.10 : 0.15, // Reduce bottom margin for 9-chart layout
       },
       entireTextOnly: false, // Show all price labels, not just when fully visible
-      // iOS/Apple specific optimizations - use visible text colors
+      // iOS/Apple specific optimizations
       ...(isIOSDevice ? {
         textColor: '#FFFFFF', // Bright white for iOS visibility
-        fontSize: layout === 9 ? 10 : layout === 4 ? 11 : 12, // Bigger font for 9-chart
+        fontSize: layout === 9 ? 9 : 12, // Smaller font for 9-chart layout, larger for others
         borderVisible: false, // Remove border for cleaner look
         ticksVisible: true, // Ensure ticks are visible
       } : isMobile ? {
-        textColor: '#E5E7EB', // Brighter text color for mobile
-        fontSize: layout === 9 ? 9 : layout === 4 ? 10 : 11, // Slightly bigger fonts
+        textColor: '#D1D5DB', // Ensure text is visible
+        fontSize: layout === 9 ? 8 : 10, // Smaller font for 9-chart layout (8px), slightly smaller for others (10px)
         borderVisible: true,
       } : {
         borderVisible: true,
       }),
     });
-
+    
     // Configure volume price scale (overlay at bottom of main chart)
     chart.priceScale('').applyOptions({
       scaleMargins: {
@@ -1024,7 +1039,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     chartRef.current = chart;
     seriesRef.current = series;
     volumeSeriesRef.current = volumeSeries;
-
+    
     // console.log('[Chart] ✅ Chart and series refs set:', {
     //   chartRef: !!chartRef.current,
     //   seriesRef: !!seriesRef.current,
@@ -1034,7 +1049,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Remove TradingView watermark aggressively
     const removeWatermark = () => {
       if (!containerRef.current) return;
-
+      
       // ✅ FIX #2: Remove by ID with null checks to prevent NotFoundError
       const logoById = document.getElementById('tv-attr-logo');
       if (logoById && logoById.parentNode) {
@@ -1044,7 +1059,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           // Ignore if already removed
         }
       }
-
+      
       // ✅ FIX #2: Remove by href with existence checks
       const logosByHref = containerRef.current.querySelectorAll('a[href*="tradingview.com"]');
       logosByHref.forEach(el => {
@@ -1056,7 +1071,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           }
         }
       });
-
+      
       // ✅ FIX #2: Remove by title with existence checks
       const logosByTitle = containerRef.current.querySelectorAll('a[title*="TradingView"]');
       logosByTitle.forEach(el => {
@@ -1068,14 +1083,14 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           }
         }
       });
-
+      
       // Find and remove all potential watermark elements
       const watermarkSelectors = [
         'div[style*="pointer-events: none"]',
         'div[style*="position: absolute"][style*="left: 0"]',
         'div[style*="position: absolute"]:not([class])',
       ];
-
+      
       watermarkSelectors.forEach(selector => {
         const elements = containerRef.current!.querySelectorAll(selector);
         elements.forEach((el) => {
@@ -1094,7 +1109,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     setTimeout(removeWatermark, 500);
     setTimeout(removeWatermark, 1000);
     setTimeout(removeWatermark, 2000);
-
+    
     // Also set up mutation observer to catch dynamic additions
     observerRef.current = new MutationObserver(removeWatermark);
     if (containerRef.current) {
@@ -1116,7 +1131,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         // Mouse left chart area - hide button ONLY if not hovering button
         setAlarmButton(null);
       }
-
+      
       if (!param.time || !param.seriesData || !seriesRef.current || !volumeSeriesRef.current) {
         setLegendData(null);
         return;
@@ -1217,7 +1232,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       if (resizeTimeout) {
         clearTimeout(resizeTimeout);
       }
-
+      
       resizeTimeout = setTimeout(() => {
         try {
           if (containerRef.current && chartRef.current) {
@@ -1225,7 +1240,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             const rect = containerRef.current.getBoundingClientRect();
             const width = Math.floor(calculateChartWidth(rect.width));
             const height = Math.floor(rect.height);
-
+            
             if (width > 0 && height > 0) {
               chartRef.current.resize(width, height);
               // Force price scale update on mobile/iOS for better alignment
@@ -1234,7 +1249,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                 /iPad|iPhone|iPod/.test(navigator.userAgent) ||
                 (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
               );
-
+              
               if (isMobileDevice || isIOSDevice) {
                 requestAnimationFrame(() => {
                   if (chartRef.current) {
@@ -1275,7 +1290,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     if (containerRef.current) {
       resizeObserver.observe(containerRef.current);
     }
-
+    
     // Force initial resize after mount
     setTimeout(() => {
       if (containerRef.current && chartRef.current) {
@@ -1290,7 +1305,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           /iPad|iPhone|iPod/.test(navigator.userAgent) ||
           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
         );
-
+        
         if (isMobileDevice || isIOSDevice) {
           requestAnimationFrame(() => {
             if (chartRef.current) {
@@ -1323,29 +1338,29 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const handleContextMenuNative = (e: MouseEvent) => {
       e.preventDefault();
       e.stopPropagation();
-
+      
       if (!seriesRef.current || !containerRef.current) {
         console.warn('[Chart] Cannot open context menu: chart not ready');
         return false;
       }
-
+      
       const rect = containerRef.current.getBoundingClientRect();
       const x = e.clientX;
       const y = e.clientY;
       const relativeY = y - rect.top;
-
+      
       // Get price at mouse position
       try {
         const price = seriesRef.current.coordinateToPrice(relativeY);
-
-        console.log('[Chart] Context menu opened (native) at:', {
-          clientX: x,
-          clientY: y,
-          relativeY,
+        
+        console.log('[Chart] Context menu opened (native) at:', { 
+          clientX: x, 
+          clientY: y, 
+          relativeY, 
           price,
-          currentPrice
+          currentPrice 
         });
-
+        
         if (price !== null && price !== undefined) {
           setClickedPrice(price as number);
         } else {
@@ -1354,7 +1369,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       } catch (err) {
         console.error('[Chart] Failed to get price from coordinate:', err);
       }
-
+      
       setContextMenuPosition({ x, y });
       setContextMenuVisible(true);
       return false;
@@ -1369,7 +1384,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const timeScale = chart.timeScale();
     const handleVisibleRangeChange = () => {
       const logicalRange = timeScale.getVisibleLogicalRange();
-
+      
       // If user scrolls close to the left edge, load older data
       if (logicalRange && logicalRange.from < 50) {
         loadOlderCandles();
@@ -1380,7 +1395,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
     // Store containerRef.current in a variable for cleanup
     const containerElement = containerRef.current;
-
+    
     return () => {
       window.removeEventListener('resize', handleResize);
       if (containerElement) {
@@ -1405,7 +1420,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         cancelAnimationFrame(rafUpdateRef.current);
         rafUpdateRef.current = null;
       }
-
+      
       // ✅ FIX #4: Add try-catch for cleanup to prevent NotFoundError
       try {
         // Clear all series refs BEFORE removing chart to prevent "Object is disposed" errors
@@ -1422,7 +1437,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         sma100Ref.current = null;
         sma200Ref.current = null;
         precisionSetRef.current = false; // Reset precision flag when chart is recreated
-
+        
         // Now safe to remove chart
         if (chartRef.current) {
           chart.remove();
@@ -1444,18 +1459,18 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         if (!chartRef.current || !seriesRef.current) {
           return;
         }
-
+        
         // Double check chart is not disposed
         try {
           chartRef.current.timeScale();
         } catch (error) {
           return;
         }
-
+        
         // Ensure precision is applied before updating indicators
         // This fixes the issue where price scale shows 8 decimals after adding indicators
         applyPrecision();
-
+        
         const bars = cacheRef.current?.getAllBars() || [];
         if (bars.length > 20) {
           console.log('[Chart] Updating indicators after chartSettings change, bars:', bars.length, 'settings:', {
@@ -1471,7 +1486,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         console.error('[Chart] Error updating indicators after chartSettings change:', error);
       }
     }, 400); // Wait longer for series to be created (especially after page reload)
-
+    
     return () => clearTimeout(timeoutId);
   }, [chartSettings]);
 
@@ -1490,125 +1505,125 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const timeoutId = setTimeout(() => {
       if (rsiContainerRef.current) {
         const rsiChart = createChart(rsiContainerRef.current, {
-          width: rsiContainerRef.current.clientWidth,
-          height: rsiContainerRef.current.clientHeight - 25, // Account for header
-          layout: {
-            background: { color: '#000000' },
-            textColor: '#d1d5db',
-          },
-          grid: {
-            vertLines: { color: '#1f2937' },
-            horzLines: { color: '#1f2937' },
-          },
-          timeScale: {
-            borderColor: '#2B2B43',
-            timeVisible: true,
-            secondsVisible: false,
-          },
-          rightPriceScale: {
-            borderColor: '#2B2B43',
-          },
-        });
+        width: rsiContainerRef.current.clientWidth,
+        height: rsiContainerRef.current.clientHeight - 25, // Account for header
+        layout: {
+          background: { color: '#000000' },
+          textColor: '#d1d5db',
+        },
+        grid: {
+          vertLines: { color: '#1f2937' },
+          horzLines: { color: '#1f2937' },
+        },
+        timeScale: {
+          borderColor: '#2B2B43',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+        rightPriceScale: {
+          borderColor: '#2B2B43',
+        },
+      });
 
-        // Configure RSI chart price scale with fixed width to match main chart alignment
-        rsiChart.priceScale('right').applyOptions({
-          minimumWidth: 75, // Match main chart width to ensure alignment
-        });
+      // Configure RSI chart price scale with fixed width to match main chart alignment
+      rsiChart.priceScale('right').applyOptions({
+        minimumWidth: 75, // Match main chart width to ensure alignment
+      });
 
-        const rsiSeries = rsiChart.addLineSeries({
-          color: '#2962FF',
-          lineWidth: 2,
-          title: `RSI (${chartSettingsRef.current.rsiPeriod})`,
-        });
+      const rsiSeries = rsiChart.addLineSeries({
+        color: '#2962FF',
+        lineWidth: 2,
+        title: `RSI (${chartSettingsRef.current.rsiPeriod})`,
+      });
 
-        // Add RSI reference lines
-        rsiSeries.createPriceLine({
-          price: 70,
-          color: '#ef535060',
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: true,
-          title: 'Overbought',
-        });
+      // Add RSI reference lines
+      rsiSeries.createPriceLine({
+        price: 70,
+        color: '#ef535060',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: 'Overbought',
+      });
+      
+      rsiSeries.createPriceLine({
+        price: 50,
+        color: '#71717160',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: '',
+      });
+      
+      rsiSeries.createPriceLine({
+        price: 30,
+        color: '#26a69a60',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: true,
+        title: 'Oversold',
+      });
 
-        rsiSeries.createPriceLine({
-          price: 50,
-          color: '#71717160',
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: true,
-          title: '',
-        });
-
-        rsiSeries.createPriceLine({
-          price: 30,
-          color: '#26a69a60',
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: true,
-          title: 'Oversold',
-        });
-
-        // Sync time scale with main chart (bidirectional)
-        if (chartRef.current) {
-          const mainChart = chartRef.current;
-
-          // Main chart → RSI chart
-          mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-            if (range) {
-              rsiChart.timeScale().setVisibleLogicalRange(range);
-            }
-          });
-
-          // RSI chart → Main chart
-          rsiChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-            if (range) {
-              mainChart.timeScale().setVisibleLogicalRange(range);
-            }
-          });
-
-          // Crosshair sync: Main chart → RSI chart
-          mainChart.subscribeCrosshairMove((param) => {
-            if (param.time) {
-              rsiChart.setCrosshairPosition(0, param.time, rsiSeries);
-            } else {
-              rsiChart.clearCrosshairPosition();
-            }
-          });
-
-          // Crosshair sync: RSI chart → Main chart
-          rsiChart.subscribeCrosshairMove((param) => {
-            if (param.time && seriesRef.current) {
-              mainChart.setCrosshairPosition(0, param.time, seriesRef.current);
-            } else {
-              mainChart.clearCrosshairPosition();
-            }
-          });
-        }
-
-        rsiChartRef.current = rsiChart;
-        rsiSeriesRef.current = rsiSeries;
-
-        // Handle resize
-        const resizeObserver = new ResizeObserver((entries) => {
-          try {
-            const { width, height } = entries[0].contentRect;
-            rsiChart.applyOptions({ width, height: height - 25 });
-          } catch (error) {
-            // Chart might be disposed, ignore
+      // Sync time scale with main chart (bidirectional)
+      if (chartRef.current) {
+        const mainChart = chartRef.current;
+        
+        // Main chart → RSI chart
+        mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (range) {
+            rsiChart.timeScale().setVisibleLogicalRange(range);
           }
         });
-        resizeObserver.observe(rsiContainerRef.current);
 
-        // Cleanup function for the chart
-        return () => {
-          resizeObserver.disconnect();
-          // Clear refs before removing chart
-          rsiSeriesRef.current = null;
-          rsiChartRef.current = null;
-          rsiChart.remove();
-        };
+        // RSI chart → Main chart
+        rsiChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (range) {
+            mainChart.timeScale().setVisibleLogicalRange(range);
+          }
+        });
+
+        // Crosshair sync: Main chart → RSI chart
+        mainChart.subscribeCrosshairMove((param) => {
+          if (param.time) {
+            rsiChart.setCrosshairPosition(0, param.time, rsiSeries);
+          } else {
+            rsiChart.clearCrosshairPosition();
+          }
+        });
+
+        // Crosshair sync: RSI chart → Main chart
+        rsiChart.subscribeCrosshairMove((param) => {
+          if (param.time && seriesRef.current) {
+            mainChart.setCrosshairPosition(0, param.time, seriesRef.current);
+          } else {
+            mainChart.clearCrosshairPosition();
+          }
+        });
       }
+
+      rsiChartRef.current = rsiChart;
+      rsiSeriesRef.current = rsiSeries;
+
+      // Handle resize
+      const resizeObserver = new ResizeObserver((entries) => {
+        try {
+          const { width, height } = entries[0].contentRect;
+          rsiChart.applyOptions({ width, height: height - 25 });
+        } catch (error) {
+          // Chart might be disposed, ignore
+        }
+      });
+      resizeObserver.observe(rsiContainerRef.current);
+
+      // Cleanup function for the chart
+      return () => {
+        resizeObserver.disconnect();
+        // Clear refs before removing chart
+        rsiSeriesRef.current = null;
+        rsiChartRef.current = null;
+        rsiChart.remove();
+      };
+    }
     }, 50); // Small delay to ensure ref is attached
 
     // Cleanup function for the timeout
@@ -1648,7 +1663,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
               /iPad|iPhone|iPod/.test(navigator.userAgent) ||
               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
             );
-
+            
             if (isMobileDevice || isIOSDevice) {
               requestAnimationFrame(() => {
                 if (chartRef.current) {
@@ -1728,116 +1743,116 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const timeoutId = setTimeout(() => {
       if (macdContainerRef.current) {
         const macdChart = createChart(macdContainerRef.current, {
-          width: macdContainerRef.current.clientWidth,
-          height: macdContainerRef.current.clientHeight - 25, // Account for header
-          layout: {
-            background: { color: '#000000' },
-            textColor: '#d1d5db',
-          },
-          grid: {
-            vertLines: { color: '#1f2937' },
-            horzLines: { color: '#1f2937' },
-          },
-          timeScale: {
-            borderColor: '#2B2B43',
-            timeVisible: true,
-            secondsVisible: false,
-          },
-          rightPriceScale: {
-            borderColor: '#2B2B43',
-          },
-        });
+        width: macdContainerRef.current.clientWidth,
+        height: macdContainerRef.current.clientHeight - 25, // Account for header
+        layout: {
+          background: { color: '#000000' },
+          textColor: '#d1d5db',
+        },
+        grid: {
+          vertLines: { color: '#1f2937' },
+          horzLines: { color: '#1f2937' },
+        },
+        timeScale: {
+          borderColor: '#2B2B43',
+          timeVisible: true,
+          secondsVisible: false,
+        },
+        rightPriceScale: {
+          borderColor: '#2B2B43',
+        },
+      });
 
-        const macdLine = macdChart.addLineSeries({
-          color: '#2196F3',
-          lineWidth: 2,
-          title: 'MACD',
-        });
+      const macdLine = macdChart.addLineSeries({
+        color: '#2196F3',
+        lineWidth: 2,
+        title: 'MACD',
+      });
 
-        const macdSignal = macdChart.addLineSeries({
-          color: '#FF6D00',
-          lineWidth: 2,
-          title: 'Signal',
-        });
+      const macdSignal = macdChart.addLineSeries({
+        color: '#FF6D00',
+        lineWidth: 2,
+        title: 'Signal',
+      });
 
-        const macdHistogram = macdChart.addHistogramSeries({
-          color: '#26a69a',
-        });
+      const macdHistogram = macdChart.addHistogramSeries({
+        color: '#26a69a',
+      });
 
-        // Add zero line
-        macdLine.createPriceLine({
-          price: 0,
-          color: '#71717160',
-          lineWidth: 1,
-          lineStyle: 2,
-          axisLabelVisible: false,
-          title: '',
-        });
+      // Add zero line
+      macdLine.createPriceLine({
+        price: 0,
+        color: '#71717160',
+        lineWidth: 1,
+        lineStyle: 2,
+        axisLabelVisible: false,
+        title: '',
+      });
 
-        // Sync time scale with main chart (bidirectional)
-        if (chartRef.current) {
-          const mainChart = chartRef.current;
-
-          // Main chart → MACD chart
-          mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-            if (range) {
-              macdChart.timeScale().setVisibleLogicalRange(range);
-            }
-          });
-
-          // MACD chart → Main chart
-          macdChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-            if (range) {
-              mainChart.timeScale().setVisibleLogicalRange(range);
-            }
-          });
-
-          // Crosshair sync: Main chart → MACD chart
-          mainChart.subscribeCrosshairMove((param) => {
-            if (param.time) {
-              macdChart.setCrosshairPosition(0, param.time, macdLine);
-            } else {
-              macdChart.clearCrosshairPosition();
-            }
-          });
-
-          // Crosshair sync: MACD chart → Main chart
-          macdChart.subscribeCrosshairMove((param) => {
-            if (param.time && seriesRef.current) {
-              mainChart.setCrosshairPosition(0, param.time, seriesRef.current);
-            } else {
-              mainChart.clearCrosshairPosition();
-            }
-          });
-        }
-
-        macdChartRef.current = macdChart;
-        macdLineSeriesRef.current = macdLine;
-        macdSignalSeriesRef.current = macdSignal;
-        macdHistogramSeriesRef.current = macdHistogram;
-
-        // Handle resize
-        const resizeObserver = new ResizeObserver((entries) => {
-          try {
-            const { width, height } = entries[0].contentRect;
-            macdChart.applyOptions({ width, height: height - 25 });
-          } catch (error) {
-            // Chart might be disposed, ignore
+      // Sync time scale with main chart (bidirectional)
+      if (chartRef.current) {
+        const mainChart = chartRef.current;
+        
+        // Main chart → MACD chart
+        mainChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (range) {
+            macdChart.timeScale().setVisibleLogicalRange(range);
           }
         });
-        resizeObserver.observe(macdContainerRef.current);
 
-        // Cleanup function for the chart
-        return () => {
-          resizeObserver.disconnect();
-          // Clear refs before removing chart
-          macdLineSeriesRef.current = null;
-          macdSignalSeriesRef.current = null;
-          macdHistogramSeriesRef.current = null;
-          macdChartRef.current = null;
-          macdChart.remove();
-        };
+        // MACD chart → Main chart
+        macdChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
+          if (range) {
+            mainChart.timeScale().setVisibleLogicalRange(range);
+          }
+        });
+
+        // Crosshair sync: Main chart → MACD chart
+        mainChart.subscribeCrosshairMove((param) => {
+          if (param.time) {
+            macdChart.setCrosshairPosition(0, param.time, macdLine);
+          } else {
+            macdChart.clearCrosshairPosition();
+          }
+        });
+
+        // Crosshair sync: MACD chart → Main chart
+        macdChart.subscribeCrosshairMove((param) => {
+          if (param.time && seriesRef.current) {
+            mainChart.setCrosshairPosition(0, param.time, seriesRef.current);
+          } else {
+            mainChart.clearCrosshairPosition();
+          }
+        });
       }
+
+      macdChartRef.current = macdChart;
+      macdLineSeriesRef.current = macdLine;
+      macdSignalSeriesRef.current = macdSignal;
+      macdHistogramSeriesRef.current = macdHistogram;
+
+      // Handle resize
+      const resizeObserver = new ResizeObserver((entries) => {
+        try {
+          const { width, height } = entries[0].contentRect;
+          macdChart.applyOptions({ width, height: height - 25 });
+        } catch (error) {
+          // Chart might be disposed, ignore
+        }
+      });
+      resizeObserver.observe(macdContainerRef.current);
+
+      // Cleanup function for the chart
+      return () => {
+        resizeObserver.disconnect();
+        // Clear refs before removing chart
+        macdLineSeriesRef.current = null;
+        macdSignalSeriesRef.current = null;
+        macdHistogramSeriesRef.current = null;
+        macdChartRef.current = null;
+        macdChart.remove();
+      };
+    }
     }, 50); // Small delay to ensure ref is attached
 
     // Cleanup function for the timeout
@@ -1861,7 +1876,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   useEffect(() => {
     // Request notification permission
     alertService.requestNotificationPermission();
-
+    
     // Subscribe to alerts
     const unsubscribe = alertService.subscribe((allAlerts) => {
       // Filter alerts for current pair
@@ -1870,7 +1885,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       );
       setAlerts(pairAlerts);
     });
-
+    
     return unsubscribe;
   }, [exchange, pair]);
 
@@ -1882,7 +1897,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       (async () => {
         await alertService.checkPrice(exchange, pair, currentPrice);
       })();
-
+      
       // Notify parent (using ref to avoid dependency issues)
       onPriceUpdateRef.current?.(currentPrice);
     }
@@ -1893,12 +1908,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    */
   useEffect(() => {
     if (!chartRef.current) return;
-
+    
     // Remove old alert lines (we'll recreate all)
     // Note: lightweight-charts doesn't have a direct way to "tag" series,
     // so we'll store them in a ref
     const alertLinesRef: ISeriesApi<'Line'>[] = [];
-
+    
     // Create line for each alert
     alerts.forEach(alert => {
       const lineSeries = chartRef.current!.addLineSeries({
@@ -1908,17 +1923,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         priceLineVisible: false,
         lastValueVisible: false,
       });
-
+      
       // Set line data (horizontal line at alert price)
       const lineData = [
         { time: (Date.now() / 1000 - 86400 * 30) as Time, value: alert.price },
         { time: (Date.now() / 1000 + 86400 * 30) as Time, value: alert.price },
       ];
       lineSeries.setData(lineData);
-
+      
       alertLinesRef.push(lineSeries);
     });
-
+    
     // Cleanup: remove lines when component unmounts or alerts change
     return () => {
       alertLinesRef.forEach(line => {
@@ -1936,7 +1951,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    */
   useEffect(() => {
     loadHistoricalData();
-
+    
     // Cleanup: terminate worker when component unmounts or dependencies change
     return () => {
       if (workerRef.current) {
@@ -1972,7 +1987,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         workerRef.current = null;
         console.log('[Chart] Terminated old worker');
       }
-
+      
       // Clear cache when timeframe/pair changes
       cacheRef.current.clear();
       isInitialLoadRef.current = true; // Reset flag on new data load
@@ -1983,7 +1998,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       isInitialDataLoadedRef.current = false; // Reset update strategy flag
       lastSetDataTimeRef.current = 0; // Reset setData timer
       setLoadingOlder(false);
-
+      
       // Clear chart data immediately to prevent old data from showing
       if (seriesRef.current && volumeSeriesRef.current) {
         seriesRef.current.setData([]);
@@ -1995,9 +2010,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const currentExchange = exchange;
       const currentPair = pair;
       const currentTimeframe = timeframe;
-
+      
       const now = Date.now();
-
+      
       // Calculate optimal time range based on timeframe to get ~500-800 candles
       let hoursBack = 24;
       if (currentTimeframe === 10) { // 10s
@@ -2017,7 +2032,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       } else if (currentTimeframe === 86400) { // 1d
         hoursBack = 8760; // 365 days
       }
-
+      
       const from = now - hoursBack * 60 * 60 * 1000;
       const to = now;
 
@@ -2030,7 +2045,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       // Next.js/Binance API only returns closed candles, causing delays on short timeframes
       const useRailway = true; // Always use Railway for consistent behavior
       console.log(`[Chart] Using Railway backend for ${currentTimeframe}s timeframe`);
-
+      
       const response = await historicalService.fetch(from, to, currentTimeframe, marketList, useRailway, marketType);
 
       // Check if exchange/pair changed during fetch
@@ -2063,25 +2078,25 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
         // Update chart with historical data
         updateChart();
-
+        
         // CRITICAL: Check if we need to create a bar for current timeframe
         // Railway API may or may not include the current incomplete bar
         const now = Date.now();
         const currentBarTime = Math.floor(now / (currentTimeframe * 1000)) * (currentTimeframe * 1000);
         const lastHistoricalBar = response.data[response.data.length - 1];
-
+        
         // console.log('[Chart] 🔍 Live bar check:', {
         //   now: new Date(now).toISOString(),
         //   currentBarWindow: new Date(currentBarTime).toISOString(),
         //   lastHistoricalBar: new Date(lastHistoricalBar.time).toISOString(),
         //   lastBarIsCurrentWindow: lastHistoricalBar.time === currentBarTime
         // });
-
+        
         // Check if last bar is EMPTY (no trades yet)
-        const isLastBarEmpty = lastHistoricalBar.high === lastHistoricalBar.open &&
-          lastHistoricalBar.low === lastHistoricalBar.open &&
-          lastHistoricalBar.vbuy === 0;
-
+        const isLastBarEmpty = lastHistoricalBar.high === lastHistoricalBar.open && 
+                               lastHistoricalBar.low === lastHistoricalBar.open && 
+                               lastHistoricalBar.vbuy === 0;
+        
         // console.log('[Chart] 📊 LAST BAR DETAILS:', {
         //   time: lastHistoricalBar.time,
         //   timeISO: new Date(lastHistoricalBar.time).toISOString(),
@@ -2094,17 +2109,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         //   isEmpty: isLastBarEmpty,
         //   isBeforeCurrentWindow: lastHistoricalBar.time < currentBarTime
         // });
-
+        
         // ALWAYS create current candle if it doesn't match current time window
         // This ensures immediate chart movement on all timeframes
         const shouldCreateNewBar = lastHistoricalBar.time !== currentBarTime;
-
+        
         if (shouldCreateNewBar) {
-          const reason = lastHistoricalBar.time < currentBarTime
-            ? 'Last bar is from previous window - creating current open candle'
+          const reason = lastHistoricalBar.time < currentBarTime 
+            ? 'Last bar is from previous window - creating current open candle' 
             : 'Last bar is EMPTY or from future - creating current open candle';
           console.log(`[Chart] ✅ FORCE creating current candle - ${reason}`);
-
+          
           const liveBar = {
             time: currentBarTime,
             open: lastHistoricalBar.close,
@@ -2119,7 +2134,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             lbuy: 0,
             lsell: 0,
           };
-
+          
           cacheRef.current.addBar(liveBar);
           updateChart();
         } else {
@@ -2134,7 +2149,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
 
       setIsLoading(false);
-
+      
       // Start worker immediately - current candle is already in cache
       // Worker will find it and start updating right away
       setupWorker();
@@ -2169,7 +2184,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const currentPair = currentPairRef.current;
       const currentTimeframe = currentTimeframeRef.current;
       const marketList = markets.length > 0 ? markets : [`${currentExchange}:${currentPair}`];
-
+      
       // Calculate time range for older data
       // Load same amount as initial load
       let hoursBack = 24;
@@ -2197,9 +2212,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const response = await historicalService.fetchOlder(from, to, currentTimeframe, marketList);
 
       // Check if exchange/pair changed during fetch by comparing with latest ref values
-      if (currentExchange !== currentExchangeRef.current ||
-        currentPair !== currentPairRef.current ||
-        currentTimeframe !== currentTimeframeRef.current) {
+      if (currentExchange !== currentExchangeRef.current || 
+          currentPair !== currentPairRef.current || 
+          currentTimeframe !== currentTimeframeRef.current) {
         console.log('[Chart] Exchange/pair changed during lazy load, ignoring old data');
         setLoadingOlder(false);
         isLoadingOlderRef.current = false;
@@ -2240,17 +2255,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const now = Date.now();
       const nextCandle = Math.ceil(now / (timeframe * 1000)) * (timeframe * 1000);
       const remaining = nextCandle - now;
-
+      
       const minutes = Math.floor(remaining / 60000);
       const seconds = Math.floor((remaining % 60000) / 1000);
-
+      
       const countdownText = `${minutes}:${seconds.toString().padStart(2, '0')}`;
       setCountdown(countdownText);
     };
-
+    
     // Update immediately
     updateCountdown();
-
+    
     // Then update every second
     const interval = setInterval(updateCountdown, 1000);
 
@@ -2269,7 +2284,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       workerRef.current.onerror = null;
       workerRef.current.terminate();
       workerRef.current = null;
-
+      
       // CRITICAL: Clear any pending RAF updates from old worker
       if (rafIdRef.current) {
         cancelAnimationFrame(rafIdRef.current);
@@ -2277,15 +2292,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         updateQueuedRef.current = false;
       }
     }
-
+    
     // Reset connection state
     setWsConnected(false);
-
+    
     // INCREMENT GLOBAL worker counter for unique IDs across all instances
     globalWorkerCounter += 1;
     const thisWorkerGeneration = globalWorkerCounter;
     currentWorkerGenerationRef.current = thisWorkerGeneration; // Update THIS instance's current generation
-
+    
     // Generate unique worker ID for debugging
     const workerId = Date.now().toString(36) + Math.random().toString(36).substring(7);
     // console.log('[Chart] 🆕 Creating NEW worker #' + thisWorkerGeneration, 'ID:', workerId.substring(0, 8));
@@ -2293,7 +2308,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Create new worker
     try {
       const worker = new Worker(new URL('@/workers/aggregator.ts', import.meta.url));
-
+      
       // Store worker generation on the worker object
       (worker as any)._workerGeneration = thisWorkerGeneration;
       (worker as any)._workerId = workerId;
@@ -2301,37 +2316,37 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       worker.onmessage = (event) => {
         // CRITICAL: Ignore messages from old workers - check THIS instance's current generation
         const currentGen = currentWorkerGenerationRef.current;
-
+        
         // DEBUG: Always log the check (20% to catch it faster)
         if (event.data.event === 'tick' && Math.random() < 0.2) {
           console.log('[Chart] 🔍 Check - worker gen:', thisWorkerGeneration, 'current:', currentGen, 'match:', currentGen === thisWorkerGeneration);
         }
-
+        
         if (currentGen !== thisWorkerGeneration) {
           console.warn('[Chart] ⚠️ IGNORING OLD worker generation', thisWorkerGeneration, '- current:', currentGen);
           return;
         }
-
+        
         const { event: eventType, data } = event.data;
 
         switch (eventType) {
           case 'connected':
             // console.log('[Chart] Worker #' + thisWorkerGeneration, 'connected');
             setWsConnected(true);
-
+            
             // NOW that we're connected, initialize the active bar
             // CRITICAL: ALWAYS calculate current time window from NOW, not from cache
             // Cache might have old bars from previous renders
             if (cacheRef.current && workerRef.current) {
               const now = Date.now();
               const currentCandleTime = Math.floor(now / (timeframe * 1000)) * (timeframe * 1000);
-
+              
               // console.log('[Chart] 📍 Current time window:', new Date(currentCandleTime).toISOString());
-
+              
               // Try to find current window bar in cache
               const allBars = cacheRef.current.getAllBars();
               let currentCandle = allBars.find(bar => bar.time === currentCandleTime);
-
+              
               if (currentCandle) {
                 // console.log('[Chart] ✅ Found current bar in cache, sending to worker:', currentCandle.close);
                 workerRef.current.postMessage({
@@ -2422,32 +2437,32 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       console.warn('[Chart] No cache in handleTick');
       return;
     }
-
+    
     // DEBUG: Log every tick to see what's happening
     // console.log('[Chart] 📥 Tick received:', bar.close, 'at', new Date(bar.time).toISOString());
-
+    
     // Add bar to cache
     cacheRef.current.addBar(bar);
-
+    
     // DEBUG: Check what cache returns after adding
     const allBars = cacheRef.current.getAllBars();
     const lastBar = allBars[allBars.length - 1];
     // console.log('[Chart] 📤 Cache last bar after add:', lastBar.close, 'at', new Date(lastBar.time).toISOString());
-
+    
     // Update current price immediately (works in background tabs)
     // This ensures title updates even when tab is not visible
     const priceDiff = Math.abs(bar.close - currentPrice);
     if (priceDiff > 0.00000001) {
       setCurrentPrice(bar.close);
     }
-
+    
     // Only queue update if chart is ready - otherwise skip silently
     // Chart will update when it becomes ready via setData
     if (!seriesRef.current || !volumeSeriesRef.current || !chartRef.current) {
       // Don't spam console - chart updates will happen when refs are ready
       return;
     }
-
+    
     // Queue single update per frame for chart rendering (aggr.trade style)
     if (!updateQueuedRef.current) {
       updateQueuedRef.current = true;
@@ -2470,7 +2485,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       console.log('[updateChart] ⚠️ Series not ready, skipping');
       return;
     }
-
+    
     // Double check chart is not disposed
     try {
       // Attempt to access a property - if disposed, this will throw
@@ -2481,29 +2496,29 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
 
     const bars = cacheRef.current.getAllBars();
-
+    
     // DEBUG: Log every 20th update
     if (Math.random() < 0.05) {
       console.log('[updateChart] 📊 Called with', bars.length, 'bars');
     }
-
+    
     if (bars.length === 0) {
       return;
     }
-
+    
     // Auto-adjust precision based on price (only once per pair)
     applyPrecision();
-
+    
     // Convert to candle data and volume data, remove duplicates
     const candleMap = new Map<Time, CandlestickData>();
     const volumeMap = new Map<Time, HistogramData>();
-
+    
     // Get the last bar timestamp for special handling
     const lastBarTime = bars.length > 0 ? bars[bars.length - 1].time : 0;
-
+    
     for (const bar of bars) {
       const time = Math.floor(bar.time / 1000) as Time;
-
+      
       // Keep the latest bar for each timestamp
       candleMap.set(time, {
         time,
@@ -2515,10 +2530,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
       // Calculate total volume and color based on buy/sell ratio
       const totalVolume = bar.vbuy + bar.vsell;
-
+      
       // Determine color: green if more buy volume, red if more sell volume
       let volumeColor: string;
-
+      
       // For the CURRENT BAR (last bar with live updates), use candle direction instead of vbuy/vsell
       // This ensures live bars are colored green/red even before trades arrive
       if (bar.time === lastBarTime && bar.open > 0) {
@@ -2532,7 +2547,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         // For historical bars with equal vbuy/vsell, use candle direction
         volumeColor = bar.close >= bar.open ? chartSettings.volumeUpColor : chartSettings.volumeDownColor;
       }
-
+      
       volumeMap.set(time, {
         time,
         value: totalVolume,
@@ -2562,48 +2577,48 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const barCountChanged = lastBarCountRef.current !== candleData.length;
     lastBarCountRef.current = candleData.length;
 
-    try {
-      // SIMPLIFIED DEBUG - only show critical info
-      const lastBar = bars[bars.length - 1];
-      const secondLastBar = bars.length > 1 ? bars[bars.length - 2] : null;
-
-      // Check for duplicate time bars
-      if (secondLastBar && secondLastBar.time === lastBar.time) {
-        console.error('[Chart] ⚠️ DUPLICATE TIME DETECTED!',
-          'Bar', bars.length - 1, ':', secondLastBar.close,
-          'vs Bar', bars.length, ':', lastBar.close,
-          'both at', new Date(lastBar.time).toISOString());
+      try {
+        // SIMPLIFIED DEBUG - only show critical info
+        const lastBar = bars[bars.length - 1];
+        const secondLastBar = bars.length > 1 ? bars[bars.length - 2] : null;
+        
+        // Check for duplicate time bars
+        if (secondLastBar && secondLastBar.time === lastBar.time) {
+          console.error('[Chart] ⚠️ DUPLICATE TIME DETECTED!', 
+            'Bar', bars.length - 1, ':', secondLastBar.close, 
+            'vs Bar', bars.length, ':', lastBar.close,
+            'both at', new Date(lastBar.time).toISOString());
+        }
+        
+        // Only log 10% of updates
+        if (Math.random() < 0.1) {
+          // console.log('[Chart] 📊 setData:', candleData.length, 'bars, last:', lastBar.close, 'at', new Date(lastBar.time).toISOString());
+        }
+        
+        // Smart update strategy:
+        // - Use setData for initial load or when bar count changes (new bar added)
+        // - Use update for real-time ticks on the same bar (more accurate, prevents color glitches)
+        const now = Date.now();
+        const timeSinceLastSetData = now - lastSetDataTimeRef.current;
+        const useUpdate = isInitialDataLoadedRef.current && !barCountChanged && timeSinceLastSetData > 500;
+        
+        if (useUpdate && candleData.length > 0 && volumeData.length > 0) {
+          // Real-time update: only update last bar (faster and more accurate)
+          const lastCandle = candleData[candleData.length - 1];
+          const lastVolume = volumeData[volumeData.length - 1];
+          seriesRef.current.update(lastCandle);
+          volumeSeriesRef.current.update(lastVolume);
+        } else {
+          // Full update: set all data (initial load or new bar)
+          seriesRef.current.setData(candleData);
+          volumeSeriesRef.current.setData(volumeData);
+          lastSetDataTimeRef.current = now;
+          isInitialDataLoadedRef.current = true;
+        }
+      } catch (error) {
+        console.error('[Chart] Error in setData:', error);
+        return;
       }
-
-      // Only log 10% of updates
-      if (Math.random() < 0.1) {
-        // console.log('[Chart] 📊 setData:', candleData.length, 'bars, last:', lastBar.close, 'at', new Date(lastBar.time).toISOString());
-      }
-
-      // Smart update strategy:
-      // - Use setData for initial load or when bar count changes (new bar added)
-      // - Use update for real-time ticks on the same bar (more accurate, prevents color glitches)
-      const now = Date.now();
-      const timeSinceLastSetData = now - lastSetDataTimeRef.current;
-      const useUpdate = isInitialDataLoadedRef.current && !barCountChanged && timeSinceLastSetData > 500;
-
-      if (useUpdate && candleData.length > 0 && volumeData.length > 0) {
-        // Real-time update: only update last bar (faster and more accurate)
-        const lastCandle = candleData[candleData.length - 1];
-        const lastVolume = volumeData[volumeData.length - 1];
-        seriesRef.current.update(lastCandle);
-        volumeSeriesRef.current.update(lastVolume);
-      } else {
-        // Full update: set all data (initial load or new bar)
-        seriesRef.current.setData(candleData);
-        volumeSeriesRef.current.setData(volumeData);
-        lastSetDataTimeRef.current = now;
-        isInitialDataLoadedRef.current = true;
-      }
-    } catch (error) {
-      console.error('[Chart] Error in setData:', error);
-      return;
-    }
 
     // Update current price from latest candle (only if changed to prevent re-render loops)
     // Use a small epsilon to avoid floating point precision issues
@@ -2617,7 +2632,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const now = Date.now();
     const timeSinceLastUpdate = now - lastIndicatorUpdateRef.current;
     const shouldUpdateIndicators = barCountChanged || (timeSinceLastUpdate > 1000);
-
+    
     // DEBUG: Log indicator update logic (every 10th update to avoid spam)
     if (Math.random() < 0.1) {
       console.log('[Indicators] Update check:', {
@@ -2629,7 +2644,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         now: now
       });
     }
-
+    
     if (shouldUpdateIndicators) {
       // console.log('[Indicators] 🔄 Updating indicators, bars:', bars.length, 'last close:', bars[bars.length - 1]?.close);
       updateIndicators(bars);
@@ -2660,7 +2675,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       console.log('[Indicators] ⚠️ Not enough data:', bars.length, 'bars (need 30+)');
       return; // Need minimum data for indicators
     }
-
+    
     // Safety check: don't update if chart is disposed
     if (!chartRef.current) {
       console.log('[Indicators] ⚠️ Chart not ready');
@@ -2752,7 +2767,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     if (settings.showBB && bbUpperRef.current && bbMiddleRef.current && bbLowerRef.current) {
       try {
         const { upper, middle, lower } = calculateBollingerBands(bars, settings.bbPeriod, settings.bbStdDev);
-
+        
         const upperData = bars
           .map((bar, index) => ({
             time: Math.floor(bar.time / 1000) as Time,
@@ -2902,32 +2917,32 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const handleContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-
+    
     if (!chartRef.current || !containerRef.current || !seriesRef.current) {
       console.warn('[Chart] Cannot open context menu: chart not ready');
       return;
     }
-
+    
     const rect = containerRef.current.getBoundingClientRect();
     const x = e.clientX;
     const y = e.clientY;
-
+    
     // Get price at mouse position using the chart coordinate system
     try {
       // Convert client Y to relative Y within the container
       const relativeY = y - rect.top;
-
+      
       // Use the series to convert coordinate to price
       const price = seriesRef.current.coordinateToPrice(relativeY);
-
-      console.log('[Chart] Context menu opened at:', {
-        clientX: x,
-        clientY: y,
-        relativeY,
+      
+      console.log('[Chart] Context menu opened at:', { 
+        clientX: x, 
+        clientY: y, 
+        relativeY, 
         price,
-        currentPrice
+        currentPrice 
       });
-
+      
       if (price !== null && price !== undefined) {
         setClickedPrice(price as number);
       } else {
@@ -2936,7 +2951,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     } catch (err) {
       console.error('[Chart] Failed to get price from coordinate:', err);
     }
-
+    
     setContextMenuPosition({ x, y });
     setContextMenuVisible(true);
   };
@@ -2944,7 +2959,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const handleResetView = () => {
     // Update chart with current cache data (removes any stale data)
     updateChart();
-
+    
     // Then fit all visible data
     if (chartRef.current) {
       chartRef.current.timeScale().fitContent();
@@ -2960,27 +2975,27 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return; // Only handle single touch
-
+    
     const touch = e.touches[0];
-
+    
     // If drawing tool is active, handle drawing instead of context menu
     if (activeTool !== 'none') {
       // CRITICAL: Prevent ALL chart interactions (pan/zoom) while drawing
       e.preventDefault();
       e.stopPropagation();
-
+      
       // For brush tool, start drawing immediately
       if (activeTool === 'brush') {
         handleBrushStart(touch.clientX, touch.clientY);
         longPressPositionRef.current = null;
         return;
       }
-
+      
       // For other tools, register first touch point
       longPressPositionRef.current = { x: touch.clientX, y: touch.clientY };
       return;
     }
-
+    
     // ✅ FIX #1: DISABLE long-press context menu on mobile completely
     // Mobile users should use the UI buttons, not long-press gestures
     // This prevents interference with drawing interactions
@@ -2996,30 +3011,30 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
     }, 500);
     */
-
+    
     // Just store position for potential drawing (no context menu)
     longPressPositionRef.current = { x: touch.clientX, y: touch.clientY };
   };
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (e.touches.length !== 1) return;
-
+    
     const touch = e.touches[0];
-
+    
     // Performance optimization: Use requestAnimationFrame to throttle state updates
     if (activeTool !== 'none') {
       // Cancel previous animation frame if pending
       if (rafUpdateRef.current !== null) {
         cancelAnimationFrame(rafUpdateRef.current);
       }
-
+      
       // Schedule update in next animation frame
       rafUpdateRef.current = requestAnimationFrame(() => {
         const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || isIOS);
         if (isMobile) {
           updateMagnifier(touch.clientX, touch.clientY);
         }
-
+        
         if (activeTool === 'brush' && isDrawingBrush) {
           handleBrushMove(touch.clientX, touch.clientY);
         } else if (activeTool !== 'brush' && tempDrawing) {
@@ -3027,27 +3042,27 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         }
       });
     }
-
+    
     // If brush tool is active and drawing
     if (activeTool === 'brush' && isDrawingBrush) {
       e.preventDefault();
       e.stopPropagation();
       return;
     }
-
+    
     // If drawing tool is active and first point set
     if (activeTool !== 'none' && tempDrawing && activeTool !== 'brush') {
       e.preventDefault();
       e.stopPropagation();
       return;
     }
-
+    
     // Cancel long-press if finger moves too much (for context menu)
     if (longPressPositionRef.current && activeTool === 'none') {
       const dx = touch.clientX - longPressPositionRef.current.x;
       const dy = touch.clientY - longPressPositionRef.current.y;
       const distance = Math.sqrt(dx * dx + dy * dy);
-
+      
       // Cancel if moved more than 10 pixels
       if (distance > 10) {
         if (longPressTimerRef.current) {
@@ -3057,7 +3072,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         longPressPositionRef.current = null;
       }
     }
-
+    
     // ✅ FIX #2: Clear context menu timer if dragging a drawing or point
     if (draggingDrawing || draggingPoint) {
       if (longPressTimerRef.current) {
@@ -3071,7 +3086,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const handleTouchEnd = (e: React.TouchEvent) => {
     // Clear magnifier when touch ends
     setIsMagnifierVisible(false);
-
+    
     // If brush tool was drawing, end it
     if (activeTool === 'brush' && isDrawingBrush) {
       e.preventDefault();
@@ -3080,14 +3095,14 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       longPressPositionRef.current = null;
       return;
     }
-
+    
     // If drawing tool is active and we have a touch position, handle as click
     if (activeTool !== 'none' && longPressPositionRef.current) {
       e.preventDefault();
       e.stopPropagation();
       handleChartClickForDrawing(longPressPositionRef.current.x, longPressPositionRef.current.y);
     }
-
+    
     // Clear long-press timer
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
@@ -3101,31 +3116,31 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       console.warn('[Chart] Cannot open context menu: chart not ready');
       return;
     }
-
+    
     const rect = containerRef.current.getBoundingClientRect();
-
+    
     // Get price at touch position
     try {
       const relativeY = clientY - rect.top;
       const price = seriesRef.current.coordinateToPrice(relativeY);
-
-      console.log('[Chart] Touch context menu opened at:', {
-        clientX,
-        clientY,
-        relativeY,
-        price
+      
+      console.log('[Chart] Touch context menu opened at:', { 
+        clientX, 
+        clientY, 
+        relativeY, 
+        price 
       });
-
+      
       if (price !== null && price !== undefined) {
         setClickedPrice(price as number);
       }
     } catch (err) {
       console.error('[Chart] Failed to get price from touch coordinate:', err);
     }
-
+    
     setContextMenuPosition({ x: clientX, y: clientY });
     setContextMenuVisible(true);
-
+    
     // Provide haptic feedback on mobile (if available)
     if (navigator.vibrate) {
       navigator.vibrate(50);
@@ -3133,13 +3148,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   };
 
   const handleSetAlert = () => {
-    console.log('[Chart] Setting alert:', {
-      clickedPrice,
-      currentPrice,
-      exchange,
-      pair
+    console.log('[Chart] Setting alert:', { 
+      clickedPrice, 
+      currentPrice, 
+      exchange, 
+      pair 
     });
-
+    
     if (clickedPrice) {
       // Use clickedPrice itself as currentPrice if currentPrice not set yet
       const refPrice = currentPrice || clickedPrice;
@@ -3160,8 +3175,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     if (typeof window !== 'undefined') {
       localStorage.setItem('chartSettings', JSON.stringify(newSettings));
     }
-
-
+    
+    
     // No need to reload - indicators will update automatically via useEffect
   };
 
@@ -3193,23 +3208,23 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
     setHistoryPointer(drawingsHistoryRef.current.length - 1);
     setHistoryStackLength(drawingsHistoryRef.current.length); // ✅ FIX #4: Update state
-
+    
     // Remove all drawing series from chart
     drawingSeriesRef.current.forEach((series) => {
       chartRef.current?.removeSeries(series);
     });
     drawingSeriesRef.current.clear();
-
+    
     // Remove all horizontal price lines
     horizontalLinesRef.current.forEach((priceLine) => {
       seriesRef.current?.removePriceLine(priceLine);
     });
     horizontalLinesRef.current.clear();
-
+    
     // Clear drawings state
     setDrawings([]);
     setSelectedDrawingId(null);
-
+    
     // Explicitly clear localStorage for this exchange/pair
     const storageKey = `drawings_${exchange}_${pair}`;
     try {
@@ -3241,12 +3256,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       setSelectedDrawingId(null);
       setHistoryPointer(prev => prev - 1);
       setHistoryStackLength(drawingsHistoryRef.current.length); // ✅ FIX #4: Update state
-
+      
       // ✅ FIX #3: Haptic feedback for undo
       if (typeof window !== 'undefined' && (window as any).Capacitor) {
-        Haptics.impact({ style: ImpactStyle.Medium }).catch(() => { });
+        Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
       }
-
+      
       // Save to localStorage
       const storageKey = `drawings_${exchange}_${pair}`;
       try {
@@ -3256,7 +3271,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
     }
   };
-
+  
   /**
    * Save current drawings state to history before modification
    */
@@ -3265,16 +3280,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     if (historyPointer < drawingsHistoryRef.current.length - 1) {
       drawingsHistoryRef.current = drawingsHistoryRef.current.slice(0, historyPointer + 1);
     }
-
+    
     // ✅ FIX #1: Use DEEP COPY to prevent reference mutations
     const deepCopy = JSON.parse(JSON.stringify(drawings));
     drawingsHistoryRef.current.push(deepCopy);
-
+    
     // Limit history to last 50 states
     if (drawingsHistoryRef.current.length > 50) {
       drawingsHistoryRef.current.shift();
     }
-
+    
     const newPointer = drawingsHistoryRef.current.length - 1;
     setHistoryPointer(newPointer);
     setHistoryStackLength(drawingsHistoryRef.current.length); // ✅ FIX #4: Update state for re-render
@@ -3295,35 +3310,35 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const handleDrawingDragStart = (drawingId: string, clientX: number, clientY: number) => {
     const drawing = drawings.find(d => d.id === drawingId);
     if (!drawing) return;
-
+    
     // Save to history before starting drag (so undo can revert entire drag operation)
     saveToHistory();
-
+    
     // ✅ INSTANT HAPTICS: Trigger immediately before any async operations
     if (typeof window !== 'undefined' && (window as any).Capacitor) {
-      Haptics.impact({ style: ImpactStyle.Medium }).catch(() => { });
+      Haptics.impact({ style: ImpactStyle.Medium }).catch(() => {});
     }
-
+    
     if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
-
+    
     const rect = containerRef.current.getBoundingClientRect();
     const startPixelX = clientX - rect.left;
     const startPixelY = clientY - rect.top;
-
+    
     const timeScale = chartRef.current.timeScale();
     const series = seriesRef.current;
-
+    
     // ✅ PREPARATION: Convert original points to Logical Indices
     const originalPointsWithLogical = drawing.points.map(point => {
       // Get pixel coordinate for this time
       const pixelX = timeScale.timeToCoordinate(point.time as any);
-
+      
       // Convert to logical index
       let logicalIndex: number | null = null;
       if (pixelX !== null) {
         logicalIndex = timeScale.coordinateToLogical(pixelX) as number | null;
       }
-
+      
       // Fallback: If we can't get logical index, estimate based on time
       if (logicalIndex === null) {
         const visibleRange = timeScale.getVisibleRange();
@@ -3335,30 +3350,30 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           logicalIndex = (visibleLogicalRange.from as number) + (timeDiff / totalTime) * totalBars;
         }
       }
-
+      
       // Debug: Log if logicalIndex is still null
       if (logicalIndex === null || isNaN(logicalIndex)) {
         console.warn('[Drag] Failed to get logical index for point:', point);
         logicalIndex = 0;
       }
-
+      
       return {
         time: point.time,
         price: point.price,
         logicalIndex: logicalIndex
       };
     });
-
+    
     // Debug: Log preparation
     // console.log('[Drag Start] Original points with logical:', originalPointsWithLogical);
-
+    
     // Get start logical index and price for delta calculations
     const startLogicalIndex = timeScale.coordinateToLogical(startPixelX) as number | null;
     const startPrice = series.coordinateToPrice(startPixelY);
-
+    
     // Debug: Log start position
     // console.log('[Drag Start] Start logical:', startLogicalIndex, 'Start price:', startPrice);
-
+    
     // ✅ DIRECT EVENT BINDING: Set ref immediately (no state re-render delay)
     dragStateRef.current = {
       isDragging: true,
@@ -3369,7 +3384,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       rafId: null,
       cleanupFn: null
     };
-
+    
     // Also update state for visual feedback (selected highlight)
     setDraggingDrawing({
       drawingId,
@@ -3377,45 +3392,45 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       startY: clientY,
       originalPoints: [...drawing.points]
     });
-
+    
     // ✅ ROBUST MOBILE DRAGGING: Logical Index-Based (TradingView Method)
     const handleWindowTouchMove = (e: TouchEvent) => {
       // ✅ CRITICAL: Prevent scrolling IMMEDIATELY (not inside RAF)
       e.preventDefault();
-
+      
       if (!e.touches[0]) return;
       if (!dragStateRef.current.isDragging) return;
       if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
-
+      
       const touch = e.touches[0];
       const currentClientX = touch.clientX;
       const currentClientY = touch.clientY;
-
+      
       // Cancel previous RAF if still pending
       if (dragStateRef.current.rafId !== null) {
         cancelAnimationFrame(dragStateRef.current.rafId);
       }
-
+      
       // ✅ RAF THROTTLE: Schedule visual update in next frame (60fps)
       dragStateRef.current.rafId = requestAnimationFrame(() => {
         if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
-
+        
         const rect = containerRef.current.getBoundingClientRect();
         const currentPixelX = currentClientX - rect.left;
         const currentPixelY = currentClientY - rect.top;
-
+        
         const timeScale = chartRef.current.timeScale();
         const series = seriesRef.current;
-
+        
         // ✅ STEP 1: Calculate Price Delta (Standard)
         const currentPrice = series.coordinateToPrice(currentPixelY);
         if (startPrice === null || currentPrice === null) return;
-
+        
         const priceDelta = currentPrice - startPrice;
-
+        
         // ✅ STEP 2: Calculate Logical Delta (The Key Fix)
         let currentLogical = timeScale.coordinateToLogical(currentPixelX);
-
+        
         // Fallback if coordinateToLogical returns null
         if (currentLogical === null || startLogicalIndex === null) {
           // Calculate based on pixel delta and bar spacing
@@ -3424,50 +3439,50 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           const logicalDeltaEstimate = deltaX / barSpacing;
           currentLogical = ((startLogicalIndex ?? 0) + logicalDeltaEstimate) as any;
         }
-
+        
         const logicalDelta = (currentLogical as number) - (startLogicalIndex ?? 0);
-
+        
         // Debug: Log delta
         // console.log('[Drag Move] Logical delta:', logicalDelta, 'Price delta:', priceDelta);
-
+        
         // ✅ STEP 3: Apply to All Points
         setDrawings(prev => prev.map(drawing => {
           if (drawing.id !== dragStateRef.current.drawingId) return drawing;
-
+          
           const newPoints = (dragStateRef.current.originalPoints as any[]).map((point) => {
             // New logical index
             const newLogicalIndex = point.logicalIndex + logicalDelta;
-
+            
             // New price
             const newPrice = point.price + priceDelta;
-
+            
             // Debug first point
             // if (point === dragStateRef.current.originalPoints[0]) {
             //   console.log('[Drag Move] Point 0: original logical:', point.logicalIndex, '→ new:', newLogicalIndex);
             // }
-
+            
             // ✅ Convert Logical Index back to Time
             const newPixelX = timeScale.logicalToCoordinate(newLogicalIndex);
             let newTime: number | null = null;
-
+            
             if (newPixelX !== null) {
               newTime = timeScale.coordinateToTime(newPixelX as any) as number | null;
             }
-
+            
             // ✅ HANDLING FUTURE/EMPTY AREAS: If coordinateToTime returns null
             if (newTime === null) {
               // Estimate time based on logical index difference
               const visibleRange = timeScale.getVisibleRange();
               const visibleLogicalRange = timeScale.getVisibleLogicalRange();
-
+              
               if (visibleRange && visibleLogicalRange) {
                 // Get the last known time
                 const lastKnownTime = visibleRange.to as number;
                 const lastKnownLogical = visibleLogicalRange.to;
-
+                
                 // Calculate how many bars beyond the visible range
                 const barsBeyond = newLogicalIndex - lastKnownLogical;
-
+                
                 // Estimate time (each bar = timeframe seconds)
                 newTime = lastKnownTime + (barsBeyond * timeframe);
               } else {
@@ -3475,81 +3490,81 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                 newTime = (point.time as number) + (logicalDelta * timeframe);
               }
             }
-
+            
             // Force cast to Time (allow any value)
-            return {
-              time: (newTime ?? point.time) as Time,
-              price: newPrice
+            return { 
+              time: (newTime ?? point.time) as Time, 
+              price: newPrice 
             };
           });
-
+          
           return { ...drawing, points: newPoints };
         }));
-
+        
         dragStateRef.current.rafId = null;
       });
     };
-
+    
     const handleWindowMouseMove = (e: MouseEvent) => {
       if (!dragStateRef.current.isDragging) return;
       if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
-
+      
       const currentClientX = e.clientX;
       const currentClientY = e.clientY;
-
+      
       // Cancel previous RAF if still pending
       if (dragStateRef.current.rafId !== null) {
         cancelAnimationFrame(dragStateRef.current.rafId);
       }
-
+      
       // ✅ RAF THROTTLE for mouse with same logical index logic
       dragStateRef.current.rafId = requestAnimationFrame(() => {
         if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
-
+        
         const rect = containerRef.current.getBoundingClientRect();
         const currentPixelX = currentClientX - rect.left;
         const currentPixelY = currentClientY - rect.top;
-
+        
         const timeScale = chartRef.current.timeScale();
         const series = seriesRef.current;
-
+        
         // Calculate Price Delta
         const currentPrice = series.coordinateToPrice(currentPixelY);
         if (startPrice === null || currentPrice === null) return;
-
+        
         const priceDelta = currentPrice - startPrice;
-
+        
         // Calculate Logical Delta
         let currentLogical = timeScale.coordinateToLogical(currentPixelX);
-
+        
         if (currentLogical === null || startLogicalIndex === null) {
           const deltaX = currentPixelX - startPixelX;
           const barSpacing = timeScale.options().barSpacing || 6;
           const logicalDeltaEstimate = deltaX / barSpacing;
           currentLogical = ((startLogicalIndex ?? 0) + logicalDeltaEstimate) as any;
         }
-
+        
         const logicalDelta = (currentLogical as number) - (startLogicalIndex ?? 0);
-
+        
         // Apply to All Points
         setDrawings(prev => prev.map(drawing => {
           if (drawing.id !== dragStateRef.current.drawingId) return drawing;
-
+          
           const newPoints = (dragStateRef.current.originalPoints as any[]).map((point) => {
             const newLogicalIndex = point.logicalIndex + logicalDelta;
             const newPrice = point.price + priceDelta;
-
+            
             const newPixelX = timeScale.logicalToCoordinate(newLogicalIndex);
             let newTime: number | null = null;
-
+            
             if (newPixelX !== null) {
               newTime = timeScale.coordinateToTime(newPixelX as any) as number | null;
             }
-
+            
             if (newTime === null) {
               const visibleRange = timeScale.getVisibleRange();
               const visibleLogicalRange = timeScale.getVisibleLogicalRange();
-
+              
               if (visibleRange && visibleLogicalRange) {
                 const lastKnownTime = visibleRange.to as number;
                 const lastKnownLogical = visibleLogicalRange.to;
@@ -3559,33 +3574,33 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                 newTime = (point.time as number) + (logicalDelta * timeframe);
               }
             }
-
-            return {
-              time: (newTime ?? point.time) as Time,
-              price: newPrice
+            
+            return { 
+              time: (newTime ?? point.time) as Time, 
+              price: newPrice 
             };
           });
-
+          
           return { ...drawing, points: newPoints };
         }));
-
+        
         dragStateRef.current.rafId = null;
       });
     };
-
+    
     const handleWindowTouchEnd = () => {
       // Cancel any pending RAF
       if (dragStateRef.current.rafId !== null) {
         cancelAnimationFrame(dragStateRef.current.rafId);
         dragStateRef.current.rafId = null;
       }
-
+      
       // Cleanup listeners
       window.removeEventListener('mousemove', handleWindowMouseMove);
       window.removeEventListener('mouseup', handleWindowMouseUp);
       window.removeEventListener('touchmove', handleWindowTouchMove);
       window.removeEventListener('touchend', handleWindowTouchEnd);
-
+      
       // Reset drag state
       dragStateRef.current = {
         isDragging: false,
@@ -3596,14 +3611,14 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         rafId: null,
         cleanupFn: null
       };
-
+      
       handleDrawingDragEnd();
     };
-
+    
     const handleWindowMouseUp = () => {
       handleWindowTouchEnd(); // Same cleanup logic
     };
-
+    
     // ✅ ATTACH IMMEDIATELY: No waiting for re-render
     // CRITICAL: { passive: false } on touchmove to allow preventDefault
     window.addEventListener('mousemove', handleWindowMouseMove);
@@ -3614,40 +3629,40 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
   const handleDrawingDragMove = (clientX: number, clientY: number) => {
     if (!draggingDrawing || !containerRef.current || !chartRef.current || !seriesRef.current) return;
-
+    
     const rect = containerRef.current.getBoundingClientRect();
     const deltaX = clientX - draggingDrawing.startX;
     const deltaY = clientY - draggingDrawing.startY;
-
+    
     const timeScale = chartRef.current.timeScale();
     const visibleRange = timeScale.getVisibleRange();
     const visibleLogicalRange = timeScale.getVisibleLogicalRange();
-
+    
     // Convert delta pixels to time/price deltas
     setDrawings(prev => prev.map(drawing => {
       if (drawing.id !== draggingDrawing.drawingId) return drawing;
-
+      
       const newPoints = draggingDrawing.originalPoints.map((point, idx) => {
         try {
           // Get original pixel position
           const origX = timeScale.timeToCoordinate(point.time as any);
           const origY = seriesRef.current!.priceToCoordinate(point.price);
-
+          
           if (origX === null || origY === null) return point;
-
+          
           // Apply delta
           const newX = origX + deltaX;
           const newY = origY + deltaY;
-
+          
           // Convert back to time/price
           let newTime = timeScale.coordinateToTime(newX as any);
           const newPrice = seriesRef.current!.coordinateToPrice(newY);
-
+          
           // If newTime is null (dragging outside data range), extrapolate
           if (!newTime && visibleRange && visibleLogicalRange) {
             const chartWidth = timeScale.width();
             const lastBarCoordinate = timeScale.timeToCoordinate(visibleRange.to as any);
-
+            
             if (lastBarCoordinate !== null && newX > lastBarCoordinate) {
               const pixelsBeyond = newX - lastBarCoordinate;
               const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
@@ -3664,15 +3679,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
               newTime = extrapolatedTime as any;
             }
           }
-
+          
           if (!newTime || newPrice === null) return point;
-
+          
           return { time: newTime as Time, price: newPrice };
         } catch (e) {
           return point;
         }
       });
-
+      
       return { ...drawing, points: newPoints };
     }));
   };
@@ -3687,61 +3702,61 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const handleDragPoint = (drawingId: string, pointIndex: number, clientX: number, clientY: number) => {
     const drawing = drawings.find(d => d.id === drawingId);
     if (!drawing) return;
-
+    
     // Save to history before starting point drag (so undo can revert entire drag operation)
     saveToHistory();
-
+    
     // ✅ INSTANT HAPTICS: Trigger immediately
     if (typeof window !== 'undefined' && (window as any).Capacitor) {
-      Haptics.impact({ style: ImpactStyle.Light }).catch(() => { });
+      Haptics.impact({ style: ImpactStyle.Light }).catch(() => {});
     }
-
+    
     setDraggingPoint({
       drawingId,
       pointIndex,
     });
-
+    
     // ✅ DIRECT EVENT BINDING: Create RAF-throttled handler
     let rafId: number | null = null;
-
+    
     const handleMove = (e: MouseEvent | TouchEvent) => {
       // Cancel previous RAF if still pending
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
       }
-
+      
       const moveClientX = 'touches' in e ? e.touches[0]?.clientX : e.clientX;
       const moveClientY = 'touches' in e ? e.touches[0]?.clientY : e.clientY;
-
+      
       if (!moveClientX || !moveClientY) return;
-
+      
       // Prevent default on touch to stop scrolling
       if ('touches' in e) {
         e.preventDefault();
       }
-
+      
       // ✅ RAF THROTTLE: Schedule visual update
       rafId = requestAnimationFrame(() => {
         if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
-
+        
         const rect = containerRef.current.getBoundingClientRect();
         const x = moveClientX - rect.left;
         const y = moveClientY - rect.top;
-
+        
         const timeScale = chartRef.current.timeScale();
         let newTime = timeScale.coordinateToTime(x as any);
         const newPrice = seriesRef.current.coordinateToPrice(y);
-
+        
         // Extrapolate if outside visible range
         if (!newTime) {
           const visibleRange = timeScale.getVisibleRange();
           const visibleLogicalRange = timeScale.getVisibleLogicalRange();
-
+          
           if (visibleRange && visibleLogicalRange) {
             const chartWidth = timeScale.width();
             const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
             const pixelsPerBar = chartWidth / visibleBars;
-
+            
             if (x > chartWidth) {
               const pixelsBeyond = x - chartWidth;
               const barsBeyond = pixelsBeyond / pixelsPerBar;
@@ -3753,30 +3768,30 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             }
           }
         }
-
+        
         if (!newTime || newPrice === null) return;
-
+        
         // Update the specific point
         setDrawings(prev => prev.map(d => {
           if (d.id !== drawingId) return d;
-
+          
           const newPoints = [...d.points];
           newPoints[pointIndex] = { time: newTime as Time, price: newPrice };
-
+          
           return { ...d, points: newPoints };
         }));
-
+        
         rafId = null;
       });
     };
-
+    
     const handleEnd = () => {
       // Cancel any pending RAF
       if (rafId !== null) {
         cancelAnimationFrame(rafId);
         rafId = null;
       }
-
+      
       // Cleanup listeners
       setDraggingPoint(null);
       window.removeEventListener('mousemove', handleMove);
@@ -3784,7 +3799,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       window.removeEventListener('touchmove', handleMove);
       window.removeEventListener('touchend', handleEnd);
     };
-
+    
     // ✅ ATTACH IMMEDIATELY: No waiting for re-render
     window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleEnd);
@@ -3795,21 +3810,21 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const handleDeleteDrawing = (id: string) => {
     // Save to history before deleting
     saveToHistory();
-
+    
     // Remove trend line series
     const series = drawingSeriesRef.current.get(id);
     if (series && chartRef.current) {
       chartRef.current.removeSeries(series);
       drawingSeriesRef.current.delete(id);
     }
-
+    
     // Remove horizontal price line
     const priceLine = horizontalLinesRef.current.get(id);
     if (priceLine && seriesRef.current) {
       seriesRef.current.removePriceLine(priceLine);
       horizontalLinesRef.current.delete(id);
     }
-
+    
     setDrawings((prev) => prev.filter((d) => d.id !== id));
     setSelectedDrawingId(null);
   };
@@ -3817,7 +3832,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const handleEditDrawing = (drawing: Drawing) => {
     // Remove the old drawing
     handleDeleteDrawing(drawing.id);
-
+    
     // Set the tool type and enter edit mode
     if (drawing.type === 'horizontal') {
       setActiveTool('horizontal');
@@ -3828,7 +3843,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     } else if (drawing.type === 'circle') {
       setActiveTool('circle');
     }
-
+    
     setSelectedDrawingId(null);
   };
 
@@ -3837,31 +3852,31 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    */
   const snapToNearest = (time: number, price: number, snapDistance: number = 5): { time: number; price: number } => {
     if (!chartRef.current || !seriesRef.current) return { time, price };
-
+    
     const timeScale = chartRef.current.timeScale();
     const visibleRange = timeScale.getVisibleRange();
     const visibleLogicalRange = timeScale.getVisibleLogicalRange();
-
+    
     if (!visibleRange || !visibleLogicalRange) return { time, price };
-
+    
     // Snap to nearest bar time
     const chartWidth = timeScale.width();
     const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
     const pixelsPerBar = chartWidth / visibleBars;
     const barTime = Math.round((time - (visibleRange.from as number)) / timeframe) * timeframe + (visibleRange.from as number);
     const barPixel = timeScale.timeToCoordinate(barTime as any);
-
+    
     if (barPixel !== null) {
       const currentPixel = timeScale.timeToCoordinate(time as any);
       if (currentPixel !== null && Math.abs(currentPixel - barPixel) < snapDistance * pixelsPerBar) {
         time = barTime;
       }
     }
-
+    
     // Snap to nearest price level (round to reasonable precision)
     const pricePrecision = Math.pow(10, Math.max(0, Math.floor(Math.log10(price)) - 2));
     price = Math.round(price / pricePrecision) * pricePrecision;
-
+    
     return { time, price };
   };
 
@@ -3873,16 +3888,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       setPreviewDrawing(null);
       return;
     }
-
+    
     const rect = containerRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-
+    
     const timeScale = chartRef.current.timeScale();
     const visibleRange = timeScale.getVisibleRange();
     let time = timeScale.coordinateToTime(x as any);
     let price = seriesRef.current.coordinateToPrice(y);
-
+    
     // If time is null OR outside visible range, calculate proper time from pixel position
     if (!time || (visibleRange && time && ((time as number) < (visibleRange.from as number) || (time as number) > (visibleRange.to as number)))) {
       if (visibleRange) {
@@ -3890,7 +3905,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         if (visibleLogicalRange) {
           const chartWidth = timeScale.width();
           const lastBarCoordinate = timeScale.timeToCoordinate(visibleRange.to as any);
-
+          
           if (lastBarCoordinate !== null && x > lastBarCoordinate) {
             const pixelsBeyond = x - lastBarCoordinate;
             const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
@@ -3921,14 +3936,14 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         }
       }
     }
-
+    
     if (!time || price === null) return;
-
+    
     // ✅ FIX #3: Apply magnet mode with haptics during preview
     const finalPrice = getMagnetPrice(time as number, price);
-
+    
     const currentPoint: DrawingPoint = { time: time as Time, price: finalPrice };
-
+    
     // Show preview even before first click (TradingView behavior)
     if (!tempDrawing) {
       // Preview from current mouse position (will be first point when clicked)
@@ -3948,13 +3963,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
       return;
     }
-
+    
     // Create preview drawing - exactly as it will be saved
     const threePointTools = ['triangle', 'channel', 'gann-fan', 'speed-lines', 'pitchfork', 'trend-fib-extension'];
     const fourPointTools = ['wedge'];
     const tempDraw = drawings.find(d => d.id === 'temp');
     const currentPointCount = tempDraw ? tempDraw.points.length : (tempDrawing ? 1 : 0);
-
+    
     let previewPoints: DrawingPoint[] = [];
     if (fourPointTools.includes(activeTool)) {
       if (currentPointCount === 0) {
@@ -3995,7 +4010,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       if (!tempDrawing) return; // TypeScript guard
       previewPoints = [{ ...tempDrawing }, { ...currentPoint }];
     }
-
+    
     const preview: Drawing = {
       id: 'preview',
       type: activeTool as DrawingType,
@@ -4006,7 +4021,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       // Trend lines extend right by default (like TradingView) - preview should match final result
       extendRight: activeTool === 'trend'
     };
-
+    
     setPreviewDrawing(preview);
   };
 
@@ -4020,33 +4035,33 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       lastSnappedPriceRef.current = null;
       return rawPrice;
     }
-
+    
     // Get all bars from cache
     const bars = cacheRef.current.getAllBars();
     if (bars.length === 0) {
       lastSnappedPriceRef.current = null;
       return rawPrice;
     }
-
+    
     // Find the bar closest to this time
     const bar = bars.find(b => {
       const barTime = typeof b.time === 'number' ? b.time : (b.time as any) / 1000;
       return Math.abs(barTime - time) < timeframe / 2;
     });
-
+    
     if (!bar) {
       lastSnappedPriceRef.current = null;
       return rawPrice;
     }
-
+    
     // OHLC values array
     const levels = [bar.open, bar.high, bar.low, bar.close];
-
+    
     // Find closest level
     const closest = levels.reduce((prev, curr) => {
       return (Math.abs(curr - rawPrice) < Math.abs(prev - rawPrice) ? curr : prev);
     });
-
+    
     // Apply snap if within threshold (0.5% of price)
     const threshold = rawPrice * 0.005;
     if (Math.abs(closest - rawPrice) < threshold) {
@@ -4062,7 +4077,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       }
       return closest;
     }
-
+    
     // Reset if snap broken
     lastSnappedPriceRef.current = null;
     return rawPrice;
@@ -4077,24 +4092,24 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       setIsMagnifierVisible(false);
       return;
     }
-
+    
     const rect = containerRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-
+    
     try {
       const timeScale = chartRef.current.timeScale();
       const time = timeScale.coordinateToTime(x as any);
       const price = seriesRef.current.coordinateToPrice(y);
-
+      
       if (time && price !== null) {
         const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || isIOS);
-
+        
         // Smart positioning: Adjust magnifier based on screen edges
         const magnifierSize = 80; // 80px diameter
         const offset = isMobile ? 80 : 60; // Distance from finger
         const edgeThreshold = 120; // Show below if within 120px from top
-
+        
         // Vertical position: Show above or below based on position
         let magnifierY: number;
         if (y < edgeThreshold) {
@@ -4104,7 +4119,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           // Normal position - show above finger
           magnifierY = y - offset;
         }
-
+        
         // Horizontal position: Keep within screen bounds
         const magnifierX = Math.max(
           magnifierSize / 2 + 10, // Left edge padding
@@ -4136,26 +4151,26 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         if (magnifierCanvasRef.current && containerRef.current) {
           const magnifierCanvas = magnifierCanvasRef.current;
           const magnifierCtx = magnifierCanvas.getContext('2d');
-
+          
           if (magnifierCtx) {
             // ✅ FIX #2: Find ALL chart canvas elements (Lightweight Charts uses multiple stacked layers)
             const canvases = containerRef.current.querySelectorAll('canvas');
-
+            
             if (canvases.length > 0) {
               const scale = 2.5; // Zoom level (2.5x magnification)
               const sourceSize = magnifierSize / scale; // Source region size from chart
-
+              
               // Clear previous content
               magnifierCtx.clearRect(0, 0, magnifierSize, magnifierSize);
-
+              
               // ✅ FIX #4: Calculate devicePixelRatio for Retina displays
               const ratio = window.devicePixelRatio || 1;
-
+              
               // Calculate source region (centered on touch point) - scaled by ratio
               const sourceX = Math.max(0, (x - sourceSize / 2) * ratio);
               const sourceY = Math.max(0, (y - sourceSize / 2) * ratio);
               const scaledSourceSize = sourceSize * ratio;
-
+              
               // Draw ALL canvas layers in order (background, grid, candles, etc.)
               canvases.forEach((chartCanvas) => {
                 magnifierCtx.drawImage(
@@ -4184,34 +4199,34 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    */
   const handleBrushStart = (clientX: number, clientY: number) => {
     if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
-
+    
     const rect = containerRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-
+    
     const timeScale = chartRef.current.timeScale();
     const time = timeScale.coordinateToTime(x as any);
     const price = seriesRef.current.coordinateToPrice(y);
-
+    
     if (!time || price === null) return;
-
+    
     setIsDrawingBrush(true);
     setBrushPoints([{ time: time as Time, price: price }]);
   };
 
   const handleBrushMove = (clientX: number, clientY: number) => {
     if (!isDrawingBrush || !containerRef.current || !chartRef.current || !seriesRef.current) return;
-
+    
     const rect = containerRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-
+    
     const timeScale = chartRef.current.timeScale();
     const time = timeScale.coordinateToTime(x as any);
     const price = seriesRef.current.coordinateToPrice(y);
-
+    
     if (!time || price === null) return;
-
+    
     setBrushPoints(prev => [...prev.map(p => ({ ...p })), { time: time as Time, price: price }]);
   };
 
@@ -4221,10 +4236,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       setBrushPoints([]);
       return;
     }
-
+    
     // Save to history before adding new drawing
     saveToHistory();
-
+    
     // Create brush drawing
     const newDrawing: Drawing = {
       id: `drawing-${Date.now()}`,
@@ -4233,7 +4248,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       color: '#2962FF',
       lineWidth: 2
     };
-
+    
     setDrawings(prev => [...prev, newDrawing]);
     setIsDrawingBrush(false);
     setBrushPoints([]);
@@ -4248,7 +4263,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       console.log('  clientX:', clientX, 'clientY:', clientY);
       console.log('  tempDrawing:', tempDrawing);
       console.log('  overrideTempDrawing:', overrideTempDrawing);
-
+      
       // Early return checks
       if (activeTool === 'none' || !containerRef.current || !chartRef.current || !seriesRef.current) {
         console.log('❌ EARLY RETURN:', {
@@ -4259,19 +4274,19 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         });
         return;
       }
-
+      
       // Check if chart is still loading - prevent drawing during load
       if (isLoading) {
         console.log('❌ Chart is loading, skipping drawing');
         return;
       }
-
+      
       // Brush is handled separately with mouse events
       if (activeTool === 'brush') {
         console.log('❌ BRUSH - handled separately');
         return;
       }
-
+      
       // Safety check: Ensure chart is ready
       let timeScale;
       try {
@@ -4284,20 +4299,20 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         console.warn('[Chart] TimeScale error:', e);
         return;
       }
-
+      
       const rect = containerRef.current.getBoundingClientRect();
       const x = clientX - rect.left;
       const y = clientY - rect.top;
-
+      
       const visibleRange = timeScale.getVisibleRange();
       if (!visibleRange) {
         console.warn('[Chart] Visible range not available');
         return;
       }
-
+      
       let time = timeScale.coordinateToTime(x as any);
       const price = seriesRef.current.coordinateToPrice(y);
-
+      
       // If time is null OR outside visible range, calculate proper time from pixel position
       if (!time || (visibleRange && time && ((time as number) < (visibleRange.from as number) || (time as number) > (visibleRange.to as number)))) {
         if (visibleRange) {
@@ -4305,16 +4320,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           if (visibleLogicalRange) {
             const chartWidth = timeScale.width();
             const lastBarCoordinate = timeScale.timeToCoordinate(visibleRange.to as any);
-
+            
             // Safety check: Prevent division by zero
             const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
             if (visibleBars <= 0 || chartWidth <= 0) {
               console.warn('[Chart] Invalid visible bars or chart width:', { visibleBars, chartWidth });
               return;
             }
-
+            
             const pixelsPerBar = chartWidth / visibleBars;
-
+            
             if (lastBarCoordinate !== null && x > lastBarCoordinate) {
               // We're clicking to the right of the last bar
               const pixelsBeyond = x - lastBarCoordinate;
@@ -4341,19 +4356,19 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           }
         }
       }
-
+      
       if (!time || price === null) return;
-
+      
       // Apply magnet mode (snap to OHLC) for precise drawing
       const finalPrice = useMagnet ? getMagnetPrice(time as number, price) : price;
-
+      
       const point: DrawingPoint = { time: time as Time, price: finalPrice };
-
+      
       // Single-point tools (instant creation)
       if (activeTool === 'horizontal' || activeTool === 'vertical' || activeTool === 'price-label' || activeTool === 'text') {
         // Save to history before adding new drawing
         saveToHistory();
-
+        
         const newDrawing: Drawing = {
           id: `drawing-${Date.now()}`,
           type: activeTool as DrawingType,
@@ -4362,37 +4377,37 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           lineWidth: 2,
           text: activeTool === 'text' ? 'Text' : undefined
         };
-
-
+        
+        
         setDrawings(prev => {
           const updated = [...prev, newDrawing];
           return updated;
         });
-
+        
         // For text tool, automatically open properties modal
         if (activeTool === 'text') {
           setEditingDrawing(newDrawing);
         }
-
+        
         // Auto-switch to cursor mode after drawing
         setActiveTool('none');
         setTempDrawing(null);
         setPreviewDrawing(null);
         return;
       }
-
+      
       // Multi-point tools
       const threePointTools = ['triangle', 'channel', 'gann-fan', 'speed-lines', 'pitchfork', 'trend-fib-extension'];
       const fourPointTools = ['wedge'];
       const pointCount = fourPointTools.includes(activeTool) ? 4 : (threePointTools.includes(activeTool) ? 3 : 2);
-
+      
       // Use overrideTempDrawing if provided, otherwise use state
       const effectiveTempDrawing = overrideTempDrawing !== undefined ? overrideTempDrawing : tempDrawing;
-
+      
       // Check current temp drawing state
       const tempDraw = drawings.find(d => d.id === 'temp');
       const currentPointCount = tempDraw ? tempDraw.points.length : (effectiveTempDrawing ? 1 : 0);
-
+      
       if (!effectiveTempDrawing && currentPointCount === 0) {
         // First point
         console.log('📍 First point set for', activeTool, ':', point);
@@ -4400,7 +4415,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       } else {
         console.log('📍 Point', currentPointCount + 1, 'for', activeTool, ':', point);
         // Second (or third/fourth) point
-
+        
         // Check if we need more points
         if (pointCount === 4 && currentPointCount === 3) {
           // Add fourth point to temp drawing (wedge)
@@ -4462,7 +4477,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           if (!effectiveTempDrawing) return; // TypeScript guard
           // Save to history before adding new drawing
           saveToHistory();
-
+          
           const newDrawing: Drawing = {
             id: `drawing-${Date.now()}`,
             type: activeTool as DrawingType,
@@ -4473,8 +4488,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             // Trend lines extend right by default (like TradingView)
             extendRight: activeTool === 'trend'
           };
-
-
+          
+          
           setDrawings(prev => {
             const updated = [...prev, newDrawing];
             return updated;
@@ -4541,32 +4556,32 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     const dx = x2 - x1;
     const dy = y2 - y1;
     const lengthSquared = dx * dx + dy * dy;
-
+    
     if (lengthSquared === 0) {
       // Line segment is actually a point
       return Math.sqrt((px - x1) * (px - x1) + (py - y1) * (py - y1));
     }
-
+    
     // Calculate projection of point onto line
     let t = ((px - x1) * dx + (py - y1) * dy) / lengthSquared;
     t = Math.max(0, Math.min(1, t)); // Clamp to segment
-
+    
     const projX = x1 + t * dx;
     const projY = y1 + t * dy;
-
+    
     return Math.sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
   };
 
   const handleChartClickForSelection = (clientX: number, clientY: number) => {
     if (!containerRef.current || !chartRef.current || !seriesRef.current) return;
-
+    
     const rect = containerRef.current.getBoundingClientRect();
     const x = clientX - rect.left;
     const y = clientY - rect.top;
-
+    
     const CLICK_THRESHOLD = 10; // pixels
     let closestDrawing: { id: string; distance: number } | null = null;
-
+    
     // Check each drawing
     drawings.forEach((drawing) => {
       if (drawing.type === 'trend' && drawing.points.length === 2) {
@@ -4576,10 +4591,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           const y1 = seriesRef.current!.priceToCoordinate(drawing.points[0].price);
           const x2 = timeScale.timeToCoordinate(drawing.points[1].time as any);
           const y2 = seriesRef.current!.priceToCoordinate(drawing.points[1].price);
-
+          
           if (x1 !== null && y1 !== null && x2 !== null && y2 !== null) {
             const distance = distanceToLineSegment(x, y, x1, y1, x2, y2);
-
+            
             if (distance <= CLICK_THRESHOLD) {
               if (!closestDrawing || distance < closestDrawing.distance) {
                 closestDrawing = { id: drawing.id, distance };
@@ -4592,10 +4607,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       } else if (drawing.type === 'horizontal' && drawing.points.length > 0) {
         try {
           const y1 = seriesRef.current!.priceToCoordinate(drawing.points[0].price);
-
+          
           if (y1 !== null) {
             const distance = Math.abs(y - y1);
-
+            
             if (distance <= CLICK_THRESHOLD) {
               if (!closestDrawing || distance < closestDrawing.distance) {
                 closestDrawing = { id: drawing.id, distance };
@@ -4607,7 +4622,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         }
       }
     });
-
+    
     if (closestDrawing) {
       setSelectedDrawingId((closestDrawing as { id: string; distance: number }).id);
     } else {
@@ -4625,7 +4640,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
 
     const positions: Array<{ x: number; y: number; drawingId: string; pointIndex: number }> = [];
-
+    
     drawings
       .filter((d) => d.id === selectedDrawingId)
       .forEach((drawing) => {
@@ -4634,7 +4649,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             const timeScale = chartRef.current!.timeScale();
             const x = timeScale.timeToCoordinate(point.time as any);
             const y = seriesRef.current!.priceToCoordinate(point.price);
-
+            
             if (x !== null && y !== null) {
               positions.push({ x, y, drawingId: drawing.id, pointIndex: index });
             }
@@ -4643,7 +4658,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           }
         });
       });
-
+    
     setHandlePositions(positions);
   };
 
@@ -4667,7 +4682,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     drawings.forEach((drawing) => {
       const isSelected = drawing.id === selectedDrawingId;
       const lineWidth = isSelected ? 3 : (drawing.lineWidth || 2);
-
+      
       if (drawing.type === 'horizontal' && drawing.points.length > 0) {
         // Horizontal line - use PriceLine
         const priceLine = seriesRef.current!.createPriceLine({
@@ -4678,7 +4693,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           axisLabelVisible: true,
           title: isSelected ? '✓' : 'H',
         });
-
+        
         // Store reference for later cleanup
         horizontalLinesRef.current.set(drawing.id, priceLine);
       } else if (drawing.type === 'trend' && drawing.points.length === 2) {
@@ -4689,12 +4704,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           lastValueVisible: false,
           priceLineVisible: false,
         });
-
+        
         lineSeries.setData([
           { time: drawing.points[0].time, value: drawing.points[0].price },
           { time: drawing.points[1].time, value: drawing.points[1].price },
         ]);
-
+        
         drawingSeriesRef.current.set(drawing.id, lineSeries);
       }
     });
@@ -4708,9 +4723,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const handleVisibleChange = () => {
         updateHandlePositions();
       };
-
+      
       timeScale.subscribeVisibleTimeRangeChange(handleVisibleChange);
-
+      
       return () => {
         timeScale.unsubscribeVisibleTimeRangeChange(handleVisibleChange);
       };
@@ -4719,15 +4734,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   }, [drawings, selectedDrawingId]); // updateHandlePositions is stable and doesn't need to be in deps
 
   // Calculate heights for main chart and indicator panels
-  const mainChartHeight = chartSettings.showRSI || chartSettings.showMACD
+  const mainChartHeight = chartSettings.showRSI || chartSettings.showMACD 
     ? (chartSettings.showRSI && chartSettings.showMACD ? '60%' : '75%')
     : '100%';
-
+  
   const rsiHeight = chartSettings.showRSI ? '20%' : '0%';
   const macdHeight = chartSettings.showMACD ? '20%' : '0%';
 
   return (
-    <div
+    <div 
       ref={chartWrapperRef}
       className="relative w-full h-full flex flex-col"
       style={{
@@ -4765,11 +4780,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             </span>
             <span className="text-gray-400">Vol</span>
             <span className="text-white">
-              {legendData.volume >= 1000000
+              {legendData.volume >= 1000000 
                 ? `${(legendData.volume / 1000000).toFixed(2)}M`
                 : legendData.volume >= 1000
-                  ? `${(legendData.volume / 1000).toFixed(2)}K`
-                  : legendData.volume.toFixed(2)
+                ? `${(legendData.volume / 1000).toFixed(2)}K`
+                : legendData.volume.toFixed(2)
               }
             </span>
             <span className={`font-bold ${legendData.change >= 0 ? 'text-green-400' : 'text-red-400'}`}>
@@ -4855,10 +4870,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             setSelectedDrawingId(null);
           }
         }}
-        className={`${isIPad ? '' : 'lg:hidden'} absolute top-32 left-2 z-20 p-2 rounded-lg transition-all shadow-lg ${showDrawingTools
-          ? 'bg-blue-600 text-white'
-          : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
-          }`}
+        className={`${isIPad ? '' : 'lg:hidden'} absolute top-32 left-2 z-20 p-2 rounded-lg transition-all shadow-lg ${
+          showDrawingTools 
+            ? 'bg-blue-600 text-white' 
+            : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+        }`}
         title={showDrawingTools ? "Hide Drawing Tools" : "Show Drawing Tools"}
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4936,7 +4952,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
             </svg>
           </button>
-
+          
           {/* Share Dropdown */}
           {showShareMenu && (
             <div className="absolute right-0 top-full mt-2 w-64 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 overflow-hidden">
@@ -4977,7 +4993,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       </div>
 
       {/* Hover Alarm Button (TradingView style) - Wider hover area to prevent disappearing */}
-      <div
+      <div 
         className="absolute transition-opacity duration-150"
         onMouseEnter={() => {
           // Keep button visible and locked when hovering over it
@@ -5014,7 +5030,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
               const intended: 'above' | 'below' = alarmButton.price > refPrice ? 'above' : 'below';
               alertService.addAlert(exchange, pair, alarmButton.price, refPrice, intended);
               console.log(`[Chart] Alert set at $${alarmButton.price.toFixed(alarmButton.price < 1 ? 6 : 2)}`);
-
+              
               // Hide button
               isHoveringButtonRef.current = false;
               setAlarmButton(null);
@@ -5024,7 +5040,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           title={alarmButton ? `Add alert at $${alarmButton.price.toFixed(alarmButton.price < 1 ? 6 : 2)}` : 'Add alert'}
         >
           <svg className="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 24 24">
-            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" />
+            <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
           </svg>
         </button>
       </div>
@@ -5055,9 +5071,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           {error}
         </div>
       )}
-
+      
       {/* Chart container with left toolbar */}
-      <div
+      <div 
         className="w-full flex-grow relative"
         style={{
           minWidth: '300px',
@@ -5080,8 +5096,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           </div>
         )}
 
-        <div
-          ref={containerRef}
+        <div 
+          ref={containerRef} 
           className="w-full h-full relative"
           style={{
             // More aggressive touch-action control - also disable when dragging point
@@ -5108,122 +5124,45 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           onTouchMove={activeTool === 'none' ? handleTouchMove : undefined}
           onTouchEnd={activeTool === 'none' ? handleTouchEnd : undefined}
         >
-          {/* Transparent overlay - always present for free mouse movement */}
-          {(() => {
-            const isDrawingMode = activeTool !== 'none';
-            return (
-              <div
-                key={`drawing-overlay-${activeTool}`} // Force re-render when activeTool changes
-                className="absolute inset-0"
-                style={{
-                  cursor: isDrawingMode ? 'crosshair' : 'default',
-                  pointerEvents: isDrawingMode ? 'auto' : 'none', // Only capture in drawing mode, let chart handle in normal mode
-                  zIndex: 150, // Very high z-index to be above everything (increased from 100)
-                  background: 'transparent',
-                  touchAction: isDrawingMode ? 'none' : 'manipulation', // Prevent all default touch behaviors when drawing
-                  WebkitTouchCallout: 'none', // Prevent iOS callout menu
-                  WebkitUserSelect: 'none', // Prevent text selection on mobile
-                  userSelect: 'none',
-                }}
-                onMouseDown={(e) => {
-                  // Always check activeTool directly (not isDrawingMode) for reliability
-                  if (activeTool !== 'none' && activeTool === 'brush') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleBrushStart(e.clientX, e.clientY);
-                  }
-                  // In normal mode, overlay has pointerEvents: 'none', so events pass through to chart
-                }}
-                onTouchStart={(e) => {
-                  // Mobile touch start for drawing tools
-                  // Always check activeTool directly for reliability
-                  if (e.touches.length === 1 && activeTool !== 'none') {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const touch = e.touches[0];
-
-                    if (activeTool === 'brush') {
-                      handleBrushStart(touch.clientX, touch.clientY);
-                    } else {
-                      // For other tools, set first point immediately for live preview
-                      const rect = containerRef.current?.getBoundingClientRect();
-                      if (rect && chartRef.current && seriesRef.current) {
-                        const x = touch.clientX - rect.left;
-                        const y = touch.clientY - rect.top;
-                        const timeScale = chartRef.current.timeScale();
-                        const time = timeScale.coordinateToTime(x as any);
-                        const price = seriesRef.current.coordinateToPrice(y);
-
-                        if (time && price !== null) {
-                          const point = { time, price };
-                          // Store in both state and ref for immediate access
-                          setTempDrawing(point);
-                          touchStartDrawingPointRef.current = point;
-                          // Also trigger preview immediately
-                          handleMouseMoveForPreview(touch.clientX, touch.clientY);
-                        }
+                {/* Transparent overlay - always present for free mouse movement */}
+                {(() => {
+                  const isDrawingMode = activeTool !== 'none';
+                  return (
+                  <div
+                    key={`drawing-overlay-${activeTool}`} // Force re-render when activeTool changes
+                    className="absolute inset-0"
+                    style={{ 
+                      cursor: isDrawingMode ? 'crosshair' : 'default', 
+                      pointerEvents: isDrawingMode ? 'auto' : 'none', // Only capture in drawing mode, let chart handle in normal mode
+                      zIndex: 150, // Very high z-index to be above everything (increased from 100)
+                      background: 'transparent',
+                      touchAction: isDrawingMode ? 'none' : 'manipulation', // Prevent all default touch behaviors when drawing
+                      WebkitTouchCallout: 'none', // Prevent iOS callout menu
+                      WebkitUserSelect: 'none', // Prevent text selection on mobile
+                      userSelect: 'none',
+                    }}
+                    onMouseDown={(e) => {
+                      // Always check activeTool directly (not isDrawingMode) for reliability
+                      if (activeTool !== 'none' && activeTool === 'brush') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleBrushStart(e.clientX, e.clientY);
                       }
-                    }
-                    // Clear any long-press timer
-                    if (longPressTimerRef.current) {
-                      clearTimeout(longPressTimerRef.current);
-                      longPressTimerRef.current = null;
-                    }
-                  }
-                }}
-                onMouseMove={(e) => {
-                  // Always check activeTool directly for reliability
-                  if (activeTool !== 'none') {
-                    if (activeTool === 'brush' && isDrawingBrush) {
-                      handleBrushMove(e.clientX, e.clientY);
-                    } else {
-                      // Show live preview while drawing (TradingView-style)
-                      handleMouseMoveForPreview(e.clientX, e.clientY);
-                    }
-                  }
-                  // In normal mode, overlay has pointerEvents: 'none', so events pass through to chart
-                }}
-                onMouseEnter={(e) => {
-                  // Start showing preview when mouse enters chart area
-                  if (activeTool !== 'none' && activeTool !== 'brush') {
-                    handleMouseMoveForPreview(e.clientX, e.clientY);
-                  }
-                }}
-                onMouseLeave={() => {
-                  // Clear preview when mouse leaves (but keep tempDrawing)
-                  if (activeTool === 'brush' && isDrawingBrush) {
-                    handleBrushEnd();
-                  } else if (activeTool !== 'brush') {
-                    setPreviewDrawing(null);
-                  }
-                }}
-                onTouchMove={(e) => {
-                  // Mobile touch move for live preview and brush drawing
-                  // Always check activeTool directly for reliability
-                  if (e.touches.length === 1 && activeTool !== 'none') {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const touch = e.touches[0];
-
-                    // Performance optimization: Use requestAnimationFrame to throttle state updates
-                    if (rafUpdateRef.current !== null) {
-                      cancelAnimationFrame(rafUpdateRef.current);
-                    }
-
-                    rafUpdateRef.current = requestAnimationFrame(() => {
-                      const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || isIOS);
-                      if (isMobile) {
-                        updateMagnifier(touch.clientX, touch.clientY);
-                      }
-
-                      if (activeTool === 'brush' && isDrawingBrush) {
-                        handleBrushMove(touch.clientX, touch.clientY);
-                      } else if (activeTool !== 'brush') {
-                        // Always show live preview when drawing tool is active
-                        // Even if tempDrawing is not set yet, try to set it
-                        if (!tempDrawing) {
+                      // In normal mode, overlay has pointerEvents: 'none', so events pass through to chart
+                    }}
+                    onTouchStart={(e) => {
+                      // Mobile touch start for drawing tools
+                      // Always check activeTool directly for reliability
+                      if (e.touches.length === 1 && activeTool !== 'none') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const touch = e.touches[0];
+                        
+                        if (activeTool === 'brush') {
+                          handleBrushStart(touch.clientX, touch.clientY);
+                        } else {
+                          // For other tools, set first point immediately for live preview
                           const rect = containerRef.current?.getBoundingClientRect();
                           if (rect && chartRef.current && seriesRef.current) {
                             const x = touch.clientX - rect.left;
@@ -5231,407 +5170,484 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                             const timeScale = chartRef.current.timeScale();
                             const time = timeScale.coordinateToTime(x as any);
                             const price = seriesRef.current.coordinateToPrice(y);
-
+                            
                             if (time && price !== null) {
-                              setTempDrawing({ time, price });
+                              const point = { time, price };
+                              // Store in both state and ref for immediate access
+                              setTempDrawing(point);
+                              touchStartDrawingPointRef.current = point;
+                              // Also trigger preview immediately
+                              handleMouseMoveForPreview(touch.clientX, touch.clientY);
                             }
                           }
                         }
-                        // Show live preview
-                        handleMouseMoveForPreview(touch.clientX, touch.clientY);
+                        // Clear any long-press timer
+                        if (longPressTimerRef.current) {
+                          clearTimeout(longPressTimerRef.current);
+                          longPressTimerRef.current = null;
+                        }
                       }
-                    });
-                  }
-                }}
-                onMouseUp={(e) => {
-                  if (activeTool === 'brush' && isDrawingBrush) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleBrushEnd();
-                  }
-                }}
-                onClick={(e) => {
-                  // Always check activeTool directly for reliability
-                  if (activeTool !== 'none' && activeTool !== 'brush') {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    handleChartClickForDrawing(e.clientX, e.clientY);
-                  }
-                  // In normal mode, let clicks pass through to chart
-                }}
-                onTouchEnd={(e) => {
-                  // Clear magnifier when touch ends
-                  setIsMagnifierVisible(false);
-
-                  // Mobile touch support for drawing tools
-                  // Always check activeTool directly for reliability
-                  if (e.changedTouches.length === 1 && activeTool !== 'none') {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const touch = e.changedTouches[0];
-
-                    if (activeTool === 'brush' && isDrawingBrush) {
-                      handleBrushEnd();
-                    } else if (activeTool !== 'brush') {
-                      // Use ref value if available (avoids async state issues)
-                      const tempDrawingToUse = touchStartDrawingPointRef.current || tempDrawing;
-                      handleChartClickForDrawing(touch.clientX, touch.clientY, tempDrawingToUse);
-                      // Clear ref after use
-                      touchStartDrawingPointRef.current = null;
-                    }
-                  }
-                }}
-              />
-            );
-          })()}
-
-          {/* ✅ FIX #1: REMOVED Selection overlay - it was blocking touch events on mobile
+                    }}
+                    onMouseMove={(e) => {
+                      // Always check activeTool directly for reliability
+                      if (activeTool !== 'none') {
+                        if (activeTool === 'brush' && isDrawingBrush) {
+                          handleBrushMove(e.clientX, e.clientY);
+                        } else {
+                          // Show live preview while drawing (TradingView-style)
+                          handleMouseMoveForPreview(e.clientX, e.clientY);
+                        }
+                      }
+                      // In normal mode, overlay has pointerEvents: 'none', so events pass through to chart
+                    }}
+                    onMouseEnter={(e) => {
+                      // Start showing preview when mouse enters chart area
+                      if (activeTool !== 'none' && activeTool !== 'brush') {
+                        handleMouseMoveForPreview(e.clientX, e.clientY);
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      // Clear preview when mouse leaves (but keep tempDrawing)
+                      if (activeTool === 'brush' && isDrawingBrush) {
+                        handleBrushEnd();
+                      } else if (activeTool !== 'brush') {
+                        setPreviewDrawing(null);
+                      }
+                    }}
+                    onTouchMove={(e) => {
+                      // Mobile touch move for live preview and brush drawing
+                      // Always check activeTool directly for reliability
+                      if (e.touches.length === 1 && activeTool !== 'none') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const touch = e.touches[0];
+                        
+                        // Performance optimization: Use requestAnimationFrame to throttle state updates
+                        if (rafUpdateRef.current !== null) {
+                          cancelAnimationFrame(rafUpdateRef.current);
+                        }
+                        
+                        rafUpdateRef.current = requestAnimationFrame(() => {
+                          const isMobile = typeof window !== 'undefined' && (window.innerWidth < 768 || isIOS);
+                          if (isMobile) {
+                            updateMagnifier(touch.clientX, touch.clientY);
+                          }
+                          
+                          if (activeTool === 'brush' && isDrawingBrush) {
+                            handleBrushMove(touch.clientX, touch.clientY);
+                          } else if (activeTool !== 'brush') {
+                            // Always show live preview when drawing tool is active
+                            // Even if tempDrawing is not set yet, try to set it
+                            if (!tempDrawing) {
+                              const rect = containerRef.current?.getBoundingClientRect();
+                              if (rect && chartRef.current && seriesRef.current) {
+                                const x = touch.clientX - rect.left;
+                                const y = touch.clientY - rect.top;
+                                const timeScale = chartRef.current.timeScale();
+                                const time = timeScale.coordinateToTime(x as any);
+                                const price = seriesRef.current.coordinateToPrice(y);
+                                
+                                if (time && price !== null) {
+                                  setTempDrawing({ time, price });
+                                }
+                              }
+                            }
+                            // Show live preview
+                            handleMouseMoveForPreview(touch.clientX, touch.clientY);
+                          }
+                        });
+                      }
+                    }}
+                    onMouseUp={(e) => {
+                      if (activeTool === 'brush' && isDrawingBrush) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleBrushEnd();
+                      }
+                    }}
+                    onClick={(e) => {
+                      // Always check activeTool directly for reliability
+                      if (activeTool !== 'none' && activeTool !== 'brush') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        handleChartClickForDrawing(e.clientX, e.clientY);
+                      }
+                      // In normal mode, let clicks pass through to chart
+                    }}
+                    onTouchEnd={(e) => {
+                      // Clear magnifier when touch ends
+                      setIsMagnifierVisible(false);
+                      
+                      // Mobile touch support for drawing tools
+                      // Always check activeTool directly for reliability
+                      if (e.changedTouches.length === 1 && activeTool !== 'none') {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        
+                        const touch = e.changedTouches[0];
+                        
+                        if (activeTool === 'brush' && isDrawingBrush) {
+                          handleBrushEnd();
+                        } else if (activeTool !== 'brush') {
+                          // Use ref value if available (avoids async state issues)
+                          const tempDrawingToUse = touchStartDrawingPointRef.current || tempDrawing;
+                          handleChartClickForDrawing(touch.clientX, touch.clientY, tempDrawingToUse);
+                          // Clear ref after use
+                          touchStartDrawingPointRef.current = null;
+                        }
+                      }
+                    }}
+                  />
+                  );
+                })()}
+                
+                {/* ✅ FIX #1: REMOVED Selection overlay - it was blocking touch events on mobile
                   * DrawingRenderer.tsx already handles all hit testing via SVG elements with pointer-events: stroke
                   * This overlay had z-index: 8 and was sitting above drawings (z-index: 5), preventing dragging
                   * Selection is now handled entirely by DrawingRenderer's transparent hit areas
                 */}
+                
+                {/* Show hint for multi-point tools */}
+                {activeTool !== 'none' && tempDrawing && (activeTool === 'trend' || activeTool === 'rectangle' || activeTool === 'circle') && (
+                  <div className="absolute top-16 left-14 bg-blue-900/90 px-3 py-2 rounded text-xs border border-blue-700" style={{ zIndex: 9 }}>
+                    <div className="text-blue-300 font-bold mb-1">
+                      {activeTool === 'trend' && '📍 Click second point for trend line'}
+                      {activeTool === 'rectangle' && '📍 Click opposite corner'}
+                      {activeTool === 'circle' && '📍 Click edge point'}
+                    </div>
+                    <div className="text-gray-300 text-[10px]">
+                      First point: ${tempDrawing.price.toFixed(2)}
+                    </div>
+                  </div>
+                )}
 
-          {/* Show hint for multi-point tools */}
-          {activeTool !== 'none' && tempDrawing && (activeTool === 'trend' || activeTool === 'rectangle' || activeTool === 'circle') && (
-            <div className="absolute top-16 left-14 bg-blue-900/90 px-3 py-2 rounded text-xs border border-blue-700" style={{ zIndex: 9 }}>
-              <div className="text-blue-300 font-bold mb-1">
-                {activeTool === 'trend' && '📍 Click second point for trend line'}
-                {activeTool === 'rectangle' && '📍 Click opposite corner'}
-                {activeTool === 'circle' && '📍 Click edge point'}
-              </div>
-              <div className="text-gray-300 text-[10px]">
-                First point: ${tempDrawing.price.toFixed(2)}
-              </div>
-            </div>
-          )}
-
-          {/* Dragging overlay for moving points */}
-          {draggingPoint && (
-            <div
-              className="absolute inset-0"
-              style={{ cursor: 'move', zIndex: 9 }}
-              onMouseMove={(e) => {
-                if (containerRef.current && chartRef.current && seriesRef.current) {
-                  const rect = containerRef.current.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-
-                  const timeScale = chartRef.current.timeScale();
-                  const timeCoordinate = timeScale.coordinateToTime(x as any);
-                  const priceCoordinate = seriesRef.current.coordinateToPrice(y);
-
-                  if (timeCoordinate && priceCoordinate !== null) {
-                    handlePointDrag(priceCoordinate, timeCoordinate as Time);
-                  }
-                }
-              }}
-              onMouseUp={handlePointDragEnd}
-              onMouseLeave={handlePointDragEnd}
-            />
-          )}
-
-          {/* Drawing point handles for selected drawing */}
-          {handlePositions.map((handle) => (
-            <div
-              key={`${handle.drawingId}-${handle.pointIndex}`}
-              className="absolute cursor-move"
-              style={{
-                left: `${handle.x - 6}px`,
-                top: `${handle.y - 6}px`,
-                width: '12px',
-                height: '12px',
-                zIndex: 9
-              }}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-                handlePointDragStart(handle.drawingId, handle.pointIndex);
-              }}
-            >
-              <div className="w-full h-full rounded-full bg-yellow-400 border-2 border-yellow-600 shadow-lg hover:scale-125 transition-transform" />
-            </div>
-          ))}
-
-          {/* Drawing Renderer - SVG Overlay for all drawing tools */}
-          {containerSize.width > 0 && containerSize.height > 0 && (
-            <DrawingRenderer
-              drawings={
-                (() => {
-                  let allDrawings = [...drawings];
-                  // Add preview drawing
-                  if (previewDrawing) {
-                    allDrawings.push(previewDrawing);
-                  }
-                  // Add brush preview
-                  if (isDrawingBrush && brushPoints.length > 0) {
-                    allDrawings.push({
-                      id: 'brush-preview',
-                      type: 'brush',
-                      points: brushPoints.map(p => ({ ...p })),
-                      color: '#2962FF',
-                      lineWidth: 2
-                    });
-                  }
-                  return allDrawings;
-                })()
-              }
-              chart={chartRef.current}
-              series={seriesRef.current}
-              containerWidth={containerSize.width}
-              containerHeight={containerSize.height}
-              selectedDrawingId={selectedDrawingId}
-              onSelectDrawing={setSelectedDrawingId}
-              onDoubleClick={handleDrawingDoubleClick}
-              onDragStart={handleDrawingDragStart}
-              onDragPoint={handleDragPoint}
-              precision={pair.toLowerCase().includes('btc') || pair.toLowerCase().includes('eth') ? 2 : 4}
-              timeframe={timeframe}
-              isDrawing={activeTool !== 'none'}
-            />
-          )}
-
-          {/* Magnifier for Mobile Drawing (TradingView-style with Real Canvas Zoom) */}
-          {isMagnifierVisible && activeTool !== 'none' && (isIOS || (typeof window !== 'undefined' && window.innerWidth < 768)) && (
-            <div
-              ref={magnifierRef}
-              className="absolute pointer-events-none z-[9999] border-2 border-blue-500 rounded-full shadow-2xl overflow-hidden"
-              style={{
-                left: 0,
-                top: 0,
-                width: '80px',
-                height: '80px',
-                transform: 'translate(-50%, -50%)',
-              }}
-            >
-              {/* Real Canvas Content (Magnified) */}
-              <canvas
-                ref={magnifierCanvasRef}
-                width="80"
-                height="80"
-                className="absolute inset-0"
-              />
-
-              {/* Crosshair overlay */}
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                <div className="w-full h-[1px] bg-blue-500/70 absolute"></div>
-                <div className="h-full w-[1px] bg-blue-500/70 absolute"></div>
-              </div>
-
-              {/* Price display (updated imperatively for performance) */}
-              <div
-                ref={magnifierPriceRef}
-                className="bg-gray-900/90 text-white text-[10px] px-1.5 rounded absolute bottom-1 font-mono font-bold border border-blue-500/50"
-              />
-            </div>
-          )}
-
-          {/* Floating Mini Toolbar for Selected Drawing (TradingView style) */}
-          {selectedDrawingId && chartRef.current && seriesRef.current && (() => {
-            const selectedDrawing = drawings.find(d => d.id === selectedDrawingId);
-            if (!selectedDrawing || selectedDrawing.points.length === 0) return null;
-
-            // Calculate toolbar position from first point or use custom position
-            let finalX, finalY;
-            if (toolbarPosition) {
-              finalX = toolbarPosition.x;
-              finalY = toolbarPosition.y;
-            } else {
-              const timeScale = chartRef.current.timeScale();
-              const x = timeScale.timeToCoordinate(selectedDrawing.points[0].time as any);
-              const y = seriesRef.current.priceToCoordinate(selectedDrawing.points[0].price);
-
-              if (x === null || y === null) return null;
-
-              finalX = Math.max(10, Math.min(containerSize.width - 250, x - 100));
-              finalY = Math.max(50, y - 50);
-            }
-
-            return (
-              <div
-                className="absolute bg-gray-900/98 border border-gray-700 rounded-lg shadow-2xl backdrop-blur-md z-[200] pointer-events-auto"
-                style={{
-                  left: finalX,
-                  top: finalY,
-                  cursor: isDraggingToolbar ? 'grabbing' : 'grab',
-                }}
-                onMouseDown={(e) => {
-                  // Start dragging toolbar
-                  e.stopPropagation();
-                  setIsDraggingToolbar(true);
-                  toolbarDragStartRef.current = {
-                    x: finalX,
-                    y: finalY,
-                    startX: e.clientX,
-                    startY: e.clientY,
-                  };
-                }}
-                onTouchStart={(e) => {
-                  // Start dragging toolbar (mobile)
-                  if (e.touches.length === 1) {
-                    e.stopPropagation();
-                    const touch = e.touches[0];
-                    setIsDraggingToolbar(true);
-                    toolbarDragStartRef.current = {
-                      x: finalX,
-                      y: finalY,
-                      startX: touch.clientX,
-                      startY: touch.clientY,
-                    };
-                  }
-                }}
-              >
-                <div className="flex items-center gap-1 p-1.5" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
-                  {/* Color picker */}
-                  <input
-                    type="color"
-                    value={selectedDrawing.color || '#2962FF'}
-                    onChange={(e) => {
-                      setDrawings(prev => prev.map(d =>
-                        d.id === selectedDrawingId ? { ...d, color: e.target.value } : d
-                      ));
+                {/* Dragging overlay for moving points */}
+                {draggingPoint && (
+                  <div
+                    className="absolute inset-0"
+                    style={{ cursor: 'move', zIndex: 9 }}
+                    onMouseMove={(e) => {
+                      if (containerRef.current && chartRef.current && seriesRef.current) {
+                        const rect = containerRef.current.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const y = e.clientY - rect.top;
+                        
+                        const timeScale = chartRef.current.timeScale();
+                        const timeCoordinate = timeScale.coordinateToTime(x as any);
+                        const priceCoordinate = seriesRef.current.coordinateToPrice(y);
+                        
+                        if (timeCoordinate && priceCoordinate !== null) {
+                          handlePointDrag(priceCoordinate, timeCoordinate as Time);
+                        }
+                      }
                     }}
-                    className="w-8 h-8 rounded cursor-pointer border border-gray-600"
-                    title="Color"
+                    onMouseUp={handlePointDragEnd}
+                    onMouseLeave={handlePointDragEnd}
                   />
+                )}
 
-                  {/* Line width */}
-                  <select
-                    value={selectedDrawing.lineWidth || 2}
-                    onChange={(e) => {
-                      setDrawings(prev => prev.map(d =>
-                        d.id === selectedDrawingId ? { ...d, lineWidth: parseInt(e.target.value) } : d
-                      ));
+                {/* Drawing point handles for selected drawing */}
+                {handlePositions.map((handle) => (
+                  <div
+                    key={`${handle.drawingId}-${handle.pointIndex}`}
+                    className="absolute cursor-move"
+                    style={{
+                      left: `${handle.x - 6}px`,
+                      top: `${handle.y - 6}px`,
+                      width: '12px',
+                      height: '12px',
+                      zIndex: 9
                     }}
-                    className="px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-xs text-gray-200 cursor-pointer"
-                    title="Line width"
-                  >
-                    <option value="1">1px</option>
-                    <option value="2">2px</option>
-                    <option value="3">3px</option>
-                    <option value="4">4px</option>
-                  </select>
-
-                  {/* Line style */}
-                  <select
-                    value={selectedDrawing.lineStyle || 'solid'}
-                    onChange={(e) => {
-                      setDrawings(prev => prev.map(d =>
-                        d.id === selectedDrawingId ? { ...d, lineStyle: e.target.value as any } : d
-                      ));
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      handlePointDragStart(handle.drawingId, handle.pointIndex);
                     }}
-                    className="px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-xs text-gray-200 cursor-pointer"
-                    title="Line style"
                   >
-                    <option value="solid">──</option>
-                    <option value="dashed">- -</option>
-                    <option value="dotted">··</option>
-                  </select>
+                    <div className="w-full h-full rounded-full bg-yellow-400 border-2 border-yellow-600 shadow-lg hover:scale-125 transition-transform" />
+                  </div>
+                ))}
 
-                  <div className="w-px h-6 bg-gray-700 mx-1"></div>
+                {/* Drawing Renderer - SVG Overlay for all drawing tools */}
+                {containerSize.width > 0 && containerSize.height > 0 && (
+                  <DrawingRenderer
+                    drawings={
+                      (() => {
+                        let allDrawings = [...drawings];
+                        // Add preview drawing
+                        if (previewDrawing) {
+                          allDrawings.push(previewDrawing);
+                        }
+                        // Add brush preview
+                        if (isDrawingBrush && brushPoints.length > 0) {
+                          allDrawings.push({
+                            id: 'brush-preview',
+                            type: 'brush',
+                            points: brushPoints.map(p => ({ ...p })),
+                            color: '#2962FF',
+                            lineWidth: 2
+                          });
+                        }
+                        return allDrawings;
+                      })()
+                    }
+                    chart={chartRef.current}
+                    series={seriesRef.current}
+                    containerWidth={containerSize.width}
+                    containerHeight={containerSize.height}
+                    selectedDrawingId={selectedDrawingId}
+                    onSelectDrawing={setSelectedDrawingId}
+                    onDoubleClick={handleDrawingDoubleClick}
+                    onDragStart={handleDrawingDragStart}
+                    onDragPoint={handleDragPoint}
+                    precision={pair.toLowerCase().includes('btc') || pair.toLowerCase().includes('eth') ? 2 : 4}
+                    timeframe={timeframe}
+                    isDrawing={activeTool !== 'none'}
+                  />
+                )}
 
-                  {/* Delete button */}
-                  <button
-                    onClick={() => {
-                      setDrawings(prev => prev.filter(d => d.id !== selectedDrawingId));
-                      setSelectedDrawingId(null);
+                {/* Magnifier for Mobile Drawing (TradingView-style with Real Canvas Zoom) */}
+                {isMagnifierVisible && activeTool !== 'none' && (isIOS || (typeof window !== 'undefined' && window.innerWidth < 768)) && (
+                  <div
+                    ref={magnifierRef}
+                    className="absolute pointer-events-none z-[9999] border-2 border-blue-500 rounded-full shadow-2xl overflow-hidden"
+                    style={{
+                      left: 0,
+                      top: 0,
+                      width: '80px',
+                      height: '80px',
+                      transform: 'translate(-50%, -50%)',
                     }}
-                    className="p-1.5 hover:bg-red-900/30 rounded transition-colors group"
-                    title="Delete"
                   >
-                    <svg className="w-4 h-4 text-gray-400 group-hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    {/* Real Canvas Content (Magnified) */}
+                    <canvas
+                      ref={magnifierCanvasRef}
+                      width="80"
+                      height="80"
+                      className="absolute inset-0"
+                    />
+                    
+                    {/* Crosshair overlay */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="w-full h-[1px] bg-blue-500/70 absolute"></div>
+                      <div className="h-full w-[1px] bg-blue-500/70 absolute"></div>
+                    </div>
+                    
+                    {/* Price display (updated imperatively for performance) */}
+                    <div
+                      ref={magnifierPriceRef}
+                      className="bg-gray-900/90 text-white text-[10px] px-1.5 rounded absolute bottom-1 font-mono font-bold border border-blue-500/50"
+                    />
+                  </div>
+                )}
+
+                {/* Floating Mini Toolbar for Selected Drawing (TradingView style) */}
+                {selectedDrawingId && chartRef.current && seriesRef.current && (() => {
+                  const selectedDrawing = drawings.find(d => d.id === selectedDrawingId);
+                  if (!selectedDrawing || selectedDrawing.points.length === 0) return null;
+                  
+                  // Calculate toolbar position from first point or use custom position
+                  let finalX, finalY;
+                  if (toolbarPosition) {
+                    finalX = toolbarPosition.x;
+                    finalY = toolbarPosition.y;
+                  } else {
+                    const timeScale = chartRef.current.timeScale();
+                    const x = timeScale.timeToCoordinate(selectedDrawing.points[0].time as any);
+                    const y = seriesRef.current.priceToCoordinate(selectedDrawing.points[0].price);
+                    
+                    if (x === null || y === null) return null;
+                    
+                    finalX = Math.max(10, Math.min(containerSize.width - 250, x - 100));
+                    finalY = Math.max(50, y - 50);
+                  }
+                  
+                  return (
+                    <div
+                      className="absolute bg-gray-900/98 border border-gray-700 rounded-lg shadow-2xl backdrop-blur-md z-[200] pointer-events-auto"
+                      style={{
+                        left: finalX,
+                        top: finalY,
+                        cursor: isDraggingToolbar ? 'grabbing' : 'grab',
+                      }}
+                      onMouseDown={(e) => {
+                        // Start dragging toolbar
+                        e.stopPropagation();
+                        setIsDraggingToolbar(true);
+                        toolbarDragStartRef.current = {
+                          x: finalX,
+                          y: finalY,
+                          startX: e.clientX,
+                          startY: e.clientY,
+                        };
+                      }}
+                      onTouchStart={(e) => {
+                        // Start dragging toolbar (mobile)
+                        if (e.touches.length === 1) {
+                          e.stopPropagation();
+                          const touch = e.touches[0];
+                          setIsDraggingToolbar(true);
+                          toolbarDragStartRef.current = {
+                            x: finalX,
+                            y: finalY,
+                            startX: touch.clientX,
+                            startY: touch.clientY,
+                          };
+                        }
+                      }}
+                    >
+                      <div className="flex items-center gap-1 p-1.5" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                        {/* Color picker */}
+                        <input
+                          type="color"
+                          value={selectedDrawing.color || '#2962FF'}
+                          onChange={(e) => {
+                            setDrawings(prev => prev.map(d => 
+                              d.id === selectedDrawingId ? { ...d, color: e.target.value } : d
+                            ));
+                          }}
+                          className="w-8 h-8 rounded cursor-pointer border border-gray-600"
+                          title="Color"
+                        />
+                        
+                        {/* Line width */}
+                        <select
+                          value={selectedDrawing.lineWidth || 2}
+                          onChange={(e) => {
+                            setDrawings(prev => prev.map(d => 
+                              d.id === selectedDrawingId ? { ...d, lineWidth: parseInt(e.target.value) } : d
+                            ));
+                          }}
+                          className="px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-xs text-gray-200 cursor-pointer"
+                          title="Line width"
+                        >
+                          <option value="1">1px</option>
+                          <option value="2">2px</option>
+                          <option value="3">3px</option>
+                          <option value="4">4px</option>
+                        </select>
+                        
+                        {/* Line style */}
+                        <select
+                          value={selectedDrawing.lineStyle || 'solid'}
+                          onChange={(e) => {
+                            setDrawings(prev => prev.map(d => 
+                              d.id === selectedDrawingId ? { ...d, lineStyle: e.target.value as any } : d
+                            ));
+                          }}
+                          className="px-2 py-1.5 bg-gray-800 border border-gray-600 rounded text-xs text-gray-200 cursor-pointer"
+                          title="Line style"
+                        >
+                          <option value="solid">──</option>
+                          <option value="dashed">- -</option>
+                          <option value="dotted">··</option>
+                        </select>
+                        
+                        <div className="w-px h-6 bg-gray-700 mx-1"></div>
+                        
+                        {/* Delete button */}
+                        <button
+                          onClick={() => {
+                            setDrawings(prev => prev.filter(d => d.id !== selectedDrawingId));
+                            setSelectedDrawingId(null);
+                          }}
+                          className="p-1.5 hover:bg-red-900/30 rounded transition-colors group"
+                          title="Delete"
+                        >
+                          <svg className="w-4 h-4 text-gray-400 group-hover:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                        
+                        {/* Close button */}
+                        <button
+                          onClick={() => {
+                            setSelectedDrawingId(null);
+                            setToolbarPosition(null); // Reset toolbar position
+                          }}
+                          className="p-1.5 hover:bg-gray-800 rounded transition-colors"
+                          title="Close"
+                        >
+                          <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Countdown Timer (only if seconds visible setting is enabled) */}
+                {chartSettings.secondsVisible && (
+                  <div 
+                    className="absolute right-20 top-2 bg-gray-900/80 border border-gray-700/50 backdrop-blur-sm px-1.5 py-1 rounded shadow-md z-10"
+                  >
+                    <div className="flex items-center gap-1 text-teal-400">
+                      <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span className="text-[10px] font-mono font-medium">{countdown}</span>
+                    </div>
+                  </div>
+                )}
+
+                {/* Toggle Legend Button (TradingView style - bottom left) */}
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setShowLegend(!showLegend);
+                  }}
+                  className="absolute bottom-2 left-2 z-10 p-1.5 bg-gray-800/50 hover:bg-gray-700 rounded transition-colors pointer-events-auto"
+                  title={showLegend ? "Hide indicators" : "Show indicators"}
+                >
+                  {showLegend ? (
+                    <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                     </svg>
-                  </button>
-
-                  {/* Close button */}
-                  <button
-                    onClick={() => {
-                      setSelectedDrawingId(null);
-                      setToolbarPosition(null); // Reset toolbar position
-                    }}
-                    className="p-1.5 hover:bg-gray-800 rounded transition-colors"
-                    title="Close"
-                  >
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  ) : (
+                    <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
                     </svg>
-                  </button>
+                  )}
+                </button>
+
+                {/* Resize Handle - Bottom Right (Desktop only, disabled on mobile) */}
+                <div
+                  onMouseDown={(e) => {
+                    // Only allow resize on desktop (md and above)
+                    if (window.innerWidth < 768) return;
+                    e.preventDefault();
+                    e.stopPropagation();
+                    // Find the grid item parent (the actual container we want to resize)
+                    const gridItem = chartWrapperRef.current?.parentElement;
+                    
+                    if (gridItem) {
+                      const rect = gridItem.getBoundingClientRect();
+                      // Store initial mouse position and grid item dimensions
+                      setIsResizing(true);
+                      resizeStartRef.current = {
+                        x: e.clientX, // Initial mouse X
+                        y: e.clientY, // Initial mouse Y
+                        width: rect.width, // Initial width
+                        height: rect.height, // Initial height
+                        gridItem: gridItem as HTMLElement,
+                      };
+                    }
+                  }}
+                  onTouchStart={(e) => {
+                    // Disable resize on mobile/touch devices
+                    return;
+                  }}
+                  className="hidden md:block absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize z-20 group"
+                  style={{
+                    background: 'linear-gradient(135deg, transparent 0%, transparent 40%, rgba(59, 130, 246, 0.3) 40%, rgba(59, 130, 246, 0.3) 60%, transparent 60%)',
+                  }}
+                  title="Resize chart"
+                >
+                  <div className="absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2 border-blue-500/50 group-hover:border-blue-400 transition-colors"></div>
                 </div>
               </div>
-            );
-          })()}
-
-          {/* Countdown Timer (only if seconds visible setting is enabled) */}
-          {chartSettings.secondsVisible && (
-            <div
-              className="absolute right-20 top-2 bg-gray-900/80 border border-gray-700/50 backdrop-blur-sm px-1.5 py-1 rounded shadow-md z-10"
-            >
-              <div className="flex items-center gap-1 text-teal-400">
-                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-[10px] font-mono font-medium">{countdown}</span>
-              </div>
-            </div>
-          )}
-
-          {/* Toggle Legend Button (TradingView style - bottom left) */}
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowLegend(!showLegend);
-            }}
-            className="absolute bottom-2 left-2 z-10 p-1.5 bg-gray-800/50 hover:bg-gray-700 rounded transition-colors pointer-events-auto"
-            title={showLegend ? "Hide indicators" : "Show indicators"}
-          >
-            {showLegend ? (
-              <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-              </svg>
-            ) : (
-              <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
-              </svg>
-            )}
-          </button>
-
-          {/* Resize Handle - Bottom Right (Desktop only, disabled on mobile) */}
-          <div
-            onMouseDown={(e) => {
-              // Only allow resize on desktop (md and above)
-              if (window.innerWidth < 768) return;
-              e.preventDefault();
-              e.stopPropagation();
-              // Find the grid item parent (the actual container we want to resize)
-              const gridItem = chartWrapperRef.current?.parentElement;
-
-              if (gridItem) {
-                const rect = gridItem.getBoundingClientRect();
-                // Store initial mouse position and grid item dimensions
-                setIsResizing(true);
-                resizeStartRef.current = {
-                  x: e.clientX, // Initial mouse X
-                  y: e.clientY, // Initial mouse Y
-                  width: rect.width, // Initial width
-                  height: rect.height, // Initial height
-                  gridItem: gridItem as HTMLElement,
-                };
-              }
-            }}
-            onTouchStart={(e) => {
-              // Disable resize on mobile/touch devices
-              return;
-            }}
-            className="hidden md:block absolute bottom-0 right-0 w-6 h-6 cursor-nwse-resize z-20 group"
-            style={{
-              background: 'linear-gradient(135deg, transparent 0%, transparent 40%, rgba(59, 130, 246, 0.3) 40%, rgba(59, 130, 246, 0.3) 60%, transparent 60%)',
-            }}
-            title="Resize chart"
-          >
-            <div className="absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2 border-blue-500/50 group-hover:border-blue-400 transition-colors"></div>
-          </div>
-        </div>
       </div> {/* End chart container with toolbar */}
 
       {/* RSI Indicator Panel */}
@@ -5677,7 +5693,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           <div ref={macdContainerRef} className="w-full h-full" />
         </div>
       )}
-
+      
       {/* Context Menu */}
       {contextMenuVisible && (
         <div
@@ -5720,7 +5736,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           </button>
         </div>
       )}
-
+      
       {/* Settings Modal */}
       <ChartSettings
         isOpen={showSettings}
