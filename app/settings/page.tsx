@@ -4782,8 +4782,8 @@ export default function SettingsPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                       symbol: newPercentageAlert.symbol,
-                      percentageThreshold: newPercentageAlert.threshold,
-                      timeframeMinutes: newPercentageAlert.timeframe,
+                      threshold: newPercentageAlert.threshold,
+                      timeframe: newPercentageAlert.timeframe,
                       direction: newPercentageAlert.direction,
                       deviceId,
                     }),
