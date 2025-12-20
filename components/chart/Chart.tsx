@@ -889,21 +889,22 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     chart.priceScale('right').applyOptions({
       visible: true, // Ensure price scale is always visible
       // Dynamic width based on layout - multi-chart needs more space for all price digits
-      minimumWidth: layout === 4 ? 90 : layout === 9 ? 70 : 75,
+      // 9-chart needs at least 80px to show prices like 0.06336
+      minimumWidth: layout === 4 ? 90 : layout === 9 ? 80 : 75,
       scaleMargins: {
         top: layout === 9 ? 0.02 : 0.05, // Reduce top margin for 9-chart layout
         bottom: layout === 9 ? 0.10 : 0.15, // Reduce bottom margin for 9-chart layout
       },
       entireTextOnly: false, // Show all price labels, not just when fully visible
-      // iOS/Apple specific optimizations
+      // iOS/Apple specific optimizations - use visible text colors
       ...(isIOSDevice ? {
         textColor: '#FFFFFF', // Bright white for iOS visibility
-        fontSize: layout === 9 ? 9 : layout === 4 ? 10 : 12, // Adjust font for layout
+        fontSize: layout === 9 ? 10 : layout === 4 ? 11 : 12, // Bigger font for 9-chart
         borderVisible: false, // Remove border for cleaner look
         ticksVisible: true, // Ensure ticks are visible
       } : isMobile ? {
-        textColor: '#D1D5DB', // Ensure text is visible
-        fontSize: layout === 9 ? 8 : layout === 4 ? 9 : 10, // Smaller fonts for multi-chart
+        textColor: '#E5E7EB', // Brighter text color for mobile
+        fontSize: layout === 9 ? 9 : layout === 4 ? 10 : 11, // Slightly bigger fonts
         borderVisible: true,
       } : {
         borderVisible: true,
