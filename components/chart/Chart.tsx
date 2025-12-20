@@ -77,26 +77,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     }
   }, []);
 
-  // Helper function to calculate chart width dynamically to accommodate price scale
-  // Only applies to mobile multi-chart layouts (4, 9), NOT single (1) or dual (2) charts
+  // Helper function to calculate chart width
+  // TradingView renders price scale INSIDE chart area, so we use full container width
   const calculateChartWidth = (containerWidth: number): number => {
-    // Never modify width for single (1) or dual (2) chart layouts - use full width
-    if (layout === 1 || layout === 2) {
-      return containerWidth;
-    }
-
-    // Only apply on mobile for 4-chart and 9-chart layouts
-    if (typeof window !== 'undefined' && window.innerWidth < 768) {
-      // For multi-chart layouts, reserve fixed pixels for price scale instead of percentage
-      // Price scale needs ~60-75px, so we subtract that from container width
-      if (layout === 9) {
-        // 9-chart layout: smaller price scale, reserve less space
-        return containerWidth - 50;
-      } else if (layout === 4) {
-        // 4-chart layout: standard price scale width
-        return containerWidth - 65;
-      }
-    }
     return containerWidth;
   };
 
@@ -905,7 +888,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
     chart.priceScale('right').applyOptions({
       visible: true, // Ensure price scale is always visible
-      minimumWidth: 75, // Fixed width to prevent jitter when price text length changes (e.g., XRP, AVAX)
+      // Dynamic width based on layout - multi-chart needs more space for all price digits
+      minimumWidth: layout === 4 ? 90 : layout === 9 ? 70 : 75,
       scaleMargins: {
         top: layout === 9 ? 0.02 : 0.05, // Reduce top margin for 9-chart layout
         bottom: layout === 9 ? 0.10 : 0.15, // Reduce bottom margin for 9-chart layout
@@ -914,12 +898,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       // iOS/Apple specific optimizations
       ...(isIOSDevice ? {
         textColor: '#FFFFFF', // Bright white for iOS visibility
-        fontSize: layout === 9 ? 9 : 12, // Smaller font for 9-chart layout, larger for others
+        fontSize: layout === 9 ? 9 : layout === 4 ? 10 : 12, // Adjust font for layout
         borderVisible: false, // Remove border for cleaner look
         ticksVisible: true, // Ensure ticks are visible
       } : isMobile ? {
         textColor: '#D1D5DB', // Ensure text is visible
-        fontSize: layout === 9 ? 8 : 10, // Smaller font for 9-chart layout (8px), slightly smaller for others (10px)
+        fontSize: layout === 9 ? 8 : layout === 4 ? 9 : 10, // Smaller fonts for multi-chart
         borderVisible: true,
       } : {
         borderVisible: true,
@@ -4871,8 +4855,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           }
         }}
         className={`${isIPad ? '' : 'lg:hidden'} absolute top-32 left-2 z-20 p-2 rounded-lg transition-all shadow-lg ${showDrawingTools
-            ? 'bg-blue-600 text-white'
-            : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
+          ? 'bg-blue-600 text-white'
+          : 'bg-gray-800 hover:bg-gray-700 text-gray-300'
           }`}
         title={showDrawingTools ? "Hide Drawing Tools" : "Show Drawing Tools"}
       >
