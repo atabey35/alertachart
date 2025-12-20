@@ -61,12 +61,12 @@ export default function SettingsPage() {
   const [loadingPrice, setLoadingPrice] = useState(false);
   const [loadingAlerts, setLoadingAlerts] = useState(false);
   const priceUpdateIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  
+
   // Coin search state
   const [symbolSuggestions, setSymbolSuggestions] = useState<any[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [loadingSymbols, setLoadingSymbols] = useState(false);
-  
+
   // Notification history state
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -74,9 +74,33 @@ export default function SettingsPage() {
   const [allSymbols, setAllSymbols] = useState<any[]>([]);
   const symbolInputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  
+
   // Info tooltip state
   const [activeTooltip, setActiveTooltip] = useState<string | null>(null);
+
+  // Volume Spike Alert state
+  const [showAddVolumeAlertModal, setShowAddVolumeAlertModal] = useState(false);
+  const [volumeAlerts, setVolumeAlerts] = useState<any[]>([]);
+  const [newVolumeAlert, setNewVolumeAlert] = useState({
+    symbol: '',
+    spikeMultiplier: 2 as 1.5 | 2 | 3 | 5,
+  });
+  const [volumeSymbolSuggestions, setVolumeSymbolSuggestions] = useState<any[]>([]);
+  const [showVolumeSymbolSuggestions, setShowVolumeSymbolSuggestions] = useState(false);
+  const volumeSymbolInputRef = useRef<HTMLInputElement>(null);
+
+  // Percentage Change Alert state
+  const [showAddPercentageAlertModal, setShowAddPercentageAlertModal] = useState(false);
+  const [percentageAlerts, setPercentageAlerts] = useState<any[]>([]);
+  const [newPercentageAlert, setNewPercentageAlert] = useState({
+    symbol: '',
+    threshold: 5 as 1 | 5 | 10 | 15 | 20,
+    timeframe: 60 as 60 | 240 | 1440,
+    direction: 'both' as 'up' | 'down' | 'both',
+  });
+  const [percentageSymbolSuggestions, setPercentageSymbolSuggestions] = useState<any[]>([]);
+  const [showPercentageSymbolSuggestions, setShowPercentageSymbolSuggestions] = useState(false);
+  const percentageSymbolInputRef = useRef<HTMLInputElement>(null);
 
   // 🔥 Track when we started loading to ensure minimum 1.5s
   const loadingStartTimeRef = useRef<number | null>(null);
@@ -96,29 +120,29 @@ export default function SettingsPage() {
     const checkDataReady = () => {
       // Session must be resolved (not loading)
       if (status === 'loading') return false;
-      
+
       // If unauthenticated and no user, we're ready (will show login)
       if (status === 'unauthenticated' && !user) return true;
-      
+
       // If authenticated but no user yet, wait
       if (status === 'authenticated' && !user) return false;
-      
+
       // If user exists, we need to wait for userPlan to be fetched
       if (user) {
         return userPlanFetched; // Wait for fetchUserPlan to complete
       }
-      
+
       return false;
     };
 
     // Check if we can hide loading
     const hideLoadingIfReady = () => {
       if (!loadingStartTimeRef.current) return;
-      
+
       const now = Date.now();
       const minTime = 1500; // Minimum 1.5 seconds
       const elapsed = now - loadingStartTimeRef.current;
-      
+
       // Must wait at least 1.5 seconds AND data must be ready
       if (elapsed >= minTime && checkDataReady()) {
         setPageLoading(false);
@@ -153,7 +177,7 @@ export default function SettingsPage() {
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('focus', handleFocus);
-    
+
     return () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('focus', handleFocus);
@@ -232,20 +256,20 @@ export default function SettingsPage() {
     if (typeof window !== 'undefined') {
       const hasCapacitor = !!(window as any).Capacitor;
       let isNative = false;
-      
+
       if (hasCapacitor) {
         // Check if it's actually a native platform, not just web with Capacitor script
         try {
           const platform = (window as any).Capacitor?.getPlatform?.();
           const isNativePlatform = (window as any).Capacitor?.isNativePlatform?.();
-          
+
           console.log('[Settings] Capacitor detected:', {
             platform,
             isNativePlatform,
             hasGetPlatform: !!(window as any).Capacitor?.getPlatform,
             hasIsNativePlatform: !!(window as any).Capacitor?.isNativePlatform,
           });
-          
+
           // Native platform check: platform should be 'ios' or 'android', not 'web'
           if (platform === 'ios' || platform === 'android') {
             isNative = true;
@@ -259,10 +283,10 @@ export default function SettingsPage() {
           isNative = false;
         }
       }
-      
+
       setIsCapacitor(isNative);
-      console.log('[Settings] Final platform detection:', { 
-        isCapacitor: isNative, 
+      console.log('[Settings] Final platform detection:', {
+        isCapacitor: isNative,
         hasCapacitor,
         userAgent: navigator.userAgent.substring(0, 50),
       });
@@ -274,11 +298,11 @@ export default function SettingsPage() {
   // Restore session using Preferences refreshToken
   const restoreAttemptedRef = useRef(false);
   const restoreInProgressRef = useRef(false);
-  
+
   useEffect(() => {
     const restoreAndroidSession = async () => {
       if (typeof window === 'undefined') return;
-      
+
       console.log('[Settings] 🔍 Restore check started:', {
         restoreAttempted: restoreAttemptedRef.current,
         restoreInProgress: restoreInProgressRef.current,
@@ -286,28 +310,28 @@ export default function SettingsPage() {
         hasUser: !!user,
         userEmail: user?.email,
       });
-      
+
       // Reset restore flag if user becomes null (cookie loss scenario)
       if (!user && restoreAttemptedRef.current) {
         console.log('[Settings] 🔄 Resetting restore flag because user is null');
         restoreAttemptedRef.current = false;
       }
-      
+
       // Prevent multiple restore attempts
       if (restoreAttemptedRef.current || restoreInProgressRef.current) {
         console.log('[Settings] ⏭️ Restore already attempted or in progress, skipping');
         return;
       }
-      
+
       const hasCapacitor = !!(window as any).Capacitor;
       const platform = hasCapacitor ? (window as any).Capacitor?.getPlatform?.() : 'web';
-      
+
       console.log('[Settings] 🔍 Platform check:', {
         hasCapacitor,
         platform,
         isAndroid: platform === 'android',
       });
-      
+
       // Only for Android
       if (platform === 'android') {
         // Set in-progress flag only when we actually start restore
@@ -319,14 +343,14 @@ export default function SettingsPage() {
           hasUser: !!user,
           userEmail: user?.email,
         });
-        
+
         // 🔥 CRITICAL: Android - Always try to restore if user is missing OR if status is not authenticated
         // Android WebView loses cookies when app is closed, so even if status is 'authenticated',
         // user state might be null because cookies are gone
         // We need to restore from Preferences token
         // Also restore if status is 'authenticated' but user is null (cookie loss scenario)
         const shouldRestore = !user || status === 'unauthenticated' || status === 'loading' || (status === 'authenticated' && !user);
-        
+
         console.log('[Settings] 🔍 shouldRestore check:', {
           shouldRestore,
           hasUser: !!user,
@@ -336,7 +360,7 @@ export default function SettingsPage() {
           condition3: status === 'loading',
           condition4: status === 'authenticated' && !user,
         });
-        
+
         // Only skip restore if we have both user AND authenticated status
         if (user && status === 'authenticated') {
           console.log('[Settings] ℹ️ Session exists and user is set, no restore needed', {
@@ -347,13 +371,13 @@ export default function SettingsPage() {
           restoreInProgressRef.current = false;
           return;
         }
-        
+
         console.log('[Settings] 📱 Android: Attempting session restore...', {
           status,
           hasUser: !!user,
           shouldRestore,
         });
-        
+
         try {
           // Get refreshToken from Preferences FIRST (more reliable than localStorage)
           let refreshTokenFromPreferences: string | null = null;
@@ -361,12 +385,12 @@ export default function SettingsPage() {
             hasCapacitor,
             hasPreferencesPlugin: !!(hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences),
           });
-          
+
           if (hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
             try {
               console.log('[Settings] 🔍 Reading refreshToken from Preferences...');
-              const prefsResult = await (window as any).Capacitor.Plugins.Preferences.get({ 
-                key: 'refreshToken' 
+              const prefsResult = await (window as any).Capacitor.Plugins.Preferences.get({
+                key: 'refreshToken'
               });
               console.log('[Settings] 🔍 Preferences result:', {
                 hasValue: !!prefsResult?.value,
@@ -376,12 +400,12 @@ export default function SettingsPage() {
                 isNull: prefsResult?.value === 'null',
                 isUndefined: prefsResult?.value === 'undefined',
               });
-              
-              if (prefsResult?.value && 
-                  prefsResult.value !== 'null' && 
-                  prefsResult.value !== 'undefined' &&
-                  typeof prefsResult.value === 'string' &&
-                  prefsResult.value.trim().length > 0) {
+
+              if (prefsResult?.value &&
+                prefsResult.value !== 'null' &&
+                prefsResult.value !== 'undefined' &&
+                typeof prefsResult.value === 'string' &&
+                prefsResult.value.trim().length > 0) {
                 const tokenValue = prefsResult.value.trim();
                 refreshTokenFromPreferences = tokenValue;
                 console.log('[Settings] ✅ RefreshToken found in Preferences', {
@@ -400,7 +424,7 @@ export default function SettingsPage() {
           } else {
             console.log('[Settings] ⚠️ Preferences plugin not available');
           }
-          
+
           // If no token in Preferences, try to restore using cookies (if available)
           // Cookie'den token bulunabilir ama NextAuth session yok olabilir
           if (!refreshTokenFromPreferences) {
@@ -410,26 +434,26 @@ export default function SettingsPage() {
               allKeys: Object.keys(localStorage),
               hasCookies: typeof document !== 'undefined' && document.cookie.length > 0,
             });
-            
+
             if (!savedEmail) {
               console.log('[Settings] ℹ️ No saved email and no token in Preferences, user never logged in');
               restoreInProgressRef.current = false;
               return; // No saved email, user never logged in
             }
-            
+
             // Even if no token in Preferences, try to restore using cookies
             // restore-session API will check cookies if body is empty
             console.log('[Settings] ⚠️ No refreshToken in Preferences but savedEmail exists - will try restore with cookies');
             // Continue to restore-session call (it will use cookies if body is empty)
           }
-          
+
           // Restore session using Preferences refreshToken OR cookies
           // If Preferences token exists, use it. Otherwise, let API use cookies
           let requestBody: { refreshToken?: string } | undefined = undefined;
-          
-          if (refreshTokenFromPreferences && 
-              typeof refreshTokenFromPreferences === 'string' &&
-              refreshTokenFromPreferences.trim().length > 0) {
+
+          if (refreshTokenFromPreferences &&
+            typeof refreshTokenFromPreferences === 'string' &&
+            refreshTokenFromPreferences.trim().length > 0) {
             // TypeScript type narrowing: at this point refreshTokenFromPreferences is definitely a non-empty string
             const token = refreshTokenFromPreferences.trim();
             requestBody = { refreshToken: token };
@@ -447,7 +471,7 @@ export default function SettingsPage() {
               url: '/api/auth/restore-session',
             });
           }
-          
+
           if (requestBody) {
             console.log('[Settings] 🔍 Request body:', {
               hasRefreshToken: !!requestBody.refreshToken,
@@ -455,27 +479,27 @@ export default function SettingsPage() {
               bodyString: JSON.stringify(requestBody).substring(0, 100),
             });
           }
-          
+
           const response = await fetch('/api/auth/restore-session', {
             method: 'POST',
             credentials: 'include',
             headers: requestBody ? { 'Content-Type': 'application/json' } : {},
             body: requestBody ? JSON.stringify(requestBody) : undefined,
           });
-          
+
           console.log('[Settings] 🔍 restore-session API response:', {
             status: response.status,
             statusText: response.statusText,
             ok: response.ok,
           });
-          
+
           if (response.ok) {
             const result = await response.json();
             console.log('[Settings] ✅ Session restored successfully:', result);
-            
+
             // Mark restore as attempted (successful)
             restoreAttemptedRef.current = true;
-            
+
             // 🔥 CRITICAL: Check if tokens are in response
             console.log('[Settings] 🔍 Checking tokens in response:', {
               hasTokens: !!result.tokens,
@@ -486,16 +510,16 @@ export default function SettingsPage() {
               hasCapacitor,
               hasPreferencesPlugin: !!(hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences),
             });
-            
+
             // 🔥 CRITICAL: Android - Save tokens to Preferences if returned
             // Android uses Preferences instead of cookies (cookies unreliable)
             if (platform === 'android' && result.tokens && hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences) {
               console.log('[Settings] 💾 Saving tokens to Preferences...');
               try {
                 if (result.tokens.accessToken) {
-                  await (window as any).Capacitor.Plugins.Preferences.set({ 
-                    key: 'accessToken', 
-                    value: result.tokens.accessToken 
+                  await (window as any).Capacitor.Plugins.Preferences.set({
+                    key: 'accessToken',
+                    value: result.tokens.accessToken
                   });
                   console.log('[Settings] ✅ AccessToken saved to Preferences (Android)', {
                     length: result.tokens.accessToken.length,
@@ -505,18 +529,18 @@ export default function SettingsPage() {
                   console.log('[Settings] ⚠️ No accessToken in result.tokens');
                 }
                 if (result.tokens.refreshToken) {
-                  await (window as any).Capacitor.Plugins.Preferences.set({ 
-                    key: 'refreshToken', 
-                    value: result.tokens.refreshToken 
+                  await (window as any).Capacitor.Plugins.Preferences.set({
+                    key: 'refreshToken',
+                    value: result.tokens.refreshToken
                   });
                   console.log('[Settings] ✅ RefreshToken saved to Preferences (Android)', {
                     length: result.tokens.refreshToken.length,
                     preview: `${result.tokens.refreshToken.substring(0, 20)}...`,
                   });
-                  
+
                   // Verify it was saved
-                  const verifyResult = await (window as any).Capacitor.Plugins.Preferences.get({ 
-                    key: 'refreshToken' 
+                  const verifyResult = await (window as any).Capacitor.Plugins.Preferences.get({
+                    key: 'refreshToken'
                   });
                   console.log('[Settings] 🔍 Verification: RefreshToken in Preferences after save:', {
                     found: !!verifyResult?.value,
@@ -538,7 +562,7 @@ export default function SettingsPage() {
                 hasPreferencesPlugin: !!(hasCapacitor && (window as any).Capacitor?.Plugins?.Preferences),
               });
             }
-            
+
             // Update NextAuth session
             try {
               await update();
@@ -546,7 +570,7 @@ export default function SettingsPage() {
             } catch (updateError) {
               console.warn('[Settings] ⚠️ Failed to update NextAuth session:', updateError);
             }
-            
+
             // 🔥 CRITICAL: Manually set user state if session update didn't work
             // Sometimes NextAuth session takes time to propagate
             if (result?.user?.email) {
@@ -556,12 +580,12 @@ export default function SettingsPage() {
                 name: result.user.name || undefined,
               });
               console.log('[Settings] ✅ User state manually set from restore result');
-              
+
               // Also save email to localStorage if not already saved
               if (typeof window !== 'undefined') {
                 localStorage.setItem('user_email', result.user.email);
               }
-              
+
               // Also update authService user state
               try {
                 await authService.checkAuth();
@@ -570,7 +594,7 @@ export default function SettingsPage() {
                 console.warn('[Settings] ⚠️ authService.checkAuth() failed:', e);
               }
             }
-            
+
             // Force a small delay and check session again
             setTimeout(async () => {
               try {
@@ -599,7 +623,7 @@ export default function SettingsPage() {
         console.log('[Settings] ℹ️ Not Android platform, skipping restore');
       }
     };
-    
+
     // Small delay to ensure Capacitor is ready
     setTimeout(restoreAndroidSession, 500);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -663,7 +687,7 @@ export default function SettingsPage() {
           console.log('[Settings] Guest user - adding email to plan request:', user.email);
         }
       }
-      
+
       const response = await fetch(url, {
         cache: 'no-store',
         headers: {
@@ -673,7 +697,7 @@ export default function SettingsPage() {
       if (response.ok) {
         const data = await response.json();
         console.log('[Settings] User plan fetched:', data);
-        
+
         const newPlanData = {
           plan: data.plan || 'free',
           isTrial: data.isTrial || false,
@@ -684,7 +708,7 @@ export default function SettingsPage() {
 
         // 1. State'i güncelle (UI anında güncellenir)
         setUserPlan(newPlanData);
-        
+
         // 🔥 2. Değişiklik: Cache'i güncelle (Bir sonraki açılış için)
         if (typeof window !== 'undefined') {
           localStorage.setItem('user_plan_cache', JSON.stringify(newPlanData));
@@ -705,7 +729,7 @@ export default function SettingsPage() {
           subscription_id: null,
         });
       }
-      
+
       // Mark as fetched (success or failure, we've checked)
       setUserPlanFetched(true);
     } catch (error) {
@@ -766,7 +790,7 @@ export default function SettingsPage() {
 
         // Try to get device ID from various sources
         let deviceId = null;
-        
+
         // 🔥 CRITICAL: For native apps, try to get device ID from Capacitor first
         if (isCapacitor) {
           try {
@@ -774,7 +798,7 @@ export default function SettingsPage() {
             if (Device && typeof Device.getId === 'function') {
               const deviceIdInfo = await Device.getId();
               const nativeId = deviceIdInfo?.identifier;
-              
+
               if (nativeId && nativeId !== 'unknown' && nativeId !== 'null' && nativeId !== 'undefined') {
                 deviceId = nativeId;
                 // Store in localStorage for future use
@@ -787,22 +811,22 @@ export default function SettingsPage() {
             console.warn('[Settings] Failed to get device ID from Capacitor:', capacitorError);
           }
         }
-        
+
         // Fallback 1: Check localStorage for native_device_id
         if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
           deviceId = localStorage.getItem('native_device_id');
         }
-        
+
         // Fallback 2: Check other localStorage keys
         if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
           deviceId = localStorage.getItem('device_id');
         }
-        
+
         // Fallback 3: Use web device ID ONLY if not Capacitor
         if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined' && !isCapacitor) {
           deviceId = localStorage.getItem('web_device_id');
         }
-        
+
         if (!deviceId || deviceId === 'unknown' || deviceId === 'null') {
           console.warn('[Settings] No device ID found');
           setLoadingAlerts(false);
@@ -821,6 +845,22 @@ export default function SettingsPage() {
           // Not authenticated or no premium
           console.warn('[Settings] Failed to fetch alerts:', response.status);
           setCustomAlerts([]);
+        }
+
+        // Fetch volume and percentage custom alerts
+        try {
+          const customResponse = await fetch(`/api/alerts/custom?deviceId=${deviceId}`, {
+            credentials: 'include',
+          });
+          if (customResponse.ok) {
+            const customData = await customResponse.json();
+            const allCustomAlerts = customData.alerts || [];
+            // Filter by alert type
+            setVolumeAlerts(allCustomAlerts.filter((a: any) => a.alert_type === 'volume_spike'));
+            setPercentageAlerts(allCustomAlerts.filter((a: any) => a.alert_type === 'percentage_change'));
+          }
+        } catch (customError) {
+          console.error('[Settings] Error fetching custom volume/percentage alerts:', customError);
         }
       } catch (error) {
         console.error('[Settings] Error fetching custom alerts:', error);
@@ -848,7 +888,7 @@ export default function SettingsPage() {
         // 🔥 MULTILINGUAL: Include user's language preference for filtering
         params.append('lang', language);
         url += `?${params.toString()}`;
-        
+
         const response = await fetch(url, {
           credentials: 'include',
           cache: 'no-store',
@@ -866,12 +906,12 @@ export default function SettingsPage() {
     };
 
     fetchNotifications();
-    
+
     // Listen for notification refresh events
     const handleNotificationRefresh = () => {
       fetchNotifications();
     };
-    
+
     window.addEventListener('notification-refresh', handleNotificationRefresh);
     return () => {
       window.removeEventListener('notification-refresh', handleNotificationRefresh);
@@ -887,7 +927,7 @@ export default function SettingsPage() {
         credentials: 'include',
         body: JSON.stringify({ notificationId }),
       });
-      setNotifications(prev => 
+      setNotifications(prev =>
         prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
@@ -916,7 +956,7 @@ export default function SettingsPage() {
     const date = new Date(dateString);
     const now = new Date();
     const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
-    
+
     if (diffInSeconds < 60) {
       return language === 'en' ? 'Just now' : 'Az önce';
     } else if (diffInSeconds < 3600) {
@@ -938,13 +978,13 @@ export default function SettingsPage() {
     const fetchSymbols = async () => {
       setLoadingSymbols(true);
       try {
-        const baseUrl = marketType === 'futures' 
+        const baseUrl = marketType === 'futures'
           ? 'https://fapi.binance.com/fapi/v1/exchangeInfo'
           : 'https://api.binance.com/api/v3/exchangeInfo';
-        
+
         const response = await fetch(baseUrl);
         const data = await response.json();
-        
+
         // Get all trading pairs (USDT, BTC, ETH, BNB, etc.)
         const allPairs = data.symbols
           .filter((s: any) => s.status === 'TRADING')
@@ -964,16 +1004,16 @@ export default function SettingsPage() {
               'BUSD': 4,
               'FDUSD': 5,
             };
-            
+
             const aPriority = quotePriority[a.quoteAsset] ?? 999;
             const bPriority = quotePriority[b.quoteAsset] ?? 999;
-            
+
             if (aPriority !== bPriority) return aPriority - bPriority;
-            
+
             // Within same quote asset, sort alphabetically
             return a.baseAsset.localeCompare(b.baseAsset);
           });
-        
+
         setAllSymbols(allPairs);
       } catch (error) {
         console.error('[Settings] Failed to fetch symbols:', error);
@@ -988,10 +1028,10 @@ export default function SettingsPage() {
   // Filter symbols based on search query
   const filteredSymbols = useMemo(() => {
     if (!newAlert.symbol.trim()) return [];
-    
+
     const query = newAlert.symbol.toUpperCase();
     return allSymbols
-      .filter(s => 
+      .filter(s =>
         s.symbol.includes(query) ||
         s.baseAsset.toUpperCase().includes(query) ||
         s.displayName.toUpperCase().includes(query)
@@ -1042,14 +1082,14 @@ export default function SettingsPage() {
     }
 
     const symbol = newAlert.symbol.toUpperCase();
-    
+
     // Initial price fetch
     const fetchPrice = async () => {
       try {
-        const baseUrl = marketType === 'futures' 
+        const baseUrl = marketType === 'futures'
           ? `https://fapi.binance.com/fapi/v1/ticker/price?symbol=${symbol}`
           : `https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`;
-        
+
         const response = await fetch(baseUrl);
         if (response.ok) {
           const data = await response.json();
@@ -1098,7 +1138,7 @@ export default function SettingsPage() {
           console.warn('[Settings] Capacitor.getPlatform() error:', error);
         }
       }
-      
+
       if ((window as any).Capacitor?.Plugins?.Device) {
         try {
           const { Device } = (window as any).Capacitor.Plugins;
@@ -1110,7 +1150,7 @@ export default function SettingsPage() {
           console.warn('[Settings] Device plugin error:', error);
         }
       }
-      
+
       return 'web';
     };
 
@@ -1121,7 +1161,7 @@ export default function SettingsPage() {
           try {
             const deviceIdInfo = await Device.getId();
             const deviceId = deviceIdInfo?.identifier;
-            
+
             if (deviceId && deviceId !== 'unknown' && deviceId !== null && deviceId !== undefined) {
               if (typeof window !== 'undefined') {
                 localStorage.setItem('native_device_id', deviceId);
@@ -1135,14 +1175,14 @@ export default function SettingsPage() {
       } catch (error) {
         console.error('[Settings] Device plugin access error:', error);
       }
-      
+
       if (typeof window !== 'undefined') {
         const storedDeviceId = localStorage.getItem('native_device_id');
         if (storedDeviceId && storedDeviceId !== 'unknown' && storedDeviceId !== 'null' && storedDeviceId !== 'undefined') {
           return storedDeviceId;
         }
       }
-      
+
       return null;
     };
 
@@ -1156,38 +1196,38 @@ export default function SettingsPage() {
         });
         return;
       }
-      
+
       // 🔥 CRITICAL: "placeholder" ile başlayan token'ları reddet
       if (tokenValue.toLowerCase().startsWith('placeholder')) {
         console.error('[Settings] ❌ Token is placeholder, waiting for real token...');
         return;
       }
-      
+
       console.log('[Settings] ✅ Valid FCM Token received!');
       console.log('[Settings] ✅ Token length:', tokenValue.length);
       console.log('[Settings] ✅ Token preview:', tokenValue.substring(0, 50) + '...');
-      
+
       // Store token in localStorage
       localStorage.setItem('fcm_token', tokenValue);
       console.log('[Settings] ✅ FCM Token saved to localStorage');
-      
+
       // Register token with backend via Next.js API route (forwards cookies)
       try {
         const platform = await getPlatform();
         const deviceId = await getDeviceId() || `device-${Date.now()}`;
-        
+
         // Get device info for model and OS version
         const { Device } = (window as any).Capacitor.Plugins;
         let model = 'Unknown';
         let osVersion = 'Unknown';
         let language = 'tr'; // Default to Turkish
-        
+
         if (Device) {
           try {
             const deviceInfo = await Device.getInfo();
             model = deviceInfo.model || model;
             osVersion = deviceInfo.osVersion || osVersion;
-            
+
             // 🔥 MULTILINGUAL: Get device language
             try {
               const langInfo = await Device.getLanguageCode();
@@ -1207,7 +1247,7 @@ export default function SettingsPage() {
             console.warn('[Settings] Could not get device info:', e);
           }
         }
-        
+
         console.log('[Settings] 📤 Registering token with backend...');
         console.log('[Settings] Platform:', platform);
         console.log('[Settings] Device ID:', deviceId);
@@ -1215,7 +1255,7 @@ export default function SettingsPage() {
         console.log('[Settings] OS Version:', osVersion);
         console.log('[Settings] Language:', language);
         console.log('[Settings] Token (first 50 chars):', tokenValue.substring(0, 50) + '...');
-        
+
         // 🔥 CRITICAL: Use Next.js API route to forward cookies (for user_id)
         // This ensures the device is linked to the user account
         const requestBody = {
@@ -1227,12 +1267,12 @@ export default function SettingsPage() {
           language: language,
           appVersion: '1.0.0',
         };
-        
+
         console.log('[Settings] 📤 Request body (token hidden):', {
           ...requestBody,
           token: tokenValue.substring(0, 30) + '... (length: ' + tokenValue.length + ')',
         });
-        
+
         const response = await fetch('/api/push/register', {
           method: 'POST',
           headers: {
@@ -1241,10 +1281,10 @@ export default function SettingsPage() {
           credentials: 'include', // 🔥 CRITICAL: Send httpOnly cookies!
           body: JSON.stringify(requestBody),
         });
-        
+
         const responseText = await response.text();
         console.log('[Settings] 📡 Raw response:', responseText);
-        
+
         if (response.ok) {
           try {
             const result = JSON.parse(responseText);
@@ -1273,31 +1313,31 @@ export default function SettingsPage() {
       try {
         console.log('[Settings] 🚀 Initializing push notifications...');
         const { PushNotifications, Device } = (window as any).Capacitor.Plugins;
-        
+
         if (!PushNotifications) {
           console.warn('[Settings] PushNotifications plugin not available');
           return;
         }
-        
+
         // Request permission
         console.log('[Settings] 🔔 Requesting push notification permission...');
         const permResult = await PushNotifications.requestPermissions();
         console.log('[Settings] 🔔 Permission result:', JSON.stringify(permResult));
-        
+
         if (permResult.receive !== 'granted') {
           console.warn('[Settings] Push notification permission not granted');
           return;
         }
-        
+
         // Listen for registration
         console.log('[Settings] 🔔 Adding registration listener...');
         PushNotifications.addListener('registration', async (tokenData: any) => {
           console.log('[Settings] 🔔 Registration event received:', JSON.stringify(tokenData));
-          
+
           // 🔥 CRITICAL: iOS'ta token farklı formatta gelebilir
           // Capacitor PushNotifications plugin'i iOS'ta token'ı farklı şekilde döndürebilir
           let tokenValue = '';
-          
+
           if (typeof tokenData === 'string') {
             // Token direkt string olarak gelmiş
             tokenValue = tokenData;
@@ -1315,18 +1355,18 @@ export default function SettingsPage() {
             tokenValue = JSON.stringify(tokenData);
             console.warn('[Settings] ⚠️ Token format unexpected, using full object:', tokenValue.substring(0, 100));
           }
-          
+
           // Register token with backend
           await registerTokenWithBackend(tokenValue);
         });
-        
+
         // Listen for registration errors
         PushNotifications.addListener('registrationError', (error: any) => {
           console.error('[Settings] FCM registration error:', error);
           console.error('[Settings] ⚠️ This usually means APNs registration failed');
           console.error('[Settings] ⚠️ Check Xcode: Signing & Capabilities > Push Notifications must be enabled');
         });
-        
+
         // 🔥 CRITICAL: Listen for FCM token from AppDelegate (iOS fallback)
         // AppDelegate sends FCM token via custom event when Capacitor plugin doesn't fire
         const handleFCMTokenFromAppDelegate = async (event: Event) => {
@@ -1336,22 +1376,22 @@ export default function SettingsPage() {
             console.warn('[Settings] ⚠️ FCM token event received but token is missing');
             return;
           }
-          
+
           console.log('[Settings] 🔔 FCM Token received from AppDelegate (event):', token.substring(0, 50) + '...');
-          
+
           // Use the same registration logic as the Capacitor listener
           await registerTokenWithBackend(token);
         };
-        
+
         window.addEventListener('fcmTokenReceived', handleFCMTokenFromAppDelegate);
         console.log('[Settings] ✅ Added listener for AppDelegate FCM token event');
-        
+
         // 🔥 CRITICAL: Fallback - Check for token in localStorage or window (in case event was missed)
         // AppDelegate stores token in localStorage and window as fallback
         const checkForStoredToken = async () => {
           try {
             console.log('[Settings] 🔍 Checking for stored FCM token (fallback)...');
-            
+
             // Check localStorage first
             const storedToken = localStorage.getItem('fcm_token_from_appdelegate');
             console.log('[Settings] 🔍 localStorage check:', {
@@ -1359,7 +1399,7 @@ export default function SettingsPage() {
               tokenLength: storedToken?.length || 0,
               tokenPreview: storedToken ? storedToken.substring(0, 30) + '...' : 'null',
             });
-            
+
             if (storedToken && storedToken.length > 50 && !storedToken.toLowerCase().startsWith('placeholder')) {
               console.log('[Settings] 🔔 FCM Token found in localStorage (fallback):', storedToken.substring(0, 50) + '...');
               await registerTokenWithBackend(storedToken);
@@ -1367,7 +1407,7 @@ export default function SettingsPage() {
               localStorage.removeItem('fcm_token_from_appdelegate');
               return;
             }
-            
+
             // Check window object
             const windowToken = (window as any).__fcmTokenFromAppDelegate;
             console.log('[Settings] 🔍 window check:', {
@@ -1376,7 +1416,7 @@ export default function SettingsPage() {
               tokenLength: windowToken?.length || 0,
               tokenPreview: windowToken ? windowToken.substring(0, 30) + '...' : 'null',
             });
-            
+
             if (windowToken && typeof windowToken === 'string' && windowToken.length > 50 && !windowToken.toLowerCase().startsWith('placeholder')) {
               console.log('[Settings] 🔔 FCM Token found in window (fallback):', windowToken.substring(0, 50) + '...');
               await registerTokenWithBackend(windowToken);
@@ -1384,25 +1424,25 @@ export default function SettingsPage() {
               delete (window as any).__fcmTokenFromAppDelegate;
               return;
             }
-            
+
             console.log('[Settings] 🔍 No stored token found in fallback locations');
           } catch (error) {
             console.error('[Settings] Error checking for stored token:', error);
           }
         };
-        
+
         // Check immediately and also after delays (aggressive fallback)
         checkForStoredToken();
         setTimeout(checkForStoredToken, 1000); // Check after 1 second
         setTimeout(checkForStoredToken, 2000); // Check after 2 seconds
         setTimeout(checkForStoredToken, 3000); // Check after 3 seconds
         setTimeout(checkForStoredToken, 5000); // Check after 5 seconds
-        
+
         // Register with FCM
         console.log('[Settings] 📤 Registering with FCM...');
         await PushNotifications.register();
         console.log('[Settings] ✅ Push notifications initialized');
-        
+
         // 🔥 CRITICAL: Wait for token with timeout and check fallback
         // If APNs registration failed, token might not come
         // Set a timeout to detect this issue
@@ -1410,7 +1450,7 @@ export default function SettingsPage() {
           const savedToken = localStorage.getItem('fcm_token');
           const fallbackToken = localStorage.getItem('fcm_token_from_appdelegate');
           const windowToken = (window as any).__fcmTokenFromAppDelegate;
-          
+
           console.log('[Settings] 🔍 Token check after 5 seconds:', {
             hasSavedToken: !!savedToken,
             savedTokenLength: savedToken?.length || 0,
@@ -1419,7 +1459,7 @@ export default function SettingsPage() {
             hasWindowToken: !!windowToken,
             windowTokenLength: windowToken?.length || 0,
           });
-          
+
           // Try fallback one more time
           if (fallbackToken || windowToken) {
             console.log('[Settings] 🔔 Found token in fallback storage, registering now...');
@@ -1442,14 +1482,14 @@ export default function SettingsPage() {
     // Try to restore session
     const tryRestoreSession = async () => {
       console.log('[Settings] 🚀 tryRestoreSession() called');
-      
+
       // 🔥 FIX: Prevent reload loop - check if session restore was already completed
       const sessionRestoreCompleted = sessionStorage.getItem('sessionRestoreCompleted');
       if (sessionRestoreCompleted === 'true') {
         console.log('[Settings] ℹ️ Session restore already completed, skipping to prevent reload loop');
         return;
       }
-      
+
       try {
         if (typeof window === 'undefined' || !(window as any).Capacitor) {
           console.log('[Settings] ⚠️ Not a Capacitor app, skipping session restore');
@@ -1461,7 +1501,7 @@ export default function SettingsPage() {
         console.log('[Settings] ✅ Wait complete, proceeding with session restore...');
 
         const savedEmail = localStorage.getItem('user_email');
-        
+
         if (savedEmail) {
           console.log('[Settings] 📧 Saved email found:', savedEmail, '- attempting session restore...');
         } else {
@@ -1469,7 +1509,7 @@ export default function SettingsPage() {
         }
 
         const CapacitorHttp = (window as any).Capacitor?.Plugins?.CapacitorHttp;
-        
+
         if (!CapacitorHttp) {
           console.log('[Settings] ⚠️ CapacitorHttp not available, skipping session restore');
           return;
@@ -1502,7 +1542,7 @@ export default function SettingsPage() {
 
             // 🔥 FIX: Mark session restore as completed to prevent loop
             sessionStorage.setItem('sessionRestoreCompleted', 'true');
-            
+
             // Session restored - NextAuth will automatically update via useSession hook
             // No need to reload the page
             console.log('[Settings] ✅ Session restored - no reload needed');
@@ -1536,22 +1576,22 @@ export default function SettingsPage() {
   const handleGoogleLogin = async () => {
     setLoading(true);
     setError('');
-    
+
     console.log('[Settings] Google login button clicked');
     console.log('[Settings] isCapacitor:', isCapacitor);
     console.log('[Settings] Platform:', typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown');
-    
+
     try {
       if (isCapacitor) {
         // Native app: Use Capacitor Google Auth plugin (dynamic import)
         console.log('[Settings] 🔵 Native app detected - using Capacitor Google Auth');
-        
+
         try {
           // Dinamik import (web'de hata vermemesi için)
           console.log('[Settings] Importing @codetrix-studio/capacitor-google-auth...');
           const { GoogleAuth } = await import('@codetrix-studio/capacitor-google-auth');
           console.log('[Settings] ✅ GoogleAuth imported successfully');
-          
+
           // Initialize plugin if needed (check if it's available)
           try {
             // Try to check if plugin is available
@@ -1563,16 +1603,16 @@ export default function SettingsPage() {
             console.error('[Settings] ❌ GoogleAuth initialization error:', initError);
             throw new Error('Google Auth plugin is not available. Please ensure the app is properly configured.');
           }
-          
+
           // 🔥 CRITICAL: Initialize plugin before signIn
           // Plugin must be initialized with clientId and scopes before signIn can be called
           // 🔥 CRITICAL: Android'de Web client ID kullanılmalı (Android client ID değil!)
           // Plugin, clientId'yi serverClientId gibi kullanıyor ve Web client ID bekliyor
           const platform = typeof window !== 'undefined' ? (window as any).Capacitor?.getPlatform?.() : 'unknown';
-          const clientId = platform === 'ios' 
+          const clientId = platform === 'ios'
             ? '776781271347-2pice7mn84v1mo1gaccghc6oh5k6do6i.apps.googleusercontent.com' // iOS client ID (değişmedi)
             : '776781271347-ergb3kc3djjen47loq61icptau51rk4m.apps.googleusercontent.com'; // Android: Web client ID kullan
-          
+
           console.log('[Settings] 🔧 Initializing GoogleAuth plugin...');
           console.log('[Settings] Platform:', platform);
           console.log('[Settings] Using Client ID:', clientId);
@@ -1587,7 +1627,7 @@ export default function SettingsPage() {
             console.error('[Settings] ❌ GoogleAuth.initialize() error:', initError);
             throw new Error('Failed to initialize Google Auth. Please check your configuration.');
           }
-          
+
           // Native Google Sign-In
           console.log('[Settings] Calling GoogleAuth.signIn()...');
           let result;
@@ -1601,7 +1641,7 @@ export default function SettingsPage() {
               stack: signInError.stack,
               name: signInError.name,
             });
-            
+
             // Provide user-friendly error messages based on error code
             let errorMessage = 'Google Sign-In failed';
             if (signInError.code === '10' || signInError.message?.includes('10')) {
@@ -1615,19 +1655,19 @@ export default function SettingsPage() {
             } else if (signInError.message) {
               errorMessage = `Google Sign-In failed: ${signInError.message}`;
             }
-            
+
             throw new Error(errorMessage);
           }
-          
+
           console.log('[Settings] ✅ Google Sign-In success:', {
             hasAuthentication: !!result?.authentication,
             hasIdToken: !!result?.authentication?.idToken,
             hasAccessToken: !!result?.authentication?.accessToken,
           });
-          
+
           if (result && result.authentication) {
             const { idToken, accessToken } = result.authentication;
-            
+
             // Get deviceId before sending to backend
             let deviceId = null;
             try {
@@ -1640,7 +1680,7 @@ export default function SettingsPage() {
             } catch (deviceError) {
               console.warn('[Settings] ⚠️ Could not get deviceId:', deviceError);
             }
-            
+
             console.log('[Settings] Sending tokens to backend...', deviceId ? `with deviceId: ${deviceId}` : 'without deviceId');
             // Backend'e gönder
             const response = await fetch('/api/auth/google-native', {
@@ -1663,7 +1703,7 @@ export default function SettingsPage() {
 
             const data = await response.json();
             console.log('[Settings] ✅ Backend auth successful, has tokens:', !!(data.tokens?.accessToken && data.tokens?.refreshToken));
-            
+
             // Session set et
             if (data.tokens?.accessToken && data.tokens?.refreshToken) {
               console.log('[Settings] Setting session...');
@@ -1676,43 +1716,43 @@ export default function SettingsPage() {
                   refreshToken: data.tokens.refreshToken,
                 }),
               });
-              
+
               if (!sessionResponse.ok) {
                 console.error('[Settings] ❌ Failed to set session');
                 throw new Error('Failed to set session');
               }
-              
+
               console.log('[Settings] ✅ Session set successfully');
-              
+
               // 🔥 CRITICAL: Link device to user after login
               try {
                 const { Device } = await import('@capacitor/device');
                 const deviceInfo = await Device.getId();
                 const deviceId = deviceInfo.identifier;
-                
+
                 if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
                   console.log('[Settings] 🔗 Linking device to user...', { deviceId });
-                  
+
                   // Get FCM token if available
-                  const fcmToken = typeof window !== 'undefined' 
+                  const fcmToken = typeof window !== 'undefined'
                     ? (localStorage.getItem('fcm_token') || (window as any).fcmToken)
                     : null;
-                  
-                  const platform = typeof window !== 'undefined' 
+
+                  const platform = typeof window !== 'undefined'
                     ? ((window as any).Capacitor?.getPlatform?.() || 'ios')
                     : 'ios';
-                  
+
                   const linkResponse = await fetch('/api/devices/link', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ 
+                    body: JSON.stringify({
                       deviceId,
                       pushToken: fcmToken && fcmToken !== 'null' && fcmToken !== 'undefined' ? fcmToken : undefined,
                       platform,
                     }),
                   });
-                  
+
                   if (linkResponse.ok) {
                     const linkData = await linkResponse.json();
                     console.log('[Settings] ✅ Device linked to user:', linkData);
@@ -1726,7 +1766,7 @@ export default function SettingsPage() {
               } catch (linkError: any) {
                 console.warn('[Settings] ⚠️ Device link error (non-critical):', linkError);
               }
-              
+
               // Redirect to home
               console.log('[Settings] Redirecting...');
               router.push('/');
@@ -1773,12 +1813,12 @@ export default function SettingsPage() {
   const handleAppleLogin = async () => {
     setLoading(true);
     setError('');
-    
+
     try {
       if (isCapacitor) {
         // Native app: Use Capacitor Apple Sign In plugin
         const SignInWithApple = (window as any).Capacitor?.Plugins?.SignInWithApple;
-        
+
         if (!SignInWithApple) {
           // Try to import dynamically
           try {
@@ -1790,10 +1830,10 @@ export default function SettingsPage() {
               state: 'state',
               nonce: 'nonce',
             });
-            
+
             if (result && result.response) {
               const { identityToken, authorizationCode, user } = result.response;
-              
+
               // Get deviceId before sending to backend
               let deviceId = null;
               try {
@@ -1806,7 +1846,7 @@ export default function SettingsPage() {
               } catch (deviceError) {
                 console.warn('[Settings] ⚠️ Could not get deviceId:', deviceError);
               }
-              
+
               // Backend'e gönder
               const response = await fetch('/api/auth/apple-native', {
                 method: 'POST',
@@ -1825,7 +1865,7 @@ export default function SettingsPage() {
               }
 
               const data = await response.json();
-              
+
               // Session set et
               if (data.tokens?.accessToken && data.tokens?.refreshToken) {
                 const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
@@ -1837,43 +1877,43 @@ export default function SettingsPage() {
                     refreshToken: data.tokens.refreshToken,
                   }),
                 });
-                
+
                 if (!sessionResponse.ok) {
                   console.error('[Settings] ❌ Failed to set session');
                   throw new Error('Failed to set session');
                 }
-                
+
                 console.log('[Settings] ✅ Session set successfully');
-                
+
                 // 🔥 CRITICAL: Link device to user after login
                 try {
                   const { Device } = await import('@capacitor/device');
                   const deviceInfo = await Device.getId();
                   const deviceId = deviceInfo.identifier;
-                  
+
                   if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
                     console.log('[Settings] 🔗 Linking device to user...', { deviceId });
-                    
+
                     // Get FCM token if available
-                    const fcmToken = typeof window !== 'undefined' 
+                    const fcmToken = typeof window !== 'undefined'
                       ? (localStorage.getItem('fcm_token') || (window as any).fcmToken)
                       : null;
-                    
-                    const platform = typeof window !== 'undefined' 
+
+                    const platform = typeof window !== 'undefined'
                       ? ((window as any).Capacitor?.getPlatform?.() || 'ios')
                       : 'ios';
-                    
+
                     const linkResponse = await fetch('/api/devices/link', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
                       credentials: 'include',
-                      body: JSON.stringify({ 
+                      body: JSON.stringify({
                         deviceId,
                         pushToken: fcmToken && fcmToken !== 'null' && fcmToken !== 'undefined' ? fcmToken : undefined,
                         platform,
                       }),
                     });
-                    
+
                     if (linkResponse.ok) {
                       const linkData = await linkResponse.json();
                       console.log('[Settings] ✅ Device linked to user:', linkData);
@@ -1887,7 +1927,7 @@ export default function SettingsPage() {
                 } catch (linkError: any) {
                   console.warn('[Settings] ⚠️ Device link error (non-critical):', linkError);
                 }
-                
+
                 // Redirect to home
                 console.log('[Settings] Redirecting...');
                 router.push('/');
@@ -1908,10 +1948,10 @@ export default function SettingsPage() {
           state: 'state',
           nonce: 'nonce',
         });
-        
+
         if (result && result.response) {
           const { identityToken, authorizationCode, user } = result.response;
-          
+
           // Get deviceId before sending to backend
           let deviceId = null;
           try {
@@ -1924,7 +1964,7 @@ export default function SettingsPage() {
           } catch (deviceError) {
             console.warn('[Settings] ⚠️ Could not get deviceId:', deviceError);
           }
-          
+
           // Backend'e gönder
           const response = await fetch('/api/auth/apple-native', {
             method: 'POST',
@@ -1943,7 +1983,7 @@ export default function SettingsPage() {
           }
 
           const data = await response.json();
-          
+
           // Session set et
           if (data.tokens?.accessToken && data.tokens?.refreshToken) {
             const sessionResponse = await fetch('/api/auth/set-capacitor-session', {
@@ -1955,43 +1995,43 @@ export default function SettingsPage() {
                 refreshToken: data.tokens.refreshToken,
               }),
             });
-            
+
             if (!sessionResponse.ok) {
               console.error('[Settings] ❌ Failed to set session');
               throw new Error('Failed to set session');
             }
-            
+
             console.log('[Settings] ✅ Session set successfully');
-            
+
             // 🔥 CRITICAL: Link device to user after login
             try {
               const { Device } = await import('@capacitor/device');
               const deviceInfo = await Device.getId();
               const deviceId = deviceInfo.identifier;
-              
+
               if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
                 console.log('[Settings] 🔗 Linking device to user...', { deviceId });
-                
+
                 // Get FCM token if available
-                const fcmToken = typeof window !== 'undefined' 
+                const fcmToken = typeof window !== 'undefined'
                   ? (localStorage.getItem('fcm_token') || (window as any).fcmToken)
                   : null;
-                
-                const platform = typeof window !== 'undefined' 
+
+                const platform = typeof window !== 'undefined'
                   ? ((window as any).Capacitor?.getPlatform?.() || 'ios')
                   : 'ios';
-                
+
                 const linkResponse = await fetch('/api/devices/link', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
                   credentials: 'include',
-                  body: JSON.stringify({ 
+                  body: JSON.stringify({
                     deviceId,
                     pushToken: fcmToken && fcmToken !== 'null' && fcmToken !== 'undefined' ? fcmToken : undefined,
                     platform,
                   }),
                 });
-                
+
                 if (linkResponse.ok) {
                   const linkData = await linkResponse.json();
                   console.log('[Settings] ✅ Device linked to user:', linkData);
@@ -2005,7 +2045,7 @@ export default function SettingsPage() {
             } catch (linkError: any) {
               console.warn('[Settings] ⚠️ Device link error (non-critical):', linkError);
             }
-            
+
             // Redirect to home
             console.log('[Settings] Redirecting...');
             router.push('/');
@@ -2027,7 +2067,7 @@ export default function SettingsPage() {
   const handleRateApp = useCallback(async () => {
     try {
       if (typeof window === 'undefined') return;
-      
+
       const hasCapacitor = !!(window as any).Capacitor;
       if (!hasCapacitor) {
         // Web: Show message
@@ -2040,12 +2080,12 @@ export default function SettingsPage() {
       }
 
       const platform = (window as any).Capacitor?.getPlatform?.();
-      
+
       if (platform === 'ios') {
         // iOS App Store URL
         const appStoreId = '6755160060';
         const appStoreUrl = `https://apps.apple.com/app/id${appStoreId}?action=write-review`;
-        
+
         // Try to open with Capacitor Browser plugin
         try {
           await Browser.open({ url: appStoreUrl });
@@ -2057,7 +2097,7 @@ export default function SettingsPage() {
         // Android Play Store URL
         const packageName = 'com.kriptokirmizi.alerta';
         const playStoreUrl = `https://play.google.com/store/apps/details?id=${packageName}`;
-        
+
         // Try to open with Capacitor Browser plugin
         try {
           await Browser.open({ url: playStoreUrl });
@@ -2097,7 +2137,7 @@ export default function SettingsPage() {
 
     try {
       console.log('[Settings] 🚪 Starting logout process...');
-      
+
       // 🔥 APPLE GUIDELINE 5.1.1: Clear guest user from localStorage
       // 🔥 4. Değişiklik: Logout sırasında cache'i temizle
       if (typeof window !== 'undefined') {
@@ -2109,7 +2149,7 @@ export default function SettingsPage() {
         console.log('[Settings] ✅ Guest user and plan cache cleared from localStorage');
       }
       setUserPlan(null);
-      
+
       // 🔥 CRITICAL: Clear NextAuth session first
       if (status === 'authenticated') {
         console.log('[Settings] Clearing NextAuth session...');
@@ -2137,14 +2177,14 @@ export default function SettingsPage() {
         console.log('[Settings] 🔄 iOS: Clearing cookies manually...');
         try {
           const Capacitor = (window as any).Capacitor;
-          
+
           // Clear Preferences (iOS/Android)
           if (Capacitor?.Plugins?.Preferences) {
             await Capacitor.Plugins.Preferences.remove({ key: 'accessToken' });
             await Capacitor.Plugins.Preferences.remove({ key: 'refreshToken' });
             console.log('[Settings] ✅ Preferences cleared');
           }
-          
+
           // Clear all cookies via document.cookie (non-httpOnly cookies)
           const cookiesToClear = [
             'next-auth.session-token',
@@ -2153,14 +2193,14 @@ export default function SettingsPage() {
             'accessToken',
             'refreshToken',
           ];
-          
+
           cookiesToClear.forEach(cookieName => {
             // Try different domain/path combinations
             document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;`;
             document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=.alertachart.com;`;
             document.cookie = `${cookieName}=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/; domain=alertachart.com;`;
           });
-          
+
           console.log('[Settings] ✅ Cookies cleared manually');
         } catch (cookieError) {
           console.error('[Settings] ⚠️ Failed to clear cookies manually:', cookieError);
@@ -2181,13 +2221,13 @@ export default function SettingsPage() {
           window.location.href = '/';
         }, 100);
       }
-      
+
     } catch (err: any) {
       const fallbackMessage = t('unableToLogout', language);
       const message = err?.message || fallbackMessage;
       setLogoutError(message);
       console.error('[Settings] Logout failed:', err);
-      
+
       // Even on error, try to force reload
       if (isCapacitor) {
         window.location.replace('/index.html');
@@ -2221,8 +2261,8 @@ export default function SettingsPage() {
       console.log('[Settings] Deleting account...');
 
       // 🔥 iOS/Capacitor Fix: Use full URL for API calls
-      const baseUrl = isCapacitor && typeof window !== 'undefined' 
-        ? 'https://www.alertachart.com' 
+      const baseUrl = isCapacitor && typeof window !== 'undefined'
+        ? 'https://www.alertachart.com'
         : '';
       const apiUrl = `${baseUrl}/api/user/delete-account`;
 
@@ -2276,14 +2316,14 @@ export default function SettingsPage() {
 
       // 🔥 CRITICAL: Clear all session data
       console.log('[Settings] Clearing all session data...');
-      
+
       // 🔥 APPLE GUIDELINE 5.1.1: Clear guest user from localStorage
       if (typeof window !== 'undefined') {
         localStorage.removeItem('guest_user');
         localStorage.removeItem('user_email');
         console.log('[Settings] ✅ Guest user cleared from localStorage');
       }
-      
+
       // Sign out from NextAuth
       if (status === 'authenticated') {
         await signOut({ redirect: false });
@@ -2296,7 +2336,7 @@ export default function SettingsPage() {
       if (isCapacitor && typeof window !== 'undefined') {
         try {
           const Capacitor = (window as any).Capacitor;
-          
+
           // Clear Preferences
           if (Capacitor?.Plugins?.Preferences) {
             await Capacitor.Plugins.Preferences.clear();
@@ -2346,7 +2386,7 @@ export default function SettingsPage() {
     const size = 24;
     const strokeWidth = 1.5;
     const color = isActive ? '#60A5FA' : hasAccess ? '#9CA3AF' : '#6B7280';
-    
+
     if (layoutOption === 1) {
       return (
         <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth}>
@@ -2445,14 +2485,14 @@ export default function SettingsPage() {
               title={t('selectLanguage', language)}
             >
               <span className="text-sm">
-                {language === 'tr' ? '🇹🇷' : 
-                 language === 'en' ? '🇬🇧' :
-                 language === 'ar' ? '🇸🇦' :
-                 language === 'zh-Hant' ? '🇹🇼' :
-                 language === 'fr' ? '🇫🇷' :
-                 language === 'de' ? '🇩🇪' :
-                 language === 'ja' ? '🇯🇵' :
-                 language === 'ko' ? '🇰🇷' : '🌐'}
+                {language === 'tr' ? '🇹🇷' :
+                  language === 'en' ? '🇬🇧' :
+                    language === 'ar' ? '🇸🇦' :
+                      language === 'zh-Hant' ? '🇹🇼' :
+                        language === 'fr' ? '🇫🇷' :
+                          language === 'de' ? '🇩🇪' :
+                            language === 'ja' ? '🇯🇵' :
+                              language === 'ko' ? '🇰🇷' : '🌐'}
               </span>
               <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -2592,14 +2632,14 @@ export default function SettingsPage() {
                   {/* App Icon */}
                   <div className="flex-shrink-0 relative">
                     <div className="w-12 h-12 rounded-xl bg-slate-900/50 flex items-center justify-center shadow-md shadow-blue-500/30 ring-1 ring-blue-500/30 overflow-hidden">
-                      <img 
-                        src="/icon.png" 
-                        alt="Alerta Chart" 
+                      <img
+                        src="/icon.png"
+                        alt="Alerta Chart"
                         className="w-full h-full object-cover"
                       />
                     </div>
                   </div>
-                      
+
                   {/* User Details */}
                   <div className="flex-1 min-w-0 space-y-0.5">
                     {user.name && (
@@ -2610,22 +2650,22 @@ export default function SettingsPage() {
                     <div className="text-xs text-slate-400 truncate">
                       {user.email}
                     </div>
-                        
+
                     {/* Badges */}
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
                       {(session?.user as any)?.provider && (
                         <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-blue-500/20 text-blue-300 text-[10px] font-medium rounded border border-blue-500/30 backdrop-blur-sm">
                           {(session?.user as any).provider === 'google' && (
                             <svg className="w-2.5 h-2.5" viewBox="0 0 24 24">
-                              <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                              <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                              <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                              <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                              <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                              <path fill="currentColor" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                              <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                              <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                             </svg>
                           )}
                           {(session?.user as any).provider === 'apple' && (
                             <svg className="w-2.5 h-2.5" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
+                              <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
                             </svg>
                           )}
                           <span className="capitalize text-[10px]">{(session?.user as any).provider}</span>
@@ -2641,7 +2681,7 @@ export default function SettingsPage() {
                         />
                       )}
                     </div>
-                        
+
                     {/* User ID */}
                     <div className="text-[9px] text-slate-500 font-mono mt-1">
                       ID: #{user.id}
@@ -2649,7 +2689,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
               </div>
-                  
+
               {/* Premium Upgrade Button */}
               {!hasPremiumAccessValue && (
                 <button
@@ -2658,13 +2698,13 @@ export default function SettingsPage() {
                 >
                   {/* Subtle gradient overlay on hover */}
                   <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 via-cyan-600/10 to-blue-700/10 opacity-0 group-hover:opacity-100 transition-opacity duration-200"></div>
-                  
+
                   <div className="relative flex flex-col items-center justify-center gap-2 z-10">
                     {/* Title and tagline in one line */}
                     <div className="flex items-center justify-center gap-2 flex-wrap">
                       <h2 className="text-base font-bold tracking-tight">
                         <span className="text-white">Alerta </span>
-                        <span 
+                        <span
                           className="relative inline-block"
                           style={{
                             background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
@@ -2694,10 +2734,10 @@ export default function SettingsPage() {
                 onClick={async () => {
                   try {
                     console.log('[Settings] Delete button clicked');
-                    
+
                     // 🔥 iOS Fix: Use Capacitor Dialog instead of window.confirm
                     const confirmMessage = t('confirmDeleteAccount', language);
-                    
+
                     const confirmTitle = t('deleteAccount', language);
                     const confirmButton = t('delete', language);
                     const cancelButton = t('cancel', language);
@@ -2830,159 +2870,159 @@ export default function SettingsPage() {
                   </div>
                 </div>
               ) : (
-              <div className="space-y-3">
-                <p className="text-sm text-slate-300 mb-4">
-                  {t('signInToAccessPremiumExclamation', language)}
-                </p>
-
-                {/* Error Message */}
-                {error && (
-                  <div className="mb-4 p-3 bg-red-950/40 border border-red-500/30 rounded-lg text-red-300 text-sm backdrop-blur-sm">
-                    {error}
-                  </div>
-                )}
-
-                {/* Auth Buttons */}
                 <div className="space-y-3">
-                  {/* Google Button */}
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      console.log('[Settings] Google button clicked - handler called');
-                      handleGoogleLogin();
-                    }}
-                    disabled={loading}
-                    className="w-full py-4 px-6 bg-white hover:bg-gray-50 disabled:bg-gray-200 disabled:cursor-not-allowed text-gray-900 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24">
-                      <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                      <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-                      <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-                      <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-                    </svg>
-                    <span>Continue with Google</span>
-                    {loading && (
-                      <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                    )}
-                  </button>
-                  
-                  {/* Apple Button */}
-                  <button
-                    onClick={handleAppleLogin}
-                    disabled={loading}
-                    className="w-full py-4 px-6 bg-black hover:bg-gray-900 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-gray-700 shadow-lg hover:shadow-xl active:scale-[0.98]"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-                      <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
-                    </svg>
-                    <span>Continue with Apple</span>
-                    {loading && (
-                      <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                    )}
-                  </button>
-                  
-                  {/* 🔥 APPLE GUIDELINE 5.1.1: Guest Mode Button */}
-                  <button
-                    onClick={async () => {
-                      console.log('[Settings] Continue as Guest clicked');
-                      setLoading(true);
-                      setError('');
-                      
-                      try {
-                        // Get device ID
-                        let deviceId = 'unknown';
-                        if (typeof window !== 'undefined' && (window as any).Capacitor) {
-                          try {
-                            const { Device } = await import('@capacitor/device');
-                            const deviceInfo = await Device.getId();
-                            deviceId = deviceInfo.identifier || 'unknown';
-                            console.log('[Settings] Guest mode - Device ID:', deviceId);
-                          } catch (e) {
-                            console.error('[Settings] Failed to get device ID:', e);
+                  <p className="text-sm text-slate-300 mb-4">
+                    {t('signInToAccessPremiumExclamation', language)}
+                  </p>
+
+                  {/* Error Message */}
+                  {error && (
+                    <div className="mb-4 p-3 bg-red-950/40 border border-red-500/30 rounded-lg text-red-300 text-sm backdrop-blur-sm">
+                      {error}
+                    </div>
+                  )}
+
+                  {/* Auth Buttons */}
+                  <div className="space-y-3">
+                    {/* Google Button */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        console.log('[Settings] Google button clicked - handler called');
+                        handleGoogleLogin();
+                      }}
+                      disabled={loading}
+                      className="w-full py-4 px-6 bg-white hover:bg-gray-50 disabled:bg-gray-200 disabled:cursor-not-allowed text-gray-900 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl active:scale-[0.98]"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24">
+                        <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
+                        <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" />
+                        <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
+                        <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
+                      </svg>
+                      <span>Continue with Google</span>
+                      {loading && (
+                        <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                    </button>
+
+                    {/* Apple Button */}
+                    <button
+                      onClick={handleAppleLogin}
+                      disabled={loading}
+                      className="w-full py-4 px-6 bg-black hover:bg-gray-900 disabled:bg-gray-800 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-gray-700 shadow-lg hover:shadow-xl active:scale-[0.98]"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                        <path d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+                      </svg>
+                      <span>Continue with Apple</span>
+                      {loading && (
+                        <div className="w-5 h-5 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                      )}
+                    </button>
+
+                    {/* 🔥 APPLE GUIDELINE 5.1.1: Guest Mode Button */}
+                    <button
+                      onClick={async () => {
+                        console.log('[Settings] Continue as Guest clicked');
+                        setLoading(true);
+                        setError('');
+
+                        try {
+                          // Get device ID
+                          let deviceId = 'unknown';
+                          if (typeof window !== 'undefined' && (window as any).Capacitor) {
+                            try {
+                              const { Device } = await import('@capacitor/device');
+                              const deviceInfo = await Device.getId();
+                              deviceId = deviceInfo.identifier || 'unknown';
+                              console.log('[Settings] Guest mode - Device ID:', deviceId);
+                            } catch (e) {
+                              console.error('[Settings] Failed to get device ID:', e);
+                            }
                           }
-                        }
-                        
-                        // Create guest user in backend
-                        console.log('[Settings] Creating guest user with deviceId:', deviceId);
-                        const response = await fetch('/api/auth/guest-login', {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ deviceId }),
-                        });
-                        
-                        if (!response.ok) {
-                          const errorData = await response.json();
-                          throw new Error(errorData.error || 'Failed to create guest account');
-                        }
-                        
-                        const data = await response.json();
-                        console.log('[Settings] Guest user created:', data);
-                        
-                        // Set user state
-                        if (data.user) {
-                          const guestUser = {
-                            id: data.user.id,
-                            email: data.user.email,
-                            name: data.user.name || 'Guest User',
-                            provider: 'guest', // 🔥 CRITICAL: Add provider field for guest user
-                          };
-                          
-                          setUser(guestUser);
-                          
-                          // 🔥 CRITICAL: Save guest user to localStorage for persistence
-                          if (typeof window !== 'undefined') {
-                            localStorage.setItem('guest_user', JSON.stringify(guestUser));
-                            localStorage.setItem('user_email', data.user.email);
-                            console.log('[Settings] ✅ Guest user saved to localStorage');
-                          }
-                          
-                          // Set user plan
-                          setUserPlan({
-                            plan: 'free',
-                            isTrial: false,
-                            trialRemainingDays: 0,
-                            hasPremiumAccess: false,
+
+                          // Create guest user in backend
+                          console.log('[Settings] Creating guest user with deviceId:', deviceId);
+                          const response = await fetch('/api/auth/guest-login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ deviceId }),
                           });
-                          
-                          console.log('[Settings] ✅ Guest user logged in successfully');
-                          
-                          // Show success message
-                          if (isCapacitor) {
-                            await Dialog.alert({
-                              title: t('guestModeActive', language),
-                              message: t('guestModeActiveMessage', language),
-                            });
+
+                          if (!response.ok) {
+                            const errorData = await response.json();
+                            throw new Error(errorData.error || 'Failed to create guest account');
                           }
-                          
-                          // Redirect to home page
-                          router.push('/');
-                        } else {
-                          throw new Error('Guest user data not received');
+
+                          const data = await response.json();
+                          console.log('[Settings] Guest user created:', data);
+
+                          // Set user state
+                          if (data.user) {
+                            const guestUser = {
+                              id: data.user.id,
+                              email: data.user.email,
+                              name: data.user.name || 'Guest User',
+                              provider: 'guest', // 🔥 CRITICAL: Add provider field for guest user
+                            };
+
+                            setUser(guestUser);
+
+                            // 🔥 CRITICAL: Save guest user to localStorage for persistence
+                            if (typeof window !== 'undefined') {
+                              localStorage.setItem('guest_user', JSON.stringify(guestUser));
+                              localStorage.setItem('user_email', data.user.email);
+                              console.log('[Settings] ✅ Guest user saved to localStorage');
+                            }
+
+                            // Set user plan
+                            setUserPlan({
+                              plan: 'free',
+                              isTrial: false,
+                              trialRemainingDays: 0,
+                              hasPremiumAccess: false,
+                            });
+
+                            console.log('[Settings] ✅ Guest user logged in successfully');
+
+                            // Show success message
+                            if (isCapacitor) {
+                              await Dialog.alert({
+                                title: t('guestModeActive', language),
+                                message: t('guestModeActiveMessage', language),
+                              });
+                            }
+
+                            // Redirect to home page
+                            router.push('/');
+                          } else {
+                            throw new Error('Guest user data not received');
+                          }
+                        } catch (err: any) {
+                          console.error('[Settings] Guest login failed:', err);
+                          setError(err.message || t('guestLoginFailed', language));
+                        } finally {
+                          setLoading(false);
                         }
-                      } catch (err: any) {
-                        console.error('[Settings] Guest login failed:', err);
-                        setError(err.message || t('guestLoginFailed', language));
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    disabled={loading}
-                    className="w-full py-4 px-6 bg-slate-900/50 hover:bg-slate-800/50 disabled:bg-slate-900/30 disabled:cursor-not-allowed text-slate-300 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-blue-500/10 hover:border-blue-500/20 shadow-lg hover:shadow-xl active:scale-[0.98] backdrop-blur-sm"
-                  >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="12" cy="7" r="4"></circle>
-                    </svg>
-                    <span>
-                      {loading 
-                        ? t('creating', language)
-                        : t('continueAsGuest', language)
-                      }
-                    </span>
-                  </button>
+                      }}
+                      disabled={loading}
+                      className="w-full py-4 px-6 bg-slate-900/50 hover:bg-slate-800/50 disabled:bg-slate-900/30 disabled:cursor-not-allowed text-slate-300 font-semibold rounded-xl transition-all duration-200 flex items-center justify-center gap-3 border border-blue-500/10 hover:border-blue-500/20 shadow-lg hover:shadow-xl active:scale-[0.98] backdrop-blur-sm"
+                    >
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                        <circle cx="12" cy="7" r="4"></circle>
+                      </svg>
+                      <span>
+                        {loading
+                          ? t('creating', language)
+                          : t('continueAsGuest', language)
+                        }
+                      </span>
+                    </button>
+                  </div>
                 </div>
-              </div>
               )}
             </>
           )}
@@ -3008,7 +3048,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span 
+                  <span
                     className="text-[9px] px-2 py-0.5 rounded-full border border-cyan-500/30 backdrop-blur-sm font-bold relative inline-block"
                     style={{
                       background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
@@ -3041,7 +3081,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span 
+                  <span
                     className="text-[9px] px-2 py-0.5 rounded-full border border-indigo-500/30 backdrop-blur-sm font-bold relative inline-block"
                     style={{
                       background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
@@ -3074,7 +3114,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span 
+                  <span
                     className="text-[9px] px-2 py-0.5 rounded-full border border-blue-500/30 backdrop-blur-sm font-bold relative inline-block"
                     style={{
                       background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
@@ -3107,7 +3147,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span 
+                  <span
                     className="text-[9px] px-2 py-0.5 rounded-full border border-violet-500/30 backdrop-blur-sm font-bold relative inline-block"
                     style={{
                       background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
@@ -3140,7 +3180,7 @@ export default function SettingsPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
-                  <span 
+                  <span
                     className="text-[9px] px-2 py-0.5 rounded-full border border-blue-400/30 backdrop-blur-sm font-bold relative inline-block"
                     style={{
                       background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
@@ -3160,7 +3200,7 @@ export default function SettingsPage() {
             </div>
           </div>
         )}
-            
+
         {/* Layout Selection */}
         <div className="space-y-2">
           <label className="block text-xs font-medium text-slate-400 tracking-wide">{t('chartLayout', language)}</label>
@@ -3170,7 +3210,7 @@ export default function SettingsPage() {
               const layoutLabel = layoutOption === 1 ? '1x1' : layoutOption === 2 ? '1x2' : layoutOption === 4 ? '2x2' : '3x3';
               const isPremiumLayout = layoutOption === 2 || layoutOption === 4 || layoutOption === 9;
               const hasAccess = !isPremiumLayout || hasPremiumAccessValue;
-              
+
               return (
                 <button
                   key={layoutOption}
@@ -3181,13 +3221,12 @@ export default function SettingsPage() {
                       setShowUpgradeModal(true);
                     }
                   }}
-                  className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg border transition-all relative backdrop-blur-md ${
-                    isActive
-                      ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
-                      : hasAccess
+                  className={`flex flex-col items-center justify-center gap-1 p-2 rounded-lg border transition-all relative backdrop-blur-md ${isActive
+                    ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
+                    : hasAccess
                       ? 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
                       : 'border-blue-500/5 bg-slate-900/30 text-slate-500 opacity-60'
-                  }`}
+                    }`}
                   title={!hasAccess ? `${layoutLabel} (Premium)` : layoutLabel}
                 >
                   {getGridIcon(layoutOption, isActive, hasAccess)}
@@ -3207,21 +3246,19 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={() => setMarketType('spot')}
-              className={`py-2 px-3 rounded-lg border transition-all backdrop-blur-md text-sm font-medium ${
-                marketType === 'spot'
-                  ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
-                  : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
-              }`}
+              className={`py-2 px-3 rounded-lg border transition-all backdrop-blur-md text-sm font-medium ${marketType === 'spot'
+                ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
+                : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
+                }`}
             >
               Spot
             </button>
             <button
               onClick={() => setMarketType('futures')}
-              className={`py-2 px-3 rounded-lg border transition-all backdrop-blur-md text-sm font-medium ${
-                marketType === 'futures'
-                  ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
-                  : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
-              }`}
+              className={`py-2 px-3 rounded-lg border transition-all backdrop-blur-md text-sm font-medium ${marketType === 'futures'
+                ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-md shadow-blue-900/20'
+                : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20'
+                }`}
             >
               Futures
             </button>
@@ -3302,7 +3339,7 @@ export default function SettingsPage() {
                   )}
                 </div>
               </div>
-              
+
               {/* Action Buttons */}
               <div className="flex gap-2">
                 <button
@@ -3329,7 +3366,7 @@ export default function SettingsPage() {
               >
                 {/* Animated background gradient */}
                 <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 animate-pulse"></div>
-                
+
                 {/* Clickable animated bell icon */}
                 <motion.button
                   onClick={() => setShowAddAlertModal(true)}
@@ -3374,7 +3411,7 @@ export default function SettingsPage() {
                       ease: "easeOut",
                     }}
                   />
-                  
+
                   {/* Middle glow ring */}
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-blue-600/30 rounded-full blur-xl"
@@ -3387,12 +3424,12 @@ export default function SettingsPage() {
                       ease: "easeInOut",
                     }}
                   />
-                  
+
                   {/* Icon container */}
                   <div className="relative w-24 h-24 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-full flex items-center justify-center shadow-2xl shadow-blue-500/30 border-2 border-blue-500/30 group-hover:border-blue-400/50 transition-all">
                     <Bell className="w-12 h-12 text-white drop-shadow-lg" strokeWidth={2} />
                   </div>
-                  
+
                   {/* Shine effect on hover */}
                   <motion.div
                     className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full"
@@ -3401,13 +3438,13 @@ export default function SettingsPage() {
                     transition={{ duration: 0.6 }}
                   />
                 </motion.button>
-                
+
                 <div className="relative z-10">
                   <h3 className="text-base font-bold text-white mb-2">
                     {language === 'en' ? 'No alerts yet' : 'Henüz alarm yok'}
                   </h3>
                   <p className="text-sm text-slate-400 mb-4 max-w-xs mx-auto leading-relaxed">
-                    {language === 'en' 
+                    {language === 'en'
                       ? 'Tap the bell to create your first price alert and never miss important price movements'
                       : 'Zil simgesine dokunarak ilk fiyat alarmınızı oluşturun ve önemli fiyat hareketlerini kaçırmayın'}
                   </p>
@@ -3432,13 +3469,13 @@ export default function SettingsPage() {
                     const minutes = Math.floor(diff / 60000);
                     const hours = Math.floor(diff / 3600000);
                     const days = Math.floor(diff / 86400000);
-                    
+
                     if (minutes < 1) return language === 'en' ? 'just now' : 'az önce';
                     if (minutes < 60) return `${minutes} ${language === 'en' ? 'min ago' : 'dakika önce'}`;
                     if (hours < 24) return `${hours} ${language === 'en' ? 'hour ago' : 'saat önce'}`;
                     return `${days} ${language === 'en' ? 'day ago' : 'gün önce'}`;
                   })() : 'N/A';
-                  
+
                   return (
                     <motion.div
                       key={alert.id}
@@ -3449,21 +3486,20 @@ export default function SettingsPage() {
                     >
                       {/* Subtle gradient overlay on hover */}
                       <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-600/0 group-hover:from-blue-500/5 group-hover:to-blue-600/5 rounded-xl transition-all pointer-events-none"></div>
-                      
+
                       <div className="relative flex items-start gap-4">
                         {/* Direction Icon */}
-                        <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${
-                          alert.direction === 'up' 
-                            ? 'bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30' 
-                            : 'bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30'
-                        }`}>
+                        <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${alert.direction === 'up'
+                          ? 'bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30'
+                          : 'bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30'
+                          }`}>
                           {alert.direction === 'up' ? (
                             <TrendingUp className="w-6 h-6 text-green-400" strokeWidth={2.5} />
                           ) : (
                             <TrendingDown className="w-6 h-6 text-red-400" strokeWidth={2.5} />
                           )}
                         </div>
-                        
+
                         {/* Content */}
                         <div className="flex-1 min-w-0">
                           {/* Symbol and Exchange */}
@@ -3473,7 +3509,7 @@ export default function SettingsPage() {
                               BINANCE {marketType === 'futures' ? 'FUTURES' : 'SPOT'}
                             </span>
                           </div>
-                          
+
                           {/* Price - Show current price if available, otherwise target price */}
                           <div className="text-xl font-bold text-white font-mono mb-2">
                             ${(() => {
@@ -3482,14 +3518,14 @@ export default function SettingsPage() {
                               return parseFloat(displayPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
                             })()}
                           </div>
-                          
+
                           {/* Created Date */}
                           <div className="flex items-center gap-1.5 text-xs text-slate-400">
                             <Clock className="w-3.5 h-3.5" />
                             <span>{language === 'en' ? 'Created' : 'Oluşturuldu'} {timeAgo}</span>
                           </div>
                         </div>
-                        
+
                         {/* Right Side: Actions and Percentage */}
                         <div className="flex flex-col items-end gap-3 flex-shrink-0">
                           {/* Action Buttons */}
@@ -3524,19 +3560,19 @@ export default function SettingsPage() {
                                     console.warn('[Settings] Failed to get device ID from Capacitor:', capacitorError);
                                   }
                                 }
-                                
+
                                 if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
                                   deviceId = localStorage.getItem('native_device_id');
                                 }
-                                
+
                                 if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
                                   deviceId = localStorage.getItem('device_id');
                                 }
-                                
+
                                 if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined' && !isCapacitor) {
                                   deviceId = localStorage.getItem('web_device_id');
                                 }
-                                
+
                                 if (!deviceId || deviceId === 'unknown' || deviceId === 'null') {
                                   console.error('[Settings] No device ID found for delete');
                                   return;
@@ -3568,23 +3604,22 @@ export default function SettingsPage() {
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                          
+
                           {/* Percentage Badge - Calculate percentage from target price */}
-                          <div className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${
-                            alert.direction === 'up'
-                              ? 'bg-green-500/10 text-green-400 border-green-500/30'
-                              : 'bg-red-500/10 text-red-400 border-red-500/30'
-                          }`}>
+                          <div className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${alert.direction === 'up'
+                            ? 'bg-green-500/10 text-green-400 border-green-500/30'
+                            : 'bg-red-500/10 text-red-400 border-red-500/30'
+                            }`}>
                             {(() => {
                               const currentPrice = alert.last_price || alert.current_price;
                               const targetPrice = parseFloat(alert.target_price);
-                              
+
                               if (currentPrice && targetPrice) {
                                 const percentage = ((currentPrice - targetPrice) / targetPrice) * 100;
                                 const sign = percentage >= 0 ? '+' : '';
                                 return `${sign}${percentage.toFixed(1)}%`;
                               }
-                              
+
                               // If no current price, show 0.0% with direction sign
                               return `${alert.direction === 'up' ? '+' : '-'}0.0%`;
                             })()}
@@ -3596,6 +3631,168 @@ export default function SettingsPage() {
                 })}
               </div>
             )}
+
+            {/* Volume Spike Alerts */}
+            <div className="mt-6 pt-4 border-t border-slate-800/50">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
+                  <span className="text-sm font-semibold text-white">
+                    {language === 'en' ? 'Volume Spike Alerts' : 'Hacim Patlaması Alarmları'}
+                  </span>
+                  {volumeAlerts.length > 0 && (
+                    <span className="text-xs text-orange-400 font-medium bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
+                      {volumeAlerts.length} {language === 'en' ? 'active' : 'aktif'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Add Volume Alert Button */}
+              <button
+                onClick={() => setShowAddVolumeAlertModal(true)}
+                className="w-full mb-3 px-4 py-2.5 text-xs font-semibold bg-gradient-to-r from-orange-600 to-red-600 text-white border border-orange-500/30 rounded-xl hover:from-orange-500 hover:to-red-500 hover:border-orange-400/50 transition-all shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <span className="text-base">+</span>
+                <span>{language === 'en' ? 'Add Volume Alert' : 'Hacim Alarmı Ekle'}</span>
+              </button>
+
+              {/* Volume Alert List */}
+              {volumeAlerts.length > 0 ? (
+                <div className="space-y-2">
+                  {volumeAlerts.map((alert: any) => (
+                    <div
+                      key={alert.id}
+                      className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-br from-slate-900/80 to-slate-900/60 border border-orange-500/20"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-600 to-red-600 flex items-center justify-center">
+                          <TrendingUp className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-white">{alert.symbol}</div>
+                          <div className="text-[10px] text-orange-400">{alert.spike_multiplier}x Spike</div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const deviceId = localStorage.getItem('native_device_id');
+                            const response = await fetch('/api/alerts/custom', {
+                              method: 'DELETE',
+                              credentials: 'include',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ id: alert.id, deviceId }),
+                            });
+                            if (response.ok) {
+                              setVolumeAlerts(prev => prev.filter(a => a.id !== alert.id));
+                            }
+                          } catch (e) {
+                            console.error('Failed to delete volume alert:', e);
+                          }
+                        }}
+                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl border border-orange-500/20 bg-gradient-to-br from-slate-900/80 to-slate-900/60 text-center">
+                  <div className="flex flex-wrap justify-center gap-2 mb-2">
+                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-orange-500/10 text-orange-400 rounded-full border border-orange-500/20">2x Spike</span>
+                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-orange-500/10 text-orange-400 rounded-full border border-orange-500/20">3x Spike</span>
+                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-red-500/10 text-red-400 rounded-full border border-red-500/20">5x Spike</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    {language === 'en' ? 'Add alerts for any coin volume spikes' : 'Herhangi bir coin için hacim patlaması alarmı ekleyin'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* Percentage Change Alerts */}
+            <div className="mt-4">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-4 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full"></div>
+                  <span className="text-sm font-semibold text-white">
+                    {language === 'en' ? 'Percentage Change Alerts' : 'Yüzde Değişim Alarmları'}
+                  </span>
+                  {percentageAlerts.length > 0 && (
+                    <span className="text-xs text-green-400 font-medium bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
+                      {percentageAlerts.length} {language === 'en' ? 'active' : 'aktif'}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Add Percentage Alert Button */}
+              <button
+                onClick={() => setShowAddPercentageAlertModal(true)}
+                className="w-full mb-3 px-4 py-2.5 text-xs font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white border border-green-500/30 rounded-xl hover:from-green-500 hover:to-emerald-500 hover:border-green-400/50 transition-all shadow-lg shadow-green-500/20 hover:shadow-green-500/30 active:scale-[0.98] flex items-center justify-center gap-1.5"
+              >
+                <span className="text-base">+</span>
+                <span>{language === 'en' ? 'Add Percentage Alert' : 'Yüzde Alarmı Ekle'}</span>
+              </button>
+
+              {/* Percentage Alert List */}
+              {percentageAlerts.length > 0 ? (
+                <div className="space-y-2">
+                  {percentageAlerts.map((alert: any) => (
+                    <div
+                      key={alert.id}
+                      className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-br from-slate-900/80 to-slate-900/60 border border-green-500/20"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
+                          <BarChart3 className="w-4 h-4 text-white" />
+                        </div>
+                        <div>
+                          <div className="text-sm font-semibold text-white">{alert.symbol}</div>
+                          <div className="text-[10px] text-green-400">
+                            ±{alert.percentage_threshold}% • {alert.timeframe_minutes === 60 ? '1h' : alert.timeframe_minutes === 240 ? '4h' : '24h'} • {alert.direction === 'up' ? '↑' : alert.direction === 'down' ? '↓' : '↕'}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const deviceId = localStorage.getItem('native_device_id');
+                            const response = await fetch('/api/alerts/custom', {
+                              method: 'DELETE',
+                              credentials: 'include',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ id: alert.id, deviceId }),
+                            });
+                            if (response.ok) {
+                              setPercentageAlerts(prev => prev.filter(a => a.id !== alert.id));
+                            }
+                          } catch (e) {
+                            console.error('Failed to delete percentage alert:', e);
+                          }
+                        }}
+                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 rounded-xl border border-green-500/20 bg-gradient-to-br from-slate-900/80 to-slate-900/60 text-center">
+                  <div className="flex flex-wrap justify-center gap-2 mb-2">
+                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-green-500/10 text-green-400 rounded-full border border-green-500/20">±5%</span>
+                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-green-500/10 text-green-400 rounded-full border border-green-500/20">±10%</span>
+                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">±15%</span>
+                  </div>
+                  <p className="text-[10px] text-slate-500">
+                    {language === 'en' ? 'Add alerts for price percentage changes' : 'Fiyat yüzde değişimi için alarm ekleyin'}
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -3616,7 +3813,7 @@ export default function SettingsPage() {
                   </svg>
                 </button>
               </div>
-              
+
               {/* Title Tooltip Modal */}
               {activeTooltip === 'title' && (
                 <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setActiveTooltip(null)}>
@@ -3646,12 +3843,12 @@ export default function SettingsPage() {
                 </div>
               )}
               <button
-                  onClick={() => {
-                    setShowAddAlertModal(false);
-                    setNewAlert({ symbol: '', notifyWhenAway: '', direction: 'down' });
-                    setCurrentPrice(null);
-                    setError('');
-                  }}
+                onClick={() => {
+                  setShowAddAlertModal(false);
+                  setNewAlert({ symbol: '', notifyWhenAway: '', direction: 'down' });
+                  setCurrentPrice(null);
+                  setError('');
+                }}
                 className="text-slate-400 hover:text-white transition-colors"
               >
                 <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -3688,7 +3885,7 @@ export default function SettingsPage() {
                   placeholder="BTCUSDT"
                   className="w-full px-4 py-2.5 bg-slate-900/50 border border-blue-500/20 rounded-xl text-white focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all backdrop-blur-sm"
                 />
-                
+
                 {/* Coin Suggestions Dropdown */}
                 {showSuggestions && filteredSymbols.length > 0 && (
                   <div
@@ -3697,7 +3894,7 @@ export default function SettingsPage() {
                   >
                     {filteredSymbols.map((symbol) => {
                       const logoPath = `/logos/${symbol.baseAsset.toLowerCase()}.png`;
-                      
+
                       return (
                         <div
                           key={symbol.symbol}
@@ -3710,7 +3907,7 @@ export default function SettingsPage() {
                         >
                           {/* Logo */}
                           <div className="relative w-8 h-8 flex-shrink-0">
-                            <img 
+                            <img
                               src={logoPath}
                               alt={symbol.baseAsset}
                               className="w-8 h-8 rounded-full object-cover"
@@ -3721,13 +3918,13 @@ export default function SettingsPage() {
                                 if (fallback) fallback.style.display = 'flex';
                               }}
                             />
-                            <div 
+                            <div
                               className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 hidden items-center justify-center text-white font-bold text-xs"
                             >
                               {symbol.baseAsset.charAt(0)}
                             </div>
                           </div>
-                          
+
                           {/* Symbol Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
@@ -3741,7 +3938,7 @@ export default function SettingsPage() {
                     })}
                   </div>
                 )}
-                
+
                 {loadingSymbols && (
                   <div className="absolute right-3 top-9 text-slate-400 text-sm">
                     Loading...
@@ -3783,22 +3980,20 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={() => setNewAlert({ ...newAlert, direction: 'up' })}
-                    className={`p-3 rounded-xl border transition-all flex items-center justify-center gap-2 ${
-                      newAlert.direction === 'up'
-                        ? 'bg-green-500/20 border-green-500/50 text-green-400'
-                        : 'bg-slate-900/50 border-slate-700/50 text-slate-400 hover:border-green-500/30 hover:bg-green-500/10'
-                    }`}
+                    className={`p-3 rounded-xl border transition-all flex items-center justify-center gap-2 ${newAlert.direction === 'up'
+                      ? 'bg-green-500/20 border-green-500/50 text-green-400'
+                      : 'bg-slate-900/50 border-slate-700/50 text-slate-400 hover:border-green-500/30 hover:bg-green-500/10'
+                      }`}
                   >
                     <TrendingUp className="w-5 h-5" />
                     <span className="font-semibold">{language === 'en' ? 'Up / Yukarı' : 'Yukarı'}</span>
                   </button>
                   <button
                     onClick={() => setNewAlert({ ...newAlert, direction: 'down' })}
-                    className={`p-3 rounded-xl border transition-all flex items-center justify-center gap-2 ${
-                      newAlert.direction === 'down'
-                        ? 'bg-red-500/20 border-red-500/50 text-red-400'
-                        : 'bg-slate-900/50 border-slate-700/50 text-slate-400 hover:border-red-500/30 hover:bg-red-500/10'
-                    }`}
+                    className={`p-3 rounded-xl border transition-all flex items-center justify-center gap-2 ${newAlert.direction === 'down'
+                      ? 'bg-red-500/20 border-red-500/50 text-red-400'
+                      : 'bg-slate-900/50 border-slate-700/50 text-slate-400 hover:border-red-500/30 hover:bg-red-500/10'
+                      }`}
                   >
                     <TrendingDown className="w-5 h-5" />
                     <span className="font-semibold">{language === 'en' ? 'Down / Aşağı' : 'Aşağı'}</span>
@@ -3830,13 +4025,13 @@ export default function SettingsPage() {
                 <p className="text-xs text-slate-500 mt-1.5">
                   {currentPrice !== null && newAlert.notifyWhenAway && parseFloat(newAlert.notifyWhenAway) > 0 ? (() => {
                     const notifyAway = parseFloat(newAlert.notifyWhenAway);
-                    const targetPrice = newAlert.direction === 'up' 
-                      ? currentPrice + notifyAway 
+                    const targetPrice = newAlert.direction === 'up'
+                      ? currentPrice + notifyAway
                       : currentPrice - notifyAway;
-                    
+
                     return (
                       <>
-                        {language === 'en' 
+                        {language === 'en'
                           ? `Alert will trigger when price reaches $${targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} (${newAlert.direction === 'down' ? '📉 down' : '📈 up'} from $${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })})`
                           : `Alarm, fiyat $${targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} seviyesine ulaştığında tetiklenecek ($${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}'dan ${newAlert.direction === 'down' ? '📉 aşağı' : '📈 yukarı'})`
                         }
@@ -3854,7 +4049,7 @@ export default function SettingsPage() {
                 onClick={async () => {
                   console.log('[Settings] Create alert button clicked');
                   setError(''); // Clear previous errors
-                  
+
                   if (!newAlert.symbol || !newAlert.notifyWhenAway) {
                     setError('Please fill all fields');
                     return;
@@ -3873,20 +4068,20 @@ export default function SettingsPage() {
 
                   // Kullanıcının seçtiği yöne göre hedef fiyatı hesapla
                   const direction = newAlert.direction;
-                  const targetPrice = direction === 'up' 
+                  const targetPrice = direction === 'up'
                     ? currentPrice + notifyAway  // Yukarı yön: mevcut fiyat + değer
                     : currentPrice - notifyAway;  // Aşağı yön: mevcut fiyat - değer
-                  
+
                   // Aşağı yön için negatif fiyat kontrolü
                   if (direction === 'down' && targetPrice <= 0) {
-                    setError(language === 'en' 
+                    setError(language === 'en'
                       ? 'Target price cannot be zero or negative. Please reduce the amount or select "Up" direction.'
                       : 'Hedef fiyat sıfır veya negatif olamaz. Lütfen miktarı azaltın veya "Yukarı" yönünü seçin.'
                     );
                     setLoading(false);
                     return;
                   }
-                  
+
                   const proximityDelta = Math.max(0.01, notifyAway * 0.1); // Proximity delta = kullanıcının girdiği değerin %10'u (minimum 0.01$)
 
                   setLoading(true);
@@ -3909,7 +4104,7 @@ export default function SettingsPage() {
 
                     // Try to get device ID from various sources
                     let deviceId = null;
-                    
+
                     // 🔥 CRITICAL: For native apps, try to get device ID from Capacitor first
                     if (isCapacitor) {
                       try {
@@ -3917,7 +4112,7 @@ export default function SettingsPage() {
                         if (Device && typeof Device.getId === 'function') {
                           const deviceIdInfo = await Device.getId();
                           const nativeId = deviceIdInfo?.identifier;
-                          
+
                           if (nativeId && nativeId !== 'unknown' && nativeId !== 'null' && nativeId !== 'undefined') {
                             deviceId = nativeId;
                             // Store in localStorage for future use
@@ -3931,7 +4126,7 @@ export default function SettingsPage() {
                         console.warn('[Settings] Failed to get device ID from Capacitor:', capacitorError);
                       }
                     }
-                    
+
                     // Fallback 1: Check localStorage for native_device_id
                     if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
                       deviceId = localStorage.getItem('native_device_id');
@@ -3939,7 +4134,7 @@ export default function SettingsPage() {
                         console.log('[Settings] ✅ Got device ID from localStorage (native_device_id):', deviceId);
                       }
                     }
-                    
+
                     // Fallback 2: Check other localStorage keys
                     if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
                       deviceId = localStorage.getItem('device_id');
@@ -3947,7 +4142,7 @@ export default function SettingsPage() {
                         console.log('[Settings] ✅ Got device ID from localStorage (device_id):', deviceId);
                       }
                     }
-                    
+
                     // Fallback 3: Generate device ID for web users ONLY if not Capacitor
                     if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined' && !isCapacitor) {
                       const existingId = localStorage.getItem('web_device_id');
@@ -3960,9 +4155,9 @@ export default function SettingsPage() {
                         console.log('[Settings] ⚠️ Generated web device ID (not a native app):', deviceId);
                       }
                     }
-                    
+
                     console.log('[Settings] Device ID:', deviceId);
-                    
+
                     if (!deviceId || deviceId === 'unknown' || deviceId === 'null') {
                       setError('Device ID not found. Please refresh the page and try again.');
                       setLoading(false);
@@ -4014,10 +4209,10 @@ export default function SettingsPage() {
                     } else {
                       console.warn('[Settings] ⚠️ No userEmail found for guest user - alert creation may fail');
                     }
-                    
+
                     console.log('[Settings] Sending request to: /api/alerts/price');
                     console.log('[Settings] Request body:', requestBody);
-                    
+
                     // Use Next.js API route proxy (forwards cookies automatically)
                     const response = await fetch('/api/alerts/price', {
                       method: 'POST',
@@ -4108,24 +4303,24 @@ export default function SettingsPage() {
 
       {/* Language Selection Modal */}
       {showLanguageModal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
           onClick={() => setShowLanguageModal(false)}
         >
-          <div 
+          <div
             className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-md w-full shadow-2xl shadow-blue-900/20"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-bold text-white">
-                {language === 'tr' ? 'Dil Seç' : 
-                 language === 'en' ? 'Select Language' :
-                 language === 'ar' ? 'اختر اللغة' :
-                 language === 'zh-Hant' ? '選擇語言' :
-                 language === 'fr' ? 'Choisir la langue' :
-                 language === 'de' ? 'Sprache wählen' :
-                 language === 'ja' ? '言語を選択' :
-                 language === 'ko' ? '언어 선택' : 'Select Language'}
+                {language === 'tr' ? 'Dil Seç' :
+                  language === 'en' ? 'Select Language' :
+                    language === 'ar' ? 'اختر اللغة' :
+                      language === 'zh-Hant' ? '選擇語言' :
+                        language === 'fr' ? 'Choisir la langue' :
+                          language === 'de' ? 'Sprache wählen' :
+                            language === 'ja' ? '言語を選択' :
+                              language === 'ko' ? '언어 선택' : 'Select Language'}
               </h2>
               <button
                 onClick={() => setShowLanguageModal(false)}
@@ -4159,11 +4354,10 @@ export default function SettingsPage() {
                     // Reload page to apply language changes
                     window.location.reload();
                   }}
-                  className={`w-full p-4 rounded-xl border transition-all backdrop-blur-sm flex items-center gap-3 ${
-                    language === lang.code
-                      ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
-                      : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white'
-                  }`}
+                  className={`w-full p-4 rounded-xl border transition-all backdrop-blur-sm flex items-center gap-3 ${language === lang.code
+                    ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
+                    : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white'
+                    }`}
                 >
                   <span className="text-2xl">{lang.flag}</span>
                   <span className="font-medium text-lg flex-1 text-left">{lang.name}</span>
@@ -4240,11 +4434,10 @@ export default function SettingsPage() {
                   {notifications.map((notification) => (
                     <div
                       key={notification.id}
-                      className={`p-4 rounded-xl border backdrop-blur-md transition-all cursor-pointer ${
-                        !notification.isRead
-                          ? 'border-blue-500/30 bg-blue-950/20 hover:bg-blue-950/30'
-                          : 'border-slate-800/50 bg-slate-900/30 hover:bg-slate-900/50'
-                      }`}
+                      className={`p-4 rounded-xl border backdrop-blur-md transition-all cursor-pointer ${!notification.isRead
+                        ? 'border-blue-500/30 bg-blue-950/20 hover:bg-blue-950/30'
+                        : 'border-slate-800/50 bg-slate-900/30 hover:bg-slate-900/50'
+                        }`}
                       onClick={() => {
                         if (!notification.isRead) {
                           markNotificationAsRead(notification.id);
@@ -4254,9 +4447,8 @@ export default function SettingsPage() {
                       <div className="flex items-start gap-3">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
-                            <h4 className={`text-sm font-semibold ${
-                              !notification.isRead ? 'text-white' : 'text-slate-300'
-                            }`}>
+                            <h4 className={`text-sm font-semibold ${!notification.isRead ? 'text-white' : 'text-slate-300'
+                              }`}>
                               {notification.title}
                             </h4>
                             {!notification.isRead && (
@@ -4290,6 +4482,326 @@ export default function SettingsPage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Volume Alert Modal */}
+      {showAddVolumeAlertModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-orange-500/20 p-6 max-w-md w-full space-y-4 shadow-2xl shadow-orange-900/20">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-600 to-red-600 flex items-center justify-center">
+                  <TrendingUp className="w-4 h-4 text-white" />
+                </div>
+                <h2 className="text-lg font-bold text-white">
+                  {language === 'en' ? 'Add Volume Alert' : 'Hacim Alarmı Ekle'}
+                </h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAddVolumeAlertModal(false);
+                  setNewVolumeAlert({ symbol: '', spikeMultiplier: 2 });
+                  setVolumeSymbolSuggestions([]);
+                }}
+                className="p-2 text-slate-400 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Coin Search */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-400">
+                {language === 'en' ? 'Coin Symbol' : 'Coin Sembolü'}
+              </label>
+              <div className="relative">
+                <input
+                  ref={volumeSymbolInputRef}
+                  type="text"
+                  value={newVolumeAlert.symbol}
+                  onChange={async (e) => {
+                    const value = e.target.value.toUpperCase();
+                    setNewVolumeAlert(prev => ({ ...prev, symbol: value }));
+                    if (value.length >= 2) {
+                      setShowVolumeSymbolSuggestions(true);
+                      const filtered = allSymbols.filter((s: any) =>
+                        s.symbol?.toUpperCase().includes(value) ||
+                        s.baseAsset?.toUpperCase().includes(value)
+                      ).slice(0, 10);
+                      setVolumeSymbolSuggestions(filtered);
+                    } else {
+                      setShowVolumeSymbolSuggestions(false);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (newVolumeAlert.symbol.length >= 2) {
+                      setShowVolumeSymbolSuggestions(true);
+                    }
+                  }}
+                  placeholder={language === 'en' ? 'e.g., BTCUSDT' : 'örn., BTCUSDT'}
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 transition-all"
+                />
+                {showVolumeSymbolSuggestions && volumeSymbolSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+                    {volumeSymbolSuggestions.map((s: any) => (
+                      <button
+                        key={s.symbol}
+                        onClick={() => {
+                          setNewVolumeAlert(prev => ({ ...prev, symbol: s.symbol }));
+                          setShowVolumeSymbolSuggestions(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700/50 transition-colors"
+                      >
+                        {s.symbol}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Spike Multiplier */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-400">
+                {language === 'en' ? 'Spike Multiplier' : 'Patlama Çarpanı'}
+              </label>
+              <div className="grid grid-cols-4 gap-2">
+                {[1.5, 2, 3, 5].map((mult) => (
+                  <button
+                    key={mult}
+                    onClick={() => setNewVolumeAlert(prev => ({ ...prev, spikeMultiplier: mult as any }))}
+                    className={`py-2 rounded-lg font-semibold text-sm transition-all ${newVolumeAlert.spikeMultiplier === mult
+                      ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg shadow-orange-500/20'
+                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 hover:text-white'
+                      }`}
+                  >
+                    {mult}x
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              onClick={async () => {
+                if (!newVolumeAlert.symbol) return;
+                try {
+                  const deviceId = localStorage.getItem('native_device_id');
+                  const response = await fetch('/api/alerts/volume', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      symbol: newVolumeAlert.symbol,
+                      spikeMultiplier: newVolumeAlert.spikeMultiplier,
+                      deviceId,
+                    }),
+                  });
+                  if (response.ok) {
+                    const data = await response.json();
+                    setVolumeAlerts(prev => [...prev, data.alert]);
+                    setShowAddVolumeAlertModal(false);
+                    setNewVolumeAlert({ symbol: '', spikeMultiplier: 2 });
+                  }
+                } catch (e) {
+                  console.error('Failed to create volume alert:', e);
+                }
+              }}
+              disabled={!newVolumeAlert.symbol}
+              className="w-full py-3 text-sm font-bold bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-500 hover:to-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-orange-500/20"
+            >
+              {language === 'en' ? 'Create Alert' : 'Alarm Oluştur'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Percentage Alert Modal */}
+      {showAddPercentageAlertModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-green-500/20 p-6 max-w-md w-full space-y-4 shadow-2xl shadow-green-900/20">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
+                  <BarChart3 className="w-4 h-4 text-white" />
+                </div>
+                <h2 className="text-lg font-bold text-white">
+                  {language === 'en' ? 'Add Percentage Alert' : 'Yüzde Alarmı Ekle'}
+                </h2>
+              </div>
+              <button
+                onClick={() => {
+                  setShowAddPercentageAlertModal(false);
+                  setNewPercentageAlert({ symbol: '', threshold: 5, timeframe: 60, direction: 'both' });
+                  setPercentageSymbolSuggestions([]);
+                }}
+                className="p-2 text-slate-400 hover:text-white transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Coin Search */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-400">
+                {language === 'en' ? 'Coin Symbol' : 'Coin Sembolü'}
+              </label>
+              <div className="relative">
+                <input
+                  ref={percentageSymbolInputRef}
+                  type="text"
+                  value={newPercentageAlert.symbol}
+                  onChange={async (e) => {
+                    const value = e.target.value.toUpperCase();
+                    setNewPercentageAlert(prev => ({ ...prev, symbol: value }));
+                    if (value.length >= 2) {
+                      setShowPercentageSymbolSuggestions(true);
+                      const filtered = allSymbols.filter((s: any) =>
+                        s.symbol?.toUpperCase().includes(value) ||
+                        s.baseAsset?.toUpperCase().includes(value)
+                      ).slice(0, 10);
+                      setPercentageSymbolSuggestions(filtered);
+                    } else {
+                      setShowPercentageSymbolSuggestions(false);
+                    }
+                  }}
+                  onFocus={() => {
+                    if (newPercentageAlert.symbol.length >= 2) {
+                      setShowPercentageSymbolSuggestions(true);
+                    }
+                  }}
+                  placeholder={language === 'en' ? 'e.g., BTCUSDT' : 'örn., BTCUSDT'}
+                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500/50 transition-all"
+                />
+                {showPercentageSymbolSuggestions && percentageSymbolSuggestions.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
+                    {percentageSymbolSuggestions.map((s: any) => (
+                      <button
+                        key={s.symbol}
+                        onClick={() => {
+                          setNewPercentageAlert(prev => ({ ...prev, symbol: s.symbol }));
+                          setShowPercentageSymbolSuggestions(false);
+                        }}
+                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700/50 transition-colors"
+                      >
+                        {s.symbol}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Percentage Threshold */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-400">
+                {language === 'en' ? 'Percentage Threshold' : 'Yüzde Eşiği'}
+              </label>
+              <div className="grid grid-cols-5 gap-2">
+                {[1, 5, 10, 15, 20].map((pct) => (
+                  <button
+                    key={pct}
+                    onClick={() => setNewPercentageAlert(prev => ({ ...prev, threshold: pct as any }))}
+                    className={`py-2 rounded-lg font-semibold text-sm transition-all ${newPercentageAlert.threshold === pct
+                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-500/20'
+                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 hover:text-white'
+                      }`}
+                  >
+                    ±{pct}%
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Timeframe */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-400">
+                {language === 'en' ? 'Timeframe' : 'Zaman Dilimi'}
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 60, label: '1h' },
+                  { value: 240, label: '4h' },
+                  { value: 1440, label: '24h' },
+                ].map((tf) => (
+                  <button
+                    key={tf.value}
+                    onClick={() => setNewPercentageAlert(prev => ({ ...prev, timeframe: tf.value as any }))}
+                    className={`py-2 rounded-lg font-semibold text-sm transition-all ${newPercentageAlert.timeframe === tf.value
+                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-500/20'
+                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 hover:text-white'
+                      }`}
+                  >
+                    {tf.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Direction */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold text-slate-400">
+                {language === 'en' ? 'Direction' : 'Yön'}
+              </label>
+              <div className="grid grid-cols-3 gap-2">
+                {[
+                  { value: 'up', label: language === 'en' ? 'Up ↑' : 'Yukarı ↑' },
+                  { value: 'down', label: language === 'en' ? 'Down ↓' : 'Aşağı ↓' },
+                  { value: 'both', label: language === 'en' ? 'Both ↕' : 'İkisi ↕' },
+                ].map((dir) => (
+                  <button
+                    key={dir.value}
+                    onClick={() => setNewPercentageAlert(prev => ({ ...prev, direction: dir.value as any }))}
+                    className={`py-2 rounded-lg font-semibold text-sm transition-all ${newPercentageAlert.direction === dir.value
+                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-500/20'
+                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 hover:text-white'
+                      }`}
+                  >
+                    {dir.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              onClick={async () => {
+                if (!newPercentageAlert.symbol) return;
+                try {
+                  const deviceId = localStorage.getItem('native_device_id');
+                  const response = await fetch('/api/alerts/percentage', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      symbol: newPercentageAlert.symbol,
+                      percentageThreshold: newPercentageAlert.threshold,
+                      timeframeMinutes: newPercentageAlert.timeframe,
+                      direction: newPercentageAlert.direction,
+                      deviceId,
+                    }),
+                  });
+                  if (response.ok) {
+                    const data = await response.json();
+                    setPercentageAlerts(prev => [...prev, data.alert]);
+                    setShowAddPercentageAlertModal(false);
+                    setNewPercentageAlert({ symbol: '', threshold: 5, timeframe: 60, direction: 'both' });
+                  }
+                } catch (e) {
+                  console.error('Failed to create percentage alert:', e);
+                }
+              }}
+              disabled={!newPercentageAlert.symbol}
+              className="w-full py-3 text-sm font-bold bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-500 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-green-500/20"
+            >
+              {language === 'en' ? 'Create Alert' : 'Alarm Oluştur'}
+            </button>
           </div>
         </div>
       )}
