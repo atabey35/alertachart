@@ -973,7 +973,8 @@ export default function SettingsPage() {
 
   // Fetch Binance symbols for coin search
   useEffect(() => {
-    if (!showAddAlertModal) return;
+    // Load symbols when any alert modal is open
+    if (!showAddAlertModal && !showAddVolumeAlertModal && !showAddPercentageAlertModal) return;
 
     const fetchSymbols = async () => {
       setLoadingSymbols(true);
@@ -1023,7 +1024,7 @@ export default function SettingsPage() {
     };
 
     fetchSymbols();
-  }, [showAddAlertModal, marketType]);
+  }, [showAddAlertModal, showAddVolumeAlertModal, showAddPercentageAlertModal, marketType]);
 
   // Filter symbols based on search query
   const filteredSymbols = useMemo(() => {
