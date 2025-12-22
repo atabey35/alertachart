@@ -24,9 +24,14 @@ interface WatchlistProps {
   onSymbolClick: (symbol: string) => void;
   currentSymbol?: string;
   marketType?: 'spot' | 'futures';
+  isPremium?: boolean;
+  onUpgradeRequest?: () => void;
 }
 
-export default function Watchlist({ onSymbolClick, currentSymbol, marketType = 'spot' }: WatchlistProps) {
+// Free users are limited to 10 watchlist items
+const FREE_WATCHLIST_LIMIT = 10;
+
+export default function Watchlist({ onSymbolClick, currentSymbol, marketType = 'spot', isPremium = false, onUpgradeRequest }: WatchlistProps) {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [priceData, setPriceData] = useState<Map<string, WatchlistItem>>(new Map());
   const prevPricesRef = useRef<Map<string, number>>(new Map()); // Use ref instead of state
@@ -59,14 +64,14 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   // Detect client-side for responsive width
   useEffect(() => {
     setIsClient(true);
-    
+
     // iPad detection
     if (typeof window !== 'undefined') {
       const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera || '';
-      const isIPadUserAgent = /iPad/.test(userAgent) || 
+      const isIPadUserAgent = /iPad/.test(userAgent) ||
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       const isIPadSize = window.innerWidth >= 768 && window.innerWidth <= 1366;
-      const isCapacitorIOS = !!(window as any).Capacitor && 
+      const isCapacitorIOS = !!(window as any).Capacitor &&
         ((window as any).Capacitor?.getPlatform?.() === 'ios' || /iPad|iPhone/.test(userAgent));
       const isIPadDevice = isIPadUserAgent || (isCapacitorIOS && isIPadSize);
       setIsIPad(isIPadDevice);
@@ -119,10 +124,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-      
+
       // Calculate new width (from right edge of screen)
       const newWidth = window.innerWidth - e.clientX;
-      
+
       // Min width: 220px, Max width: 500px (compact like TradingView)
       const clampedWidth = Math.max(220, Math.min(500, newWidth));
       setWidth(clampedWidth);
@@ -168,7 +173,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       const params = new URLSearchParams(window.location.search);
       const sharedWatchlist = params.get('watchlist');
       const sharedMarketType = params.get('marketType') as 'spot' | 'futures' | null;
-      
+
       // Check if shared watchlist matches current market type
       if (sharedWatchlist && (!sharedMarketType || sharedMarketType === marketType)) {
         const symbols = sharedWatchlist.split(',').map(s => s.toLowerCase().trim()).filter(Boolean);
@@ -186,7 +191,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         }
       }
     }
-    
+
     // Load from localStorage if no shared watchlist
     const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
     const savedWatchlist = localStorage.getItem(storageKey);
@@ -198,7 +203,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       symbolsToLoad = ['btcusdt', 'ethusdt', 'ethbtc', 'solusdt', 'bnbusdt', 'xrpusdt', 'adausdt'];
     }
     setWatchlist(symbolsToLoad);
-    
+
     // Auto-assign categories to loaded symbols
     loadCategories().then(() => {
       assignCategoriesToSymbols(symbolsToLoad);
@@ -209,7 +214,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const assignCategoriesToSymbols = (symbols: string[]) => {
     const currentCategories = getCategories();
     if (currentCategories.length === 0) return; // Categories not loaded yet
-    
+
     const newSymbolCategories = new Map(symbolCategories);
     let hasChanges = false;
 
@@ -246,17 +251,17 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       const newPriceData = new Map<string, WatchlistItem>();
       const newPrevPrices = new Map<string, number>();
       const checkPricePromises: Promise<void>[] = [];
-      
+
       wsPriceData.forEach((ticker, symbol) => {
         const currentPrice = ticker.price;
         const prevPrice = prevPricesRef.current.get(symbol);
-        
+
         // Determine price flash direction
         let priceFlash: 'up' | 'down' | null = null;
         if (prevPrice !== undefined && prevPrice !== currentPrice) {
           priceFlash = currentPrice > prevPrice ? 'up' : 'down';
         }
-        
+
         newPriceData.set(symbol, {
           symbol: symbol,
           price: currentPrice,
@@ -266,22 +271,22 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           category: symbolCategories.get(symbol),
           isFavorite: favorites.has(symbol),
         });
-        
+
         newPrevPrices.set(symbol, currentPrice);
-        
+
         // Check price alerts for this symbol (works for all coins, not just active chart)
         const exchange = marketType === 'futures' ? 'BINANCE_FUTURES' : 'BINANCE';
         checkPricePromises.push(alertService.checkPrice(exchange, symbol, currentPrice));
       });
-      
+
       setPriceData(newPriceData);
       prevPricesRef.current = newPrevPrices; // Update ref directly (no re-render)
-      
+
       // Wait for all price checks to complete (fire-and-forget, don't block UI)
       Promise.all(checkPricePromises).catch(err => {
         console.error('[Watchlist] Error checking prices:', err);
       });
-      
+
       // Clear flash after animation (increased to 800ms for better visibility)
       setTimeout(() => {
         setPriceData(prev => {
@@ -302,18 +307,18 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       try {
         const symbols = watchlist.join(',');
         const url = `/api/ticker/${marketType}?symbols=${symbols}`;
-        
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 5000);
-        
+
         const response = await fetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) return;
-        
+
         const result = await response.json();
         const data = result.data;
-        
+
         // Merge initial data with WebSocket data
         setPriceData(prev => {
           const updated = new Map(prev);
@@ -351,19 +356,39 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
   const addSymbol = (symbol: string) => {
     const normalizedSymbol = symbol.toLowerCase();
-    if (!watchlist.includes(normalizedSymbol)) {
-      const newWatchlist = [...watchlist, normalizedSymbol];
-      setWatchlist(newWatchlist);
-      const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
-      localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
-      
-      // Auto-assign category from categories.json
-      const symbolUpper = symbol.toUpperCase();
-      const category = findCategoryForSymbol(symbolUpper);
-      if (category) {
-        setSymbolCategory(symbol, category);
-      }
+
+    // Check if symbol already exists
+    if (watchlist.includes(normalizedSymbol)) {
+      setShowAddSymbol(false);
+      setShowSymbolSearchModal(false);
+      setSearchQuery('');
+      return;
     }
+
+    // Check watchlist limit for free users
+    if (!isPremium && watchlist.length >= FREE_WATCHLIST_LIMIT) {
+      // Trigger upgrade modal
+      if (onUpgradeRequest) {
+        onUpgradeRequest();
+      }
+      setShowAddSymbol(false);
+      setShowSymbolSearchModal(false);
+      setSearchQuery('');
+      return;
+    }
+
+    const newWatchlist = [...watchlist, normalizedSymbol];
+    setWatchlist(newWatchlist);
+    const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
+    localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
+
+    // Auto-assign category from categories.json
+    const symbolUpper = symbol.toUpperCase();
+    const category = findCategoryForSymbol(symbolUpper);
+    if (category) {
+      setSymbolCategory(symbol, category);
+    }
+
     setShowAddSymbol(false);
     setShowSymbolSearchModal(false);
     setSearchQuery('');
@@ -373,7 +398,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const findCategoryForSymbol = (symbol: string): string | null => {
     const categories = getCategories();
     if (categories.length === 0) return null; // Categories not loaded yet
-    
+
     for (const category of categories) {
       if (category.coins.includes(symbol)) {
         return category.name;
@@ -414,10 +439,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
   const handleTouchMove = (e: React.TouchEvent) => {
     if (touchStartY === null || !draggingSymbol) return;
-    
+
     const touch = e.touches[0];
     const deltaY = touch.clientY - (touchStartY || 0);
-    
+
     // Start dragging if moved more than 15px (prevents accidental drags)
     if (Math.abs(deltaY) > 15) {
       if (!isDragging) {
@@ -427,14 +452,14 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       e.preventDefault();
       e.stopPropagation();
     }
-    
+
     setTouchCurrentY(touch.clientY);
-    
+
     // Better element detection: check all watchlist items
     if (isDragging || Math.abs(deltaY) > 15) {
       // Get all watchlist items
       const allItems = Array.from(document.querySelectorAll('[data-symbol]')) as HTMLElement[];
-      
+
       // Find the item that contains the touch point
       let targetSymbol: string | null = null;
       for (const item of allItems) {
@@ -452,7 +477,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           }
         }
       }
-      
+
       if (targetSymbol) {
         setDragOverSymbol(targetSymbol);
       } else {
@@ -518,12 +543,12 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const removeCategory = (category: string) => {
     // Save current scroll position
     const scrollPosition = categoryScrollRef.current?.scrollLeft || 0;
-    
+
     // Remove category from list
     const newCategories = categories.filter(c => c !== category);
     setCategories(newCategories);
     localStorage.setItem('watchlist-categories', JSON.stringify(newCategories));
-    
+
     // Remove category from all symbols
     const newSymbolCategories = new Map(symbolCategories);
     symbolCategories.forEach((cat, symbol) => {
@@ -533,12 +558,12 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     });
     setSymbolCategories(newSymbolCategories);
     localStorage.setItem('watchlist-symbol-categories', JSON.stringify(Object.fromEntries(newSymbolCategories)));
-    
+
     // Reset filter if removed category was selected
     if (selectedFilter === category) {
       setSelectedFilter('ALL');
     }
-    
+
     // Restore scroll position after DOM update using requestAnimationFrame for better reliability
     requestAnimationFrame(() => {
       if (categoryScrollRef.current) {
@@ -664,7 +689,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   }
 
   return (
-    <div 
+    <div
       className={`${getBackgroundClass()} ${isIPad ? '' : 'md:border-l'} border-gray-800/50 flex flex-col relative h-full overflow-hidden backdrop-blur-sm shadow-2xl`}
       style={{ width: isIPad ? '100%' : (isClient && window.innerWidth >= 768 ? `${width}px` : '100%') }}
     >
@@ -774,21 +799,19 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       <div ref={categoryScrollRef} className={`border-b border-gray-800/50 px-2 md:px-2 py-1.5 md:py-1.5 flex flex-nowrap gap-1.5 md:gap-1.5 overflow-x-auto ${getHeaderBackgroundClass()} backdrop-blur-sm scrollbar-thin shadow-sm`} style={{ scrollBehavior: 'auto', minWidth: 0 }}>
         <button
           onClick={() => setSelectedFilter('ALL')}
-          className={`text-[10px] md:text-[10px] px-2 md:px-2 py-1 md:py-1 rounded-lg transition-all duration-200 whitespace-nowrap font-medium flex-shrink-0 ${
-            selectedFilter === 'ALL' 
-              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30' 
+          className={`text-[10px] md:text-[10px] px-2 md:px-2 py-1 md:py-1 rounded-lg transition-all duration-200 whitespace-nowrap font-medium flex-shrink-0 ${selectedFilter === 'ALL'
+              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
               : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
-          }`}
+            }`}
         >
           ALL
         </button>
         <button
           onClick={() => setSelectedFilter('FAVORITES')}
-          className={`text-[10px] md:text-[10px] px-2 md:px-2 py-1 md:py-1 rounded-lg transition-all duration-200 whitespace-nowrap font-medium flex-shrink-0 ${
-            selectedFilter === 'FAVORITES' 
-              ? 'bg-gradient-to-r from-yellow-600 to-yellow-700 text-white shadow-lg shadow-yellow-500/30' 
+          className={`text-[10px] md:text-[10px] px-2 md:px-2 py-1 md:py-1 rounded-lg transition-all duration-200 whitespace-nowrap font-medium flex-shrink-0 ${selectedFilter === 'FAVORITES'
+              ? 'bg-gradient-to-r from-yellow-600 to-yellow-700 text-white shadow-lg shadow-yellow-500/30'
               : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
-          }`}
+            }`}
         >
           ⭐ FAVORITES
         </button>
@@ -796,11 +819,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
           <div key={cat} className="relative group flex-shrink-0">
             <button
               onClick={() => setSelectedFilter(cat)}
-              className={`text-[10px] md:text-[10px] px-2 md:px-2 py-1 md:py-1 pr-7 md:pr-7 rounded-lg transition-all duration-200 whitespace-nowrap font-medium ${
-                selectedFilter === cat 
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30' 
+              className={`text-[10px] md:text-[10px] px-2 md:px-2 py-1 md:py-1 pr-7 md:pr-7 rounded-lg transition-all duration-200 whitespace-nowrap font-medium ${selectedFilter === cat
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
                   : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
-              }`}
+                }`}
             >
               {cat}
             </button>
@@ -834,7 +856,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
             </button>
           </div>
         ))}
-        
+
         {showAddCategory ? (
           <div className="flex items-center gap-1 flex-shrink-0">
             <input
@@ -918,20 +940,20 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
             .map((symbol) => {
               const data = priceData.get(symbol);
               const isActive = currentSymbol === symbol;
-            
-            return (
-              <div
-                key={symbol}
-                data-symbol={symbol}
-                ref={(el) => {
-                  if (el) watchlistItemRefs.current.set(symbol, el);
-                  else watchlistItemRefs.current.delete(symbol);
-                }}
-                onClick={() => {
-                  // Prevent click if we just finished dragging
-                  if (isDragging) return;
-                  onSymbolClick(symbol);
-                }}
+
+              return (
+                <div
+                  key={symbol}
+                  data-symbol={symbol}
+                  ref={(el) => {
+                    if (el) watchlistItemRefs.current.set(symbol, el);
+                    else watchlistItemRefs.current.delete(symbol);
+                  }}
+                  onClick={() => {
+                    // Prevent click if we just finished dragging
+                    if (isDragging) return;
+                    onSymbolClick(symbol);
+                  }}
                   onContextMenu={(e) => {
                     // Disable context menu on mobile (touch devices)
                     if (window.innerWidth < 768) {
@@ -941,229 +963,224 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                     e.preventDefault();
                     setContextMenu({ x: e.clientX, y: e.clientY, symbol });
                   }}
-                draggable={typeof window !== 'undefined' && window.innerWidth >= 768}
-                onDragStart={(e) => {
-                  // Only allow drag on desktop
-                  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                  draggable={typeof window !== 'undefined' && window.innerWidth >= 768}
+                  onDragStart={(e) => {
+                    // Only allow drag on desktop
+                    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+                      e.preventDefault();
+                      return;
+                    }
+                    setDraggingSymbol(symbol);
+                    setIsDragging(true);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(e) => {
                     e.preventDefault();
-                    return;
-                  }
-                  setDraggingSymbol(symbol);
-                  setIsDragging(true);
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (dragOverSymbol !== symbol) setDragOverSymbol(symbol);
-                  e.dataTransfer.dropEffect = 'move';
-                }}
-                onDragLeave={() => {
-                  setDragOverSymbol((prev) => (prev === symbol ? null : prev));
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (draggingSymbol) reorderWatchlist(draggingSymbol, symbol);
-                  setDragOverSymbol(null);
-                  setDraggingSymbol(null);
-                  // Delay to avoid triggering click after drop
-                  setTimeout(() => setIsDragging(false), 200);
-                }}
-                onDragEnd={() => {
-                  setDragOverSymbol(null);
-                  setDraggingSymbol(null);
-                  setTimeout(() => setIsDragging(false), 200);
-                }}
-                onTouchStart={(e) => {
-                  // Only handle touch if not clicking on interactive elements
-                  const target = e.target as HTMLElement;
-                  if (target.closest('button') || target.closest('select')) {
-                    return;
-                  }
-                  handleTouchStart(e, symbol);
-                }}
-                onTouchMove={(e) => {
-                  if (draggingSymbol) {
-                    handleTouchMove(e);
-                  }
-                }}
-                onTouchEnd={(e) => {
-                  if (draggingSymbol) {
-                    handleTouchEnd();
-                  }
-                }}
-                onTouchCancel={(e) => {
-                  if (draggingSymbol) {
-                    handleTouchCancel();
-                  }
-                }}
-                className={`group relative border-b border-gray-800/30 px-3 py-1.5 md:py-1 cursor-pointer transition-all duration-300 ${
-                  isActive 
-                    ? 'bg-gradient-to-r from-blue-900/50 via-blue-900/40 to-blue-900/20 border-l-4 border-l-blue-500 shadow-xl shadow-blue-500/20' 
-                    : 'hover:bg-gradient-to-r hover:from-gray-800/50 hover:via-gray-800/30 hover:to-gray-800/10 hover:border-l-2 hover:border-l-gray-700/50'
-                } ${dragOverSymbol === symbol ? 'ring-2 ring-blue-500/60 bg-blue-900/30 scale-[1.02]' : ''} ${
-                  draggingSymbol === symbol ? 'opacity-50 scale-[0.98] shadow-lg z-50' : ''
-                } ${
-                  data?.priceFlash === 'up' ? 'bg-green-500/10 animate-pulse' : data?.priceFlash === 'down' ? 'bg-red-500/10 animate-pulse' : ''
-                }`}
-              >
-                <div className="flex items-center justify-between mb-0.5 md:mb-0.5">
-                  <div className="flex items-center gap-1 md:gap-1 flex-1 min-w-0 overflow-hidden">
-                    <span className="text-gray-600 hover:text-blue-400 cursor-grab active:cursor-grabbing select-none text-xs md:text-xs transition-all duration-200 hover:scale-110 flex-shrink-0">
-                      ☰
-                    </span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(symbol);
-                      }}
-                      className="p-0.5 hover:scale-110 transition-all duration-200 active:scale-95 flex-shrink-0"
-                      title={favorites.has(symbol) ? "Remove from favorites" : "Add to favorites"}
-                    >
-                      <svg className={`w-3 h-3 md:w-3 md:h-3 transition-all duration-200 ${favorites.has(symbol) ? 'fill-yellow-400 text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.5)]' : 'text-gray-600 hover:text-yellow-500'}`} fill={favorites.has(symbol) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                      </svg>
-                    </button>
-                    {/* Coin Logo */}
-                    {(() => {
-                      // Parse symbol to get base and quote assets correctly
-                      const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
-                      let baseAsset = '';
-                      let quoteAsset = 'USDT';
-                      
-                      const upperSymbol = symbol.toUpperCase();
-                      for (const quote of quoteAssets) {
-                        if (upperSymbol.endsWith(quote)) {
-                          quoteAsset = quote;
-                          baseAsset = upperSymbol.slice(0, -quote.length);
-                          break;
+                    if (dragOverSymbol !== symbol) setDragOverSymbol(symbol);
+                    e.dataTransfer.dropEffect = 'move';
+                  }}
+                  onDragLeave={() => {
+                    setDragOverSymbol((prev) => (prev === symbol ? null : prev));
+                  }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    if (draggingSymbol) reorderWatchlist(draggingSymbol, symbol);
+                    setDragOverSymbol(null);
+                    setDraggingSymbol(null);
+                    // Delay to avoid triggering click after drop
+                    setTimeout(() => setIsDragging(false), 200);
+                  }}
+                  onDragEnd={() => {
+                    setDragOverSymbol(null);
+                    setDraggingSymbol(null);
+                    setTimeout(() => setIsDragging(false), 200);
+                  }}
+                  onTouchStart={(e) => {
+                    // Only handle touch if not clicking on interactive elements
+                    const target = e.target as HTMLElement;
+                    if (target.closest('button') || target.closest('select')) {
+                      return;
+                    }
+                    handleTouchStart(e, symbol);
+                  }}
+                  onTouchMove={(e) => {
+                    if (draggingSymbol) {
+                      handleTouchMove(e);
+                    }
+                  }}
+                  onTouchEnd={(e) => {
+                    if (draggingSymbol) {
+                      handleTouchEnd();
+                    }
+                  }}
+                  onTouchCancel={(e) => {
+                    if (draggingSymbol) {
+                      handleTouchCancel();
+                    }
+                  }}
+                  className={`group relative border-b border-gray-800/30 px-3 py-1.5 md:py-1 cursor-pointer transition-all duration-300 ${isActive
+                      ? 'bg-gradient-to-r from-blue-900/50 via-blue-900/40 to-blue-900/20 border-l-4 border-l-blue-500 shadow-xl shadow-blue-500/20'
+                      : 'hover:bg-gradient-to-r hover:from-gray-800/50 hover:via-gray-800/30 hover:to-gray-800/10 hover:border-l-2 hover:border-l-gray-700/50'
+                    } ${dragOverSymbol === symbol ? 'ring-2 ring-blue-500/60 bg-blue-900/30 scale-[1.02]' : ''} ${draggingSymbol === symbol ? 'opacity-50 scale-[0.98] shadow-lg z-50' : ''
+                    } ${data?.priceFlash === 'up' ? 'bg-green-500/10 animate-pulse' : data?.priceFlash === 'down' ? 'bg-red-500/10 animate-pulse' : ''
+                    }`}
+                >
+                  <div className="flex items-center justify-between mb-0.5 md:mb-0.5">
+                    <div className="flex items-center gap-1 md:gap-1 flex-1 min-w-0 overflow-hidden">
+                      <span className="text-gray-600 hover:text-blue-400 cursor-grab active:cursor-grabbing select-none text-xs md:text-xs transition-all duration-200 hover:scale-110 flex-shrink-0">
+                        ☰
+                      </span>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleFavorite(symbol);
+                        }}
+                        className="p-0.5 hover:scale-110 transition-all duration-200 active:scale-95 flex-shrink-0"
+                        title={favorites.has(symbol) ? "Remove from favorites" : "Add to favorites"}
+                      >
+                        <svg className={`w-3 h-3 md:w-3 md:h-3 transition-all duration-200 ${favorites.has(symbol) ? 'fill-yellow-400 text-yellow-400 drop-shadow-[0_0_4px_rgba(250,204,21,0.5)]' : 'text-gray-600 hover:text-yellow-500'}`} fill={favorites.has(symbol) ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                        </svg>
+                      </button>
+                      {/* Coin Logo */}
+                      {(() => {
+                        // Parse symbol to get base and quote assets correctly
+                        const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
+                        let baseAsset = '';
+                        let quoteAsset = 'USDT';
+
+                        const upperSymbol = symbol.toUpperCase();
+                        for (const quote of quoteAssets) {
+                          if (upperSymbol.endsWith(quote)) {
+                            quoteAsset = quote;
+                            baseAsset = upperSymbol.slice(0, -quote.length);
+                            break;
+                          }
                         }
-                      }
-                      
-                      // If no quote asset found, assume entire symbol is base asset
-                      if (!baseAsset) {
-                        baseAsset = upperSymbol;
-                      }
-                      
-                      const hasAlert = symbolsWithAlerts.has(symbol);
-                      return (
-                        <>
-                          <div className="relative group/logo flex-shrink-0">
-                            <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 opacity-0 group-hover/logo:opacity-100 transition-opacity duration-200 blur-sm"></div>
-                            <img 
-                              src={`/logos/${baseAsset.toLowerCase()}.png`}
-                              alt={baseAsset}
-                              className="relative w-4 h-4 md:w-4 md:h-4 rounded-full ring-2 ring-gray-700/50 shadow-md group-hover/logo:ring-blue-500/50 transition-all duration-200 group-hover/logo:scale-110"
-                              onError={(e) => {
-                                e.currentTarget.style.display = 'none';
-                              }}
-                            />
-                            {hasAlert && (
-                              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 md:w-2 md:h-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full ring-2 ring-gray-900 animate-pulse shadow-lg shadow-blue-500/50"></div>
-                            )}
-                          </div>
-                          <div className="flex items-baseline gap-0.5 md:gap-0.5 min-w-0 flex-shrink-0">
-                            <span className="font-mono text-xs md:text-xs font-bold text-white truncate group-hover:text-blue-300 transition-colors duration-200 max-w-[80px] md:max-w-[100px]">
-                              {baseAsset}
-                            </span>
-                            <span className="text-[9px] md:text-[9px] text-gray-500 font-medium flex-shrink-0">
-                              /{quoteAsset}
-                            </span>
-                          </div>
-                          {hasAlert && (
-                            <div className="relative flex-shrink-0">
-                              <svg className="w-3 h-3 md:w-3 md:h-3 text-blue-400 flex-shrink-0 drop-shadow-[0_0_4px_rgba(59,130,246,0.5)] animate-pulse" fill="currentColor" viewBox="0 0 24 24" aria-label="Active alerts" role="img">
-                                <title>Active alerts</title>
-                                <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6v-5a6 6 0 0 0-5-5.91V4a1 1 0 1 0-2 0v1.09A6 6 0 0 0 6 11v5l-2 2v1h16v-1l-2-2z" />
-                              </svg>
+
+                        // If no quote asset found, assume entire symbol is base asset
+                        if (!baseAsset) {
+                          baseAsset = upperSymbol;
+                        }
+
+                        const hasAlert = symbolsWithAlerts.has(symbol);
+                        return (
+                          <>
+                            <div className="relative group/logo flex-shrink-0">
+                              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500/20 to-cyan-500/20 opacity-0 group-hover/logo:opacity-100 transition-opacity duration-200 blur-sm"></div>
+                              <img
+                                src={`/logos/${baseAsset.toLowerCase()}.png`}
+                                alt={baseAsset}
+                                className="relative w-4 h-4 md:w-4 md:h-4 rounded-full ring-2 ring-gray-700/50 shadow-md group-hover/logo:ring-blue-500/50 transition-all duration-200 group-hover/logo:scale-110"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                              {hasAlert && (
+                                <div className="absolute -top-0.5 -right-0.5 w-2 h-2 md:w-2 md:h-2 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-full ring-2 ring-gray-900 animate-pulse shadow-lg shadow-blue-500/50"></div>
+                              )}
                             </div>
-                          )}
-                        </>
-                      );
-                    })()}
-                    {symbolCategories.has(symbol) && (
-                      <span className="text-[8px] md:text-[8px] px-1.5 md:px-1.5 py-0.5 md:py-0.5 bg-gradient-to-r from-blue-600/50 to-blue-700/50 text-blue-200 rounded-md font-semibold border border-blue-500/40 shadow-sm shadow-blue-500/20 whitespace-nowrap flex-shrink-0">
-                        {symbolCategories.get(symbol)}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
-                    <select
-                      value={symbolCategories.get(symbol) || ''}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        setSymbolCategory(symbol, e.target.value);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      className="text-[9px] px-2 py-1 bg-gray-800/70 border border-gray-700/50 rounded-lg text-gray-300 hover:border-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
-                      title="Set category"
-                    >
-                      <option value="">Kategori</option>
-                      {categories.map(cat => (
-                        <option key={cat} value={cat}>{cat}</option>
-                      ))}
-                    </select>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeSymbol(symbol);
-                      }}
-                      className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 active:text-red-500 active:bg-red-500/20 rounded-lg transition-all duration-200 active:scale-95"
-                      title="Kaldır"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
-                
-                {data ? (
-                  <>
-                    <div className="flex items-center justify-between mb-0.5 md:mb-0.5">
-                      <div className="flex items-baseline gap-0.5 md:gap-0.5">
-                        <span className={`font-mono text-xs md:text-xs font-bold px-1.5 md:px-1.5 py-0.5 md:py-0.5 rounded-md transition-all duration-200 ${
-                          data.priceFlash === 'up' 
-                            ? 'bg-gradient-to-br from-green-500/50 to-emerald-500/30 text-green-100 shadow-lg shadow-green-500/50 animate-flash-green' 
-                            : data.priceFlash === 'down' 
-                            ? 'bg-gradient-to-br from-red-500/50 to-rose-500/30 text-red-100 shadow-lg shadow-red-500/50 animate-flash-red' 
-                            : 'text-white bg-gray-800/30'
-                        }`}>
-                          ${formatPrice(data.price)}
-                        </span>
-                      </div>
-                      <span className={`text-[10px] md:text-[10px] font-bold px-1.5 md:px-1.5 py-0.5 md:py-0.5 rounded-md transition-all duration-200 ${
-                        data.change24h >= 0 
-                          ? 'text-green-300 bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/30' 
-                          : 'text-red-300 bg-gradient-to-br from-red-500/20 to-rose-500/10 border border-red-500/30'
-                      }`}>
-                        {data.change24h >= 0 ? '↗' : '↘'} {data.change24h >= 0 ? '+' : ''}{data.change24h.toFixed(2)}%
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-1 md:gap-1 text-[9px] md:text-[9px] text-gray-400">
-                      <svg className="w-2 h-2 md:w-2 md:h-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                      </svg>
-                      <span className="font-medium">Vol:</span>
-                      <span className="font-mono font-medium text-gray-300">{formatVolume(data.volume24h)}</span>
-                      {data.price && (
-                        <span className="font-mono font-medium text-gray-500">
-                          (${formatVolume(data.volume24h * data.price)})
+                            <div className="flex items-baseline gap-0.5 md:gap-0.5 min-w-0 flex-shrink-0">
+                              <span className="font-mono text-xs md:text-xs font-bold text-white truncate group-hover:text-blue-300 transition-colors duration-200 max-w-[80px] md:max-w-[100px]">
+                                {baseAsset}
+                              </span>
+                              <span className="text-[9px] md:text-[9px] text-gray-500 font-medium flex-shrink-0">
+                                /{quoteAsset}
+                              </span>
+                            </div>
+                            {hasAlert && (
+                              <div className="relative flex-shrink-0">
+                                <svg className="w-3 h-3 md:w-3 md:h-3 text-blue-400 flex-shrink-0 drop-shadow-[0_0_4px_rgba(59,130,246,0.5)] animate-pulse" fill="currentColor" viewBox="0 0 24 24" aria-label="Active alerts" role="img">
+                                  <title>Active alerts</title>
+                                  <path d="M12 22a2 2 0 0 0 2-2h-4a2 2 0 0 0 2 2zm6-6v-5a6 6 0 0 0-5-5.91V4a1 1 0 1 0-2 0v1.09A6 6 0 0 0 6 11v5l-2 2v1h16v-1l-2-2z" />
+                                </svg>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
+                      {symbolCategories.has(symbol) && (
+                        <span className="text-[8px] md:text-[8px] px-1.5 md:px-1.5 py-0.5 md:py-0.5 bg-gradient-to-r from-blue-600/50 to-blue-700/50 text-blue-200 rounded-md font-semibold border border-blue-500/40 shadow-sm shadow-blue-500/20 whitespace-nowrap flex-shrink-0">
+                          {symbolCategories.get(symbol)}
                         </span>
                       )}
                     </div>
-                  </>
-                ) : (
-                  <div className="flex items-center gap-2 text-gray-500 text-[10px] md:text-[10px] py-0.5 md:py-0.5">
-                    <svg className="animate-spin h-2.5 w-2.5 md:h-2.5 md:w-2.5 text-blue-400" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                    <span className="font-medium">Loading...</span>
+                    <div className="flex items-center gap-1.5 md:opacity-0 md:group-hover:opacity-100 transition-opacity duration-200">
+                      <select
+                        value={symbolCategories.get(symbol) || ''}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          setSymbolCategory(symbol, e.target.value);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="text-[9px] px-2 py-1 bg-gray-800/70 border border-gray-700/50 rounded-lg text-gray-300 hover:border-gray-600 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                        title="Set category"
+                      >
+                        <option value="">Kategori</option>
+                        {categories.map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeSymbol(symbol);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 active:text-red-500 active:bg-red-500/20 rounded-lg transition-all duration-200 active:scale-95"
+                        title="Kaldır"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
-            );
-          })
+
+                  {data ? (
+                    <>
+                      <div className="flex items-center justify-between mb-0.5 md:mb-0.5">
+                        <div className="flex items-baseline gap-0.5 md:gap-0.5">
+                          <span className={`font-mono text-xs md:text-xs font-bold px-1.5 md:px-1.5 py-0.5 md:py-0.5 rounded-md transition-all duration-200 ${data.priceFlash === 'up'
+                              ? 'bg-gradient-to-br from-green-500/50 to-emerald-500/30 text-green-100 shadow-lg shadow-green-500/50 animate-flash-green'
+                              : data.priceFlash === 'down'
+                                ? 'bg-gradient-to-br from-red-500/50 to-rose-500/30 text-red-100 shadow-lg shadow-red-500/50 animate-flash-red'
+                                : 'text-white bg-gray-800/30'
+                            }`}>
+                            ${formatPrice(data.price)}
+                          </span>
+                        </div>
+                        <span className={`text-[10px] md:text-[10px] font-bold px-1.5 md:px-1.5 py-0.5 md:py-0.5 rounded-md transition-all duration-200 ${data.change24h >= 0
+                            ? 'text-green-300 bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/30'
+                            : 'text-red-300 bg-gradient-to-br from-red-500/20 to-rose-500/10 border border-red-500/30'
+                          }`}>
+                          {data.change24h >= 0 ? '↗' : '↘'} {data.change24h >= 0 ? '+' : ''}{data.change24h.toFixed(2)}%
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 md:gap-1 text-[9px] md:text-[9px] text-gray-400">
+                        <svg className="w-2 h-2 md:w-2 md:h-2 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        <span className="font-medium">Vol:</span>
+                        <span className="font-mono font-medium text-gray-300">{formatVolume(data.volume24h)}</span>
+                        {data.price && (
+                          <span className="font-mono font-medium text-gray-500">
+                            (${formatVolume(data.volume24h * data.price)})
+                          </span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 text-gray-500 text-[10px] md:text-[10px] py-0.5 md:py-0.5">
+                      <svg className="animate-spin h-2.5 w-2.5 md:h-2.5 md:w-2.5 text-blue-400" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      <span className="font-medium">Loading...</span>
+                    </div>
+                  )}
+                </div>
+              );
+            })
         )}
       </div>
 
@@ -1241,11 +1258,11 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
       {/* Settings Modal */}
       {showSettings && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/70 backdrop-blur-md flex items-center justify-center z-50 animate-in fade-in duration-300"
           onClick={() => setShowSettings(false)}
         >
-          <div 
+          <div
             className="bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950 border-2 border-gray-700/50 rounded-2xl p-6 max-w-md w-full mx-4 shadow-2xl animate-in zoom-in-95 duration-300"
             onClick={(e) => e.stopPropagation()}
           >
@@ -1275,11 +1292,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   {/* Gradient Gray */}
                   <button
                     onClick={() => handleSaveBackground('gradient-gray')}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                      backgroundColor === 'gradient-gray'
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'gradient-gray'
                         ? 'border-blue-500 shadow-lg shadow-blue-500/30'
                         : 'border-gray-700 hover:border-gray-600'
-                    }`}
+                      }`}
                   >
                     <div className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 h-16 rounded-lg mb-2"></div>
                     <span className="text-xs text-gray-400">Gradient Gray</span>
@@ -1288,11 +1304,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   {/* Gradient Blue */}
                   <button
                     onClick={() => handleSaveBackground('gradient-blue')}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                      backgroundColor === 'gradient-blue'
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'gradient-blue'
                         ? 'border-blue-500 shadow-lg shadow-blue-500/30'
                         : 'border-gray-700 hover:border-gray-600'
-                    }`}
+                      }`}
                   >
                     <div className="bg-gradient-to-b from-blue-950 via-gray-900 to-gray-950 h-16 rounded-lg mb-2"></div>
                     <span className="text-xs text-gray-400">Gradient Blue</span>
@@ -1301,11 +1316,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   {/* Gradient Purple */}
                   <button
                     onClick={() => handleSaveBackground('gradient-purple')}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                      backgroundColor === 'gradient-purple'
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'gradient-purple'
                         ? 'border-blue-500 shadow-lg shadow-blue-500/30'
                         : 'border-gray-700 hover:border-gray-600'
-                    }`}
+                      }`}
                   >
                     <div className="bg-gradient-to-b from-purple-950 via-gray-900 to-gray-950 h-16 rounded-lg mb-2"></div>
                     <span className="text-xs text-gray-400">Gradient Purple</span>
@@ -1314,11 +1328,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   {/* Gradient Green */}
                   <button
                     onClick={() => handleSaveBackground('gradient-green')}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                      backgroundColor === 'gradient-green'
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'gradient-green'
                         ? 'border-blue-500 shadow-lg shadow-blue-500/30'
                         : 'border-gray-700 hover:border-gray-600'
-                    }`}
+                      }`}
                   >
                     <div className="bg-gradient-to-b from-green-950 via-gray-900 to-gray-950 h-16 rounded-lg mb-2"></div>
                     <span className="text-xs text-gray-400">Gradient Green</span>
@@ -1327,11 +1340,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   {/* Gradient Orange */}
                   <button
                     onClick={() => handleSaveBackground('gradient-orange')}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                      backgroundColor === 'gradient-orange'
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'gradient-orange'
                         ? 'border-blue-500 shadow-lg shadow-blue-500/30'
                         : 'border-gray-700 hover:border-gray-600'
-                    }`}
+                      }`}
                   >
                     <div className="bg-gradient-to-b from-orange-950 via-gray-900 to-gray-950 h-16 rounded-lg mb-2"></div>
                     <span className="text-xs text-gray-400">Gradient Orange</span>
@@ -1340,11 +1352,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   {/* Solid Gray */}
                   <button
                     onClick={() => handleSaveBackground('solid-gray')}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                      backgroundColor === 'solid-gray'
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'solid-gray'
                         ? 'border-blue-500 shadow-lg shadow-blue-500/30'
                         : 'border-gray-700 hover:border-gray-600'
-                    }`}
+                      }`}
                   >
                     <div className="bg-gray-900 h-16 rounded-lg mb-2"></div>
                     <span className="text-xs text-gray-400">Solid Gray</span>
@@ -1353,11 +1364,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   {/* Solid Dark */}
                   <button
                     onClick={() => handleSaveBackground('solid-dark')}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                      backgroundColor === 'solid-dark'
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'solid-dark'
                         ? 'border-blue-500 shadow-lg shadow-blue-500/30'
                         : 'border-gray-700 hover:border-gray-600'
-                    }`}
+                      }`}
                   >
                     <div className="bg-gray-950 h-16 rounded-lg mb-2"></div>
                     <span className="text-xs text-gray-400">Solid Dark</span>
@@ -1366,11 +1376,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   {/* Solid Blue */}
                   <button
                     onClick={() => handleSaveBackground('solid-blue')}
-                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${
-                      backgroundColor === 'solid-blue'
+                    className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'solid-blue'
                         ? 'border-blue-500 shadow-lg shadow-blue-500/30'
                         : 'border-gray-700 hover:border-gray-600'
-                    }`}
+                      }`}
                   >
                     <div className="bg-blue-950 h-16 rounded-lg mb-2"></div>
                     <span className="text-xs text-gray-400">Solid Blue</span>

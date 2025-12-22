@@ -2599,6 +2599,8 @@ export default function Home() {
                 exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
                 pair={activeChart.pair}
                 currentPrice={activeChart.currentPrice}
+                isPremium={hasPremiumAccessValue}
+                onUpgradeRequest={() => setShowUpgradeModal(true)}
               />
             </div>
           )}
@@ -2610,6 +2612,8 @@ export default function Home() {
                 onSymbolClick={handleWatchlistSymbolClick}
                 currentSymbol={activeChart.pair}
                 marketType={marketType}
+                isPremium={hasPremiumAccessValue}
+                onUpgradeRequest={() => setShowUpgradeModal(true)}
               />
             </div>
           )}
@@ -2624,6 +2628,8 @@ export default function Home() {
             }}
             currentSymbol={activeChart.pair}
             marketType={marketType}
+            isPremium={hasPremiumAccessValue}
+            onUpgradeRequest={() => setShowUpgradeModal(true)}
           />
         </div>
 
@@ -2634,6 +2640,8 @@ export default function Home() {
             pair={activeChart.pair}
             currentPrice={activeChart.currentPrice}
             language={language}
+            isPremium={hasPremiumAccessValue}
+            onUpgradeRequest={() => setShowUpgradeModal(true)}
           />
         </div>
 

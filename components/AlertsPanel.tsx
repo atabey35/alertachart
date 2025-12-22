@@ -19,14 +19,19 @@ interface SymbolInfo {
   displayName: string;
 }
 
+// Free users are limited to 2 alerts
+const FREE_ALERT_LIMIT = 2;
+
 interface AlertsPanelProps {
   exchange: string;
   pair: string;
   currentPrice?: number;
   language?: Language;
+  isPremium?: boolean;
+  onUpgradeRequest?: () => void;
 }
 
-export default function AlertsPanel({ exchange, pair, currentPrice, language = 'tr' }: AlertsPanelProps) {
+export default function AlertsPanel({ exchange, pair, currentPrice, language = 'tr', isPremium = false, onUpgradeRequest }: AlertsPanelProps) {
   const [alerts, setAlerts] = useState<PriceAlert[]>([]);
   const [showAll, setShowAll] = useState(true); // Default: All pairs
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -73,13 +78,13 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
     const fetchSymbols = async () => {
       try {
         const isFutures = newAlertExchange === 'BINANCE_FUTURES';
-        const baseUrl = isFutures 
+        const baseUrl = isFutures
           ? 'https://fapi.binance.com/fapi/v1/exchangeInfo'
           : 'https://api.binance.com/api/v3/exchangeInfo';
-        
+
         const response = await fetch(baseUrl);
         const data = await response.json();
-        
+
         const allPairs = data.symbols
           .filter((s: any) => s.status === 'TRADING')
           .map((s: any) => ({
@@ -97,14 +102,14 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
               'BUSD': 4,
               'FDUSD': 5,
             };
-            
+
             const aPriority = quotePriority[a.quoteAsset] ?? 999;
             const bPriority = quotePriority[b.quoteAsset] ?? 999;
-            
+
             if (aPriority !== bPriority) return aPriority - bPriority;
             return a.baseAsset.localeCompare(b.baseAsset);
           });
-        
+
         setSymbols(allPairs);
       } catch (error) {
         console.error('[AlertsPanel] Failed to fetch symbols:', error);
@@ -124,13 +129,13 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
 
     const query = newAlertPair.toLowerCase().trim();
     const filtered = symbols
-      .filter(s => 
+      .filter(s =>
         s.baseAsset.toLowerCase().includes(query) ||
         s.symbol.includes(query) ||
         s.displayName.toLowerCase().includes(query)
       )
       .slice(0, 8); // Limit to 8 suggestions
-    
+
     setFilteredSymbols(filtered);
     setShowSuggestions(filtered.length > 0);
     setSelectedSuggestionIndex(-1);
@@ -142,7 +147,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
 
     if (e.key === 'ArrowDown') {
       e.preventDefault();
-      setSelectedSuggestionIndex(prev => 
+      setSelectedSuggestionIndex(prev =>
         prev < filteredSymbols.length - 1 ? prev + 1 : prev
       );
     } else if (e.key === 'ArrowUp') {
@@ -222,17 +227,17 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
   const handleAddAlert = () => {
     const pairValue = newAlertPair.trim().toLowerCase();
     const priceValue = parseFloat(newAlertPrice);
-    
+
     if (!pairValue || isNaN(priceValue) || priceValue <= 0) {
       return;
     }
 
-    const direction = newAlertDirection === 'auto' 
-      ? undefined 
+    const direction = newAlertDirection === 'auto'
+      ? undefined
       : newAlertDirection;
 
     alertService.addAlert(newAlertExchange, pairValue, priceValue, currentPrice, direction);
-    
+
     // Reset form
     setNewAlertPair('');
     setNewAlertPrice('');
@@ -253,6 +258,24 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
     setSelectedSuggestionIndex(-1);
   };
 
+  // Check if free user can add more alerts
+  const handleShowAddAlert = () => {
+    // Count active (non-triggered) alerts for limit check
+    const activeAlertCount = alerts.filter(a => !a.isTriggered).length;
+
+    // Free users are limited to FREE_ALERT_LIMIT alerts
+    if (!isPremium && activeAlertCount >= FREE_ALERT_LIMIT) {
+      // Trigger upgrade modal
+      if (onUpgradeRequest) {
+        onUpgradeRequest();
+      }
+      return;
+    }
+
+    // User can add alert
+    setShowAddAlert(true);
+  };
+
   const activeAlerts = alerts.filter(a => !a.isTriggered);
   const triggeredAlerts = alerts.filter(a => a.isTriggered);
 
@@ -264,7 +287,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
     const date = new Date(timestamp);
     const now = Date.now();
     const diff = now - timestamp;
-    
+
     if (diff < 60000) return 'just now';
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
@@ -293,27 +316,26 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
             </span>
           )}
         </div>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowAll(!showAll)}
-            className={`text-xs px-4 py-2 rounded-xl transition-all duration-200 font-semibold ${
-              showAll
-                ? 'bg-slate-800/50 text-slate-300 border border-slate-700/50'
-                : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 border border-blue-500/30'
-            } hover:opacity-90 active:scale-[0.98]`}
+            className={`text-xs px-4 py-2 rounded-xl transition-all duration-200 font-semibold ${showAll
+              ? 'bg-slate-800/50 text-slate-300 border border-slate-700/50'
+              : 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30 border border-blue-500/30'
+              } hover:opacity-90 active:scale-[0.98]`}
           >
             {showAll ? (language === 'en' ? 'All pairs' : 'Tüm çiftler') : (language === 'en' ? 'Current pair' : 'Mevcut çift')}
           </button>
-          
+
           <button
-            onClick={() => setShowAddAlert(true)}
+            onClick={handleShowAddAlert}
             className="text-xs px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-500 hover:to-blue-600 text-white rounded-xl transition-all duration-200 font-semibold shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-[0.98] flex items-center gap-1.5"
           >
             <span className="text-base">+</span>
             <span>{language === 'en' ? 'Add Alert' : 'Alarm Ekle'}</span>
           </button>
-          
+
           {triggeredAlerts.length > 0 && (
             <button
               onClick={handleClearTriggered}
@@ -339,7 +361,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
               </svg>
             </button>
           </div>
-          
+
           <div className="space-y-3">
             {/* Coin Pair */}
             <div className="relative">
@@ -375,7 +397,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
                   className="w-full bg-gray-800/50 border border-gray-700/50 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all duration-200 font-mono"
                   autoFocus
                 />
-                
+
                 {/* Suggestions Dropdown */}
                 {showSuggestions && filteredSymbols.length > 0 && (
                   <div
@@ -385,20 +407,19 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
                     {filteredSymbols.map((symbol, index) => {
                       const logoPath = `/logos/${symbol.baseAsset.toLowerCase()}.png`;
                       const isSelected = index === selectedSuggestionIndex;
-                      
+
                       return (
                         <div
                           key={symbol.symbol}
                           onClick={() => handleSelectSymbol(symbol.symbol)}
-                          className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all duration-150 ${
-                            isSelected
-                              ? 'bg-blue-600/20 border-l-2 border-l-blue-500'
-                              : 'hover:bg-gray-800/70'
-                          }`}
+                          className={`flex items-center gap-3 px-3 py-2.5 cursor-pointer transition-all duration-150 ${isSelected
+                            ? 'bg-blue-600/20 border-l-2 border-l-blue-500'
+                            : 'hover:bg-gray-800/70'
+                            }`}
                         >
                           {/* Logo */}
                           <div className="relative w-8 h-8 flex-shrink-0">
-                            <img 
+                            <img
                               src={logoPath}
                               alt={symbol.baseAsset}
                               className="w-8 h-8 rounded-full ring-2 ring-gray-700/50"
@@ -409,13 +430,13 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
                                 if (fallback) fallback.style.display = 'flex';
                               }}
                             />
-                            <div 
+                            <div
                               className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 hidden items-center justify-center text-white font-bold text-xs"
                             >
                               {symbol.baseAsset.charAt(0)}
                             </div>
                           </div>
-                          
+
                           {/* Symbol Info */}
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
@@ -480,31 +501,28 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
               <div className="grid grid-cols-3 gap-2">
                 <button
                   onClick={() => setNewAlertDirection('auto')}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
-                    newAlertDirection === 'auto'
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
-                      : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
-                  }`}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${newAlertDirection === 'auto'
+                    ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                    : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
+                    }`}
                 >
                   {language === 'en' ? 'Auto' : 'Otomatik'}
                 </button>
                 <button
                   onClick={() => setNewAlertDirection('above')}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
-                    newAlertDirection === 'above'
-                      ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-500/30'
-                      : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
-                  }`}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${newAlertDirection === 'above'
+                    ? 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg shadow-green-500/30'
+                    : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
+                    }`}
                 >
                   ↗ {language === 'en' ? 'Above' : 'Yukarı'}
                 </button>
                 <button
                   onClick={() => setNewAlertDirection('below')}
-                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${
-                    newAlertDirection === 'below'
-                      ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/30'
-                      : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
-                  }`}
+                  className={`px-3 py-2 rounded-lg text-xs font-medium transition-all duration-200 ${newAlertDirection === 'below'
+                    ? 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg shadow-red-500/30'
+                    : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
+                    }`}
                 >
                   ↘ {language === 'en' ? 'Below' : 'Aşağı'}
                 </button>
@@ -541,11 +559,11 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
         >
           {/* Dark background - no gradient */}
           <div className="absolute inset-0 bg-black"></div>
-          
+
           <div className="relative z-10">
             {/* Clickable animated bell icon */}
             <motion.button
-              onClick={() => setShowAddAlert(true)}
+              onClick={handleShowAddAlert}
               className="relative mx-auto mb-6 cursor-pointer group"
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
@@ -574,7 +592,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
                   ease: "easeOut",
                 }}
               />
-              
+
               {/* Middle glow ring */}
               <motion.div
                 className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-blue-600/30 rounded-full blur-xl"
@@ -587,12 +605,12 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
                   ease: "easeInOut",
                 }}
               />
-              
+
               {/* Icon container */}
               <div className="relative w-24 h-24 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-full flex items-center justify-center shadow-2xl shadow-blue-500/30 border-2 border-blue-500/30 group-hover:border-blue-400/50 transition-all">
                 <Bell className="w-12 h-12 text-white drop-shadow-lg" strokeWidth={2} />
               </div>
-              
+
               {/* Shine effect on hover */}
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full"
@@ -601,17 +619,17 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
                 transition={{ duration: 0.6 }}
               />
             </motion.button>
-            
+
             <h3 className="text-lg font-bold text-white mb-2">
               {language === 'en' ? 'No alerts yet' : 'Henüz alarm yok'}
             </h3>
             <p className="text-sm text-slate-400 mb-6 max-w-xs mx-auto leading-relaxed">
-              {language === 'en' 
+              {language === 'en'
                 ? 'Tap the bell to create your first price alert and never miss important price movements'
                 : 'Zil simgesine dokunarak ilk fiyat alarmınızı oluşturun ve önemli fiyat hareketlerini kaçırmayın'}
             </p>
             <motion.button
-              onClick={() => setShowAddAlert(true)}
+              onClick={handleShowAddAlert}
               className="mx-auto px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-500 hover:to-blue-600 transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-95 flex items-center gap-2"
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -629,13 +647,12 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
-              className={`group relative rounded-xl p-4 transition-all duration-200 ${
-                alert.isTriggered
-                  ? 'bg-gradient-to-br from-green-900/40 to-emerald-900/30 border border-green-700/50 shadow-lg shadow-green-500/10'
-                  : editingId === alert.id
+              className={`group relative rounded-xl p-4 transition-all duration-200 ${alert.isTriggered
+                ? 'bg-gradient-to-br from-green-900/40 to-emerald-900/30 border border-green-700/50 shadow-lg shadow-green-500/10'
+                : editingId === alert.id
                   ? 'bg-gradient-to-br from-blue-900/50 to-blue-800/40 border-2 border-blue-500 shadow-xl shadow-blue-500/20'
                   : 'bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-slate-900/80 border border-slate-800/50 hover:border-blue-500/30 hover:bg-slate-900/90 hover:shadow-lg hover:shadow-blue-500/10 cursor-pointer'
-              }`}
+                }`}
               onClick={() => !alert.isTriggered && editingId !== alert.id && handleEdit(alert)}
             >
               {/* Subtle gradient overlay on hover */}
@@ -644,18 +661,16 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
               )}
               <div className="relative flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
-                  <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${
-                    alert.isTriggered 
-                      ? 'bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30' 
-                      : alert.direction === 'above' 
+                  <div className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${alert.isTriggered
+                    ? 'bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30'
+                    : alert.direction === 'above'
                       ? 'bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30'
                       : 'bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30'
-                  }`}>
-                    <div className={`text-lg font-bold ${
-                      alert.isTriggered 
-                        ? 'text-green-400' 
-                        : alert.direction === 'above' ? 'text-green-400' : 'text-red-400'
                     }`}>
+                    <div className={`text-lg font-bold ${alert.isTriggered
+                      ? 'text-green-400'
+                      : alert.direction === 'above' ? 'text-green-400' : 'text-red-400'
+                      }`}>
                       {alert.isTriggered ? (
                         <div className="relative">
                           <span className="relative z-10">✓</span>
@@ -704,7 +719,7 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
                   </button>
                 </div>
               </div>
-              
+
               {editingId === alert.id ? (
                 // Edit Mode
                 <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
@@ -746,35 +761,33 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
                 <>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-baseline gap-2">
-                      <span className={`text-xl font-mono font-bold bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent ${
-                        alert.isTriggered 
-                          ? 'text-green-300' 
-                          : 'text-white'
-                      }`}>
+                      <span className={`text-xl font-mono font-bold bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent ${alert.isTriggered
+                        ? 'text-green-300'
+                        : 'text-white'
+                        }`}>
                         ${formatPrice(alert.price)}
                       </span>
                     </div>
                     {currentPrice && !alert.isTriggered && (
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${
-                        alert.direction === 'above'
-                          ? 'text-green-400 bg-green-500/10 border-green-500/30'
-                          : 'text-red-400 bg-red-500/10 border-red-500/30'
-                      }`}>
-                        {alert.direction === 'above' 
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${alert.direction === 'above'
+                        ? 'text-green-400 bg-green-500/10 border-green-500/30'
+                        : 'text-red-400 bg-red-500/10 border-red-500/30'
+                        }`}>
+                        {alert.direction === 'above'
                           ? `+${((alert.price - currentPrice) / currentPrice * 100).toFixed(1)}%`
                           : `-${((currentPrice - alert.price) / currentPrice * 100).toFixed(1)}%`
                         }
                       </span>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center gap-1.5 text-xs text-slate-400">
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
                     <span className="font-medium">
-                      {alert.isTriggered 
-                        ? (language === 'en' ? 'Triggered ' : 'Tetiklendi ') 
+                      {alert.isTriggered
+                        ? (language === 'en' ? 'Triggered ' : 'Tetiklendi ')
                         : (language === 'en' ? 'Created ' : 'Oluşturuldu ')}
                       {formatTime(alert.isTriggered && alert.triggeredAt ? alert.triggeredAt : alert.createdAt)}
                     </span>
