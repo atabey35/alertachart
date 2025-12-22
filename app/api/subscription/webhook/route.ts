@@ -11,7 +11,7 @@ import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit';
 import * as crypto from 'crypto';
 
 // Apple Bundle ID
-const APPLE_BUNDLE_ID = process.env.APPLE_BUNDLE_ID || 'com.alertachart.app';
+const APPLE_BUNDLE_ID = process.env.APPLE_BUNDLE_ID || 'com.kriptokirmizi.alerta';
 const APPLE_APP_ID = process.env.APPLE_APP_ID ? parseInt(process.env.APPLE_APP_ID) : undefined;
 
 // Apple Root Certificates (embedded for reliability)
