@@ -93,7 +93,25 @@ class CustomAlertService {
         }
 
         try {
-            const response = await fetch(`/api/alerts/custom?deviceId=${encodeURIComponent(deviceId)}`, {
+            // 🔥 GUEST USER FIX: Add userEmail for guest users
+            let url = `/api/alerts/custom?deviceId=${encodeURIComponent(deviceId)}`;
+
+            if (typeof window !== 'undefined') {
+                const guestUserStr = localStorage.getItem('guest_user');
+                if (guestUserStr) {
+                    try {
+                        const guestUser = JSON.parse(guestUserStr);
+                        if (guestUser.provider === 'guest' && guestUser.email) {
+                            url += `&userEmail=${encodeURIComponent(guestUser.email)}`;
+                            console.log('[CustomAlertService] ✅ Adding userEmail for guest user:', guestUser.email);
+                        }
+                    } catch (e) {
+                        console.error('[CustomAlertService] Failed to parse guest_user:', e);
+                    }
+                }
+            }
+
+            const response = await fetch(url, {
                 method: 'GET',
                 credentials: 'include',
                 headers: {

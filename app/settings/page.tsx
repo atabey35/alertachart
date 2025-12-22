@@ -4592,21 +4592,52 @@ export default function SettingsPage() {
                 if (!newVolumeAlert.symbol) return;
                 try {
                   const deviceId = localStorage.getItem('native_device_id');
+
+                  // 🔥 GUEST USER FIX: Add userEmail for guest users
+                  let userEmailToSend: string | null = null;
+                  if (user && (user as any).provider === 'guest' && user.email) {
+                    userEmailToSend = user.email;
+                    console.log('[Settings] ✅ Adding user email for guest user (volume alert):', userEmailToSend);
+                  } else if (typeof window !== 'undefined') {
+                    const guestUserStr = localStorage.getItem('guest_user');
+                    if (guestUserStr) {
+                      try {
+                        const guestUser = JSON.parse(guestUserStr);
+                        if (guestUser.provider === 'guest' && guestUser.email) {
+                          userEmailToSend = guestUser.email;
+                          console.log('[Settings] ✅ Adding user email for guest user from localStorage (volume alert):', userEmailToSend);
+                        }
+                      } catch (e) {
+                        console.error('[Settings] Failed to parse guest_user from localStorage:', e);
+                      }
+                    }
+                  }
+
+                  const requestBody: any = {
+                    symbol: newVolumeAlert.symbol,
+                    spikeMultiplier: newVolumeAlert.spikeMultiplier,
+                    deviceId,
+                  };
+
+                  if (userEmailToSend) {
+                    requestBody.userEmail = userEmailToSend;
+                  }
+
                   const response = await fetch('/api/alerts/volume', {
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      symbol: newVolumeAlert.symbol,
-                      spikeMultiplier: newVolumeAlert.spikeMultiplier,
-                      deviceId,
-                    }),
+                    body: JSON.stringify(requestBody),
                   });
                   if (response.ok) {
                     const data = await response.json();
                     setVolumeAlerts(prev => [...prev, data.alert]);
                     setShowAddVolumeAlertModal(false);
                     setNewVolumeAlert({ symbol: '', spikeMultiplier: 2 });
+                  } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    console.error('[Settings] Failed to create volume alert:', errorData);
+                    setError(errorData.error || 'Failed to create volume alert');
                   }
                 } catch (e) {
                   console.error('Failed to create volume alert:', e);
@@ -4776,23 +4807,54 @@ export default function SettingsPage() {
                 if (!newPercentageAlert.symbol) return;
                 try {
                   const deviceId = localStorage.getItem('native_device_id');
+
+                  // 🔥 GUEST USER FIX: Add userEmail for guest users
+                  let userEmailToSend: string | null = null;
+                  if (user && (user as any).provider === 'guest' && user.email) {
+                    userEmailToSend = user.email;
+                    console.log('[Settings] ✅ Adding user email for guest user (percentage alert):', userEmailToSend);
+                  } else if (typeof window !== 'undefined') {
+                    const guestUserStr = localStorage.getItem('guest_user');
+                    if (guestUserStr) {
+                      try {
+                        const guestUser = JSON.parse(guestUserStr);
+                        if (guestUser.provider === 'guest' && guestUser.email) {
+                          userEmailToSend = guestUser.email;
+                          console.log('[Settings] ✅ Adding user email for guest user from localStorage (percentage alert):', userEmailToSend);
+                        }
+                      } catch (e) {
+                        console.error('[Settings] Failed to parse guest_user from localStorage:', e);
+                      }
+                    }
+                  }
+
+                  const requestBody: any = {
+                    symbol: newPercentageAlert.symbol,
+                    threshold: newPercentageAlert.threshold,
+                    timeframe: newPercentageAlert.timeframe,
+                    direction: newPercentageAlert.direction,
+                    deviceId,
+                  };
+
+                  if (userEmailToSend) {
+                    requestBody.userEmail = userEmailToSend;
+                  }
+
                   const response = await fetch('/api/alerts/percentage', {
                     method: 'POST',
                     credentials: 'include',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      symbol: newPercentageAlert.symbol,
-                      threshold: newPercentageAlert.threshold,
-                      timeframe: newPercentageAlert.timeframe,
-                      direction: newPercentageAlert.direction,
-                      deviceId,
-                    }),
+                    body: JSON.stringify(requestBody),
                   });
                   if (response.ok) {
                     const data = await response.json();
                     setPercentageAlerts(prev => [...prev, data.alert]);
                     setShowAddPercentageAlertModal(false);
                     setNewPercentageAlert({ symbol: '', threshold: 5, timeframe: 60, direction: 'both' });
+                  } else {
+                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+                    console.error('[Settings] Failed to create percentage alert:', errorData);
+                    setError(errorData.error || 'Failed to create percentage alert');
                   }
                 } catch (e) {
                   console.error('Failed to create percentage alert:', e);

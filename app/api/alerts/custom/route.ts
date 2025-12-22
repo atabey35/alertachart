@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
 
         const { searchParams } = new URL(request.url);
         const deviceId = searchParams.get('deviceId');
+        const userEmail = searchParams.get('userEmail');
 
         if (!deviceId) {
             return NextResponse.json(
@@ -40,7 +41,14 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        const response = await fetch(`${backendUrl}/api/alerts/custom?deviceId=${deviceId}`, {
+        // 🔥 GUEST USER FIX: Forward userEmail to backend for guest user lookup
+        let backendQuery = `deviceId=${encodeURIComponent(deviceId)}`;
+        if (userEmail) {
+            backendQuery += `&userEmail=${encodeURIComponent(userEmail)}`;
+            console.log('[Next.js API] Including userEmail for guest user:', userEmail);
+        }
+
+        const response = await fetch(`${backendUrl}/api/alerts/custom?${backendQuery}`, {
             headers: {
                 'Cookie': cookieString,
             },
