@@ -768,17 +768,22 @@ export default function AlertsPanel({ exchange, pair, currentPrice, language = '
                         ${formatPrice(alert.price)}
                       </span>
                     </div>
-                    {currentPrice && !alert.isTriggered && (
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${alert.direction === 'above'
-                        ? 'text-green-400 bg-green-500/10 border-green-500/30'
-                        : 'text-red-400 bg-red-500/10 border-red-500/30'
-                        }`}>
-                        {alert.direction === 'above'
-                          ? `+${((alert.price - currentPrice) / currentPrice * 100).toFixed(1)}%`
-                          : `-${((currentPrice - alert.price) / currentPrice * 100).toFixed(1)}%`
-                        }
-                      </span>
-                    )}
+                    {currentPrice && currentPrice > 0 && !alert.isTriggered && (() => {
+                      const percentDiff = ((alert.price - currentPrice) / currentPrice * 100);
+                      // Only show percentage if it's reasonable (between -1000% and +1000%)
+                      if (Math.abs(percentDiff) > 1000) return null;
+                      return (
+                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${alert.direction === 'above'
+                          ? 'text-green-400 bg-green-500/10 border-green-500/30'
+                          : 'text-red-400 bg-red-500/10 border-red-500/30'
+                          }`}>
+                          {percentDiff >= 0
+                            ? `+${percentDiff.toFixed(1)}%`
+                            : `${percentDiff.toFixed(1)}%`
+                          }
+                        </span>
+                      );
+                    })()}
                   </div>
 
                   <div className="flex items-center gap-1.5 text-xs text-slate-400">
