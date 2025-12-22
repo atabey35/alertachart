@@ -2586,6 +2586,8 @@ export default function Home() {
                       }
                     }) : undefined}
                     layout={layout}
+                    hasPremiumAccess={hasPremiumAccessValue}
+                    onUpgradeRequest={() => setShowUpgradeModal(true)}
                   />
                 </div>
               ))}

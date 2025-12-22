@@ -21,32 +21,32 @@ interface UpgradeModalProps {
 // Animation Variants
 const overlayVariants = {
   hidden: { opacity: 0 },
-  visible: { 
-    opacity: 1, 
-    transition: { duration: 0.3 } 
+  visible: {
+    opacity: 1,
+    transition: { duration: 0.3 }
   },
   exit: { opacity: 0, transition: { duration: 0.2 } },
 };
 
 const modalVariants = {
-  hidden: { 
-    opacity: 0, 
+  hidden: {
+    opacity: 0,
     scale: 0.95,
     y: 20,
   },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     scale: 1,
     y: 0,
-    transition: { 
+    transition: {
       type: 'spring' as const,
       stiffness: 300,
       damping: 30,
       mass: 0.8,
     }
   },
-  exit: { 
-    opacity: 0, 
+  exit: {
+    opacity: 0,
     scale: 0.95,
     y: 20,
     transition: { duration: 0.2 }
@@ -65,13 +65,13 @@ const containerVariants = {
 };
 
 const featureItemVariants = {
-  hidden: { 
-    opacity: 0, 
+  hidden: {
+    opacity: 0,
     x: -20,
     scale: 0.95,
   },
-  visible: { 
-    opacity: 1, 
+  visible: {
+    opacity: 1,
     x: 0,
     scale: 1,
     transition: {
@@ -120,7 +120,7 @@ const AuroraBackground = () => {
         }}
       />
       {/* Noise texture overlay to prevent banding */}
-      <div 
+      <div
         className="absolute inset-0 opacity-[0.03]"
         style={{
           backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='4' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
@@ -175,15 +175,15 @@ const SpotlightCard = ({ children, className = '' }: { children: React.ReactNode
 };
 
 // Shimmer Button Component
-const ShimmerButton = ({ 
-  children, 
-  className = '', 
+const ShimmerButton = ({
+  children,
+  className = '',
   disabled = false,
   onClick,
-  ...props 
-}: { 
-  children: React.ReactNode; 
-  className?: string; 
+  ...props
+}: {
+  children: React.ReactNode;
+  className?: string;
   disabled?: boolean;
   onClick?: React.MouseEventHandler<HTMLButtonElement>;
   [key: string]: any;
@@ -271,13 +271,13 @@ const getCurrencySymbol = (product: any, price?: string): string => {
   if (product?.currency) {
     return currencyCodeToSymbol(product.currency);
   }
-  
+
   // 🔥 PRIORITY 2: Try to extract from price string
   const priceStr = price || product?.price || '';
   if (priceStr) {
     const trimmed = priceStr.trim();
     const match = trimmed.match(/^[^\d\s,\.]+/);
-    
+
     if (match) {
       let symbol = match[0];
       // Check if it's a currency code
@@ -289,7 +289,7 @@ const getCurrencySymbol = (product: any, price?: string): string => {
       return symbol;
     }
   }
-  
+
   // 🔥 PRIORITY 3: Detect from browser locale
   if (typeof window !== 'undefined' && navigator.language) {
     const locale = navigator.language.toLowerCase();
@@ -325,7 +325,7 @@ const getCurrencySymbol = (product: any, price?: string): string => {
     if (locale.includes('hu') || locale.includes('-hu')) return 'Ft'; // Hungary
     if (locale.includes('cz') || locale.includes('-cz')) return 'Kč'; // Czech Republic
   }
-  
+
   // Default fallback
   return '$';
 };
@@ -372,7 +372,7 @@ export default function UpgradeModal({
 }: UpgradeModalProps) {
   // Normalize language for compatibility (use 'en' as fallback for unsupported languages)
   const normalizedLanguage: Language = (language === 'tr' || language === 'en') ? language : 'en';
-  
+
   const [deviceId, setDeviceId] = useState<string>('');
   const [platform, setPlatform] = useState<'ios' | 'android' | 'web'>('web');
   const [loading, setLoading] = useState(false);
@@ -409,13 +409,13 @@ export default function UpgradeModal({
       const available = await isIAPAvailable();
       console.log('[UpgradeModal] IAP available:', available);
       setIapAvailable(available);
-      
+
       if (available) {
         console.log('[UpgradeModal] Initializing IAP...');
         const initialized = await initializeIAP();
         setIapInitialized(initialized);
         console.log('[UpgradeModal] IAP initialized:', initialized);
-        
+
         if (initialized) {
           // Load products after initialization
           console.log('[UpgradeModal] Loading products...');
@@ -443,7 +443,7 @@ export default function UpgradeModal({
         console.warn('[UpgradeModal] ⚠️ IAP not available on this platform');
       }
     };
-    
+
     if (isOpen) {
       initIAP();
     }
@@ -453,7 +453,7 @@ export default function UpgradeModal({
   useEffect(() => {
     const getDeviceId = async () => {
       if (typeof window === 'undefined') return;
-      
+
       // Check if Capacitor (mobile app) - but verify it's actually native, not just web with Capacitor script
       if ((window as any).Capacitor) {
         const detectedPlatform = (window as any).Capacitor.getPlatform();
@@ -464,9 +464,9 @@ export default function UpgradeModal({
           // Capacitor exists but platform is 'web' - treat as web
           setPlatform('web');
         }
-        
+
         let finalDeviceId: string | null = null;
-        
+
         try {
           // Try to get device ID from Capacitor Device plugin
           const Device = (window as any).Capacitor.Plugins.Device;
@@ -480,7 +480,7 @@ export default function UpgradeModal({
         } catch (error) {
           console.warn('[UpgradeModal] ⚠️ Device plugin error:', error);
         }
-        
+
         // Fallback 1: Check localStorage for native_device_id (set during login)
         if (!finalDeviceId || finalDeviceId === 'unknown') {
           const storedNativeId = localStorage.getItem('native_device_id');
@@ -489,7 +489,7 @@ export default function UpgradeModal({
             console.log('[UpgradeModal] ✅ Device ID from localStorage (native_device_id):', finalDeviceId);
           }
         }
-        
+
         // Fallback 2: Check localStorage for device_id
         if (!finalDeviceId || finalDeviceId === 'unknown') {
           const storedDeviceId = localStorage.getItem('device_id');
@@ -498,7 +498,7 @@ export default function UpgradeModal({
             console.log('[UpgradeModal] ✅ Device ID from localStorage (device_id):', finalDeviceId);
           }
         }
-        
+
         // Fallback 3: Generate unique device ID based on platform
         if (!finalDeviceId || finalDeviceId === 'unknown') {
           const platformPrefix = detectedPlatform === 'ios' ? 'ios' : 'android';
@@ -507,7 +507,7 @@ export default function UpgradeModal({
           // Save to localStorage for future use
           localStorage.setItem('native_device_id', finalDeviceId);
         }
-        
+
         setDeviceId(finalDeviceId);
       } else {
         // Web - use localStorage device ID
@@ -519,7 +519,7 @@ export default function UpgradeModal({
         setDeviceId(storedDeviceId);
         setPlatform('web');
       }
-      
+
       // Final check: if platform is still 'web' after all checks, ensure it's set correctly
       // This handles edge cases where Capacitor might be present but we're actually on web
       if (typeof window !== 'undefined' && !(window as any).Capacitor) {
@@ -531,30 +531,30 @@ export default function UpgradeModal({
         }
       }
     };
-    
+
     getDeviceId();
   }, []);
 
   const handleStartTrial = async () => {
     if (loading) return;
-    
+
     // Check if device ID is available
     if (!deviceId || deviceId === 'unknown' || deviceId === '') {
       setError('Cihaz kimliği alınamadı. Lütfen sayfayı yenileyip tekrar deneyin.');
       return;
     }
-    
+
     setLoading(true);
     setError('');
 
     try {
       console.log('[UpgradeModal] 🚀 Starting trial with deviceId:', deviceId, 'platform:', platform);
-      
+
       // 🔥 CRITICAL: For Android/iOS, start subscription via native SDK first
       // Google Play / App Store will handle free trial automatically
       let subscriptionId: string | null = null;
       let productId: string | null = null;
-      
+
       if (platform === 'android') {
         // Android: Use Google Play Billing
         try {
@@ -562,15 +562,15 @@ export default function UpgradeModal({
           if (Capacitor?.Plugins?.InAppPurchase) {
             // Product ID from Google Play Console (your existing subscription)
             productId = 'premium_monthly'; // Update this to your actual product ID
-            
+
             console.log('[UpgradeModal] 📱 Starting Google Play subscription:', productId);
-            
+
             // Start subscription (Google Play will show free trial automatically)
             const purchaseResult = await Capacitor.Plugins.InAppPurchase.purchase({
               productId: productId,
               productType: 'subscription', // Important: subscription type
             });
-            
+
             if (purchaseResult && purchaseResult.transactionId) {
               subscriptionId = purchaseResult.transactionId;
               console.log('[UpgradeModal] ✅ Google Play subscription started:', subscriptionId);
@@ -593,15 +593,15 @@ export default function UpgradeModal({
           if (Capacitor?.Plugins?.InAppPurchase) {
             // Product ID from App Store Connect
             productId = 'com.kriptokirmizi.alerta.premium.monthly'; // Update this to your actual product ID
-            
+
             console.log('[UpgradeModal] 📱 Starting App Store subscription:', productId);
-            
+
             // Start subscription (App Store will show free trial automatically)
             const purchaseResult = await Capacitor.Plugins.InAppPurchase.purchase({
               productId: productId,
               productType: 'subscription', // Important: subscription type
             });
-            
+
             if (purchaseResult && purchaseResult.transactionId) {
               subscriptionId = purchaseResult.transactionId;
               console.log('[UpgradeModal] ✅ App Store subscription started:', subscriptionId);
@@ -618,7 +618,7 @@ export default function UpgradeModal({
           return;
         }
       }
-      
+
       // Now send subscription info to backend
       const response = await fetch('/api/subscription/start-trial', {
         method: 'POST',
@@ -669,13 +669,13 @@ export default function UpgradeModal({
       if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
         await Capacitor.Plugins.InAppPurchase.logDebug({ message: '[UpgradeModal] 🛒 handlePurchase CALLED!' });
       }
-    } catch (e) {}
+    } catch (e) { }
     console.log('[UpgradeModal][DEBUG] loading:', loading, 'iapAvailable:', iapAvailable, 'iapInitialized:', iapInitialized, 'productsLoaded:', productsLoaded, 'products:', products);
     if (loading) {
       console.warn('[UpgradeModal][DEBUG] loading was TRUE, click ignored');
       return;
     }
-    
+
     // 🔥 CRITICAL: Ensure deviceId is loaded before purchase
     let currentDeviceId = deviceId;
     if (!currentDeviceId || currentDeviceId === '' || currentDeviceId === 'unknown') {
@@ -692,7 +692,7 @@ export default function UpgradeModal({
             }
           }
         }
-        
+
         // Fallback to localStorage
         if (!currentDeviceId || currentDeviceId === 'unknown') {
           const storedId = localStorage.getItem('native_device_id') || localStorage.getItem('device_id');
@@ -702,7 +702,7 @@ export default function UpgradeModal({
             console.log('[UpgradeModal][DEBUG] ✅ Got deviceId from localStorage:', currentDeviceId);
           }
         }
-        
+
         // Final fallback: generate one
         if (!currentDeviceId || currentDeviceId === 'unknown') {
           const detectedPlatform = (window as any).Capacitor?.getPlatform() || 'web';
@@ -742,7 +742,7 @@ export default function UpgradeModal({
       let productId = platform === 'ios'
         ? 'com.kriptokirmizi.alerta.premium.monthly'
         : 'premium_monthly';
-      
+
       if (products.length === 0) {
         console.log('[UpgradeModal][DEBUG] Product list empty, attempting blind purchase with fallback ID...', productId);
         // Use hardcoded fallback - Apple's native sheet will handle the transaction
@@ -764,19 +764,19 @@ export default function UpgradeModal({
         console.log('[UpgradeModal][DEBUG] Purchase OK! Proceeding to verify...');
         console.log('[UpgradeModal][DEBUG] Current deviceId state:', currentDeviceId);
         console.log('[UpgradeModal][DEBUG] deviceId validation:', { deviceId: currentDeviceId, isEmpty: !currentDeviceId || currentDeviceId === '', willSend: currentDeviceId && currentDeviceId !== '' });
-        
+
         // 🔥 CRITICAL: Ensure deviceId is not empty string
         const validDeviceId = (currentDeviceId && currentDeviceId !== '' && currentDeviceId !== 'unknown') ? currentDeviceId : undefined;
         console.log('[UpgradeModal][DEBUG] Valid deviceId to send:', validDeviceId);
-        
+
         try {
           const verifyResponse = await fetch('/api/subscription/verify-purchase', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              platform, 
-              productId: result.productId, 
-              transactionId: result.transactionId, 
+            body: JSON.stringify({
+              platform,
+              productId: result.productId,
+              transactionId: result.transactionId,
               receipt: result.receipt,
               deviceId: validDeviceId, // 🔥 APPLE GUIDELINE 5.1.1: Send deviceId for guest purchases
             }),
@@ -816,11 +816,11 @@ export default function UpgradeModal({
    */
   const handleRestorePurchases = async () => {
     if (loading) return;
-    
+
     console.log('[UpgradeModal] 🔄 Restore Purchases clicked');
     setLoading(true);
     setError('');
-    
+
     // 🔥 CRITICAL: Ensure deviceId is loaded before restore
     let currentDeviceId = deviceId;
     if (!currentDeviceId || currentDeviceId === '' || currentDeviceId === 'unknown') {
@@ -837,7 +837,7 @@ export default function UpgradeModal({
             }
           }
         }
-        
+
         // Fallback to localStorage
         if (!currentDeviceId || currentDeviceId === 'unknown') {
           const storedId = localStorage.getItem('native_device_id') || localStorage.getItem('device_id');
@@ -851,18 +851,18 @@ export default function UpgradeModal({
         console.error('[UpgradeModal][DEBUG] ❌ Failed to get deviceId for restore:', deviceError);
       }
     }
-    
+
     try {
       console.log('[UpgradeModal] Calling restorePurchases...');
       const result = await restorePurchases();
-      
+
       if (!result.success) {
         console.error('[UpgradeModal] Restore failed:', result.error);
         setError(result.error || t('failedToRestorePurchases', normalizedLanguage));
         setLoading(false);
         return;
       }
-      
+
       // Check if we have any purchases
       if (!result.purchases || result.purchases.length === 0) {
         console.log('[UpgradeModal] No purchases found to restore');
@@ -870,18 +870,18 @@ export default function UpgradeModal({
         setLoading(false);
         return;
       }
-      
+
       console.log('[UpgradeModal] Found purchases to restore:', result.purchases);
-      
+
       // Verify each purchase with backend
       let restored = false;
       for (const purchase of result.purchases) {
         try {
           console.log('[UpgradeModal] Verifying restored purchase:', purchase);
-          
+
           // 🔥 CRITICAL: Ensure deviceId is not empty string
           const validDeviceId = (currentDeviceId && currentDeviceId !== '' && currentDeviceId !== 'unknown') ? currentDeviceId : undefined;
-          
+
           const verifyResponse = await fetch('/api/subscription/verify-purchase', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -894,10 +894,10 @@ export default function UpgradeModal({
               deviceId: validDeviceId, // 🔥 APPLE GUIDELINE 5.1.1: Send deviceId for guest purchases
             }),
           });
-          
+
           const verifyData = await verifyResponse.json();
           console.log('[UpgradeModal] Restore verification response:', verifyData);
-          
+
           if (verifyResponse.ok) {
             restored = true;
             console.log('[UpgradeModal] ✅ Purchase restored successfully');
@@ -908,7 +908,7 @@ export default function UpgradeModal({
           console.error('[UpgradeModal] Error verifying restored purchase:', verifyError);
         }
       }
-      
+
       if (restored) {
         // Success - refresh and close
         console.log('[UpgradeModal] ✅ Restore successful!');
@@ -935,7 +935,7 @@ export default function UpgradeModal({
         if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
           Capacitor.Plugins.InAppPurchase.logDebug({ message: '[UpgradeModal] ✅ Modal is OPEN' });
         }
-      } catch (e) {}
+      } catch (e) { }
     } else {
       console.log('[UpgradeModal] ❌ Modal is CLOSED');
     }
@@ -1024,16 +1024,16 @@ export default function UpgradeModal({
               animate="visible"
               exit="exit"
               onClick={(e) => e.stopPropagation()}
-              style={{ 
-                maxHeight: 'calc(100vh - 1.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 48px)', 
-                height: 'auto' 
+              style={{
+                maxHeight: 'calc(100vh - 1.5rem - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px) - 48px)',
+                height: 'auto'
               }}
             >
               {/* Glassmorphism Container with 3D Border Effect */}
               <div className="relative rounded-3xl overflow-hidden flex flex-col h-full backdrop-blur-2xl bg-gradient-to-br from-gray-900/95 via-gray-950/95 to-black/95 border border-white/10 shadow-2xl">
                 {/* Inner border ring for 3D effect */}
                 <div className="absolute inset-0 rounded-3xl border border-black/50 pointer-events-none" />
-                
+
                 {/* Close Button */}
                 <motion.button
                   onClick={onClose}
@@ -1046,18 +1046,18 @@ export default function UpgradeModal({
                 </motion.button>
 
                 {/* Header - Fixed */}
-                <motion.div 
+                <motion.div
                   className="relative pt-5 pb-2.5 px-3 bg-gradient-to-b from-blue-600/20 via-blue-500/10 to-transparent border-b border-white/5 flex-shrink-0"
                   initial={{ opacity: 0, y: -20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.2, duration: 0.4 }}
                 >
                   <div className="text-center">
-                    <motion.div 
+                    <motion.div
                       className="inline-flex items-center justify-center w-12 h-12 mb-1.5 relative"
                       initial={{ scale: 0, rotate: -180 }}
                       animate={{ scale: 1, rotate: 0 }}
-                      transition={{ 
+                      transition={{
                         type: 'spring',
                         stiffness: 200,
                         damping: 15,
@@ -1076,14 +1076,14 @@ export default function UpgradeModal({
                         />
                       </div>
                     </motion.div>
-                    <motion.h2 
+                    <motion.h2
                       className="text-lg font-bold mb-1 tracking-tight"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       transition={{ delay: 0.4 }}
                     >
                       <span className="text-white">Alerta </span>
-                      <span 
+                      <span
                         className="relative inline-block"
                         style={{
                           background: 'linear-gradient(to right, rgb(96, 165, 250), rgb(34, 211, 238), rgb(59, 130, 246))',
@@ -1096,7 +1096,7 @@ export default function UpgradeModal({
                         PRO
                       </span>
                     </motion.h2>
-                    <motion.p 
+                    <motion.p
                       className="text-gray-300 text-[9px] leading-tight"
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
@@ -1134,13 +1134,13 @@ export default function UpgradeModal({
                             >
                               {/* Glowing border effect */}
                               <div className="absolute inset-0 rounded-lg border-2 border-blue-500/0 group-hover:border-blue-500/30 transition-all duration-300" />
-                              
+
                               {/* Icon Container */}
                               <div className={`flex-shrink-0 w-9 h-9 rounded-lg bg-gradient-to-br ${feature.color} ${feature.bgColor} border-2 ${feature.borderColor} flex items-center justify-center shadow-xl group-hover:scale-110 group-hover:shadow-2xl group-hover:shadow-blue-500/40 transition-all duration-300 relative overflow-hidden`}>
                                 <div className="absolute inset-0 bg-gradient-to-br from-white/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                                 <IconComponent className="w-4 h-4 text-white relative z-10 drop-shadow-lg" />
                               </div>
-                              
+
                               {/* Content */}
                               <div className="flex-1 min-w-0 text-left">
                                 <div className="flex items-center gap-1 mb-0.5">
@@ -1270,164 +1270,217 @@ export default function UpgradeModal({
                 {/* Action Buttons - Fixed at bottom */}
                 <div className="px-2.5 pb-2.5 pt-1.5 space-y-1 border-t border-white/5 bg-gradient-to-br from-gray-950/80 via-black to-gray-950/80 flex-shrink-0 backdrop-blur-sm">
                   {/* 
-                    🔥 APPLE GUIDELINE 2.1: 
-                    - On iOS, trials are handled automatically by App Store via introductory offers
-                    - Do NOT show separate "Try Free" button on iOS - Apple rejects this
-                    - Only show ONE subscription button that includes trial info in product description
-                    - Android can still use separate trial button if needed
+                    🌐 WEB USERS: Show app download links instead of purchase button
+                    IAP is not available on web, so users need to download the mobile app
                   */}
-                  {currentPlan === 'free' && !isTrial && platform === 'android' && (
-                    <ShimmerButton
-                      onClick={handleStartTrial}
-                      disabled={loading}
-                      className="w-full py-2 px-2.5 rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 text-white font-bold text-[10px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-blue-500/50 hover:shadow-blue-600/60 touch-manipulation"
-                    >
-                      {loading ? (
-                        <span className="flex items-center justify-center gap-2">
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          {t('starting', normalizedLanguage)}
-                        </span>
-                      ) : (
-                        t('try3DaysFree', normalizedLanguage)
-                      )}
-                    </ShimmerButton>
-                  )}
+                  {platform === 'web' ? (
+                    <>
+                      <div className="text-center mb-2">
+                        <p className="text-gray-400 text-[9px] mb-2">
+                          {normalizedLanguage === 'tr'
+                            ? 'Premium satın almak için uygulamayı indirin'
+                            : 'Download the app to purchase Premium'}
+                        </p>
+                      </div>
 
-                  <ShimmerButton
-                    type="button"
-                    onMouseDown={async (e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      await logButtonClick('onMouseDown');
-                    }}
-                    onTouchStart={async (e: React.TouchEvent<HTMLButtonElement>) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      await logButtonClick('onTouchStart');
-                    }}
-                    onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      await logButtonClick('onClick');
-                      
-                      // Log to both console and native
-                      // 🔥 APPLE GUIDELINE 2.1: Button should be enabled if IAP is initialized, even if products are empty
-                      const isDisabled = loading || (platform !== 'web' && (!iapAvailable || !iapInitialized));
-                      const logMsg = `🔘 Purchase button clicked! disabled=${isDisabled}, loading=${loading}, platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}, productsLoaded=${productsLoaded}, products=${products.length}`;
-                      console.log('[UpgradeModal]', logMsg);
-                      
-                      // Send to native Android log (always visible in Logcat)
-                      try {
-                        const Capacitor = (window as any).Capacitor;
-                        if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
-                          await Capacitor.Plugins.InAppPurchase.logDebug({ message: `[UpgradeModal] ${logMsg}` });
-                        }
-                      } catch (e) {
-                        // Ignore
-                      }
-                      
-                      if (isDisabled) {
-                        const disabledMsg = `Button is DISABLED! loading=${loading}, platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}`;
-                        console.warn('[UpgradeModal]', disabledMsg);
-                        try {
-                          const Capacitor = (window as any).Capacitor;
-                          if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
-                            await Capacitor.Plugins.InAppPurchase.logDebug({ message: `[UpgradeModal] ${disabledMsg}` });
+                      {/* App Store Button */}
+                      <a
+                        href="https://apps.apple.com/tr/app/alerta-chart-kripto-btc/id6755160060?l=tr"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2 px-2.5 rounded-lg bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-700 hover:to-gray-800 text-white font-bold text-[10px] transition-all duration-200 border border-gray-700 hover:border-gray-600 shadow-lg flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.81-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
+                        </svg>
+                        App Store
+                      </a>
+
+                      {/* Google Play Button */}
+                      <a
+                        href="https://play.google.com/store/apps/details?id=com.kriptokirmizi.alerta"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="w-full py-2 px-2.5 rounded-lg bg-gradient-to-r from-gray-800 to-gray-900 hover:from-gray-700 hover:to-gray-800 text-white font-bold text-[10px] transition-all duration-200 border border-gray-700 hover:border-gray-600 shadow-lg flex items-center justify-center gap-2"
+                      >
+                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M3,20.5V3.5C3,2.91 3.34,2.39 3.84,2.15L13.69,12L3.84,21.85C3.34,21.6 3,21.09 3,20.5M16.81,15.12L6.05,21.34L14.54,12.85L16.81,15.12M20.16,10.81C20.5,11.08 20.75,11.5 20.75,12C20.75,12.5 20.53,12.9 20.18,13.18L17.89,14.5L15.39,12L17.89,9.5L20.16,10.81M6.05,2.66L16.81,8.88L14.54,11.15L6.05,2.66Z" />
+                        </svg>
+                        Google Play
+                      </a>
+
+                      <motion.button
+                        onClick={onClose}
+                        className="w-full py-1.5 px-2.5 rounded-lg text-gray-400 hover:text-white transition-colors duration-200 text-[9px] font-medium hover:bg-gray-900/50"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {t('later', normalizedLanguage)}
+                      </motion.button>
+                    </>
+                  ) : (
+                    <>
+                      {/* 
+                        🔥 APPLE GUIDELINE 2.1: 
+                        - On iOS, trials are handled automatically by App Store via introductory offers
+                        - Do NOT show separate "Try Free" button on iOS - Apple rejects this
+                        - Only show ONE subscription button that includes trial info in product description
+                        - Android can still use separate trial button if needed
+                      */}
+                      {currentPlan === 'free' && !isTrial && platform === 'android' && (
+                        <ShimmerButton
+                          onClick={handleStartTrial}
+                          disabled={loading}
+                          className="w-full py-2 px-2.5 rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 text-white font-bold text-[10px] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xl shadow-blue-500/50 hover:shadow-blue-600/60 touch-manipulation"
+                        >
+                          {loading ? (
+                            <span className="flex items-center justify-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              {t('starting', normalizedLanguage)}
+                            </span>
+                          ) : (
+                            t('try3DaysFree', normalizedLanguage)
+                          )}
+                        </ShimmerButton>
+                      )}
+
+                      <ShimmerButton
+                        type="button"
+                        onMouseDown={async (e: React.MouseEvent<HTMLButtonElement>) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          await logButtonClick('onMouseDown');
+                        }}
+                        onTouchStart={async (e: React.TouchEvent<HTMLButtonElement>) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          await logButtonClick('onTouchStart');
+                        }}
+                        onClick={async (e: React.MouseEvent<HTMLButtonElement>) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          await logButtonClick('onClick');
+
+                          // Log to both console and native
+                          // 🔥 APPLE GUIDELINE 2.1: Button should be enabled if IAP is initialized, even if products are empty
+                          const isDisabled = loading || (!iapAvailable || !iapInitialized);
+                          const logMsg = `🔘 Purchase button clicked! disabled=${isDisabled}, loading=${loading}, platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}, productsLoaded=${productsLoaded}, products=${products.length}`;
+                          console.log('[UpgradeModal]', logMsg);
+
+                          // Send to native Android log (always visible in Logcat)
+                          try {
+                            const Capacitor = (window as any).Capacitor;
+                            if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
+                              await Capacitor.Plugins.InAppPurchase.logDebug({ message: `[UpgradeModal] ${logMsg}` });
+                            }
+                          } catch (e) {
+                            // Ignore
                           }
-                        } catch (e) {
-                          // Ignore
-                        }
-                        return;
-                      }
-                      
-                      console.log('[UpgradeModal] Button state:', {
-                        loading,
-                        platform,
-                        iapAvailable,
-                        iapInitialized,
-                        disabled: isDisabled
-                      });
-                      
-                      handlePurchase();
-                    }}
-                    disabled={loading || (platform !== 'web' && (!iapAvailable || !iapInitialized))}
-                    style={{ 
-                      pointerEvents: 'auto', 
-                      zIndex: 1000,
-                      position: 'relative',
-                      WebkitTapHighlightColor: 'transparent'
-                    }}
-                    className="w-full py-2 px-2.5 rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 disabled:from-gray-800 disabled:via-gray-800 disabled:to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[10px] transition-all duration-200 border-2 border-blue-400/30 hover:border-blue-300/50 shadow-2xl shadow-blue-500/50 hover:shadow-blue-600/60 touch-manipulation"
-                  >
-                    {loading ? (
-                      <span className="flex items-center justify-center gap-2">
-                        <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        {t('purchasing', normalizedLanguage)}
-                      </span>
-                    ) : !productsLoaded || products.length === 0 ? (
-                      // 🔥 APPLE GUIDELINE 3.1.2: Show fallback text if IAP initialized but products empty (App Store Review scenario)
-                      // If iapInitialized is true, show fallback text instead of loading spinner
-                      iapInitialized ? (
-                        platform === 'ios'
-                          ? t('try3DaysFreeAndSubscribe', normalizedLanguage)
-                          : platform === 'android'
-                          ? t('try3DaysFreeAndSubscribe', normalizedLanguage)
-                          : t('goPremium', normalizedLanguage)
-                      ) : (
-                        // Only show loading if IAP is not yet initialized
-                        <span className="flex items-center justify-center gap-2">
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                          {t('loading', normalizedLanguage)}
-                        </span>
-                      )
-                    ) : (
-                      // 🔥 APPLE GUIDELINE 2.3.10: Never mention "Google Play" on iOS
-                      // 🔥 APPLE GUIDELINE 3.1.2: Show price in button or nearby
-                      // 🔥 APPLE GUIDELINE 2.1: Show trial info in button to attract users
-                      platform === 'ios'
-                        ? (products[0]?.price 
-                            ? (() => {
+
+                          if (isDisabled) {
+                            const disabledMsg = `Button is DISABLED! loading=${loading}, platform=${platform}, iapAvailable=${iapAvailable}, iapInitialized=${iapInitialized}`;
+                            console.warn('[UpgradeModal]', disabledMsg);
+                            try {
+                              const Capacitor = (window as any).Capacitor;
+                              if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
+                                await Capacitor.Plugins.InAppPurchase.logDebug({ message: `[UpgradeModal] ${disabledMsg}` });
+                              }
+                            } catch (e) {
+                              // Ignore
+                            }
+                            return;
+                          }
+
+                          console.log('[UpgradeModal] Button state:', {
+                            loading,
+                            platform,
+                            iapAvailable,
+                            iapInitialized,
+                            disabled: isDisabled
+                          });
+
+                          handlePurchase();
+                        }}
+                        disabled={loading || !iapAvailable || !iapInitialized}
+                        style={{
+                          pointerEvents: 'auto',
+                          zIndex: 1000,
+                          position: 'relative',
+                          WebkitTapHighlightColor: 'transparent'
+                        }}
+                        className="w-full py-2 px-2.5 rounded-lg bg-gradient-to-r from-blue-600 via-blue-500 to-cyan-500 hover:from-blue-500 hover:via-blue-400 hover:to-cyan-400 disabled:from-gray-800 disabled:via-gray-800 disabled:to-gray-800 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-[10px] transition-all duration-200 border-2 border-blue-400/30 hover:border-blue-300/50 shadow-2xl shadow-blue-500/50 hover:shadow-blue-600/60 touch-manipulation"
+                      >
+                        {loading ? (
+                          <span className="flex items-center justify-center gap-2">
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            {t('purchasing', normalizedLanguage)}
+                          </span>
+                        ) : !productsLoaded || products.length === 0 ? (
+                          // 🔥 APPLE GUIDELINE 3.1.2: Show fallback text if IAP initialized but products empty (App Store Review scenario)
+                          // If iapInitialized is true, show fallback text instead of loading spinner
+                          iapInitialized ? (
+                            platform === 'ios'
+                              ? t('try3DaysFreeAndSubscribe', normalizedLanguage)
+                              : platform === 'android'
+                                ? t('try3DaysFreeAndSubscribe', normalizedLanguage)
+                                : t('goPremium', normalizedLanguage)
+                          ) : (
+                            // Only show loading if IAP is not yet initialized
+                            <span className="flex items-center justify-center gap-2">
+                              <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                              {t('loading', normalizedLanguage)}
+                            </span>
+                          )
+                        ) : (
+                          // 🔥 APPLE GUIDELINE 2.3.10: Never mention "Google Play" on iOS
+                          // 🔥 APPLE GUIDELINE 3.1.2: Show price in button or nearby
+                          // 🔥 APPLE GUIDELINE 2.1: Show trial info in button to attract users
+                          platform === 'ios'
+                            ? (products[0]?.price
+                              ? (() => {
                                 const priceNum = products[0].price.match(/[\d,\.]+/)?.[0] || products[0].price.replace(/[^\d,\.]/g, '');
                                 const currencySym = getCurrencySymbol(products[0]);
                                 return `${t('try3DaysFreeThenPrice', normalizedLanguage)} ${currencySym}${priceNum}/${t('month', normalizedLanguage)}`;
                               })()
-                            : t('try3DaysFreeAndSubscribe', normalizedLanguage))
-                        : platform === 'android'
-                        ? (products[0]?.price 
-                            ? (() => {
-                                const priceNum = products[0].price.match(/[\d,\.]+/)?.[0] || products[0].price.replace(/[^\d,\.]/g, '');
-                                const currencySym = getCurrencySymbol(products[0]);
-                                return `${t('buyFromGooglePlay', normalizedLanguage)} - ${currencySym}${priceNum}`;
-                              })()
-                            : t('buyFromGooglePlay', normalizedLanguage))
-                        : t('goPremium', normalizedLanguage)
-                    )}
-                  </ShimmerButton>
+                              : t('try3DaysFreeAndSubscribe', normalizedLanguage))
+                            : platform === 'android'
+                              ? (products[0]?.price
+                                ? (() => {
+                                  const priceNum = products[0].price.match(/[\d,\.]+/)?.[0] || products[0].price.replace(/[^\d,\.]/g, '');
+                                  const currencySym = getCurrencySymbol(products[0]);
+                                  return `${t('buyFromGooglePlay', normalizedLanguage)} - ${currencySym}${priceNum}`;
+                                })()
+                                : t('buyFromGooglePlay', normalizedLanguage))
+                              : t('goPremium', normalizedLanguage)
+                        )}
+                      </ShimmerButton>
 
-                  <motion.button
-                    onClick={onClose}
-                    className="w-full py-1.5 px-2.5 rounded-lg text-gray-400 hover:text-white transition-colors duration-200 text-[9px] font-medium hover:bg-gray-900/50"
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    {t('later', normalizedLanguage)}
-                  </motion.button>
+                      <motion.button
+                        onClick={onClose}
+                        className="w-full py-1.5 px-2.5 rounded-lg text-gray-400 hover:text-white transition-colors duration-200 text-[9px] font-medium hover:bg-gray-900/50"
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {t('later', normalizedLanguage)}
+                      </motion.button>
 
-                  {/* Restore Purchases Button - REQUIRED by Apple Guidelines 3.1.1 */}
-                  {(platform === 'ios' || platform === 'android') && (
-                    <motion.button
-                      onClick={handleRestorePurchases}
-                      disabled={loading || !iapAvailable || !iapInitialized}
-                      className="w-full py-1.5 px-2.5 rounded-lg text-blue-400 hover:text-blue-300 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors duration-200 text-[8px] font-medium flex items-center justify-center gap-1 hover:bg-blue-500/10"
-                      whileHover={{ scale: (loading || !iapAvailable || !iapInitialized) ? 1 : 1.02 }}
-                      whileTap={{ scale: (loading || !iapAvailable || !iapInitialized) ? 1 : 0.98 }}
-                    >
-                      <RefreshCw className={`w-2 h-2 ${loading ? 'animate-spin' : ''}`} />
-                      {loading 
-                        ? t('restoring', normalizedLanguage)
-                        : t('restorePurchases', normalizedLanguage)
-                      }
-                    </motion.button>
+                      {/* Restore Purchases Button - REQUIRED by Apple Guidelines 3.1.1 */}
+                      {(platform === 'ios' || platform === 'android') && (
+                        <motion.button
+                          onClick={handleRestorePurchases}
+                          disabled={loading || !iapAvailable || !iapInitialized}
+                          className="w-full py-1.5 px-2.5 rounded-lg text-blue-400 hover:text-blue-300 disabled:text-gray-600 disabled:cursor-not-allowed transition-colors duration-200 text-[8px] font-medium flex items-center justify-center gap-1 hover:bg-blue-500/10"
+                          whileHover={{ scale: (loading || !iapAvailable || !iapInitialized) ? 1 : 1.02 }}
+                          whileTap={{ scale: (loading || !iapAvailable || !iapInitialized) ? 1 : 0.98 }}
+                        >
+                          <RefreshCw className={`w-2 h-2 ${loading ? 'animate-spin' : ''}`} />
+                          {loading
+                            ? t('restoring', normalizedLanguage)
+                            : t('restorePurchases', normalizedLanguage)
+                          }
+                        </motion.button>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
