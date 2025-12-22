@@ -2253,10 +2253,9 @@ export default function Home() {
                       ? 'bg-blue-600 text-white'
                       : isPremium
                         ? 'text-gray-400 hover:text-white hover:bg-gray-800'
-                        : 'text-gray-500 opacity-60 cursor-not-allowed'
+                        : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800/50'
                       }`}
-                    disabled={!isPremium}
-                    title={isPremium ? getTimeframeForHuman(tf) : `${getTimeframeForHuman(tf)} (Premium)`}
+                    title={isPremium ? getTimeframeForHuman(tf) : `${getTimeframeForHuman(tf)} (Premium için tıklayın)`}
                   >
                     {getTimeframeForHuman(tf)}
                     {!isPremium && (
