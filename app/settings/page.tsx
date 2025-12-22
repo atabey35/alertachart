@@ -3580,11 +3580,17 @@ export default function SettingsPage() {
                                 }
 
                                 try {
+                                  // 🔥 GUEST USER FIX: Add userEmail for guest users
+                                  const requestBody: { id: number; deviceId: string; userEmail?: string } = { id: alert.id, deviceId };
+                                  if (user?.email) {
+                                    requestBody.userEmail = user.email;
+                                  }
+
                                   const response = await fetch('/api/alerts/price', {
                                     method: 'DELETE',
                                     headers: { 'Content-Type': 'application/json' },
                                     credentials: 'include',
-                                    body: JSON.stringify({ id: alert.id, deviceId }),
+                                    body: JSON.stringify(requestBody),
                                   });
 
                                   if (response.ok) {
