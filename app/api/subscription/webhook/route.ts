@@ -244,11 +244,49 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('[Webhook] Google notification parsed:', {
+        packageName: googleNotification.packageName,
         subscriptionNotification: !!googleNotification.subscriptionNotification,
+        voidedPurchaseNotification: !!googleNotification.voidedPurchaseNotification,
         oneTimeProductNotification: !!googleNotification.oneTimeProductNotification,
+        testNotification: !!googleNotification.testNotification,
       });
 
-      // Handle subscription notifications
+      // ============================================
+      // HANDLE TEST NOTIFICATIONS (from Google Play Console)
+      // ============================================
+      if (googleNotification.testNotification) {
+        console.log('[Webhook] ✅ Google test notification received - acknowledging');
+        return NextResponse.json({
+          success: true,
+          message: 'Test notification acknowledged',
+          version: googleNotification.testNotification.version
+        });
+      }
+
+      // ============================================
+      // HANDLE VOIDED PURCHASE NOTIFICATIONS (Refunds)
+      // ============================================
+      if (googleNotification.voidedPurchaseNotification) {
+        const voidedNotif = googleNotification.voidedPurchaseNotification;
+
+        console.log('[Webhook] 💸 Google voided purchase (refund) notification:', {
+          orderId: voidedNotif.orderId,
+          productType: voidedNotif.productType, // 1 = subscription, 2 = one-time
+          refundType: voidedNotif.refundType, // 1 = refund, 2 = chargeback
+        });
+
+        // Refund = subscription should be cancelled
+        return await processSubscriptionEvent({
+          platform: 'android',
+          eventType: 'expired', // Treat refund as expiration
+          subscriptionId: voidedNotif.purchaseToken,
+          productId: voidedNotif.orderId,
+        });
+      }
+
+      // ============================================
+      // HANDLE SUBSCRIPTION NOTIFICATIONS
+      // ============================================
       if (googleNotification.subscriptionNotification) {
         const subNotif = googleNotification.subscriptionNotification;
 
@@ -274,7 +312,7 @@ export async function POST(request: NextRequest) {
             eventType = 'expired';
             break;
           default:
-            console.log('[Webhook] Unhandled Google notification type:', subNotif.notificationType);
+            console.log('[Webhook] Unhandled Google subscription notification type:', subNotif.notificationType);
             return NextResponse.json({ success: true, message: 'Notification acknowledged' });
         }
 
@@ -285,6 +323,24 @@ export async function POST(request: NextRequest) {
           productId: subNotif.subscriptionId,
         });
       }
+
+      // ============================================
+      // HANDLE ONE-TIME PRODUCT NOTIFICATIONS
+      // ============================================
+      if (googleNotification.oneTimeProductNotification) {
+        console.log('[Webhook] 📦 Google one-time product notification - acknowledging (not processed)');
+        return NextResponse.json({
+          success: true,
+          message: 'One-time product notification acknowledged'
+        });
+      }
+
+      // Unknown Google notification type - log and acknowledge
+      console.warn('[Webhook] ⚠️ Unknown Google notification type:', Object.keys(googleNotification));
+      return NextResponse.json({
+        success: true,
+        message: 'Unknown Google notification type acknowledged'
+      });
     }
 
     // ============================================
