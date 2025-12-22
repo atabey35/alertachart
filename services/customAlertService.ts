@@ -224,13 +224,31 @@ class CustomAlertService {
         }
 
         try {
+            // 🔥 GUEST USER FIX: Add userEmail for guest users
+            const requestBody: { id: number; deviceId: string; userEmail?: string } = { id, deviceId };
+
+            if (typeof window !== 'undefined') {
+                const guestUserStr = localStorage.getItem('guest_user');
+                if (guestUserStr) {
+                    try {
+                        const guestUser = JSON.parse(guestUserStr);
+                        if (guestUser.provider === 'guest' && guestUser.email) {
+                            requestBody.userEmail = guestUser.email;
+                            console.log('[CustomAlertService] ✅ Adding userEmail for guest user (delete):', guestUser.email);
+                        }
+                    } catch (e) {
+                        console.error('[CustomAlertService] Failed to parse guest_user:', e);
+                    }
+                }
+            }
+
             const response = await fetch('/api/alerts/custom', {
                 method: 'DELETE',
                 credentials: 'include',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ id, deviceId }),
+                body: JSON.stringify(requestBody),
             });
 
             if (!response.ok) {
