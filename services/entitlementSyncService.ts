@@ -25,7 +25,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
   try {
     // Get user email (from session or localStorage)
     let userEmail: string | null = null;
-    
+
     // Try to get from session
     try {
       const sessionResponse = await fetch('/api/auth/session');
@@ -36,7 +36,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
     } catch (e) {
       // Ignore
     }
-    
+
     // Try to get from localStorage (guest user)
     if (!userEmail && typeof window !== 'undefined') {
       try {
@@ -72,7 +72,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
         cache: 'no-store',
         headers: { 'Cache-Control': 'no-cache' },
       });
-      
+
       if (planResponse.ok) {
         const planData = await planResponse.json();
         console.log('[Entitlement Sync] ✅ User plan checked (expired subscriptions auto-downgraded if needed):', {
@@ -126,7 +126,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
 
     // Get current receipt/entitlements
     console.log('[Entitlement Sync] 📱 Checking entitlements from native plugin...');
-    
+
     let receipt: string | null = null;
     let productId: string | null = null;
     let orderId: string | null = null; // ✅ Store real Google Play order ID (GPA.xxxx) for Android
@@ -136,16 +136,21 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
       try {
         const result = await plugin.checkEntitlements();
         console.log('[Entitlement Sync] iOS entitlements result:', result);
-        
+
         if (result?.hasReceipt && result?.receipt) {
           receipt = result.receipt;
           if (receipt) {
             console.log('[Entitlement Sync] ✅ Receipt found (length:', receipt.length, ')');
-            
+
             // If there are pending transactions, use the first one's productId
             if (result?.pendingTransactions && result.pendingTransactions.length > 0) {
               productId = result.pendingTransactions[0].productId;
               console.log('[Entitlement Sync] Found pending transaction:', productId);
+            } else {
+              // ✅ OPTIMIZATION: No transactions = free app receipt only
+              // Skip verify-purchase API call to save Vercel invocations and Apple API calls
+              console.log('[Entitlement Sync] ⚠️ Receipt exists but no transactions (free app receipt) - skipping verification');
+              return { success: true, premiumActivated: false };
             }
           } else {
             console.log('[Entitlement Sync] ⚠️ No receipt found');
@@ -164,12 +169,12 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
       try {
         const result = await plugin.checkEntitlements();
         console.log('[Entitlement Sync] Android entitlements result:', result);
-        
+
         if (result?.hasReceipt && result?.receipt) {
           receipt = result.receipt || result.purchaseToken || '';
           if (receipt) {
             console.log('[Entitlement Sync] ✅ Receipt found (length:', receipt.length, ')');
-            
+
             // ✅ FIX: Get real orderId from pendingTransactions if available (Android only)
             // Android native plugin returns transactionId as Google Play orderId (GPA.xxxx)
             if (result?.pendingTransactions && result.pendingTransactions.length > 0) {
@@ -227,10 +232,10 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
     // If we have a receipt, validate it with backend
     if (receipt && receipt.length > 0) {
       console.log('[Entitlement Sync] 🔄 Validating receipt with backend...');
-      
+
       // Get user email (from session or localStorage)
       let userEmail: string | null = null;
-      
+
       // Try to get from session
       try {
         const sessionResponse = await fetch('/api/auth/session');
@@ -241,7 +246,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
       } catch (e) {
         // Ignore
       }
-      
+
       // Try to get from localStorage (guest user)
       if (!userEmail && typeof window !== 'undefined') {
         try {
@@ -254,7 +259,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
           // Ignore
         }
       }
-      
+
       // ✅ SECURITY: Backend handles all security checks (receipt hash, device ID, Google Play verification)
       // Frontend check removed to allow new purchases to be automatically verified
       // Backend will prevent cross-account receipt usage through its multi-layer security checks
@@ -277,10 +282,10 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
           if (Capacitor?.Plugins?.Device) {
             try {
               const deviceInfo = await Capacitor.Plugins.Device.getId();
-              if (deviceInfo?.identifier && 
-                  deviceInfo.identifier !== 'unknown' && 
-                  deviceInfo.identifier !== 'null' &&
-                  deviceInfo.identifier !== 'undefined') {
+              if (deviceInfo?.identifier &&
+                deviceInfo.identifier !== 'unknown' &&
+                deviceInfo.identifier !== 'null' &&
+                deviceInfo.identifier !== 'undefined') {
                 deviceId = deviceInfo.identifier;
                 console.log('[Entitlement Sync] ✅ Device ID from Capacitor:', deviceId);
               }
@@ -288,7 +293,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
               // Ignore
             }
           }
-          
+
           // Try 2: localStorage native_device_id (set during login)
           if (!deviceId) {
             deviceId = localStorage.getItem('native_device_id') || null;
@@ -298,7 +303,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
               deviceId = null;
             }
           }
-          
+
           // Try 3: localStorage device_id (fallback)
           if (!deviceId) {
             deviceId = localStorage.getItem('device_id') || null;
@@ -308,7 +313,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
               deviceId = null;
             }
           }
-          
+
           if (!deviceId) {
             console.warn('[Entitlement Sync] ⚠️ No device ID found - receipt validation may fail for guest users');
           }
@@ -367,10 +372,10 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
       if (!validationResponse.ok) {
         const errorData = await validationResponse.json().catch(() => ({}));
         console.error('[Entitlement Sync] ❌ Receipt validation failed:', errorData);
-        return { 
-          success: false, 
-          premiumActivated: false, 
-          error: errorData.error || 'Receipt validation failed' 
+        return {
+          success: false,
+          premiumActivated: false,
+          error: errorData.error || 'Receipt validation failed'
         };
       }
 
@@ -379,15 +384,15 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
 
       // Check if premium was activated
       const premiumActivated = validationResult.isPremium === true || validationResult.plan === 'premium';
-      
+
       if (premiumActivated) {
         console.log('[Entitlement Sync] ✅ Premium activated via sync!');
-        
+
         // Clear cache to force refresh
         if (typeof window !== 'undefined') {
           localStorage.removeItem('user_plan_cache');
         }
-        
+
         // Trigger a custom event to notify the app
         if (typeof window !== 'undefined' && window.dispatchEvent) {
           window.dispatchEvent(new CustomEvent('premiumStatusUpdated', {
@@ -408,10 +413,10 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
     return { success: true, premiumActivated: false };
   } catch (error: any) {
     console.error('[Entitlement Sync] ❌ Unexpected error:', error);
-    return { 
-      success: false, 
-      premiumActivated: false, 
-      error: error?.message || 'Unexpected error during sync' 
+    return {
+      success: false,
+      premiumActivated: false,
+      error: error?.message || 'Unexpected error during sync'
     };
   }
 }
@@ -424,7 +429,7 @@ export async function syncEntitlements(): Promise<EntitlementSyncResult> {
  */
 export function setupAutomaticEntitlementSync() {
   console.log('[Entitlement Sync] 🔧 setupAutomaticEntitlementSync CALLED');
-  
+
   if (typeof window === 'undefined') {
     console.log('[Entitlement Sync] ⚠️ window is undefined, returning');
     return;
@@ -456,13 +461,13 @@ export function setupAutomaticEntitlementSync() {
   // App Store may complete auto-renewal transactions in the background
   // We check every 5 minutes to ensure premium status is always up-to-date
   let periodicSyncInterval: NodeJS.Timeout | null = null;
-  
+
   const startPeriodicSync = () => {
     // Clear any existing interval
     if (periodicSyncInterval) {
       clearInterval(periodicSyncInterval);
     }
-    
+
     // Sync every 5 minutes
     periodicSyncInterval = setInterval(() => {
       console.log('[Entitlement Sync] 🔄 Periodic sync (every 5 minutes)...');
@@ -470,10 +475,10 @@ export function setupAutomaticEntitlementSync() {
         console.error('[Entitlement Sync] ❌ Periodic sync failed:', err);
       });
     }, 5 * 60 * 1000); // 5 minutes
-    
+
     console.log('[Entitlement Sync] ✅ Periodic sync started (every 5 minutes)');
   };
-  
+
   // Start periodic sync after initial delay
   setTimeout(() => {
     startPeriodicSync();
