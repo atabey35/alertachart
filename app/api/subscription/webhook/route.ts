@@ -382,10 +382,13 @@ async function processSubscriptionEvent(params: {
   }
 
   if (!userRecord) {
-    console.error('[Webhook] User not found for subscription:', subscriptionId.substring(0, 20));
+    // ✅ OPTIMIZATION: Return 200 to prevent Google/Apple retry storms
+    // Returning 404 causes the payment provider to retry indefinitely,
+    // consuming Vercel resources unnecessarily for orphaned subscriptions
+    console.warn('[Webhook] User not found for subscription (returning 200 to stop retries):', subscriptionId.substring(0, 20));
     return NextResponse.json(
-      { error: 'User not found' },
-      { status: 404 }
+      { success: true, message: 'Webhook acknowledged (user not found, no action taken)' },
+      { status: 200 }
     );
   }
 
