@@ -316,6 +316,18 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // 🔥 DEBUG: Log unknown format to understand what Google sends
+    console.error('[Webhook] ❌ Unknown webhook format received:', {
+      hasSignedPayload: !!body.signedPayload,
+      hasMessage: !!body.message,
+      hasMessageData: !!(body.message?.data),
+      hasPlatform: !!body.platform,
+      hasEventType: !!body.event_type,
+      hasSubscriptionId: !!body.subscription_id,
+      bodyKeys: Object.keys(body || {}),
+      bodySnippet: JSON.stringify(body).substring(0, 500),
+    });
+
     return NextResponse.json(
       { error: 'Unknown webhook format' },
       { status: 400 }
