@@ -1,6 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSql } from '@/lib/db';
 
+// 🔥 OPTIMIZATION: Cache migration status - runs only once per deployment
+let migrationCompleted = false;
+
+async function ensureBroadcastSchema(sql: any) {
+  if (migrationCompleted) return; // Skip if already done
+
+  try {
+    // Add target_lang column if it doesn't exist
+    await sql`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_lang VARCHAR(10) DEFAULT 'all'`;
+
+    // Make user_id nullable for global notifications
+    await sql`ALTER TABLE notifications ALTER COLUMN user_id DROP NOT NULL`;
+
+    migrationCompleted = true;
+    console.log('[Broadcast] ✅ Schema migration completed (first request only)');
+  } catch (error: any) {
+    // Schema might already be complete, mark as done
+    migrationCompleted = true;
+    console.log('[Broadcast] Schema already up to date');
+  }
+}
+
 /**
  * POST /api/admin/broadcast
  * Admin panelinden manuel bildirim gönderme
@@ -20,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     // 🔒 SECURITY: Verify admin password (environment variable required, no fallback)
     const { verifyAdminPassword } = await import('@/lib/adminAuth');
-    
+
     if (!verifyAdminPassword(password, 'main')) {
       return NextResponse.json(
         { error: 'Geçersiz şifre!' },
@@ -30,26 +52,26 @@ export async function POST(request: NextRequest) {
 
     // Backend'e ilet - development için local, production için Railway
     const backendUrl = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'https://alertachart-backend-production.up.railway.app';
-    
+
     console.log('[Next.js API] Broadcasting notification to backend:', {
       backendUrl: `${backendUrl}/api/admin/broadcast`,
       title: title.substring(0, 50),
       messageLength: message.length,
     });
-    
+
     let response: Response;
     let result: any;
-    
+
     try {
       response = await fetch(`${backendUrl}/api/admin/broadcast`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, message, targetLang }), // 🔥 MULTILINGUAL: targetLang'i backend'e ilet
       });
-      
+
       // Read response as text first (can be parsed as JSON or used as text)
       const responseText = await response.text();
-      
+
       // Try to parse as JSON
       try {
         result = JSON.parse(responseText);
@@ -65,31 +87,16 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-    
+
     if (response.ok) {
       // Save notification to database as a SINGLE global record (visible to all users)
       let notificationsSaved = 0;
       try {
         const sql = getSql();
-        
-        // 🔥 MULTILINGUAL: Add target_lang column if it doesn't exist
-        try {
-          await sql`ALTER TABLE notifications ADD COLUMN IF NOT EXISTS target_lang VARCHAR(10) DEFAULT 'all'`;
-          console.log('[Broadcast] ✅ target_lang column ensured');
-        } catch (alterError: any) {
-          // Column might already exist, that's fine
-          console.log('[Broadcast] target_lang column check:', alterError.message);
-        }
-        
-        // 🔥 GLOBAL NOTIFICATIONS: Make user_id nullable for global notifications
-        try {
-          await sql`ALTER TABLE notifications ALTER COLUMN user_id DROP NOT NULL`;
-          console.log('[Broadcast] ✅ user_id column made nullable for global notifications');
-        } catch (alterError: any) {
-          // Column might already be nullable, that's fine
-          console.log('[Broadcast] user_id nullable check:', alterError.message);
-        }
-        
+
+        // 🔥 OPTIMIZATION: Run migrations only once per deployment (cached in memory)
+        await ensureBroadcastSchema(sql);
+
         // 🔥 SINGLE RECORD: Insert ONE global notification (user_id = NULL)
         // This single record will be visible to all users based on target_lang filtering
         try {
@@ -107,7 +114,7 @@ export async function POST(request: NextRequest) {
         console.error('[Broadcast] Error saving to database:', dbError);
         // Don't fail the request if database save fails
       }
-      
+
       // Return success with notification count
       return NextResponse.json({
         ...result,
