@@ -6,6 +6,15 @@ import { getSql } from '@/lib/db';
 // 🔥 OPTIMIZATION: Cache migration status - runs only once per deployment
 let migrationCompleted = false;
 
+// 🔥 OPTIMIZATION: In-memory cache for notifications (30 second TTL)
+// Reduces database load and prevents "too many clients" errors
+interface CacheEntry {
+  data: any;
+  expiresAt: number;
+}
+const notificationsCache = new Map<string, CacheEntry>();
+const CACHE_TTL_MS = 30 * 1000; // 30 seconds
+
 async function ensureNotificationSchema(sql: any) {
   if (migrationCompleted) return; // Skip if already done
 
@@ -54,7 +63,6 @@ export async function GET(request: NextRequest) {
 
     if (!userEmail && emailParam) {
       userEmail = emailParam;
-      console.log('[Notifications API] Using email from query param (guest user):', emailParam);
     }
 
     if (!userEmail) {
@@ -62,6 +70,13 @@ export async function GET(request: NextRequest) {
         unreadCount: 0,
         notifications: []
       }, { status: 200 });
+    }
+
+    // 🔥 CACHE CHECK: Return cached response if valid
+    const cacheKey = `${userEmail}:${userLang}`;
+    const cached = notificationsCache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return NextResponse.json(cached.data);
     }
 
     const sql = getSql();
@@ -72,7 +87,6 @@ export async function GET(request: NextRequest) {
     `;
 
     if (users.length === 0) {
-      console.log('[Notifications API] User not found for email:', userEmail);
       return NextResponse.json({
         unreadCount: 0,
         notifications: []
@@ -85,12 +99,6 @@ export async function GET(request: NextRequest) {
     await ensureNotificationSchema(sql);
 
     // Get notifications (last 20, ordered by created_at DESC)
-    // Include both:
-    // 1. Global notifications (user_id IS NULL) - visible to all users
-    // 2. Personal notifications (user_id = userId) - specific to this user
-    // Filter by target_lang: 'all' or matching user's language
-    // NULL target_lang is treated as 'all' (backward compatibility for old notifications)
-    // For global notifications, check notification_reads table for read status
     const notifications = await sql`
       SELECT 
         n.id,
@@ -118,7 +126,7 @@ export async function GET(request: NextRequest) {
     // Count unread
     const unreadCount = notifications.filter((n: any) => !n.is_read).length;
 
-    return NextResponse.json({
+    const responseData = {
       unreadCount,
       notifications: notifications.map((n: any) => ({
         id: n.id,
@@ -127,7 +135,15 @@ export async function GET(request: NextRequest) {
         isRead: n.is_read,
         createdAt: n.created_at,
       })),
+    };
+
+    // 🔥 CACHE STORE: Save response for 30 seconds
+    notificationsCache.set(cacheKey, {
+      data: responseData,
+      expiresAt: Date.now() + CACHE_TTL_MS,
     });
+
+    return NextResponse.json(responseData);
   } catch (error: any) {
     console.error('[Notifications API] Error:', error);
     return NextResponse.json(
@@ -206,6 +222,14 @@ export async function POST(request: NextRequest) {
           SET is_read = true
           WHERE id = ${notificationId} AND user_id = ${userId}
         `;
+      }
+    }
+
+    // 🔥 CACHE INVALIDATION: Clear user's cache when marking as read
+    // This ensures the next GET returns fresh data
+    for (const key of notificationsCache.keys()) {
+      if (key.startsWith(`${userEmail}:`)) {
+        notificationsCache.delete(key);
       }
     }
 

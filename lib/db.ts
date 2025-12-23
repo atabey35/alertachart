@@ -23,15 +23,15 @@ export const getSql = () => {
   }
 
   // Check if it's a Neon connection string (contains .neon.tech or .neon.tech)
-  const isNeon = process.env.DATABASE_URL.includes('.neon.tech') || 
-                 process.env.DATABASE_URL.includes('.neon.tech');
+  const isNeon = process.env.DATABASE_URL.includes('.neon.tech') ||
+    process.env.DATABASE_URL.includes('.neon.tech');
 
   // Railway PostgreSQL connection
   // ⚠️ Connection pool optimization: Railway PostgreSQL has limited connections
   // Reduced max connections to prevent "too many clients" errors
   sql = postgres(process.env.DATABASE_URL, {
     ssl: isNeon ? 'prefer' : 'require', // Neon uses 'prefer', Railway uses 'require'
-    max: 10, // Reduced from 20 to 10 to prevent connection limit errors
+    max: 5, // Reduced from 10 to 5 to prevent "too many clients" errors on Railway
     idle_timeout: 20, // Close idle connections faster (20 seconds instead of 30)
     connect_timeout: 5, // Faster timeout (5 seconds instead of 10)
     max_lifetime: 60 * 30, // Close connections after 30 minutes (prevent stale connections)
