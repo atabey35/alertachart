@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="tr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AlertaChart | AGGR - Profesyonel Kripto İşlem Takip Platformu</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap"
+        rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-light: #3b82f6;
+            --primary-dark: #1d4ed8;
+            --accent: #60a5fa;
+            --accent-green: #10b981;
+            --accent-orange: #f59e0b;
+            --accent-red: #ef4444;
+            --bg-dark: #0a0a0a;
+            --bg-card: #0f0f0f;
+            --bg-card-hover: #151515;
+            --text-primary: #ffffff;
+            --text-secondary: #9ca3af;
+            --border: rgba(255, 255, 255, 0.1);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            overflow-x: hidden;
+            line-height: 1.6;
+        }
+
+        /* Animated Background */
+        .bg-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .bg-animation::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle at 20% 80%, rgba(37, 99, 235, 0.12) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(96, 165, 250, 0.06) 0%, transparent 40%);
+            animation: bgRotate 30s linear infinite;
+        }
+
+        @keyframes bgRotate {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Watermark Icon */
+        .watermark {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60vw;
+            max-width: 600px;
+            height: auto;
+            opacity: 0.03;
+            z-index: -1;
+            pointer-events: none;
+            filter: grayscale(100%);
+        }
+
+        /* Floating Particles */
+        .particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        .particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            background: var(--primary);
+            border-radius: 50%;
+            opacity: 0.3;
+            animation: float 15s infinite;
+        }
+
+        @keyframes float {
+
+            0%,
+            100% {
+                transform: translateY(100vh) scale(0);
+                opacity: 0;
+            }
+
+            10% {
+                opacity: 0.5;
+            }
+
+            90% {
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: translateY(-100vh) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Hero Section */
+        .hero {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: rgba(168, 85, 247, 0.15);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+            padding: 0.5rem 1.25rem;
+            border-radius: 100px;
+            font-size: 0.875rem;
+            color: var(--primary-light);
+            margin-bottom: 2rem;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        .hero h1 {
+            font-size: clamp(2.5rem, 7vw, 5rem);
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, #fff 0%, #2563eb 50%, #60a5fa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: fadeInUp 1s ease-out 0.2s both;
+        }
+
+        .hero-subtitle {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--primary);
+            margin-bottom: 1rem;
+            animation: fadeInUp 1s ease-out 0.3s both;
+        }
+
+        .hero p {
+            font-size: clamp(1rem, 2vw, 1.25rem);
+            color: var(--text-secondary);
+            max-width: 800px;
+            margin-bottom: 3rem;
+            animation: fadeInUp 1s ease-out 0.4s both;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            animation: fadeInUp 1s ease-out 0.6s both;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            box-shadow: 0 10px 40px rgba(168, 85, 247, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 50px rgba(168, 85, 247, 0.4);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-3px);
+        }
+
+        .scroll-indicator {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: bounce 2s infinite;
+        }
+
+        .scroll-indicator svg {
+            width: 32px;
+            height: 32px;
+            color: var(--text-secondary);
+        }
+
+        @keyframes bounce {
+
+            0%,
+            100% {
+                transform: translateX(-50%) translateY(0);
+            }
+
+            50% {
+                transform: translateX(-50%) translateY(10px);
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Intro Section */
+        .intro-section {
+            padding: 4rem 2rem;
+            max-width: 900px;
+            margin: 0 auto;
+            text-align: center;
+        }
+
+        .intro-text {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(34, 211, 238, 0.05) 100%);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 3rem;
+            font-size: 1.125rem;
+            color: var(--text-secondary);
+            line-height: 1.8;
+        }
+
+        .intro-text strong {
+            color: var(--primary);
+        }
+
+        /* Stats Section */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+            padding: 4rem 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .stat-card {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.1) 0%, rgba(34, 211, 238, 0.05) 100%);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 2rem;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+            border-color: var(--primary);
+            box-shadow: 0 20px 40px rgba(168, 85, 247, 0.2);
+        }
+
+        .stat-number {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .stat-label {
+            color: var(--text-secondary);
+            margin-top: 0.5rem;
+            font-size: 1rem;
+        }
+
+        /* Features Section */
+        .section {
+            padding: 6rem 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 4rem;
+        }
+
+        .section-badge {
+            display: inline-block;
+            background: rgba(34, 211, 238, 0.15);
+            border: 1px solid rgba(34, 211, 238, 0.3);
+            color: var(--accent);
+            padding: 0.5rem 1rem;
+            border-radius: 100px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .section-title {
+            font-size: clamp(2rem, 5vw, 3.5rem);
+            font-weight: 800;
+            margin-bottom: 1rem;
+        }
+
+        .section-desc {
+            color: var(--text-secondary);
+            font-size: 1.125rem;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        /* Feature Cards with Screenshots */
+        .feature-showcase {
+            display: grid;
+            gap: 6rem;
+        }
+
+        .feature-item {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 4rem;
+            align-items: center;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: all 0.8s ease-out;
+        }
+
+        .feature-item.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .feature-item:nth-child(even) {
+            direction: rtl;
+        }
+
+        .feature-item:nth-child(even)>* {
+            direction: ltr;
+        }
+
+        .feature-content {
+            padding: 2rem;
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .feature-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+        }
+
+        .feature-desc {
+            color: var(--text-secondary);
+            font-size: 1.1rem;
+            margin-bottom: 1.5rem;
+            line-height: 1.7;
+        }
+
+        .feature-list {
+            list-style: none;
+        }
+
+        .feature-list li {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.75rem;
+            padding: 0.5rem 0;
+            color: var(--text-secondary);
+        }
+
+        .feature-list li::before {
+            content: '✓';
+            color: var(--accent-green);
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .feature-tip {
+            background: rgba(168, 85, 247, 0.1);
+            border: 1px solid rgba(168, 85, 247, 0.2);
+            border-radius: 12px;
+            padding: 1rem;
+            margin-top: 1rem;
+            font-size: 0.95rem;
+            color: var(--primary-light);
+        }
+
+        .feature-tip strong {
+            display: block;
+            margin-bottom: 0.5rem;
+        }
+
+        .feature-image {
+            position: relative;
+        }
+
+        .feature-image img {
+            width: 100%;
+            border-radius: 20px;
+            box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+            transition: all 0.5s ease;
+        }
+
+        .feature-image:hover img {
+            transform: scale(1.02);
+            box-shadow: 0 30px 100px rgba(168, 85, 247, 0.3);
+        }
+
+        .feature-image::before {
+            content: '';
+            position: absolute;
+            top: -20px;
+            left: -20px;
+            right: 20px;
+            bottom: 20px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            border-radius: 20px;
+            opacity: 0.2;
+            z-index: -1;
+        }
+
+        /* Image Gallery */
+        .gallery-section {
+            padding: 6rem 2rem;
+            background: linear-gradient(180deg, transparent 0%, rgba(168, 85, 247, 0.05) 50%, transparent 100%);
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        .gallery-item {
+            position: relative;
+            border-radius: 20px;
+            overflow: hidden;
+            aspect-ratio: 16/10;
+            cursor: pointer;
+            transition: all 0.4s ease;
+        }
+
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: all 0.5s ease;
+        }
+
+        .gallery-item:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 30px 60px rgba(168, 85, 247, 0.3);
+        }
+
+        .gallery-item:hover img {
+            transform: scale(1.1);
+        }
+
+        .gallery-overlay {
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, transparent 40%, rgba(0, 0, 0, 0.9) 100%);
+            opacity: 0;
+            transition: all 0.4s ease;
+            display: flex;
+            align-items: flex-end;
+            padding: 1.5rem;
+        }
+
+        .gallery-item:hover .gallery-overlay {
+            opacity: 1;
+        }
+
+        .gallery-caption {
+            color: white;
+            font-weight: 600;
+        }
+
+        /* Video Section */
+        .video-section {
+            padding: 6rem 2rem;
+            text-align: center;
+        }
+
+        .video-container {
+            max-width: 1000px;
+            margin: 0 auto;
+            position: relative;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 40px 100px rgba(0, 0, 0, 0.5);
+            border: 1px solid var(--border);
+        }
+
+        .video-container video {
+            width: 100%;
+            display: block;
+        }
+
+        .video-glow {
+            position: absolute;
+            inset: -2px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 50%, var(--accent-green) 100%);
+            border-radius: 26px;
+            z-index: -1;
+            opacity: 0.5;
+            filter: blur(20px);
+        }
+
+        .video-placeholder {
+            background: linear-gradient(135deg, rgba(168, 85, 247, 0.2) 0%, rgba(34, 211, 238, 0.1) 100%);
+            border: 2px dashed var(--border);
+            border-radius: 24px;
+            padding: 4rem 2rem;
+            color: var(--text-secondary);
+        }
+
+        /* CTA Section */
+        .cta {
+            padding: 8rem 2rem;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .cta::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at center, rgba(168, 85, 247, 0.2) 0%, transparent 70%);
+        }
+
+        .cta-content {
+            position: relative;
+            z-index: 1;
+        }
+
+        .cta h2 {
+            font-size: clamp(2.5rem, 5vw, 4rem);
+            font-weight: 800;
+            margin-bottom: 1.5rem;
+        }
+
+        .cta p {
+            color: var(--text-secondary);
+            font-size: 1.25rem;
+            max-width: 700px;
+            margin: 0 auto 2.5rem;
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 2rem;
+            text-align: center;
+            border-top: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--primary-light);
+            text-decoration: none;
+        }
+
+        /* Lightbox */
+        .lightbox {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            cursor: zoom-out;
+        }
+
+        .lightbox.active {
+            display: flex;
+        }
+
+        .lightbox img {
+            max-width: 95%;
+            max-height: 95vh;
+            object-fit: contain;
+            border-radius: 12px;
+            box-shadow: 0 30px 100px rgba(0, 0, 0, 0.8);
+        }
+
+        .lightbox-close {
+            position: absolute;
+            top: 2rem;
+            right: 2rem;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 50%;
+            color: white;
+            font-size: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .lightbox-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: rotate(90deg);
+        }
+
+        /* Responsive */
+        @media (max-width: 968px) {
+            .feature-item {
+                grid-template-columns: 1fr;
+            }
+
+            .feature-item:nth-child(even) {
+                direction: ltr;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .gallery-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Animations */
+        .animate-on-scroll {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease-out;
+        }
+
+        .animate-on-scroll.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Exchange Icons */
+        .exchange-icons {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 2rem;
+        }
+
+        .exchange-icon {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 0.75rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            transition: all 0.3s ease;
+        }
+
+        .exchange-icon:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Animated Background -->
+    <div class="bg-animation"></div>
+
+    <!-- Floating Particles -->
+    <div class="particles" id="particles"></div>
+
+    <!-- Watermark Icon -->
+    <img src="icon.png" alt="" class="watermark">
+
+    <!-- Back Button -->
+    <button onclick="history.back()"
+        style="position: fixed; top: 20px; left: 20px; z-index: 100; padding: 10px 16px; background: rgba(0,0,0,0.7); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; color: white; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: all 0.3s ease;">
+        <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+        </svg>
+        Geri
+    </button>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <span class="hero-badge"><svg style="width:16px;height:16px;margin-right:4px;vertical-align:middle"
+                fill="currentColor" viewBox="0 0 24 24">
+                <path
+                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+            </svg><span data-i18n="heroBadge">Real-time Kripto İşlem Takibi</span></span>
+        <h1>AlertaChart | AGGR</h1>
+        <p class="hero-subtitle" data-i18n="heroSubtitle">Profesyonel Kripto İşlem Analiz Platformu</p>
+        <p data-i18n="heroDesc">Tüm büyük borsalardaki her işlemi gerçek zamanlı olarak izleyin. Balina hareketlerini
+            anında tespit edin, alış-satış baskısını analiz edin ve piyasanın nabzını tutun.</p>
+        <div class="hero-buttons">
+            <a href="#features" class="btn btn-primary" onclick="playWhaleSound()">
+                <span data-i18n="exploreFeatures">Özellikleri Keşfet</span>
+            </a>
+            <a href="#demo" class="btn btn-secondary">
+                <span data-i18n="watchDemo">Demo İzle</span>
+            </a>
+        </div>
+        <div class="exchange-icons">
+            <div class="exchange-icon"><img src="BINANCE.svg" alt="Binance" style="width: 20px; height: 20px;"> Binance
+            </div>
+            <div class="exchange-icon"><img src="BYBIT.svg" alt="Bybit" style="width: 20px; height: 20px;"> Bybit</div>
+            <div class="exchange-icon"><img src="COINBASE.svg" alt="Coinbase" style="width: 20px; height: 20px;">
+                Coinbase</div>
+            <div class="exchange-icon"><img src="OKX.svg" alt="OKX" style="width: 20px; height: 20px;"> OKX</div>
+        </div>
+        <div class="scroll-indicator">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+            </svg>
+        </div>
+    </section>
+
+    <!-- Intro Section -->
+    <section class="intro-section animate-on-scroll">
+        <div class="intro-text" data-i18n="introText">
+            <strong>Binance, Bybit, Coinbase ve OKX'i aynı anda izleyin.</strong> Spot ve futures piyasalarında 1000+
+            işlem çifti için tam destek, milisaniye hassasiyetinde güncellemeler. Büyük oyuncuların hareketlerini
+            yakalayın.
+        </div>
+    </section>
+
+    <!-- Stats Section -->
+    <section class="stats">
+        <div class="stat-card animate-on-scroll">
+            <div class="stat-number">4</div>
+            <div class="stat-label" data-i18n="statExchanges">Borsa Desteği</div>
+        </div>
+        <div class="stat-card animate-on-scroll">
+            <div class="stat-number">1000+</div>
+            <div class="stat-label" data-i18n="statPairs">İşlem Çifti</div>
+        </div>
+        <div class="stat-card animate-on-scroll">
+            <div class="stat-number">
+                < 1ms</div>
+                    <div class="stat-label" data-i18n="statLatency">Gecikme</div>
+            </div>
+            <div class="stat-card animate-on-scroll">
+                <div class="stat-number">∞</div>
+                <div class="stat-label" data-i18n="statAnalysis">Analiz İmkanı</div>
+            </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="section" id="features">
+        <div class="section-header">
+            <span class="section-badge" data-i18n="featuresLabel">Özellikler</span>
+            <h2 class="section-title" data-i18n="featuresTitle">Güçlü Analiz Araçları</h2>
+            <p class="section-desc" data-i18n="featuresDesc">Piyasayı anlık takip edin, balina hareketlerini izleyin ve
+                fırsatları yakalayın.
+            </p>
+        </div>
+
+        <div class="feature-showcase">
+            <!-- Feature 1: Canlı İşlemler -->
+            <div class="feature-item">
+                <div class="feature-content">
+                    <h3 class="feature-title"><svg
+                            style="width:28px;height:28px;margin-right:8px;vertical-align:middle;color:#3b82f6"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>Canlı İşlem Akışı</h3>
+                    <p class="feature-desc">Her işlemi gerçek zamanlı olarak takip edin. Alış, satış, long likidasyon ve
+                        short likidasyon işlemlerini ayrı ayrı görüntüleyin.</p>
+                    <ul class="feature-list">
+                        <li>Mark Price ve session bilgisi</li>
+                        <li>Alış/Satış sayacı ve hacim takibi</li>
+                        <li>Long/Short likidasyon gösterimi</li>
+                        <li>Toplam hacim analizi</li>
+                        <li>Renk kodlu işlem listesi</li>
+                    </ul>
+                    <div class="feature-tip">
+                        <strong><svg style="width:16px;height:16px;margin-right:4px;vertical-align:middle;color:#fbbf24"
+                                fill="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z" />
+                            </svg>Pro İpucu:</strong>
+                        Session süresini takip ederek belirli zaman dilimlerindeki toplam hacmi analiz edin.
+                    </div>
+                </div>
+                <div class="feature-image">
+                    <img src="canli-islemler.png" alt="Canlı İşlem Akışı">
+                </div>
+            </div>
+
+            <!-- Feature 2: Hızlı Ayarlar -->
+            <div class="feature-item">
+                <div class="feature-content">
+                    <h3 class="feature-title"><svg
+                            style="width:28px;height:28px;margin-right:8px;vertical-align:middle;color:#fbbf24"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>Hızlı Ön Ayarlar</h3>
+                    <p class="feature-desc">Tek tıkla profesyonel filtreleri etkinleştirin. Whale Tracker ile $100K+
+                        işlemleri, sadece alış veya satış işlemlerini anında filtreleyin.</p>
+                    <ul class="feature-list">
+                        <li><span
+                                style="display:inline-block;width:12px;height:12px;background:#fbbf24;border-radius:50%;margin-right:8px;"></span>Whale
+                            Tracker - $100K+ büyük işlemler</li>
+                        <li><span
+                                style="display:inline-block;width:12px;height:12px;background:#10b981;border-radius:50%;margin-right:8px;"></span>Tüm
+                            İşlemler - Minimum filtre</li>
+                        <li><span
+                                style="display:inline-block;width:12px;height:12px;background:#3b82f6;border-radius:50%;margin-right:8px;"></span>Sadece
+                            Alış - Buy işlemleri</li>
+                        <li><span
+                                style="display:inline-block;width:12px;height:12px;background:#ef4444;border-radius:50%;margin-right:8px;"></span>Sadece
+                            Satış - Sell işlemleri</li>
+                        <li>Kendi ön ayarlarınızı oluşturun</li>
+                    </ul>
+                </div>
+                <div class="feature-image">
+                    <img src="hizli-ayarlar.png" alt="Hızlı Ön Ayarlar">
+                </div>
+            </div>
+
+            <!-- Feature 3: Filtreler -->
+            <div class="feature-item">
+                <div class="feature-content">
+                    <h3 class="feature-title"><svg
+                            style="width:28px;height:28px;margin-right:8px;vertical-align:middle;color:#22d3ee"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>Gelişmiş Filtreler</h3>
+                    <p class="feature-desc">Tutar filtreleri ile minimum ve maksimum işlem değerlerini belirleyin.
+                        Likidasyon işlemlerini ayrıca görüntüleyin veya gizleyin.</p>
+                    <ul class="feature-list">
+                        <li>Minimum/Maksimum tutar filtresi ($)</li>
+                        <li>Likidasyon gösterimi açma/kapama</li>
+                        <li>Likidasyon için ayrı min/max değerleri</li>
+                        <li>Coin bazlı filtreleme</li>
+                        <li>Zaman penceresi ayarları</li>
+                    </ul>
+                </div>
+                <div class="feature-image">
+                    <img src="filtreler.png" alt="Gelişmiş Filtreler">
+                </div>
+            </div>
+
+            <!-- Feature 4: Borsa Seçimi -->
+            <div class="feature-item">
+                <div class="feature-content">
+                    <h3 class="feature-title"><svg
+                            style="width:28px;height:28px;margin-right:8px;vertical-align:middle;color:#10b981"
+                            fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                        </svg>Çoklu Borsa Desteği</h3>
+                    <p class="feature-desc">Binance, Bybit, Coinbase ve OKX borsalarını spot ve futures olarak ayrı ayrı
+                        takip edin. Birden fazla borsayı aynı anda izleyin.</p>
+                    <ul class="feature-list">
+                        <li><img src="BINANCE.svg" alt="Binance"
+                                style="width: 16px; height: 16px; vertical-align: middle;"> Binance Spot & Futures</li>
+                        <li><img src="BYBIT.svg" alt="Bybit" style="width: 16px; height: 16px; vertical-align: middle;">
+                            Bybit Spot & Futures</li>
+                        <li><img src="COINBASE.svg" alt="Coinbase"
+                                style="width: 16px; height: 16px; vertical-align: middle;"> Coinbase Spot & Futures</li>
+                        <li><img src="OKX.svg" alt="OKX" style="width: 16px; height: 16px; vertical-align: middle;"> OKX
+                            Spot & Futures</li>
+                        <li>Tek ekranda çoklu borsa görünümü</li>
+                    </ul>
+                    <div class="feature-tip">
+                        <strong><svg style="width:16px;height:16px;margin-right:4px;vertical-align:middle;color:#fbbf24"
+                                fill="currentColor" viewBox="0 0 24 24">
+                                <path
+                                    d="M9 21c0 .55.45 1 1 1h4c.55 0 1-.45 1-1v-1H9v1zm3-19C8.14 2 5 5.14 5 9c0 2.38 1.19 4.47 3 5.74V17c0 .55.45 1 1 1h6c.55 0 1-.45 1-1v-2.26c1.81-1.27 3-3.36 3-5.74 0-3.86-3.14-7-7-7z" />
+                            </svg>Pro İpucu:</strong>
+                        Arbitraj fırsatlarını tespit etmek için birden fazla borsayı aynı anda izleyin.
+                    </div>
+                </div>
+                <div class="feature-image">
+                    <img src="borsa-secimi.png" alt="Borsa Seçimi">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Gallery Section -->
+    <section class="gallery-section">
+        <div class="section-header">
+            <span class="section-badge" data-i18n="galleryLabel">Galeri</span>
+            <h2 class="section-title" data-i18n="galleryTitle">Ekran Görüntüleri</h2>
+            <p class="section-desc" data-i18n="galleryDesc">AGGR platformunun tüm özelliklerini keşfedin.</p>
+        </div>
+        <div class="gallery-grid">
+            <div class="gallery-item" onclick="openLightbox('canli-islemler.png')">
+                <img src="canli-islemler.png" alt="Canlı İşlemler">
+                <div class="gallery-overlay">
+                    <span class="gallery-caption" data-i18n="galleryCaption1">Canlı İşlem Akışı</span>
+                </div>
+            </div>
+            <div class="gallery-item" onclick="openLightbox('hizli-ayarlar.png')">
+                <img src="hizli-ayarlar.png" alt="Hızlı Ayarlar">
+                <div class="gallery-overlay">
+                    <span class="gallery-caption" data-i18n="galleryCaption2">Hızlı Ön Ayarlar</span>
+                </div>
+            </div>
+            <div class="gallery-item" onclick="openLightbox('filtreler.png')">
+                <img src="filtreler.png" alt="Filtreler">
+                <div class="gallery-overlay">
+                    <span class="gallery-caption" data-i18n="galleryCaption3">Gelişmiş Filtreler</span>
+                </div>
+            </div>
+            <div class="gallery-item" onclick="openLightbox('borsa-secimi.png')">
+                <img src="borsa-secimi.png" alt="Borsa Seçimi">
+                <div class="gallery-overlay">
+                    <span class="gallery-caption" data-i18n="galleryCaption4">Çoklu Borsa Desteği</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Video Section -->
+    <section class="video-section" id="demo">
+        <div class="section-header">
+            <span class="section-badge" data-i18n="demoLabel">Demo</span>
+            <h2 class="section-title" data-i18n="demoTitle">AGGR'ı İzleyin</h2>
+            <p class="section-desc" data-i18n="demoDesc">Platform nasıl çalışıyor? Canlı demoya göz atın.</p>
+        </div>
+        <div class="video-container">
+            <div class="video-glow"></div>
+            <!-- Video placeholder - video eklenecek -->
+            <div class="video-placeholder">
+                <p><svg style="width:48px;height:48px;margin-bottom:16px;color:#3b82f6" fill="none"
+                        stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg><br>Demo videosu yükleniyor...</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="cta">
+        <div class="cta-content">
+            <h2 data-i18n="ctaTitle">Piyasanın Nabzını Tutun</h2>
+            <p data-i18n="ctaDesc">Balina hareketlerini anında tespit edin, alış-satış baskısını analiz edin ve büyük
+                fırsatları kaçırmayın.
+            </p>
+            <a href="https://alertachart.com?upgrade=true" class="btn btn-primary" data-i18n="ctaButton">Hemen Başla</a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <p><span data-i18n="footer">© 2024 AlertaChart. Tüm hakları saklıdır.</span> | <a
+                href="https://alertachart.com">alertachart.com</a></p>
+    </footer>
+
+    <!-- Lightbox -->
+    <div class="lightbox" id="lightbox" onclick="closeLightbox()">
+        <button class="lightbox-close" onclick="closeLightbox()">×</button>
+        <img id="lightbox-img" src="" alt="Preview">
+    </div>
+
+    <script>
+        // Play Whale Sound
+        function playWhaleSound() {
+            const audio = new Audio('whale.mp3');
+            audio.volume = 0.5;
+            audio.play().catch(e => console.log('Audio play failed:', e));
+        }
+
+        // Particle Animation
+        function createParticles() {
+            const container = document.getElementById('particles');
+            for (let i = 0; i < 30; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 15 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                container.appendChild(particle);
+            }
+        }
+
+        // Scroll Animation
+        function animateOnScroll() {
+            const elements = document.querySelectorAll('.animate-on-scroll, .feature-item');
+            elements.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight * 0.85) {
+                    el.classList.add('visible');
+                }
+            });
+        }
+
+        // Lightbox
+        function openLightbox(src) {
+            document.getElementById('lightbox-img').src = src;
+            document.getElementById('lightbox').classList.add('active');
+        }
+
+        function closeLightbox() {
+            document.getElementById('lightbox').classList.remove('active');
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            createParticles();
+            animateOnScroll();
+            applyTranslations();
+        });
+
+        // i18n Translations
+        const translations = {
+            tr: {
+                back: 'Geri',
+                heroBadge: 'Real-time Kripto İşlem Takibi',
+                heroSubtitle: 'Profesyonel Kripto İşlem Analiz Platformu',
+                heroDesc: 'Tüm büyük borsalardaki her işlemi gerçek zamanlı olarak izleyin. Balina hareketlerini anında tespit edin, alış-satış baskısını analiz edin ve piyasanın nabzını tutun.',
+                exploreFeatures: 'Özellikleri Keşfet',
+                watchDemo: 'Demo İzle',
+                introText: 'Binance, Bybit, Coinbase ve OKX\'i aynı anda izleyin. Spot ve futures piyasalarında 1000+ işlem çifti için tam destek, milisaniye hassasiyetinde güncellemeler. Büyük oyuncuların hareketlerini yakalayın.',
+                featuresLabel: 'Özellikler',
+                featuresTitle: 'Güçlü Analiz Araçları',
+                featuresDesc: 'Piyasayı anlık takip edin, balina hareketlerini izleyin ve fırsatları yakalayın.',
+                galleryLabel: 'Galeri',
+                galleryTitle: 'Ekran Görüntüleri',
+                galleryDesc: 'AGGR platformunun tüm özelliklerini keşfedin.',
+                galleryCaption1: 'Canlı İşlem Akışı',
+                galleryCaption2: 'Hızlı Ön Ayarlar',
+                galleryCaption3: 'Gelişmiş Filtreler',
+                galleryCaption4: 'Çoklu Borsa Desteği',
+                demoLabel: 'Demo',
+                demoTitle: 'AGGR\'ı İzleyin',
+                demoDesc: 'Platform nasıl çalışıyor? Canlı demoya göz atın.',
+                ctaTitle: 'Piyasanın Nabzını Tutun',
+                ctaDesc: 'Balina hareketlerini anında tespit edin, alış-satış baskısını analiz edin ve büyük fırsatları kaçırmayın.',
+                ctaButton: 'Hemen Başla',
+                footer: '© 2024 AlertaChart. Tüm hakları saklıdır.',
+                statExchanges: 'Borsa Desteği',
+                statPairs: 'İşlem Çifti',
+                statLatency: 'Gecikme',
+                statAnalysis: 'Analiz İmkanı'
+            },
+            en: {
+                back: 'Back',
+                heroBadge: 'Real-time Crypto Trade Tracking',
+                heroSubtitle: 'Professional Crypto Trade Analysis Platform',
+                heroDesc: 'Track every trade on major exchanges in real-time. Instantly detect whale movements, analyze buy/sell pressure, and feel the pulse of the market.',
+                exploreFeatures: 'Explore Features',
+                watchDemo: 'Watch Demo',
+                introText: 'Monitor Binance, Bybit, Coinbase and OKX simultaneously. Full support for 1000+ trading pairs in spot and futures markets with millisecond precision. Catch the movements of big players.',
+                featuresLabel: 'Features',
+                featuresTitle: 'Powerful Analysis Tools',
+                featuresDesc: 'Track the market in real-time, follow whale movements, and catch opportunities.',
+                galleryLabel: 'Gallery',
+                galleryTitle: 'Screenshots',
+                galleryDesc: 'Explore all features of the AGGR platform.',
+                galleryCaption1: 'Live Trade Stream',
+                galleryCaption2: 'Quick Presets',
+                galleryCaption3: 'Advanced Filters',
+                galleryCaption4: 'Multi-Exchange Support',
+                demoLabel: 'Demo',
+                demoTitle: 'Watch AGGR',
+                demoDesc: 'How does the platform work? Check out the live demo.',
+                ctaTitle: 'Feel the Market Pulse',
+                ctaDesc: 'Instantly detect whale movements, analyze buy/sell pressure, and never miss big opportunities.',
+                ctaButton: 'Get Started',
+                footer: '© 2024 AlertaChart. All rights reserved.',
+                statExchanges: 'Exchange Support',
+                statPairs: 'Trading Pairs',
+                statLatency: 'Latency',
+                statAnalysis: 'Analysis Options'
+            },
+            ar: {
+                back: 'رجوع',
+                heroBadge: 'تتبع تداول العملات المشفرة في الوقت الفعلي',
+                heroSubtitle: 'منصة تحليل تداول العملات المشفرة الاحترافية',
+                heroDesc: 'تتبع كل صفقة على البورصات الرئيسية في الوقت الفعلي. اكتشف تحركات الحيتان فوراً وحلل ضغط الشراء/البيع.',
+                exploreFeatures: 'استكشف الميزات',
+                watchDemo: 'شاهد العرض',
+                introText: 'راقب Binance و Bybit و Coinbase و OKX في وقت واحد. دعم كامل لأكثر من 1000 زوج تداول. التقط تحركات اللاعبين الكبار.',
+                featuresLabel: 'الميزات',
+                featuresTitle: 'أدوات التحليل القوية',
+                featuresDesc: 'تتبع السوق في الوقت الفعلي، راقب تحركات الحيتان، واغتنم الفرص.',
+                galleryLabel: 'المعرض',
+                galleryTitle: 'لقطات الشاشة',
+                galleryDesc: 'استكشف جميع ميزات منصة AGGR.',
+                galleryCaption1: 'تدفق التداول المباشر',
+                galleryCaption2: 'الإعدادات السريعة',
+                galleryCaption3: 'الفلاتر المتقدمة',
+                galleryCaption4: 'دعم متعدد البورصات',
+                demoLabel: 'عرض',
+                demoTitle: 'شاهد AGGR',
+                demoDesc: 'كيف تعمل المنصة؟ شاهد العرض المباشر.',
+                ctaTitle: 'اشعر بنبض السوق',
+                ctaDesc: 'اكتشف تحركات الحيتان فوراً ولا تفوت الفرص الكبيرة.',
+                ctaButton: 'ابدأ الآن',
+                footer: '© 2024 AlertaChart. جميع الحقوق محفوظة.',
+                statExchanges: 'دعم البورصات',
+                statPairs: 'أزواج التداول',
+                statLatency: 'زمن الاستجابة',
+                statAnalysis: 'خيارات التحليل'
+            },
+            'zh-Hant': {
+                back: '返回',
+                heroBadge: '即時加密貨幣交易追蹤',
+                heroSubtitle: '專業加密貨幣交易分析平台',
+                heroDesc: '即時追蹤主要交易所的每筆交易。即時偵測鯨魚動向，分析買賣壓力，掌握市場脈動。',
+                exploreFeatures: '探索功能',
+                watchDemo: '觀看演示',
+                introText: '同時監控 Binance、Bybit、Coinbase 和 OKX。完全支援 1000+ 交易對。捕捉大戶動向。',
+                featuresLabel: '功能',
+                featuresTitle: '強大分析工具',
+                featuresDesc: '即時追蹤市場、關注鯨魚動向、把握機會。',
+                galleryLabel: '圖庫',
+                galleryTitle: '螢幕截圖',
+                galleryDesc: '探索 AGGR 平台的所有功能。',
+                galleryCaption1: '即時交易流',
+                galleryCaption2: '快速預設',
+                galleryCaption3: '進階篩選器',
+                galleryCaption4: '多交易所支援',
+                demoLabel: '演示',
+                demoTitle: '觀看 AGGR',
+                demoDesc: '平台如何運作？觀看即時演示。',
+                ctaTitle: '感受市場脈動',
+                ctaDesc: '即時偵測鯨魚動向，分析買賣壓力，不錯過任何大機會。',
+                ctaButton: '立即開始',
+                footer: '© 2024 AlertaChart. 版權所有。',
+                statExchanges: '交易所支援',
+                statPairs: '交易對',
+                statLatency: '延遲',
+                statAnalysis: '分析選項'
+            },
+            fr: {
+                back: 'Retour',
+                heroBadge: 'Suivi des trades crypto en temps réel',
+                heroSubtitle: 'Plateforme d\'analyse de trading crypto professionnelle',
+                heroDesc: 'Suivez chaque transaction sur les principales bourses en temps réel. Détectez instantanément les mouvements des baleines.',
+                exploreFeatures: 'Explorer les fonctionnalités',
+                watchDemo: 'Voir la démo',
+                introText: 'Surveillez Binance, Bybit, Coinbase et OKX simultanément. Support complet pour plus de 1000 paires. Capturez les mouvements des gros joueurs.',
+                featuresLabel: 'Fonctionnalités',
+                featuresTitle: 'Outils d\'analyse puissants',
+                featuresDesc: 'Suivez le marché en temps réel, observez les mouvements des baleines et saisissez les opportunités.',
+                galleryLabel: 'Galerie',
+                galleryTitle: 'Captures d\'écran',
+                galleryDesc: 'Découvrez toutes les fonctionnalités de la plateforme AGGR.',
+                galleryCaption1: 'Flux de transactions en direct',
+                galleryCaption2: 'Préréglages rapides',
+                galleryCaption3: 'Filtres avancés',
+                galleryCaption4: 'Support multi-bourses',
+                demoLabel: 'Démo',
+                demoTitle: 'Regardez AGGR',
+                demoDesc: 'Comment fonctionne la plateforme ? Regardez la démo en direct.',
+                ctaTitle: 'Sentez le pouls du marché',
+                ctaDesc: 'Détectez les mouvements des baleines et ne ratez jamais les grandes opportunités.',
+                ctaButton: 'Commencer',
+                footer: '© 2024 AlertaChart. Tous droits réservés.',
+                statExchanges: 'Support d\'bourses',
+                statPairs: 'Paires de trading',
+                statLatency: 'Latence',
+                statAnalysis: 'Options d\'analyse'
+            },
+            de: {
+                back: 'Zurück',
+                heroBadge: 'Echtzeit-Krypto-Handel-Tracking',
+                heroSubtitle: 'Professionelle Krypto-Handelsanalyse-Plattform',
+                heroDesc: 'Verfolgen Sie jeden Trade auf großen Börsen in Echtzeit. Erkennen Sie Wal-Bewegungen sofort.',
+                exploreFeatures: 'Funktionen erkunden',
+                watchDemo: 'Demo ansehen',
+                introText: 'Überwachen Sie Binance, Bybit, Coinbase und OKX gleichzeitig. Volle Unterstützung für 1000+ Handelspaare. Erfassen Sie die Bewegungen der großen Spieler.',
+                featuresLabel: 'Funktionen',
+                featuresTitle: 'Leistungsstarke Analysetools',
+                featuresDesc: 'Verfolgen Sie den Markt in Echtzeit, beobachten Sie Wal-Bewegungen und nutzen Sie Chancen.',
+                galleryLabel: 'Galerie',
+                galleryTitle: 'Screenshots',
+                galleryDesc: 'Entdecken Sie alle Funktionen der AGGR-Plattform.',
+                galleryCaption1: 'Live-Trade-Stream',
+                galleryCaption2: 'Schnelle Voreinstellungen',
+                galleryCaption3: 'Erweiterte Filter',
+                galleryCaption4: 'Multi-Börsen-Unterstützung',
+                demoLabel: 'Demo',
+                demoTitle: 'AGGR ansehen',
+                demoDesc: 'Wie funktioniert die Plattform? Sehen Sie sich die Live-Demo an.',
+                ctaTitle: 'Fühlen Sie den Marktpuls',
+                ctaDesc: 'Erkennen Sie Wal-Bewegungen sofort und verpassen Sie keine großen Chancen.',
+                ctaButton: 'Jetzt starten',
+                footer: '© 2024 AlertaChart. Alle Rechte vorbehalten.',
+                statExchanges: 'Börsen-Support',
+                statPairs: 'Handelspaare',
+                statLatency: 'Latenz',
+                statAnalysis: 'Analyseoptionen'
+            },
+            ja: {
+                back: '戻る',
+                heroBadge: 'リアルタイム暗号通貨取引追跡',
+                heroSubtitle: 'プロ仕様の暗号通貨取引分析プラットフォーム',
+                heroDesc: '主要取引所のすべての取引をリアルタイムで追跡。クジラの動きを即座に検出し、売買圧力を分析します。',
+                exploreFeatures: '機能を探索',
+                watchDemo: 'デモを見る',
+                introText: 'Binance、Bybit、Coinbase、OKXを同時に監視。1000以上の取引ペアを完全サポート。大口の動きをキャッチ。',
+                featuresLabel: '機能',
+                featuresTitle: '強力な分析ツール',
+                featuresDesc: 'リアルタイムで市場を追跡し、クジラの動きを監視し、チャンスをつかみましょう。',
+                galleryLabel: 'ギャラリー',
+                galleryTitle: 'スクリーンショット',
+                galleryDesc: 'AGGRプラットフォームのすべての機能を探索。',
+                galleryCaption1: 'ライブ取引ストリーム',
+                galleryCaption2: 'クイックプリセット',
+                galleryCaption3: '高度なフィルター',
+                galleryCaption4: 'マルチ取引所サポート',
+                demoLabel: 'デモ',
+                demoTitle: 'AGGRを見る',
+                demoDesc: 'プラットフォームの仕組みをご覧ください。',
+                ctaTitle: '市場の脈動を感じる',
+                ctaDesc: 'クジラの動きを即座に検出し、大きなチャンスを逃さない。',
+                ctaButton: '今すぐ始める',
+                footer: '© 2024 AlertaChart. All rights reserved.',
+                statExchanges: '取引所サポート',
+                statPairs: '取引ペア',
+                statLatency: 'レイテンシ',
+                statAnalysis: '分析オプション'
+            },
+            ko: {
+                back: '뒤로',
+                heroBadge: '실시간 암호화폐 거래 추적',
+                heroSubtitle: '전문 암호화폐 거래 분석 플랫폼',
+                heroDesc: '주요 거래소의 모든 거래를 실시간으로 추적합니다. 고래 움직임을 즉시 감지하고 매수/매도 압력을 분석합니다.',
+                exploreFeatures: '기능 살펴보기',
+                watchDemo: '데모 보기',
+                introText: 'Binance, Bybit, Coinbase, OKX를 동시에 모니터링. 1000개 이상의 거래 쌍 완벽 지원. 빅 플레이어의 움직임을 포착하세요.',
+                featuresLabel: '기능',
+                featuresTitle: '강력한 분석 도구',
+                featuresDesc: '실시간으로 시장을 추적하고, 고래 움직임을 관찰하고, 기회를 잡으세요.',
+                galleryLabel: '갤러리',
+                galleryTitle: '스크린샷',
+                galleryDesc: 'AGGR 플랫폼의 모든 기능을 살펴보세요.',
+                galleryCaption1: '실시간 거래 스트림',
+                galleryCaption2: '빠른 프리셋',
+                galleryCaption3: '고급 필터',
+                galleryCaption4: '다중 거래소 지원',
+                demoLabel: '데모',
+                demoTitle: 'AGGR 보기',
+                demoDesc: '플랫폼은 어떻게 작동하나요? 라이브 데모를 확인하세요.',
+                ctaTitle: '시장의 맥박을 느끼세요',
+                ctaDesc: '고래 움직임을 즉시 감지하고 큰 기회를 놓치지 마세요.',
+                ctaButton: '시작하기',
+                footer: '© 2024 AlertaChart. All rights reserved.',
+                statExchanges: '거래소 지원',
+                statPairs: '거래 쌍',
+                statLatency: '지연 시간',
+                statAnalysis: '분석 옵션'
+            }
+        };
+
+        // Feature content for each language
+        const featureContent = {
+            en: {
+                features: [
+                    { title: "Live Trade Stream", desc: "Track every trade in real-time. View buy, sell, long liquidation, and short liquidation transactions separately.", items: ["Mark Price and session info", "Buy/Sell counter and volume tracking", "Long/Short liquidation display", "Total volume analysis", "Color-coded trade list"], tip: "Track session duration to analyze total volume in specific time frames." },
+                    { title: "Quick Presets", desc: "Activate professional filters with one click. Filter $100K+ trades with Whale Tracker, or filter only buy or sell trades instantly.", items: ["Whale Tracker - $100K+ large trades", "All Trades - Minimum filter", "Buy Only - Buy trades", "Sell Only - Sell trades", "Create your own presets"] },
+                    { title: "Advanced Filters", desc: "Set minimum and maximum trade values with amount filters. Show or hide liquidation trades separately.", items: ["Min/Max amount filter ($)", "Liquidation display on/off", "Separate min/max values for liquidation", "Coin-based filtering", "Time window settings"] },
+                    { title: "Multi-Exchange Support", desc: "Track Binance, Bybit, Coinbase, and OKX exchanges separately for spot and futures. Monitor multiple exchanges simultaneously.", items: ["Binance Spot & Futures", "Bybit Spot & Futures", "Coinbase Spot & Futures", "OKX Spot & Futures", "Multi-exchange view on single screen"], tip: "Monitor multiple exchanges simultaneously to detect arbitrage opportunities." }
+                ]
+            },
+            ar: {
+                features: [
+                    { title: "تدفق التداول المباشر", desc: "تتبع كل صفقة في الوقت الفعلي. عرض صفقات الشراء والبيع والتصفية الطويلة والقصيرة بشكل منفصل.", items: ["سعر العلامة ومعلومات الجلسة", "عداد الشراء/البيع وتتبع الحجم", "عرض تصفية الطويل/القصير", "تحليل الحجم الإجمالي", "قائمة التداول بالألوان"], tip: "تتبع مدة الجلسة لتحليل الحجم الإجمالي في أطر زمنية محددة." },
+                    { title: "الإعدادات السريعة", desc: "قم بتنشيط الفلاتر الاحترافية بنقرة واحدة. قم بتصفية صفقات $100K+ مع متتبع الحيتان.", items: ["متتبع الحيتان - صفقات كبيرة $100K+", "جميع الصفقات - الحد الأدنى للفلتر", "شراء فقط - صفقات الشراء", "بيع فقط - صفقات البيع", "إنشاء إعداداتك الخاصة"] },
+                    { title: "فلاتر متقدمة", desc: "حدد قيم الصفقات الدنيا والقصوى باستخدام فلاتر المبالغ.", items: ["فلتر المبلغ الأدنى/الأقصى ($)", "عرض التصفية تشغيل/إيقاف", "قيم منفصلة للتصفية", "تصفية حسب العملة", "إعدادات نافذة الوقت"] },
+                    { title: "دعم متعدد البورصات", desc: "تتبع Binance و Bybit و Coinbase و OKX للسبوت والعقود الآجلة.", items: ["Binance سبوت وعقود", "Bybit سبوت وعقود", "Coinbase سبوت وعقود", "OKX سبوت وعقود", "عرض متعدد البورصات"], tip: "راقب بورصات متعددة لاكتشاف فرص المراجحة." }
+                ]
+            },
+            "zh-Hant": {
+                features: [
+                    { title: "即時交易流", desc: "即時追蹤每筆交易。分別查看買入、賣出、多頭清算和空頭清算交易。", items: ["標記價格和交易時段資訊", "買入/賣出計數器和交易量追蹤", "多頭/空頭清算顯示", "總交易量分析", "彩色編碼交易列表"], tip: "追蹤交易時段持續時間，分析特定時間範圍內的總交易量。" },
+                    { title: "快速預設", desc: "一鍵啟用專業過濾器。使用鯨魚追蹤器過濾$100K+交易，或即時過濾僅買入或賣出交易。", items: ["鯨魚追蹤器 - $100K+大額交易", "所有交易 - 最小過濾", "僅買入 - 買入交易", "僅賣出 - 賣出交易", "創建您自己的預設"] },
+                    { title: "進階過濾器", desc: "使用金額過濾器設定最小和最大交易值。分別顯示或隱藏清算交易。", items: ["最小/最大金額過濾器($)", "清算顯示開/關", "清算的單獨最小/最大值", "基於幣種過濾", "時間窗口設定"] },
+                    { title: "多交易所支援", desc: "分別追蹤Binance、Bybit、Coinbase和OKX的現貨和期貨。同時監控多個交易所。", items: ["Binance現貨和期貨", "Bybit現貨和期貨", "Coinbase現貨和期貨", "OKX現貨和期貨", "單螢幕多交易所視圖"], tip: "同時監控多個交易所以發現套利機會。" }
+                ]
+            },
+            fr: {
+                features: [
+                    { title: "Flux de transactions en direct", desc: "Suivez chaque transaction en temps réel. Affichez les transactions d'achat, de vente, de liquidation long et short séparément.", items: ["Prix de référence et infos de session", "Compteur achat/vente et suivi du volume", "Affichage des liquidations Long/Short", "Analyse du volume total", "Liste des trades codée par couleur"], tip: "Suivez la durée de session pour analyser le volume total sur des périodes spécifiques." },
+                    { title: "Préréglages rapides", desc: "Activez les filtres professionnels en un clic. Filtrez les transactions de $100K+ avec le Whale Tracker.", items: ["Whale Tracker - Grandes transactions $100K+", "Toutes les transactions - Filtre minimum", "Achat uniquement - Transactions d'achat", "Vente uniquement - Transactions de vente", "Créez vos propres préréglages"] },
+                    { title: "Filtres avancés", desc: "Définissez les valeurs min et max des transactions avec les filtres de montant. Affichez ou masquez les liquidations.", items: ["Filtre montant min/max ($)", "Affichage liquidation on/off", "Valeurs min/max séparées pour les liquidations", "Filtrage par crypto", "Paramètres de fenêtre temporelle"] },
+                    { title: "Support multi-bourses", desc: "Suivez Binance, Bybit, Coinbase et OKX en spot et futures. Surveillez plusieurs bourses simultanément.", items: ["Binance Spot & Futures", "Bybit Spot & Futures", "Coinbase Spot & Futures", "OKX Spot & Futures", "Vue multi-bourses sur un seul écran"], tip: "Surveillez plusieurs bourses pour détecter les opportunités d'arbitrage." }
+                ]
+            },
+            de: {
+                features: [
+                    { title: "Live-Trade-Stream", desc: "Verfolgen Sie jeden Trade in Echtzeit. Zeigen Sie Kauf-, Verkaufs-, Long- und Short-Liquidationen separat an.", items: ["Mark-Preis und Session-Info", "Kauf/Verkauf-Zähler und Volumentracking", "Long/Short-Liquidationsanzeige", "Gesamtvolumenanalyse", "Farbcodierte Trade-Liste"], tip: "Verfolgen Sie die Session-Dauer, um das Gesamtvolumen in bestimmten Zeiträumen zu analysieren." },
+                    { title: "Schnelle Voreinstellungen", desc: "Aktivieren Sie professionelle Filter mit einem Klick. Filtern Sie $100K+ Trades mit dem Whale Tracker.", items: ["Whale Tracker - $100K+ Große Trades", "Alle Trades - Minimaler Filter", "Nur Kauf - Kauftransaktionen", "Nur Verkauf - Verkaufstransaktionen", "Eigene Voreinstellungen erstellen"] },
+                    { title: "Erweiterte Filter", desc: "Legen Sie Min- und Max-Handelswerte mit Betragsfiltern fest. Zeigen oder verbergen Sie Liquidationen.", items: ["Min/Max-Betragsfilter ($)", "Liquidationsanzeige ein/aus", "Separate Min/Max-Werte für Liquidationen", "Coin-basierte Filterung", "Zeitfenster-Einstellungen"] },
+                    { title: "Multi-Börsen-Unterstützung", desc: "Verfolgen Sie Binance, Bybit, Coinbase und OKX für Spot und Futures. Überwachen Sie mehrere Börsen gleichzeitig.", items: ["Binance Spot & Futures", "Bybit Spot & Futures", "Coinbase Spot & Futures", "OKX Spot & Futures", "Multi-Börsen-Ansicht auf einem Bildschirm"], tip: "Überwachen Sie mehrere Börsen, um Arbitrage-Möglichkeiten zu erkennen." }
+                ]
+            },
+            ja: {
+                features: [
+                    { title: "ライブ取引ストリーム", desc: "すべての取引をリアルタイムで追跡。買い、売り、ロング清算、ショート清算を個別に表示。", items: ["マーク価格とセッション情報", "買い/売りカウンターと出来高追跡", "ロング/ショート清算表示", "総出来高分析", "カラーコード付き取引リスト"], tip: "セッション期間を追跡して、特定の時間帯の総出来高を分析しましょう。" },
+                    { title: "クイックプリセット", desc: "ワンクリックでプロフェッショナルフィルターを有効化。ホエールトラッカーで$100K+の取引をフィルター。", items: ["ホエールトラッカー - $100K+大口取引", "全取引 - 最小フィルター", "買いのみ - 買い取引", "売りのみ - 売り取引", "独自のプリセットを作成"] },
+                    { title: "高度なフィルター", desc: "金額フィルターで最小・最大取引値を設定。清算取引を個別に表示/非表示。", items: ["最小/最大金額フィルター($)", "清算表示オン/オフ", "清算用の個別最小/最大値", "コインベースのフィルタリング", "時間ウィンドウ設定"] },
+                    { title: "マルチ取引所サポート", desc: "Binance、Bybit、Coinbase、OKXのスポットと先物を個別に追跡。複数の取引所を同時に監視。", items: ["Binance スポット＆先物", "Bybit スポット＆先物", "Coinbase スポット＆先物", "OKX スポット＆先物", "単一画面でのマルチ取引所表示"], tip: "アービトラージ機会を発見するために複数の取引所を同時に監視しましょう。" }
+                ]
+            },
+            ko: {
+                features: [
+                    { title: "실시간 거래 스트림", desc: "모든 거래를 실시간으로 추적합니다. 매수, 매도, 롱 청산, 숏 청산 거래를 개별적으로 확인하세요.", items: ["마크 가격 및 세션 정보", "매수/매도 카운터 및 거래량 추적", "롱/숏 청산 표시", "총 거래량 분석", "색상 코드화된 거래 목록"], tip: "세션 지속 시간을 추적하여 특정 시간대의 총 거래량을 분석하세요." },
+                    { title: "빠른 프리셋", desc: "원클릭으로 프로페셔널 필터를 활성화합니다. 웨일 트래커로 $100K+ 거래를 필터링하세요.", items: ["웨일 트래커 - $100K+ 대규모 거래", "모든 거래 - 최소 필터", "매수만 - 매수 거래", "매도만 - 매도 거래", "나만의 프리셋 만들기"] },
+                    { title: "고급 필터", desc: "금액 필터로 최소 및 최대 거래 값을 설정합니다. 청산 거래를 개별적으로 표시하거나 숨깁니다.", items: ["최소/최대 금액 필터($)", "청산 표시 켜기/끄기", "청산용 별도 최소/최대 값", "코인 기반 필터링", "시간 창 설정"] },
+                    { title: "다중 거래소 지원", desc: "Binance, Bybit, Coinbase, OKX 거래소의 현물과 선물을 개별적으로 추적합니다. 여러 거래소를 동시에 모니터링하세요.", items: ["Binance 현물 & 선물", "Bybit 현물 & 선물", "Coinbase 현물 & 선물", "OKX 현물 & 선물", "단일 화면에서 다중 거래소 보기"], tip: "차익거래 기회를 발견하기 위해 여러 거래소를 동시에 모니터링하세요." }
+                ]
+            }
+        };
+
+        function applyTranslations() {
+            const lang = localStorage.getItem('language') || 'tr';
+            const t = translations[lang] || translations.tr;
+
+            // Update back button
+            const backBtn = document.querySelector('button[onclick="history.back()"]');
+            if (backBtn) backBtn.innerHTML = `<svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>${t.back}`;
+
+            // Update elements with data-i18n
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (t[key]) el.textContent = t[key];
+            });
+
+            // Update document title
+            document.title = `AlertaChart | AGGR - ${t.heroSubtitle}`;
+
+            // Apply feature content translations for non-Turkish languages
+            if (lang !== 'tr' && featureContent[lang]) {
+                const fc = featureContent[lang];
+                const features = document.querySelectorAll('.feature-item');
+                
+                features.forEach((feature, idx) => {
+                    if (fc.features && fc.features[idx]) {
+                        const titleEl = feature.querySelector('.feature-title');
+                        const descEl = feature.querySelector('.feature-desc');
+                        const list = feature.querySelector('.feature-list');
+                        const tipEl = feature.querySelector('.feature-tip');
+                        
+                        // Update title (keep the SVG icon)
+                        if (titleEl && fc.features[idx].title) {
+                            const svg = titleEl.querySelector('svg');
+                            if (svg) {
+                                titleEl.innerHTML = '';
+                                titleEl.appendChild(svg);
+                                titleEl.appendChild(document.createTextNode(fc.features[idx].title));
+                            } else {
+                                titleEl.textContent = fc.features[idx].title;
+                            }
+                        }
+                        
+                        // Update description
+                        if (descEl && fc.features[idx].desc) {
+                            descEl.textContent = fc.features[idx].desc;
+                        }
+                        
+                        // Update list items
+                        if (list && fc.features[idx].items) {
+                            const lis = list.querySelectorAll('li');
+                            fc.features[idx].items.forEach((item, i) => {
+                                if (lis[i]) {
+                                    // Preserve colored dots/icons
+                                    const span = lis[i].querySelector('span');
+                                    const img = lis[i].querySelector('img');
+                                    if (span) {
+                                        lis[i].innerHTML = '';
+                                        lis[i].appendChild(span);
+                                        lis[i].appendChild(document.createTextNode(item));
+                                    } else if (img) {
+                                        lis[i].innerHTML = '';
+                                        lis[i].appendChild(img);
+                                        lis[i].appendChild(document.createTextNode(' ' + item));
+                                    } else {
+                                        lis[i].textContent = item;
+                                    }
+                                }
+                            });
+                        }
+                        
+                        // Update pro tip
+                        if (tipEl && fc.features[idx].tip) {
+                            const strong = tipEl.querySelector('strong');
+                            if (strong) {
+                                const svg = strong.querySelector('svg');
+                                tipEl.innerHTML = '';
+                                const newStrong = document.createElement('strong');
+                                if (svg) newStrong.appendChild(svg);
+                                newStrong.appendChild(document.createTextNode('Pro Tip:'));
+                                tipEl.appendChild(newStrong);
+                                tipEl.appendChild(document.createTextNode(' ' + fc.features[idx].tip));
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        window.addEventListener('scroll', animateOnScroll);
+
+        // Smooth scroll for links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.querySelector(this.getAttribute('href')).scrollIntoView({
+                    behavior: 'smooth'
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

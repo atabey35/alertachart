@@ -354,6 +354,18 @@ export default function AggrPage() {
           >
             Premium&apos;a Geç
           </button>
+
+          {/* Explore Features Button */}
+          <button
+            onClick={() => {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/urunlerimiz/aggr/index.html';
+              }
+            }}
+            className="w-full mt-3 py-3 px-6 bg-transparent border border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 text-blue-400 hover:text-blue-300 font-medium rounded-xl transition-all duration-200"
+          >
+            Özellikleri Keşfet
+          </button>
         </div>
 
         {/* UpgradeModal - Same as main page */}

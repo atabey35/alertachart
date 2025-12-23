@@ -113,6 +113,19 @@ export default function Home() {
     }
   }, []);
 
+  // 🔥 Check for ?upgrade=true URL parameter and open UpgradeModal
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('upgrade') === 'true') {
+        console.log('[App] Upgrade param detected, opening UpgradeModal');
+        setShowUpgradeModal(true);
+        // Clean the URL
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+  }, []);
+
   // Trial Promotion Modal - Show once until dismissed or deadline (10 Aralık 23:00)
   // Only show to non-premium users
   useEffect(() => {
@@ -2103,6 +2116,39 @@ export default function Home() {
                   </a>
                 </div>
               </div>
+              {/* Ürünlerimiz Dropdown */}
+              <div className="relative group">
+                <button className="px-3 py-1.5 text-sm text-gray-400 hover:text-white hover:bg-gray-900 rounded transition-colors flex items-center gap-1">
+                  Ürünlerimiz
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                <div className="absolute top-full left-0 mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 p-2 min-w-[220px]">
+                  <a
+                    href="/urunlerimiz/liquidation/index.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded transition-colors mb-1"
+                  >
+                    <svg className="w-5 h-5 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                    <span>Liquidation Tab</span>
+                  </a>
+                  <a
+                    href="/urunlerimiz/aggr/index.html"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-2 px-3 py-2 text-sm text-gray-300 hover:text-white hover:bg-gray-800 rounded transition-colors"
+                  >
+                    <svg className="w-5 h-5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span>AGGR Tab</span>
+                  </a>
+                </div>
+              </div>
             </nav>
 
             {/* Right: User Icon + Auth Button - Hidden on mobile (available in bottom nav) */}
@@ -2673,14 +2719,14 @@ export default function Home() {
                     </div>
                     <h3 className="text-2xl font-bold text-white mb-2">Alerta <span className="bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">PRO</span></h3>
                     <p className="text-gray-300 mb-4 max-w-xs mx-auto">
-                      Gerçek zamanlı AGGR verilerine erişmek için Premium&apos;a geçin
+                      {language === 'tr' ? 'Gerçek zamanlı AGGR verilerine erişmek için Premium\'a geçin' : language === 'en' ? 'Upgrade to Premium to access real-time AGGR data' : language === 'ar' ? 'قم بالترقية إلى Premium للوصول إلى بيانات AGGR' : language === 'zh-Hant' ? '升級到 Premium 以訪問即時 AGGR 數據' : language === 'fr' ? 'Passez à Premium pour accéder aux données AGGR en temps réel' : language === 'de' ? 'Upgrade auf Premium für Echtzeit-AGGR-Daten' : language === 'ja' ? 'リアルタイムAGGRデータにアクセスするにはPremiumにアップグレード' : language === 'ko' ? '실시간 AGGR 데이터에 액세스하려면 Premium으로 업그레이드하세요' : 'Upgrade to Premium to access real-time AGGR data'}
                     </p>
                     <div className="flex items-center justify-center gap-1.5 mb-4">
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                       <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <p className="text-gray-500 text-sm">Yükleniyor...</p>
+                    <p className="text-gray-500 text-sm">{language === 'tr' ? 'Yükleniyor...' : language === 'en' ? 'Loading...' : language === 'ar' ? 'جاري التحميل...' : language === 'zh-Hant' ? '載入中...' : language === 'fr' ? 'Chargement...' : language === 'de' ? 'Laden...' : language === 'ja' ? '読み込み中...' : language === 'ko' ? '로딩 중...' : 'Loading...'}</p>
                   </div>
                 </div>
               </div>
@@ -2691,13 +2737,23 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">Alerta <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">PRO</span></h3>
                 <p className="text-gray-400 mb-6 text-center max-w-xs">
-                  AGGR trading dashboard&apos;una erişmek için premium üyelik gereklidir.
+                  {language === 'tr' ? 'AGGR trading dashboard\'una erişmek için premium üyelik gereklidir.' : language === 'en' ? 'Premium membership required to access AGGR trading dashboard.' : language === 'ar' ? 'مطلوب عضوية Premium للوصول إلى لوحة تداول AGGR.' : language === 'zh-Hant' ? '需要 Premium 會員資格才能訪問 AGGR 交易儀表板。' : language === 'fr' ? 'Abonnement Premium requis pour accéder au tableau de bord AGGR.' : language === 'de' ? 'Premium-Mitgliedschaft erforderlich für Zugang zum AGGR-Dashboard.' : language === 'ja' ? 'AGGRトレーディングダッシュボードにアクセスするにはPremium会員が必要です。' : language === 'ko' ? 'AGGR 거래 대시보드에 액세스하려면 Premium 회원이 필요합니다.' : 'Premium membership required to access AGGR trading dashboard.'}
                 </p>
                 <button
                   onClick={() => setShowUpgradeModal(true)}
                   className="px-6 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-blue-500/30 hover:shadow-blue-500/50"
                 >
-                  Premium&apos;a Geç
+                  {language === 'tr' ? 'Premium\'a Geç' : language === 'en' ? 'Upgrade to Premium' : language === 'ar' ? 'الترقية إلى Premium' : language === 'zh-Hant' ? '升級到 Premium' : language === 'fr' ? 'Passer à Premium' : language === 'de' ? 'Zu Premium wechseln' : language === 'ja' ? 'Premiumにアップグレード' : language === 'ko' ? 'Premium으로 업그레이드' : 'Upgrade to Premium'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.location.href = '/urunlerimiz/aggr/index.html';
+                    }
+                  }}
+                  className="mt-3 px-6 py-2.5 bg-transparent border border-blue-500/30 hover:border-blue-500/50 hover:bg-blue-500/10 text-blue-400 hover:text-blue-300 font-medium rounded-xl transition-all"
+                >
+                  {language === 'tr' ? 'Özellikleri Keşfet' : language === 'en' ? 'Explore Features' : language === 'ar' ? 'استكشف الميزات' : language === 'zh-Hant' ? '探索功能' : language === 'fr' ? 'Explorer les fonctionnalités' : language === 'de' ? 'Funktionen entdecken' : language === 'ja' ? '機能を探索' : language === 'ko' ? '기능 탐색' : 'Explore Features'}
                 </button>
               </div>
             )
@@ -2748,14 +2804,14 @@ export default function Home() {
                     </div>
                     <h3 className="text-2xl font-bold text-white mb-2">Alerta <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">PRO</span></h3>
                     <p className="text-gray-300 mb-4 max-w-xs mx-auto">
-                      Gerçek zamanlı Liquidation verilerine erişmek için Premium&apos;a geçin
+                      {language === 'tr' ? 'Gerçek zamanlı Liquidation verilerine erişmek için Premium\'a geçin' : language === 'en' ? 'Upgrade to Premium to access real-time Liquidation data' : language === 'ar' ? 'قم بالترقية إلى Premium للوصول إلى بيانات التصفية' : language === 'zh-Hant' ? '升級到 Premium 以訪問即時清算數據' : language === 'fr' ? 'Passez à Premium pour accéder aux données de liquidation en temps réel' : language === 'de' ? 'Upgrade auf Premium für Echtzeit-Liquidationsdaten' : language === 'ja' ? 'リアルタイム清算データにアクセスするにはPremiumにアップグレード' : language === 'ko' ? '실시간 청산 데이터에 액세스하려면 Premium으로 업그레이드하세요' : 'Upgrade to Premium to access real-time Liquidation data'}
                     </p>
                     <div className="flex items-center justify-center gap-1.5 mb-4">
                       <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                       <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
                       <div className="w-2 h-2 bg-red-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
-                    <p className="text-gray-500 text-sm">Yükleniyor...</p>
+                    <p className="text-gray-500 text-sm">{language === 'tr' ? 'Yükleniyor...' : language === 'en' ? 'Loading...' : language === 'ar' ? 'جاري التحميل...' : language === 'zh-Hant' ? '載入中...' : language === 'fr' ? 'Chargement...' : language === 'de' ? 'Laden...' : language === 'ja' ? '読み込み中...' : language === 'ko' ? '로딩 중...' : 'Loading...'}</p>
                   </div>
                 </div>
               </div>
@@ -2766,13 +2822,23 @@ export default function Home() {
                 </div>
                 <h3 className="text-xl font-bold text-white mb-2">Alerta <span className="bg-gradient-to-r from-red-400 to-orange-400 bg-clip-text text-transparent">PRO</span></h3>
                 <p className="text-gray-400 mb-6 text-center max-w-xs">
-                  Liquidations dashboard&apos;una erişmek için premium üyelik gereklidir.
+                  {language === 'tr' ? 'Liquidations dashboard\'una erişmek için premium üyelik gereklidir.' : language === 'en' ? 'Premium membership required to access Liquidations dashboard.' : language === 'ar' ? 'مطلوب عضوية Premium للوصول إلى لوحة التصفية.' : language === 'zh-Hant' ? '需要 Premium 會員資格才能訪問清算儀表板。' : language === 'fr' ? 'Abonnement Premium requis pour accéder au tableau de bord des liquidations.' : language === 'de' ? 'Premium-Mitgliedschaft erforderlich für Zugang zum Liquidations-Dashboard.' : language === 'ja' ? '清算ダッシュボードにアクセスするにはPremium会員が必要です。' : language === 'ko' ? '청산 대시보드에 액세스하려면 Premium 회원이 필요합니다.' : 'Premium membership required to access Liquidations dashboard.'}
                 </p>
                 <button
                   onClick={() => setShowUpgradeModal(true)}
                   className="px-6 py-3 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white rounded-xl font-semibold transition-all shadow-lg shadow-red-500/30 hover:shadow-red-500/50"
                 >
-                  Premium&apos;a Geç
+                  {language === 'tr' ? 'Premium\'a Geç' : language === 'en' ? 'Upgrade to Premium' : language === 'ar' ? 'الترقية إلى Premium' : language === 'zh-Hant' ? '升級到 Premium' : language === 'fr' ? 'Passer à Premium' : language === 'de' ? 'Zu Premium wechseln' : language === 'ja' ? 'Premiumにアップグレード' : language === 'ko' ? 'Premium으로 업그레이드' : 'Upgrade to Premium'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.location.href = '/urunlerimiz/liquidation/index.html';
+                    }
+                  }}
+                  className="mt-3 px-6 py-2.5 bg-transparent border border-red-500/30 hover:border-red-500/50 hover:bg-red-500/10 text-red-400 hover:text-red-300 font-medium rounded-xl transition-all"
+                >
+                  {language === 'tr' ? 'Özellikleri Keşfet' : language === 'en' ? 'Explore Features' : language === 'ar' ? 'استكشف الميزات' : language === 'zh-Hant' ? '探索功能' : language === 'fr' ? 'Explorer les fonctionnalités' : language === 'de' ? 'Funktionen entdecken' : language === 'ja' ? '機能を探索' : language === 'ko' ? '기능 탐색' : 'Explore Features'}
                 </button>
               </div>
             )

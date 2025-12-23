@@ -48,6 +48,7 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState<'tr' | 'en' | 'ar' | 'zh-Hant' | 'fr' | 'de' | 'ja' | 'ko'>('tr');
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
+  const [showProductsModal, setShowProductsModal] = useState(false);
 
   // Custom coin alerts state
   const [customAlerts, setCustomAlerts] = useState<any[]>([]);
@@ -2501,12 +2502,26 @@ export default function SettingsPage() {
             </button>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowProductsModal(true)}
+              className="p-1.5 text-slate-400 hover:text-blue-300 transition-colors group relative rounded-lg hover:bg-blue-950/20"
+              title={language === 'tr' ? 'Ürünlerimiz' : language === 'en' ? 'Our Products' : language === 'ar' ? 'منتجاتنا' : language === 'zh-Hant' ? '我們的產品' : language === 'fr' ? 'Nos Produits' : language === 'de' ? 'Unsere Produkte' : language === 'ja' ? '製品紹介' : language === 'ko' ? '제품 소개' : 'Our Products'}
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+              </svg>
+              {/* Tooltip - positioned above to avoid z-index issues */}
+              <span className="absolute -top-8 right-0 bg-slate-900/95 backdrop-blur-md border border-blue-500/20 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg shadow-blue-900/20 z-50">
+                {language === 'tr' ? 'Ürünlerimiz' : language === 'en' ? 'Our Products' : language === 'ar' ? 'منتجاتنا' : language === 'zh-Hant' ? '我們的產品' : language === 'fr' ? 'Nos Produits' : language === 'de' ? 'Unsere Produkte' : language === 'ja' ? '製品紹介' : language === 'ko' ? '제품 소개' : 'Our Products'}
+              </span>
+            </button>
+
             {/* Messages Button */}
             {user && (
               <button
                 onClick={() => setShowNotificationsModal(true)}
                 className="relative p-1.5 text-slate-400 hover:text-blue-300 transition-colors group rounded-lg hover:bg-blue-950/20"
-                title={language === 'en' ? 'Messages' : 'Mesajlar'}
+                title={language === 'tr' ? 'Mesajlar' : language === 'en' ? 'Messages' : language === 'ar' ? 'الرسائل' : language === 'zh-Hant' ? '訊息' : language === 'fr' ? 'Messages' : language === 'de' ? 'Nachrichten' : language === 'ja' ? 'メッセージ' : language === 'ko' ? '메시지' : 'Messages'}
               >
                 <MessageCircle className="w-5 h-5" />
                 {unreadCount > 0 && (
@@ -2514,9 +2529,9 @@ export default function SettingsPage() {
                     {unreadCount > 9 ? '9+' : unreadCount}
                   </span>
                 )}
-                {/* Tooltip */}
-                <span className="absolute -bottom-8 right-0 bg-slate-900/95 backdrop-blur-md border border-blue-500/20 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg shadow-blue-900/20">
-                  {language === 'en' ? 'Messages' : 'Mesajlar'}
+                {/* Tooltip - positioned above */}
+                <span className="absolute -top-8 right-0 bg-slate-900/95 backdrop-blur-md border border-blue-500/20 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg shadow-blue-900/20 z-50">
+                  {language === 'tr' ? 'Mesajlar' : language === 'en' ? 'Messages' : language === 'ar' ? 'الرسائل' : language === 'zh-Hant' ? '訊息' : language === 'fr' ? 'Messages' : language === 'de' ? 'Nachrichten' : language === 'ja' ? 'メッセージ' : language === 'ko' ? '메시지' : 'Messages'}
                   {unreadCount > 0 && ` (${unreadCount})`}
                 </span>
               </button>
@@ -2531,8 +2546,8 @@ export default function SettingsPage() {
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              {/* Tooltip */}
-              <span className="absolute -bottom-8 right-0 bg-slate-900/95 backdrop-blur-md border border-blue-500/20 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg shadow-blue-900/20">
+              {/* Tooltip - positioned above */}
+              <span className="absolute -top-8 right-0 bg-slate-900/95 backdrop-blur-md border border-blue-500/20 text-white text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none shadow-lg shadow-blue-900/20 z-50">
                 {t('helpCenter', language)}
               </span>
             </button>
@@ -4375,6 +4390,94 @@ export default function SettingsPage() {
                   )}
                 </button>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Products Modal */}
+      {showProductsModal && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowProductsModal(false)}>
+          <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-md w-full shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center">
+                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                </div>
+                <h2 className="text-xl font-bold text-white">
+                  {language === 'tr' ? 'Ürünlerimiz' : language === 'en' ? 'Our Products' : language === 'ar' ? 'منتجاتنا' : language === 'zh-Hant' ? '我們的產品' : language === 'fr' ? 'Nos Produits' : language === 'de' ? 'Unsere Produkte' : language === 'ja' ? '製品紹介' : language === 'ko' ? '제품 소개' : 'Our Products'}
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowProductsModal(false)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Product Links */}
+            <div className="space-y-3">
+              {/* AGGR Product */}
+              <button
+                onClick={() => {
+                  setShowProductsModal(false);
+                  if (typeof window !== 'undefined') {
+                    window.location.href = '/urunlerimiz/aggr/index.html';
+                  }
+                }}
+                className="block w-full p-4 rounded-xl border border-blue-500/20 bg-slate-800/50 hover:bg-blue-950/30 hover:border-blue-500/40 transition-all group text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-600/30">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">AGGR Tab</h3>
+                    <p className="text-sm text-slate-400">
+                      {language === 'tr' ? 'Gerçek zamanlı işlem takibi' : language === 'en' ? 'Real-time trade tracking' : language === 'ar' ? 'تتبع التداول في الوقت الفعلي' : language === 'zh-Hant' ? '即時交易追蹤' : language === 'fr' ? 'Suivi des transactions en temps réel' : language === 'de' ? 'Echtzeit-Handel-Tracking' : language === 'ja' ? 'リアルタイム取引追跡' : language === 'ko' ? '실시간 거래 추적' : 'Real-time trade tracking'}
+                    </p>
+                  </div>
+                  <svg className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
+
+              {/* Liquidation Product */}
+              <button
+                onClick={() => {
+                  setShowProductsModal(false);
+                  if (typeof window !== 'undefined') {
+                    window.location.href = '/urunlerimiz/liquidation/index.html';
+                  }
+                }}
+                className="block w-full p-4 rounded-xl border border-blue-500/20 bg-slate-800/50 hover:bg-blue-950/30 hover:border-blue-500/40 transition-all group text-left"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-red-600/30">
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">Liquidation Tab</h3>
+                    <p className="text-sm text-slate-400">
+                      {language === 'tr' ? 'Likidasyon analizi' : language === 'en' ? 'Liquidation analysis' : language === 'ar' ? 'تحليل التصفية' : language === 'zh-Hant' ? '清算分析' : language === 'fr' ? 'Analyse des liquidations' : language === 'de' ? 'Liquidationsanalyse' : language === 'ja' ? '清算分析' : language === 'ko' ? '청산 분석' : 'Liquidation analysis'}
+                    </p>
+                  </div>
+                  <svg className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                  </svg>
+                </div>
+              </button>
             </div>
           </div>
         </div>
