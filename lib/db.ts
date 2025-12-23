@@ -27,17 +27,22 @@ export const getSql = () => {
     process.env.DATABASE_URL.includes('.neon.tech');
 
   // Railway PostgreSQL connection
-  // ⚠️ Connection pool optimization: Railway PostgreSQL has limited connections
-  // Reduced max connections to prevent "too many clients" errors
+  // ⚠️ CRITICAL: Serverless-optimized connection pool settings
+  // Railway free tier has max 20 connections, Vercel can spawn many Lambda instances
   sql = postgres(process.env.DATABASE_URL, {
     ssl: isNeon ? 'prefer' : 'require', // Neon uses 'prefer', Railway uses 'require'
-    max: 5, // Reduced from 10 to 5 to prevent "too many clients" errors on Railway
-    idle_timeout: 20, // Close idle connections faster (20 seconds instead of 30)
-    connect_timeout: 5, // Faster timeout (5 seconds instead of 10)
-    max_lifetime: 60 * 30, // Close connections after 30 minutes (prevent stale connections)
+    max: 2, // CRITICAL: Reduced to 2 - each Vercel function gets max 2 connections
+    idle_timeout: 10, // Close idle connections aggressively (10 seconds)
+    connect_timeout: 5, // 5 second connection timeout
+    max_lifetime: 60 * 5, // Close connections after 5 minutes (prevent accumulation)
+    fetch_types: false, // Disable type fetching for faster connection
+    prepare: false, // Disable prepared statements (better for serverless)
     transform: {
       // Transform PostgreSQL types to JavaScript types
       undefined: null,
+    },
+    connection: {
+      application_name: 'alertachart-vercel', // Identify connections in pg_stat_activity
     },
   });
 
