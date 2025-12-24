@@ -25,6 +25,7 @@ export default function RecentTrades({ symbol, marketType }: RecentTradesProps) 
     const [trades, setTrades] = useState<Trade[]>([]);
     const [loading, setLoading] = useState(true);
     const [connected, setConnected] = useState(false);
+    const [reconnectKey, setReconnectKey] = useState(0); // 🔥 Trigger reconnect
     const wsRef = useRef<WebSocket | null>(null);
     const currentSymbolRef = useRef<string>('');
     const isMountedRef = useRef(true);
@@ -150,7 +151,26 @@ export default function RecentTrades({ symbol, marketType }: RecentTradesProps) 
                 wsRef.current = null;
             }
         };
-    }, [symbol, marketType]);
+    }, [symbol, marketType, reconnectKey]); // 🔥 Include reconnectKey to trigger reconnect
+
+    // 🔥 Auto-reconnect when app resumes from background
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.visibilityState === 'visible') {
+                // App resumed - check if WebSocket is disconnected
+                if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+                    console.log('[RecentTrades] App resumed - reconnecting WebSocket...');
+                    // Force reconnect by incrementing reconnectKey
+                    setReconnectKey(prev => prev + 1);
+                }
+            }
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => {
+            document.removeEventListener('visibilitychange', handleVisibilityChange);
+        };
+    }, []);
 
     // Format price based on value
     const formatPrice = (price: number) => {
