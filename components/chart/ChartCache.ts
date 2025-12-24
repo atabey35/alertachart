@@ -36,32 +36,119 @@ export default class ChartCache {
 
     // Add bar to chunk
     const existingIndex = chunk.bars.findIndex((b) => b.time === bar.time);
-    
+
     if (existingIndex >= 0) {
-      // CRITICAL: Merge bars instead of replacing!
-      // This preserves Railway historical data (high, low, volume) 
-      // while updating with worker ticks (close price)
       const existingBar = chunk.bars[existingIndex];
-      
-      // Worker ticks always have the latest close price - ALWAYS use it
+
+      // CRITICAL: Determine which bar has more authoritative OHLC data
+      // Historical API data has volume in thousands/millions (exchange-reported total volume)
+      // Worker ticks have volume in single digits or hundreds (individual trades worker witnessed)
+      // The bar with HIGHER volume is from historical API and has the correct OHLC structure
+
+      const existingVolume = existingBar.volume || 0;
+      const incomingVolume = bar.volume || 0;
+
+      // Threshold: if incoming volume is 10x or more than existing, it's likely historical data
+      // Also check if existing is very small (< 1000) which indicates it's from worker
+      const incomingIsMoreAuthoritative = incomingVolume > existingVolume * 10 ||
+        (incomingVolume > 1000 && existingVolume < 1000);
+      const existingIsMoreAuthoritative = existingVolume > incomingVolume * 10 ||
+        (existingVolume > 1000 && incomingVolume < 1000);
+
+      let newOpen: number;
+      let newHigh: number;
+      let newLow: number;
+      let newClose: number;
+      let newVolume: number;
+      let newVbuy: number;
+      let newVsell: number;
+      let newCbuy: number;
+      let newCsell: number;
+      let newLbuy: number;
+      let newLsell: number;
+
+      if (incomingIsMoreAuthoritative) {
+        // Incoming bar is from historical API - use its OHLC structure
+        // But keep the latest close if worker has pushed a more recent price
+        newOpen = bar.open;
+        newHigh = Math.max(bar.high || 0, existingBar.high || 0, existingBar.close || 0);
+        newLow = Math.min(
+          bar.low && bar.low !== Infinity ? bar.low : Infinity,
+          existingBar.low && existingBar.low !== Infinity ? existingBar.low : Infinity,
+          existingBar.close || Infinity
+        );
+        // Use existing close if it's valid (worker may have more recent price)
+        newClose = existingBar.close > 0 ? existingBar.close : bar.close;
+        // Use historical volume data
+        newVolume = bar.volume;
+        newVbuy = bar.vbuy;
+        newVsell = bar.vsell;
+        newCbuy = bar.cbuy;
+        newCsell = bar.csell;
+        newLbuy = bar.lbuy;
+        newLsell = bar.lsell;
+      } else if (existingIsMoreAuthoritative) {
+        // Existing bar is from historical API - keep its OHLC structure
+        // Only update close and extend high/low based on new close price
+        newOpen = existingBar.open; // NEVER change historical open
+        newHigh = Math.max(existingBar.high || 0, bar.close || 0);
+        newLow = existingBar.low && existingBar.low !== Infinity && existingBar.low > 0
+          ? Math.min(existingBar.low, bar.close || Infinity)
+          : (bar.close || existingBar.low);
+        newClose = bar.close > 0 ? bar.close : existingBar.close;
+        // Keep historical volume data
+        newVolume = existingBar.volume;
+        newVbuy = existingBar.vbuy;
+        newVsell = existingBar.vsell;
+        newCbuy = existingBar.cbuy;
+        newCsell = existingBar.csell;
+        newLbuy = existingBar.lbuy;
+        newLsell = existingBar.lsell;
+      } else {
+        // Both are similar (likely both worker ticks or both small historical)
+        // Keep the first valid open we got, update everything else
+        newOpen = existingBar.open > 0 ? existingBar.open : (bar.open > 0 ? bar.open : existingBar.open);
+        newHigh = Math.max(existingBar.high || 0, bar.high || 0, bar.close || 0);
+        newLow = Math.min(
+          existingBar.low && existingBar.low !== Infinity ? existingBar.low : Infinity,
+          bar.low && bar.low !== Infinity ? bar.low : Infinity,
+          bar.close || Infinity
+        );
+        newClose = bar.close > 0 ? bar.close : existingBar.close;
+        // Accumulate volume from both (worker ticks)
+        newVolume = Math.max(existingBar.volume || 0, bar.volume || 0);
+        newVbuy = Math.max(existingBar.vbuy || 0, bar.vbuy || 0);
+        newVsell = Math.max(existingBar.vsell || 0, bar.vsell || 0);
+        newCbuy = Math.max(existingBar.cbuy || 0, bar.cbuy || 0);
+        newCsell = Math.max(existingBar.csell || 0, bar.csell || 0);
+        newLbuy = Math.max(existingBar.lbuy || 0, bar.lbuy || 0);
+        newLsell = Math.max(existingBar.lsell || 0, bar.lsell || 0);
+      }
+
+      // Safety: ensure low is never Infinity
+      if (newLow === Infinity) {
+        newLow = newClose || newOpen || 0;
+      }
+
       chunk.bars[existingIndex] = {
         time: bar.time,
-        open: bar.open && bar.open > 0 ? bar.open : existingBar.open,
-        high: Math.max(existingBar.high || 0, bar.high || 0, bar.close || 0),
-        low: existingBar.low && existingBar.low > 0 
-          ? Math.min(existingBar.low, bar.low && bar.low > 0 ? bar.low : existingBar.low, bar.close || existingBar.low)
-          : (bar.low && bar.low > 0 ? Math.min(bar.low, bar.close || bar.low) : (bar.close || existingBar.low)),
-        close: bar.close > 0 ? bar.close : existingBar.close, // FIXED: Always use new close if provided
-        volume: bar.volume && bar.volume > 0 ? bar.volume : existingBar.volume,
-        vbuy: bar.vbuy !== undefined && bar.vbuy > 0 ? bar.vbuy : existingBar.vbuy,
-        vsell: bar.vsell !== undefined && bar.vsell > 0 ? bar.vsell : existingBar.vsell,
-        cbuy: bar.cbuy !== undefined && bar.cbuy > 0 ? bar.cbuy : existingBar.cbuy,
-        csell: bar.csell !== undefined && bar.csell > 0 ? bar.csell : existingBar.csell,
-        lbuy: bar.lbuy !== undefined && bar.lbuy > 0 ? bar.lbuy : existingBar.lbuy,
-        lsell: bar.lsell !== undefined && bar.lsell > 0 ? bar.lsell : existingBar.lsell,
+        open: newOpen,
+        high: newHigh,
+        low: newLow,
+        close: newClose,
+        volume: newVolume,
+        vbuy: newVbuy,
+        vsell: newVsell,
+        cbuy: newCbuy,
+        csell: newCsell,
+        lbuy: newLbuy,
+        lsell: newLsell,
       };
     } else {
-      // Add new bar
+      // Add new bar - make sure low is not Infinity
+      if (bar.low === Infinity) {
+        bar.low = bar.close || bar.open || 0;
+      }
       chunk.bars.push(bar);
       chunk.bars.sort((a, b) => a.time - b.time);
     }
@@ -99,14 +186,14 @@ export default class ChartCache {
    */
   getAllBars(): Bar[] {
     const bars: Bar[] = [];
-    
+
     for (const chunk of this.chunks) {
       bars.push(...chunk.bars);
     }
 
     // Sort REVERSE (newest first) so that when we add to Map, NEWEST bar overwrites old ones
     bars.sort((a, b) => b.time - a.time); // REVERSE: Newest → Oldest
-    
+
     // DEDUPLICATE: Use Map - since we iterate newest-first, newest bar for each time wins!
     const barMap = new Map<number, Bar>();
     for (const bar of bars) {
@@ -114,7 +201,7 @@ export default class ChartCache {
         barMap.set(bar.time, bar); // Only set if not already in map (first = newest)
       }
     }
-    
+
     // Convert back to sorted array (oldest → newest)
     return Array.from(barMap.values()).sort((a, b) => a.time - b.time);
   }

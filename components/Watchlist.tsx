@@ -354,7 +354,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     };
   }, [watchlist, marketType, symbolCategories, favorites]);
 
-  const addSymbol = (symbol: string) => {
+  const addSymbol = async (symbol: string) => {
     const normalizedSymbol = symbol.toLowerCase();
 
     // Check if symbol already exists
@@ -375,6 +375,34 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       setShowSymbolSearchModal(false);
       setSearchQuery('');
       return;
+    }
+
+    // IMMEDIATELY fetch price for the new symbol (don't wait for WebSocket)
+    try {
+      const url = `/api/ticker/${marketType}?symbols=${normalizedSymbol}`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const result = await response.json();
+        const data = result.data;
+        if (data && data.length > 0) {
+          const ticker = data[0];
+          setPriceData(prev => {
+            const updated = new Map(prev);
+            updated.set(normalizedSymbol, {
+              symbol: normalizedSymbol,
+              price: parseFloat(ticker.lastPrice),
+              change24h: parseFloat(ticker.priceChangePercent),
+              volume24h: parseFloat(ticker.volume),
+              priceFlash: null,
+              category: symbolCategories.get(normalizedSymbol),
+              isFavorite: favorites.has(normalizedSymbol),
+            });
+            return updated;
+          });
+        }
+      }
+    } catch (error) {
+      console.debug('[Watchlist] Failed to fetch initial price for', normalizedSymbol);
     }
 
     const newWatchlist = [...watchlist, normalizedSymbol];
@@ -800,8 +828,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         <button
           onClick={() => setSelectedFilter('ALL')}
           className={`text-[10px] md:text-[10px] px-2 md:px-2 py-1 md:py-1 rounded-lg transition-all duration-200 whitespace-nowrap font-medium flex-shrink-0 ${selectedFilter === 'ALL'
-              ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
-              : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
+            ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+            : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
             }`}
         >
           ALL
@@ -809,8 +837,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         <button
           onClick={() => setSelectedFilter('FAVORITES')}
           className={`text-[10px] md:text-[10px] px-2 md:px-2 py-1 md:py-1 rounded-lg transition-all duration-200 whitespace-nowrap font-medium flex-shrink-0 ${selectedFilter === 'FAVORITES'
-              ? 'bg-gradient-to-r from-yellow-600 to-yellow-700 text-white shadow-lg shadow-yellow-500/30'
-              : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
+            ? 'bg-gradient-to-r from-yellow-600 to-yellow-700 text-white shadow-lg shadow-yellow-500/30'
+            : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
             }`}
         >
           ⭐ FAVORITES
@@ -820,8 +848,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
             <button
               onClick={() => setSelectedFilter(cat)}
               className={`text-[10px] md:text-[10px] px-2 md:px-2 py-1 md:py-1 pr-7 md:pr-7 rounded-lg transition-all duration-200 whitespace-nowrap font-medium ${selectedFilter === cat
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
-                  : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
+                ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                : 'bg-gray-800/50 text-gray-400 hover:text-white hover:bg-gray-800/70'
                 }`}
             >
               {cat}
@@ -1019,8 +1047,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                     }
                   }}
                   className={`group relative border-b border-gray-800/30 px-3 py-1.5 md:py-1 cursor-pointer transition-all duration-300 ${isActive
-                      ? 'bg-gradient-to-r from-blue-900/50 via-blue-900/40 to-blue-900/20 border-l-4 border-l-blue-500 shadow-xl shadow-blue-500/20'
-                      : 'hover:bg-gradient-to-r hover:from-gray-800/50 hover:via-gray-800/30 hover:to-gray-800/10 hover:border-l-2 hover:border-l-gray-700/50'
+                    ? 'bg-gradient-to-r from-blue-900/50 via-blue-900/40 to-blue-900/20 border-l-4 border-l-blue-500 shadow-xl shadow-blue-500/20'
+                    : 'hover:bg-gradient-to-r hover:from-gray-800/50 hover:via-gray-800/30 hover:to-gray-800/10 hover:border-l-2 hover:border-l-gray-700/50'
                     } ${dragOverSymbol === symbol ? 'ring-2 ring-blue-500/60 bg-blue-900/30 scale-[1.02]' : ''} ${draggingSymbol === symbol ? 'opacity-50 scale-[0.98] shadow-lg z-50' : ''
                     } ${data?.priceFlash === 'up' ? 'bg-green-500/10 animate-pulse' : data?.priceFlash === 'down' ? 'bg-red-500/10 animate-pulse' : ''
                     }`}
@@ -1141,17 +1169,17 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                       <div className="flex items-center justify-between mb-0.5 md:mb-0.5">
                         <div className="flex items-baseline gap-0.5 md:gap-0.5">
                           <span className={`font-mono text-xs md:text-xs font-bold px-1.5 md:px-1.5 py-0.5 md:py-0.5 rounded-md transition-all duration-200 ${data.priceFlash === 'up'
-                              ? 'bg-gradient-to-br from-green-500/50 to-emerald-500/30 text-green-100 shadow-lg shadow-green-500/50 animate-flash-green'
-                              : data.priceFlash === 'down'
-                                ? 'bg-gradient-to-br from-red-500/50 to-rose-500/30 text-red-100 shadow-lg shadow-red-500/50 animate-flash-red'
-                                : 'text-white bg-gray-800/30'
+                            ? 'bg-gradient-to-br from-green-500/50 to-emerald-500/30 text-green-100 shadow-lg shadow-green-500/50 animate-flash-green'
+                            : data.priceFlash === 'down'
+                              ? 'bg-gradient-to-br from-red-500/50 to-rose-500/30 text-red-100 shadow-lg shadow-red-500/50 animate-flash-red'
+                              : 'text-white bg-gray-800/30'
                             }`}>
                             ${formatPrice(data.price)}
                           </span>
                         </div>
                         <span className={`text-[10px] md:text-[10px] font-bold px-1.5 md:px-1.5 py-0.5 md:py-0.5 rounded-md transition-all duration-200 ${data.change24h >= 0
-                            ? 'text-green-300 bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/30'
-                            : 'text-red-300 bg-gradient-to-br from-red-500/20 to-rose-500/10 border border-red-500/30'
+                          ? 'text-green-300 bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/30'
+                          : 'text-red-300 bg-gradient-to-br from-red-500/20 to-rose-500/10 border border-red-500/30'
                           }`}>
                           {data.change24h >= 0 ? '↗' : '↘'} {data.change24h >= 0 ? '+' : ''}{data.change24h.toFixed(2)}%
                         </span>
@@ -1293,8 +1321,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   <button
                     onClick={() => handleSaveBackground('gradient-gray')}
                     className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'gradient-gray'
-                        ? 'border-blue-500 shadow-lg shadow-blue-500/30'
-                        : 'border-gray-700 hover:border-gray-600'
+                      ? 'border-blue-500 shadow-lg shadow-blue-500/30'
+                      : 'border-gray-700 hover:border-gray-600'
                       }`}
                   >
                     <div className="bg-gradient-to-b from-gray-900 via-gray-900 to-gray-950 h-16 rounded-lg mb-2"></div>
@@ -1305,8 +1333,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   <button
                     onClick={() => handleSaveBackground('gradient-blue')}
                     className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'gradient-blue'
-                        ? 'border-blue-500 shadow-lg shadow-blue-500/30'
-                        : 'border-gray-700 hover:border-gray-600'
+                      ? 'border-blue-500 shadow-lg shadow-blue-500/30'
+                      : 'border-gray-700 hover:border-gray-600'
                       }`}
                   >
                     <div className="bg-gradient-to-b from-blue-950 via-gray-900 to-gray-950 h-16 rounded-lg mb-2"></div>
@@ -1317,8 +1345,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   <button
                     onClick={() => handleSaveBackground('gradient-purple')}
                     className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'gradient-purple'
-                        ? 'border-blue-500 shadow-lg shadow-blue-500/30'
-                        : 'border-gray-700 hover:border-gray-600'
+                      ? 'border-blue-500 shadow-lg shadow-blue-500/30'
+                      : 'border-gray-700 hover:border-gray-600'
                       }`}
                   >
                     <div className="bg-gradient-to-b from-purple-950 via-gray-900 to-gray-950 h-16 rounded-lg mb-2"></div>
@@ -1329,8 +1357,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   <button
                     onClick={() => handleSaveBackground('gradient-green')}
                     className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'gradient-green'
-                        ? 'border-blue-500 shadow-lg shadow-blue-500/30'
-                        : 'border-gray-700 hover:border-gray-600'
+                      ? 'border-blue-500 shadow-lg shadow-blue-500/30'
+                      : 'border-gray-700 hover:border-gray-600'
                       }`}
                   >
                     <div className="bg-gradient-to-b from-green-950 via-gray-900 to-gray-950 h-16 rounded-lg mb-2"></div>
@@ -1341,8 +1369,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   <button
                     onClick={() => handleSaveBackground('gradient-orange')}
                     className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'gradient-orange'
-                        ? 'border-blue-500 shadow-lg shadow-blue-500/30'
-                        : 'border-gray-700 hover:border-gray-600'
+                      ? 'border-blue-500 shadow-lg shadow-blue-500/30'
+                      : 'border-gray-700 hover:border-gray-600'
                       }`}
                   >
                     <div className="bg-gradient-to-b from-orange-950 via-gray-900 to-gray-950 h-16 rounded-lg mb-2"></div>
@@ -1353,8 +1381,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   <button
                     onClick={() => handleSaveBackground('solid-gray')}
                     className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'solid-gray'
-                        ? 'border-blue-500 shadow-lg shadow-blue-500/30'
-                        : 'border-gray-700 hover:border-gray-600'
+                      ? 'border-blue-500 shadow-lg shadow-blue-500/30'
+                      : 'border-gray-700 hover:border-gray-600'
                       }`}
                   >
                     <div className="bg-gray-900 h-16 rounded-lg mb-2"></div>
@@ -1365,8 +1393,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   <button
                     onClick={() => handleSaveBackground('solid-dark')}
                     className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'solid-dark'
-                        ? 'border-blue-500 shadow-lg shadow-blue-500/30'
-                        : 'border-gray-700 hover:border-gray-600'
+                      ? 'border-blue-500 shadow-lg shadow-blue-500/30'
+                      : 'border-gray-700 hover:border-gray-600'
                       }`}
                   >
                     <div className="bg-gray-950 h-16 rounded-lg mb-2"></div>
@@ -1377,8 +1405,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   <button
                     onClick={() => handleSaveBackground('solid-blue')}
                     className={`p-4 rounded-xl border-2 transition-all duration-200 ${backgroundColor === 'solid-blue'
-                        ? 'border-blue-500 shadow-lg shadow-blue-500/30'
-                        : 'border-gray-700 hover:border-gray-600'
+                      ? 'border-blue-500 shadow-lg shadow-blue-500/30'
+                      : 'border-gray-700 hover:border-gray-600'
                       }`}
                   >
                     <div className="bg-blue-950 h-16 rounded-lg mb-2"></div>

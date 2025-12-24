@@ -846,6 +846,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         timeVisible: chartSettings.timeScaleVisible,
         secondsVisible: chartSettings.secondsVisible,
         borderColor: '#2B2B43',
+        shiftVisibleRangeOnNewBar: true, // TradingView gibi yeni bar eklenince grafik sola kayar
       },
       rightPriceScale: {
         borderColor: '#2B2B43',

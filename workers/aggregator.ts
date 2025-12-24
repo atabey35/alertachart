@@ -22,6 +22,8 @@ class Aggregator {
   private timeframe: number = 300; // 5 minutes default
   private activePairs: Set<string> = new Set();
   private tickInterval: number | null = null; // Interval for periodic ticks
+  private isInitialized: boolean = false; // CRITICAL: Don't process trades until initialized
+  private pendingTrades: Trade[] = []; // Buffer trades until initialized
 
   constructor() {
     this.initializeExchanges();
@@ -58,33 +60,45 @@ class Aggregator {
 
     // Emit tick every second if we have an active bar
     this.tickInterval = setInterval(() => {
-      if (this.activeBar) {
-        const now = Date.now();
-        const currentBarTime = floorTimestampToTimeframe(now, this.timeframe);
-
-        // Check if we need to create a new bar (time window changed)
-        if (this.activeBar.time !== currentBarTime) {
-          // Save the previous close price before emitting
-          const previousClose = this.activeBar.close;
-          
-          // Time window changed - emit old bar as completed
-          this.emit('bar', cloneBar(this.activeBar));
-          
-          // Create new bar with previous close as starting price
-          this.activeBar = createBar(currentBarTime, this.timeframe);
-          this.activeBar.open = previousClose;
-          this.activeBar.high = previousClose;
-          this.activeBar.low = previousClose;
-          this.activeBar.close = previousClose;
-        }
-
-        // Emit tick with current bar state (even if no new trades)
-        this.emit('tick', cloneBar(this.activeBar));
+      // CRITICAL: Don't emit ticks until initialized with historical data
+      if (!this.isInitialized || !this.activeBar) {
+        return;
       }
+
+      const now = Date.now();
+      const currentBarTime = floorTimestampToTimeframe(now, this.timeframe);
+
+      // Check if we need to create a new bar (time window changed)
+      if (this.activeBar.time !== currentBarTime) {
+        // Save the previous close price before emitting
+        const previousClose = this.activeBar.close;
+
+        // Time window changed - emit old bar as completed
+        this.emit('bar', cloneBar(this.activeBar));
+
+        // Create new bar with previous close as starting price
+        // CRITICAL: This is correct for new bars - open = previous close
+        this.activeBar = createBar(currentBarTime, this.timeframe);
+        this.activeBar.open = previousClose;
+        this.activeBar.high = previousClose;
+        this.activeBar.low = previousClose;
+        this.activeBar.close = previousClose;
+      }
+
+      // Emit tick with current bar state (even if no new trades)
+      this.emit('tick', cloneBar(this.activeBar));
     }, 1000) as unknown as number; // Update every second
   }
 
   private handleTrades(trades: Trade[]) {
+    // CRITICAL: If not initialized, buffer trades but don't process them
+    // This prevents creating bars with wrong OHLC before historical data arrives
+    if (!this.isInitialized) {
+      // Just buffer the trades for potential future use (optional)
+      // We don't process them because we don't have correct OHLC from historical
+      return;
+    }
+
     for (const trade of trades) {
       const timestamp = floorTimestampToTimeframe(trade.timestamp, this.timeframe);
 
@@ -95,11 +109,18 @@ class Aggregator {
           this.emit('bar', cloneBar(this.activeBar));
         }
 
-        // Create new bar
+        // Create new bar with previous close as open
+        // This is the correct behavior when transitioning to a new time window
+        const previousClose = this.activeBar?.close || trade.price;
         this.activeBar = createBar(timestamp, this.timeframe);
+        this.activeBar.open = previousClose;
+        this.activeBar.high = previousClose;
+        this.activeBar.low = previousClose;
+        this.activeBar.close = previousClose;
       }
 
       // Merge trade into active bar
+      // IMPORTANT: mergeTradeIntoBar will NOT change open if it's already set (> 0)
       mergeTradeIntoBar(
         this.activeBar,
         trade.price,
@@ -150,21 +171,27 @@ class Aggregator {
   setTimeframe(timeframe: number) {
     this.timeframe = timeframe;
     this.activeBar = null; // Reset active bar
+    this.isInitialized = false; // Reset initialization state
     this.emit('timeframeChanged', timeframe);
   }
 
   /**
    * Initialize active bar with last historical candle
    * This ensures smooth transition from historical to live data
+   * CRITICAL: This MUST be called before any trades are processed
    */
   initActiveBar(bar: Bar | null) {
     if (bar) {
+      // Use historical bar's OHLC - this is the authoritative source
       this.activeBar = { ...bar }; // Clone the bar
-      
+      this.isInitialized = true; // NOW we can process trades
+
       // Emit initial tick so chart starts updating immediately
       // This prevents waiting for first trade
       this.emit('tick', cloneBar(this.activeBar));
     } else {
+      // Even without a bar, mark as initialized so trades can create new bars
+      this.isInitialized = true;
       this.activeBar = null;
     }
   }
