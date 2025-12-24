@@ -172,10 +172,10 @@ export default function ExchangeView({
                 </div>
             </div>
 
-            {/* Main Content - Chart + Side Panels */}
-            <div className="flex-1 flex overflow-hidden">
-                {/* Chart Area - Takes most of the space */}
-                <div className="flex-1 min-w-0 relative">
+            {/* Main Content - Vertical on mobile, side-by-side on tablet+ */}
+            <div className="flex-1 flex flex-col sm:flex-row overflow-hidden">
+                {/* Chart Area - Top on mobile (55%), left on tablet+ */}
+                <div className="h-[55%] sm:h-full sm:flex-1 min-w-0 relative">
                     <Chart
                         key={`chart-${chartKey}-${localTimeframe}`}
                         exchange={exchange}
@@ -190,15 +190,15 @@ export default function ExchangeView({
                     />
                 </div>
 
-                {/* Side Panel - Order Book & Trades (narrower on mobile) */}
-                <div className="w-40 sm:w-52 md:w-64 flex flex-col border-l border-gray-800 bg-gray-900/30 flex-shrink-0">
-                    {/* Recent Trades - Top Half */}
-                    <div className="flex-1 border-b border-gray-800 min-h-0">
+                {/* Side Panel - Bottom on mobile (45%), right on tablet+ */}
+                <div className="h-[45%] sm:h-full sm:w-64 flex flex-row sm:flex-col border-t sm:border-t-0 sm:border-l border-gray-800 bg-gray-900/30 flex-shrink-0">
+                    {/* Recent Trades - Left on mobile, Top on tablet+ */}
+                    <div className="flex-1 sm:flex-1 border-r sm:border-r-0 sm:border-b border-gray-800 min-h-0 overflow-hidden">
                         <RecentTrades symbol={pair} marketType={marketType} />
                     </div>
 
-                    {/* Order Book - Bottom Half */}
-                    <div className="flex-1 min-h-0">
+                    {/* Order Book - Right on mobile, Bottom on tablet+ */}
+                    <div className="flex-1 sm:flex-1 min-h-0 overflow-hidden">
                         <OrderBook symbol={pair} marketType={marketType} />
                     </div>
                 </div>
