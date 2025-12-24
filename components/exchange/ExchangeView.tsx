@@ -190,8 +190,8 @@ export default function ExchangeView({
                     />
                 </div>
 
-                {/* Side Panel - Order Book & Trades */}
-                <div className="w-64 flex flex-col border-l border-gray-800 bg-gray-900/30">
+                {/* Side Panel - Order Book & Trades (narrower on mobile) */}
+                <div className="w-40 sm:w-52 md:w-64 flex flex-col border-l border-gray-800 bg-gray-900/30 flex-shrink-0">
                     {/* Recent Trades - Top Half */}
                     <div className="flex-1 border-b border-gray-800 min-h-0">
                         <RecentTrades symbol={pair} marketType={marketType} />
