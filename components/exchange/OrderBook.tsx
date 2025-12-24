@@ -124,10 +124,12 @@ export default function OrderBook({ symbol, marketType }: OrderBookProps) {
             timeoutRef.current = null;
         }
 
-        // Reset state
-        setRawBids([]);
-        setRawAsks([]);
-        setLoading(true);
+        // Reset state only on symbol change - keep old data while reconnecting
+        if (currentSymbolRef.current !== normalizedSymbol) {
+            setRawBids([]);
+            setRawAsks([]);
+            setLoading(true);
+        }
         setConnected(false);
         currentSymbolRef.current = normalizedSymbol;
 

@@ -53,9 +53,11 @@ export default function RecentTrades({ symbol, marketType }: RecentTradesProps) 
             timeoutRef.current = null;
         }
 
-        // Reset state
-        setTrades([]);
-        setLoading(true);
+        // Reset state only on symbol change - keep old data while reconnecting
+        if (currentSymbolRef.current !== normalizedSymbol) {
+            setTrades([]);
+            setLoading(true);
+        }
         setConnected(false);
         currentSymbolRef.current = normalizedSymbol;
 
