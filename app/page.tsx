@@ -31,6 +31,9 @@ import { handleGoogleWebLogin, handleAppleWebLogin } from '@/utils/webAuth';
 import AndroidLogin from '@/components/login/AndroidLogin';
 import IOSLogin from '@/components/login/IOSLogin';
 import DefaultLogin from '@/components/login/DefaultLogin';
+import ExchangeView from '@/components/exchange/ExchangeView';
+import OrderBook from '@/components/exchange/OrderBook';
+import RecentTrades from '@/components/exchange/RecentTrades';
 import { Language, t } from '@/utils/translations';
 
 interface ChartState {
@@ -92,7 +95,7 @@ export default function Home() {
   } | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   // Teaser preview state - shows blurred preview for 2-3 seconds before modal
-  const [teaserPreview, setTeaserPreview] = useState<'aggr' | 'liquidations' | null>(null);
+  const [teaserPreview, setTeaserPreview] = useState<'aggr' | 'liquidations' | 'exchange' | null>(null);
   // Hydration-safe: Always start with false, check in useEffect
   const [showTrialPromotionModal, setShowTrialPromotionModal] = useState(false);
 
@@ -1379,8 +1382,9 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
   const [showWatchlist, setShowWatchlist] = useState(true);
   const [showAlerts, setShowAlerts] = useState(false);
+  const [showExchange, setShowExchange] = useState(false); // Desktop Exchange View toggle
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
-  const [mobileTab, setMobileTab] = useState<'chart' | 'watchlist' | 'alerts' | 'aggr' | 'liquidations' | 'settings'>('chart');
+  const [mobileTab, setMobileTab] = useState<'chart' | 'watchlist' | 'alerts' | 'aggr' | 'liquidations' | 'exchange' | 'settings'>('chart');
   const [showSymbolSearch, setShowSymbolSearch] = useState(false);
   const [language, setLanguage] = useState<Language>('tr');
 
@@ -1999,6 +2003,25 @@ export default function Home() {
                   }`}
               >
                 Watchlist
+              </button>
+              <button
+                onClick={() => {
+                  if (hasPremiumAccessValue) {
+                    setShowExchange(!showExchange);
+                  } else {
+                    setShowUpgradeModal(true);
+                  }
+                }}
+                className={`px-3 py-1.5 text-sm rounded transition-colors flex items-center gap-1.5 ${showExchange ? 'text-white bg-gray-800' : 'text-gray-400 hover:text-white hover:bg-gray-900'
+                  }`}
+                title={hasPremiumAccessValue ? 'Market Depth' : 'Premium özellik - Yükselt'}
+              >
+                Depth
+                {!hasPremiumAccessValue && (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 text-yellow-500" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M5 9V7a5 5 0 0110 0v2a2 2 0 012 2v5a2 2 0 01-2 2H5a2 2 0 01-2-2v-5a2 2 0 012-2zm8-2v2H7V7a3 3 0 016 0z" clipRule="evenodd" />
+                  </svg>
+                )}
               </button>
               <button
                 onClick={() => window.location.href = '/blog'}
@@ -2664,6 +2687,31 @@ export default function Home() {
               />
             </div>
           )}
+
+          {/* Desktop (1024px+): Exchange Panel - Order Book & Recent Trades */}
+          {showExchange && (
+            <div className={`hidden ${isIPad ? 'lg:hidden' : 'lg:flex'} w-64 flex-shrink-0 border-l border-gray-800 h-full flex-col bg-gray-900/30`}>
+              {/* Header */}
+              <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800 bg-gray-900/80">
+                <span className="text-sm font-medium text-white">
+                  {activeChart.pair.toUpperCase().replace('USDT', '/USDT')}
+                </span>
+                <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
+                  {marketType === 'futures' ? 'Futures' : 'Spot'}
+                </span>
+              </div>
+
+              {/* Recent Trades - Top Half */}
+              <div className="flex-1 border-b border-gray-800 min-h-0 overflow-hidden">
+                <RecentTrades symbol={activeChart.pair} marketType={marketType} />
+              </div>
+
+              {/* Order Book - Bottom Half */}
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <OrderBook symbol={activeChart.pair} marketType={marketType} />
+              </div>
+            </div>
+          )}
         </div>
 
         {/* MOBILE & TABLET (iPad): Watchlist Tab (full screen) */}
@@ -2862,6 +2910,18 @@ export default function Home() {
           )}
         </div>
 
+        {/* MOBILE & TABLET (iPad): Exchange View Tab (full screen) */}
+        <div className={`${mobileTab === 'exchange' ? 'flex' : 'hidden'} ${!isIPad ? 'lg:hidden' : ''} flex-1 overflow-hidden bg-gray-950`}>
+          <ExchangeView
+            exchange={charts[activeChartId]?.exchange || 'binance'}
+            pair={charts[activeChartId]?.pair || 'btcusdt'}
+            timeframe={charts[activeChartId]?.timeframe || 60000}
+            marketType={marketType}
+            onTimeframeChange={(tf) => updateActiveChart({ timeframe: tf })}
+            isPremium={hasPremiumAccessValue}
+          />
+        </div>
+
         {/* MOBILE: Settings Tab removed - now redirects to /settings page */}
       </div>
 
@@ -3030,6 +3090,53 @@ export default function Home() {
           <span className="text-[10px] mt-1 font-medium">{t('liquidations', language)}</span>
         </button>
 
+        {/* Depth (Exchange) Tab - Premium with Shimmer */}
+        <button
+          onClick={() => {
+            if (!user) {
+              if (typeof window !== 'undefined') {
+                window.location.href = '/settings';
+              }
+            } else if (hasPremiumAccessValue) {
+              setMobileTab('exchange');
+            } else {
+              // Show teaser blur preview for 3 seconds, then show upgrade modal
+              setTeaserPreview('exchange');
+              setMobileTab('exchange');
+              setTimeout(() => {
+                setTeaserPreview(null);
+                setShowUpgradeModal(true);
+              }, 3000);
+            }
+          }}
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 relative cursor-pointer group ${mobileTab === 'exchange' ? 'text-blue-400' : hasPremiumAccessValue ? 'text-gray-500 hover:text-gray-400' : 'text-blue-400'
+            } ${!hasPremiumAccessValue ? 'hover:scale-105' : ''}`}
+          style={{ pointerEvents: 'auto', zIndex: 101 }}
+        >
+          {mobileTab === 'exchange' && (
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full" />
+          )}
+          <div className="relative">
+            <svg className={`w-6 h-6 transition-all duration-200 ${mobileTab === 'exchange' ? 'scale-110' : ''}`}
+              fill={mobileTab === 'exchange' ? 'currentColor' : 'none'}
+              stroke="currentColor"
+              viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'exchange' ? 1.5 : 2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
+            </svg>
+            {!hasPremiumAccessValue && (
+              <>
+                <span className="absolute -top-1 -right-2 text-[8px] bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-1 rounded font-bold animate-pulse">PRO</span>
+                {/* Shimmer overlay */}
+                <div className="absolute inset-0 -m-1 rounded-lg overflow-hidden pointer-events-none">
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-400/20 to-transparent animate-shimmer"
+                    style={{ backgroundSize: '200% 100%', animation: 'shimmer 2s infinite' }} />
+                </div>
+              </>
+            )}
+          </div>
+          <span className="text-[10px] mt-1 font-medium">Depth</span>
+        </button>
+
         {/* Settings Tab */}
         <button
           onClick={() => {
@@ -3086,7 +3193,13 @@ export default function Home() {
       {/* Upgrade Modal */}
       <UpgradeModal
         isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
+        onClose={() => {
+          setShowUpgradeModal(false);
+          // Reset to chart tab if user was viewing locked content without premium
+          if (!hasPremiumAccessValue && mobileTab === 'exchange') {
+            setMobileTab('chart');
+          }
+        }}
         onUpgrade={() => {
           // 🔥 Upgrade/Restore sonrası cache ile birlikte yenile
           fetchUserPlan();
