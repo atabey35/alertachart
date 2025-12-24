@@ -809,6 +809,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     // Calculate chart width dynamically to accommodate price scale
     let width = calculateChartWidth(containerWidth);
 
+    // Add small extra width to push price scale closer to right edge
+    width = width + 12;
+
     // Ensure minimum dimensions - important for preventing height collapse
     if (height < 100) {
       console.warn(`[Chart] Height too small (${height}px), using minimum 400px`);
@@ -827,6 +830,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       layout: {
         background: { color: chartSettings.backgroundColor },
         textColor: chartSettings.textColor,
+        attributionLogo: false, // Remove TradingView logo
       },
       grid: {
         vertLines: {
@@ -847,6 +851,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         secondsVisible: chartSettings.secondsVisible,
         borderColor: '#2B2B43',
         shiftVisibleRangeOnNewBar: true, // TradingView gibi yeni bar eklenince grafik sola kayar
+        rightOffset: 3, // Minimum boşluk - sağdaki siyah alanı azaltır
       },
       rightPriceScale: {
         borderColor: '#2B2B43',
@@ -854,13 +859,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         mode: 0, // Normal price scale
         visible: true, // Ensure price scale is always visible
         entireTextOnly: false, // Show all price labels, not just when fully visible
+        scaleMargins: {
+          top: 0.1,
+          bottom: 0.1,
+        },
         // iOS/Apple specific optimizations
         ...(typeof window !== 'undefined' && (
           /iPad|iPhone|iPod/.test(navigator.userAgent) ||
           (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
         ) ? {
           textColor: '#FFFFFF', // Bright white for iOS visibility
-          fontSize: 12, // Larger font for iOS readability
+          fontSize: 11, // Slightly smaller for tighter layout
           borderVisible: false, // Remove border for cleaner look
           ticksVisible: true, // Ensure ticks are visible
         } : {}),
@@ -1243,7 +1252,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           if (containerRef.current && chartRef.current) {
             // Use getBoundingClientRect for more accurate width calculation on mobile
             const rect = containerRef.current.getBoundingClientRect();
-            const width = Math.floor(calculateChartWidth(rect.width));
+            // Add small extra width to push price scale closer to right edge
+            const width = Math.floor(calculateChartWidth(rect.width)) + 12;
             const height = Math.floor(rect.height);
 
             if (width > 0 && height > 0) {
