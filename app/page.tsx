@@ -2910,16 +2910,59 @@ export default function Home() {
           )}
         </div>
 
-        {/* MOBILE & TABLET (iPad): Exchange View Tab (full screen) */}
-        <div className={`${mobileTab === 'exchange' ? 'flex' : 'hidden'} ${!isIPad ? 'lg:hidden' : ''} flex-1 overflow-hidden bg-gray-950`}>
-          <ExchangeView
-            exchange={charts[activeChartId]?.exchange || 'binance'}
-            pair={charts[activeChartId]?.pair || 'btcusdt'}
-            timeframe={charts[activeChartId]?.timeframe || 60000}
-            marketType={marketType}
-            onTimeframeChange={(tf) => updateActiveChart({ timeframe: tf })}
-            isPremium={hasPremiumAccessValue}
-          />
+        {/* MOBILE & TABLET (iPad): Exchange View Tab - Uses SAME chart as main tab */}
+        <div className={`${mobileTab === 'exchange' ? 'flex flex-col' : 'hidden'} ${!isIPad ? 'lg:hidden' : ''} flex-1 overflow-hidden bg-gray-950`}>
+          {/* Header with Symbol Info - Compact */}
+          <div className="flex items-center justify-between px-3 py-2 bg-gray-900/80 border-b border-gray-800">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-white">
+                {activeChart.pair.toUpperCase().replace('USDT', '/USDT')}
+              </span>
+              {activeChart.currentPrice && (
+                <span className={`text-base font-bold ${(activeChart.change24h || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  ${activeChart.currentPrice >= 1000
+                    ? activeChart.currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+                    : activeChart.currentPrice >= 1
+                      ? activeChart.currentPrice.toFixed(4)
+                      : activeChart.currentPrice.toFixed(6)}
+                </span>
+              )}
+              {activeChart.change24h !== undefined && (
+                <span className={`text-xs px-1.5 py-0.5 rounded ${activeChart.change24h >= 0 ? 'text-green-400 bg-green-500/10' : 'text-red-400 bg-red-500/10'}`}>
+                  {activeChart.change24h >= 0 ? '+' : ''}{activeChart.change24h.toFixed(2)}%
+                </span>
+              )}
+            </div>
+            <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
+              {marketType === 'futures' ? 'Futures' : 'Spot'}
+            </span>
+          </div>
+
+          {/* Chart - Same instance as main chart (synced price) */}
+          <div className="h-[55%] relative">
+            <Chart
+              key={`depth-chart-${activeChart.pair}-${activeChart.timeframe}-${marketType}-${chartRefreshKey}`}
+              exchange={marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}
+              pair={activeChart.pair}
+              timeframe={activeChart.timeframe}
+              markets={[`${marketType === 'futures' ? 'BINANCE_FUTURES' : activeChart.exchange}:${activeChart.pair}`]}
+              onPriceUpdate={(price) => handlePriceUpdate(activeChart.id, price)}
+              marketType={marketType}
+              hideToolbar={true}
+              layout={1}
+              hasPremiumAccess={hasPremiumAccessValue}
+            />
+          </div>
+
+          {/* Order Book & Trades Panels - Bottom */}
+          <div className="h-[45%] flex flex-row border-t border-gray-800 overflow-hidden">
+            <div className="flex-1 border-r border-gray-800 overflow-hidden">
+              <RecentTrades symbol={activeChart.pair} marketType={marketType} />
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <OrderBook symbol={activeChart.pair} marketType={marketType} />
+            </div>
+          </div>
         </div>
 
         {/* MOBILE: Settings Tab removed - now redirects to /settings page */}
