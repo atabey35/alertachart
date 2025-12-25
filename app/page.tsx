@@ -2929,8 +2929,8 @@ export default function Home() {
               </span>
               {activeChart.currentPrice && (
                 <span className={`text-base font-bold ${(activeChart.change24h || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {/* Show ₿ for BTC, ₺ for TRY, $ for others */}
-                  {activeChart.pair.toUpperCase().endsWith('BTC') ? '₿' : activeChart.pair.toUpperCase().endsWith('TRY') ? '₺' : '$'}
+                  {/* Show ₿ for BTC, ₺ for TRY, BNB for BNB pairs, $ for others */}
+                  {activeChart.pair.toUpperCase().endsWith('BTC') ? '₿' : activeChart.pair.toUpperCase().endsWith('TRY') ? '₺' : activeChart.pair.toUpperCase().endsWith('BNB') ? '' : '$'}
                   {activeChart.currentPrice >= 1000
                     ? activeChart.currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     : activeChart.currentPrice >= 1
