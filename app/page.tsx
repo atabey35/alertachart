@@ -2918,15 +2918,19 @@ export default function Home() {
           <div className="flex items-center justify-between px-3 py-2 bg-gray-900/80 border-b border-gray-800">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-white">
-                {/* Format symbol correctly for TRY and USDT pairs */}
-                {activeChart.pair.toUpperCase().endsWith('TRY')
-                  ? activeChart.pair.toUpperCase().replace('TRY', '/TRY')
-                  : activeChart.pair.toUpperCase().replace('USDT', '/USDT')}
+                {/* Format symbol correctly for all quote assets */}
+                {(() => {
+                  const p = activeChart.pair.toUpperCase();
+                  if (p.endsWith('TRY')) return p.replace('TRY', '/TRY');
+                  if (p.endsWith('USDC')) return p.replace('USDC', '/USDC');
+                  if (p.endsWith('BTC')) return p.replace('BTC', '/BTC');
+                  return p.replace('USDT', '/USDT');
+                })()}
               </span>
               {activeChart.currentPrice && (
                 <span className={`text-base font-bold ${(activeChart.change24h || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  {/* Show ₺ for TRY pairs, $ for others */}
-                  {activeChart.pair.toUpperCase().endsWith('TRY') ? '₺' : '$'}
+                  {/* Show ₿ for BTC, ₺ for TRY, $ for others */}
+                  {activeChart.pair.toUpperCase().endsWith('BTC') ? '₿' : activeChart.pair.toUpperCase().endsWith('TRY') ? '₺' : '$'}
                   {activeChart.currentPrice >= 1000
                     ? activeChart.currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     : activeChart.currentPrice >= 1

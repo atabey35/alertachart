@@ -1174,8 +1174,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                               ? 'bg-gradient-to-br from-red-500/50 to-rose-500/30 text-red-100 shadow-lg shadow-red-500/50 animate-flash-red'
                               : 'text-white bg-gray-800/30'
                             }`}>
-                            {/* Show ₺ for TRY pairs, $ for others */}
-                            {symbol.toUpperCase().endsWith('TRY') ? '₺' : '$'}{formatPrice(data.price)}
+                            {/* Show ₿ for BTC pairs, ₺ for TRY pairs, $ for others */}
+                            {symbol.toUpperCase().endsWith('BTC') ? '₿' : symbol.toUpperCase().endsWith('TRY') ? '₺' : '$'}{formatPrice(data.price)}
                           </span>
                         </div>
                         <span className={`text-[10px] md:text-[10px] font-bold px-1.5 md:px-1.5 py-0.5 md:py-0.5 rounded-md transition-all duration-200 ${data.change24h >= 0
@@ -1193,7 +1193,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                         <span className="font-mono font-medium text-gray-300">{formatVolume(data.volume24h)}</span>
                         {data.price && (
                           <span className="font-mono font-medium text-gray-500">
-                            (${formatVolume(data.volume24h * data.price)})
+                            {/* Show currency symbol based on quote asset */}
+                            ({symbol.toUpperCase().endsWith('BTC') ? '₿' : symbol.toUpperCase().endsWith('TRY') ? '₺' : '$'}{formatVolume(data.volume24h * data.price)})
                           </span>
                         )}
                       </div>
