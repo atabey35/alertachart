@@ -1073,7 +1073,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                       {/* Coin Logo */}
                       {(() => {
                         // Parse symbol to get base and quote assets correctly
-                        const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
+                        const quoteAssets = ['USDT', 'TRY', 'USDC', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
                         let baseAsset = '';
                         let quoteAsset = 'USDT';
 
@@ -1174,7 +1174,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                               ? 'bg-gradient-to-br from-red-500/50 to-rose-500/30 text-red-100 shadow-lg shadow-red-500/50 animate-flash-red'
                               : 'text-white bg-gray-800/30'
                             }`}>
-                            ${formatPrice(data.price)}
+                            {/* Show ₺ for TRY pairs, $ for others */}
+                            {symbol.toUpperCase().endsWith('TRY') ? '₺' : '$'}{formatPrice(data.price)}
                           </span>
                         </div>
                         <span className={`text-[10px] md:text-[10px] font-bold px-1.5 md:px-1.5 py-0.5 md:py-0.5 rounded-md transition-all duration-200 ${data.change24h >= 0

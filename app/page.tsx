@@ -2270,7 +2270,7 @@ export default function Home() {
               </svg>
               <span>
                 {(() => {
-                  const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
+                  const quoteAssets = ['USDT', 'TRY', 'USDC', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
                   let baseAsset = activeChart.pair.toUpperCase();
                   let quoteAsset = 'USDT';
 
@@ -2564,7 +2564,7 @@ export default function Home() {
                     <div className="bg-gray-900/80 px-2 py-1 rounded text-xs font-mono pointer-events-none flex items-center gap-1.5">
                       <span className={chart.id === activeChartId ? 'text-blue-400' : 'text-gray-400'}>
                         {(() => {
-                          const quoteAssets = ['USDT', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
+                          const quoteAssets = ['USDT', 'TRY', 'USDC', 'BTC', 'ETH', 'BNB', 'BUSD', 'FDUSD'];
                           let baseAsset = chart.pair.toUpperCase();
                           let quoteAsset = 'USDT';
 
@@ -2694,7 +2694,9 @@ export default function Home() {
               {/* Header */}
               <div className="flex items-center justify-between px-3 py-2 border-b border-gray-800 bg-gray-900/80">
                 <span className="text-sm font-medium text-white">
-                  {activeChart.pair.toUpperCase().replace('USDT', '/USDT')}
+                  {activeChart.pair.toUpperCase().endsWith('TRY')
+                    ? activeChart.pair.toUpperCase().replace('TRY', '/TRY')
+                    : activeChart.pair.toUpperCase().replace('USDT', '/USDT')}
                 </span>
                 <span className="text-xs px-1.5 py-0.5 rounded bg-blue-500/20 text-blue-400">
                   {marketType === 'futures' ? 'Futures' : 'Spot'}
@@ -2916,11 +2918,16 @@ export default function Home() {
           <div className="flex items-center justify-between px-3 py-2 bg-gray-900/80 border-b border-gray-800">
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-white">
-                {activeChart.pair.toUpperCase().replace('USDT', '/USDT')}
+                {/* Format symbol correctly for TRY and USDT pairs */}
+                {activeChart.pair.toUpperCase().endsWith('TRY')
+                  ? activeChart.pair.toUpperCase().replace('TRY', '/TRY')
+                  : activeChart.pair.toUpperCase().replace('USDT', '/USDT')}
               </span>
               {activeChart.currentPrice && (
                 <span className={`text-base font-bold ${(activeChart.change24h || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                  ${activeChart.currentPrice >= 1000
+                  {/* Show ₺ for TRY pairs, $ for others */}
+                  {activeChart.pair.toUpperCase().endsWith('TRY') ? '₺' : '$'}
+                  {activeChart.currentPrice >= 1000
                     ? activeChart.currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
                     : activeChart.currentPrice >= 1
                       ? activeChart.currentPrice.toFixed(4)
