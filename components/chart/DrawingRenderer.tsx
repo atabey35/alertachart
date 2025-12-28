@@ -8,8 +8,8 @@
 import React from 'react';
 import { Drawing } from '@/types/drawing';
 import { IChartApi, ISeriesApi } from 'lightweight-charts';
-import { 
-  FIB_RETRACEMENT_LEVELS, 
+import {
+  FIB_RETRACEMENT_LEVELS,
   FIB_EXTENSION_LEVELS,
   calculateFibLevels,
   formatPrice,
@@ -23,6 +23,32 @@ import {
   calculateWedge,
   snapTo45Degrees
 } from '@/utils/drawingUtils';
+
+// Import Phase 1 Renderer Modules
+import {
+  renderLongPosition,
+  renderShortPosition,
+  renderHorizontalRay,
+  renderInfoLine,
+  renderTrendAngle,
+  renderAnchoredText,
+  renderNote,
+  renderDateRange,
+  renderPriceRange,
+  renderFibChannel,
+  renderGannBox,
+  renderGannSquare,
+  toPixels as toPixelsHelper,
+  getStrokeDashArray as getStrokeDashArrayHelper,
+  isPreview as isPreviewHelper,
+  RenderContext
+} from './renderers';
+import { renderMeasureEnhanced } from './renderers/MeasureRenderer';
+import {
+  renderHeadAndShoulders,
+  renderTrianglePattern,
+  renderABCDPattern
+} from './renderers/PatternRenderers';
 
 interface DrawingRendererProps {
   drawings: Drawing[];
@@ -57,6 +83,22 @@ export default function DrawingRenderer({
 }: DrawingRendererProps) {
   if (!chart || !series) return null;
 
+  // Create render context for Phase 1 modular renderers
+  const renderContext: RenderContext = {
+    chart,
+    series,
+    containerWidth,
+    containerHeight,
+    selectedDrawingId,
+    onSelectDrawing,
+    onDoubleClick,
+    onDragStart,
+    onDragPoint,
+    precision,
+    timeframe,
+    isDrawing
+  };
+
   // Convert line style to SVG strokeDasharray
   const getStrokeDashArray = (style?: 'solid' | 'dashed' | 'dotted', isSelected?: boolean) => {
     if (isSelected) return '5,5';
@@ -69,20 +111,20 @@ export default function DrawingRenderer({
   const toPixels = (time: number, price: number): { x: number; y: number } | null => {
     try {
       const timeScale = chart.timeScale();
-      
+
       let x = timeScale.timeToCoordinate(time as any);
       const y = series.priceToCoordinate(price);
-      
+
       // If x is null (time is outside visible range), extrapolate pixel position
       if (x === null) {
         const visibleRange = timeScale.getVisibleRange();
         const visibleLogicalRange = timeScale.getVisibleLogicalRange();
-        
+
         if (visibleRange && visibleLogicalRange) {
           const chartWidth = timeScale.width();
           const visibleBars = visibleLogicalRange.to - visibleLogicalRange.from;
           const pixelsPerBar = chartWidth / visibleBars;
-          
+
           // Check if time is beyond the last bar (to the right)
           if (time > (visibleRange.to as number)) {
             const lastBarX = timeScale.timeToCoordinate(visibleRange.to as any);
@@ -92,7 +134,7 @@ export default function DrawingRenderer({
               const barsBeyond = timeDiff / timeframe;
               x = (lastBarX + (barsBeyond * pixelsPerBar)) as any;
             }
-          } 
+          }
           // Check if time is before the first bar (to the left)
           else if (time < (visibleRange.from as number)) {
             const firstBarX = timeScale.timeToCoordinate(visibleRange.from as any);
@@ -104,11 +146,11 @@ export default function DrawingRenderer({
           }
         }
       }
-      
+
       if (x === null || y === null) {
         return null;
       }
-      
+
       return { x, y };
     } catch (e) {
       console.log('❌ toPixels error:', e);
@@ -119,19 +161,19 @@ export default function DrawingRenderer({
   // Render horizontal line
   const renderHorizontal = (drawing: Drawing) => {
     if (drawing.points.length < 1) return null;
-    
+
     const point = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     if (!point) return null;
 
     const isSelected = selectedDrawingId === drawing.id;
-    
+
     // Get the time scale width (excludes price scale area)
     const timeScale = chart.timeScale();
     const chartWidth = timeScale.width();
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onMouseDown={(e) => {
           if (isSelected && onDragStart) {
             e.stopPropagation();
@@ -147,8 +189,8 @@ export default function DrawingRenderer({
           y2={point.y}
           stroke="transparent"
           strokeWidth={typeof window !== 'undefined' && window.innerWidth < 768 ? 60 : 30}
-          style={{ 
-            cursor: isSelected ? 'move' : 'pointer', 
+          style={{
+            cursor: isSelected ? 'move' : 'pointer',
             pointerEvents: 'stroke',
             touchAction: 'none' // ✅ FIX #2: Prevent scrolling when touching drawing
           }}
@@ -185,15 +227,15 @@ export default function DrawingRenderer({
   // Render vertical line
   const renderVertical = (drawing: Drawing) => {
     if (drawing.points.length < 1) return null;
-    
+
     const point = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     if (!point) return null;
 
     const isSelected = selectedDrawingId === drawing.id;
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onMouseDown={(e) => {
           if (isSelected && onDragStart) {
             e.stopPropagation();
@@ -209,8 +251,8 @@ export default function DrawingRenderer({
           y2={containerHeight}
           stroke="transparent"
           strokeWidth={typeof window !== 'undefined' && window.innerWidth < 768 ? 60 : 30}
-          style={{ 
-            cursor: isSelected ? 'move' : 'pointer', 
+          style={{
+            cursor: isSelected ? 'move' : 'pointer',
             pointerEvents: 'stroke',
             touchAction: 'none' // ✅ FIX #2: Prevent scrolling when touching drawing
           }}
@@ -246,23 +288,23 @@ export default function DrawingRenderer({
   // Render trend line
   const renderTrend = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
 
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
-    
+
     // Check if we need to extend the line
     let x1 = p1.x, y1 = p1.y, x2 = p2.x, y2 = p2.y;
-    
+
     if (drawing.extendRight || drawing.extendLeft) {
       // Get the time scale width (excludes price scale area)
       const chartWidth = chart.timeScale().width();
       const extended = extendLine(p1.x, p1.y, p2.x, p2.y, 0, chartWidth, 0, containerHeight);
-      
+
       if (drawing.extendRight && !drawing.extendLeft) {
         // Only extend right (like ray)
         const ray = extendRay(p1.x, p1.y, p2.x, p2.y, chartWidth, containerHeight);
@@ -281,10 +323,10 @@ export default function DrawingRenderer({
         y2 = extended.y2;
       }
     }
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onMouseDown={(e) => {
           if (!isPreview && isSelected && onDragStart) {
             e.stopPropagation();
@@ -307,8 +349,8 @@ export default function DrawingRenderer({
           y2={y2}
           stroke="transparent"
           strokeWidth={typeof window !== 'undefined' && window.innerWidth < 768 ? 60 : 30}
-          style={{ 
-            cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer'), 
+          style={{
+            cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer'),
             pointerEvents: 'stroke',
             touchAction: 'none' // ✅ FIX #2: Prevent scrolling when touching drawing
           }}
@@ -338,11 +380,11 @@ export default function DrawingRenderer({
         />
         {isSelected && !isPreview && (
           <>
-            <circle 
-              cx={p1.x} 
-              cy={p1.y} 
+            <circle
+              cx={p1.x}
+              cy={p1.y}
               r={typeof window !== 'undefined' && window.innerWidth < 768 ? 8 : 7}
-              fill={drawing.color || '#2962FF'} 
+              fill={drawing.color || '#2962FF'}
               stroke="#fff"
               strokeWidth="2"
               style={{ cursor: 'move', pointerEvents: 'auto' }}
@@ -360,11 +402,11 @@ export default function DrawingRenderer({
                 }
               }}
             />
-            <circle 
-              cx={p2.x} 
-              cy={p2.y} 
+            <circle
+              cx={p2.x}
+              cy={p2.y}
               r={typeof window !== 'undefined' && window.innerWidth < 768 ? 8 : 7}
-              fill={drawing.color || '#2962FF'} 
+              fill={drawing.color || '#2962FF'}
               stroke="#fff"
               strokeWidth="2"
               style={{ cursor: 'move', pointerEvents: 'auto' }}
@@ -391,10 +433,10 @@ export default function DrawingRenderer({
   // Render ray
   const renderRay = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
 
     // Get the time scale width (excludes price scale area)
@@ -402,10 +444,10 @@ export default function DrawingRenderer({
     const extended = extendRay(p1.x, p1.y, p2.x, p2.y, chartWidth, containerHeight);
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onClick={() => !isPreview && onSelectDrawing(drawing.id)}
         onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
         onMouseDown={(e) => {
@@ -446,10 +488,10 @@ export default function DrawingRenderer({
   // Render extended line
   const renderExtended = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
 
     // Get the time scale width (excludes price scale area)
@@ -457,10 +499,10 @@ export default function DrawingRenderer({
     const extended = extendLine(p1.x, p1.y, p2.x, p2.y, 0, chartWidth, 0, containerHeight);
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onClick={() => !isPreview && onSelectDrawing(drawing.id)}
         onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
         onMouseDown={(e) => {
@@ -501,16 +543,16 @@ export default function DrawingRenderer({
   // Render brush (freehand)
   const renderBrush = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     // Convert all points to pixels
     const pixelPoints = drawing.points
       .map(point => toPixels(point.time as number, point.price))
       .filter(p => p !== null) as Array<{ x: number; y: number }>;
-    
+
     if (pixelPoints.length < 2) return null;
 
     const isSelected = selectedDrawingId === drawing.id;
-    
+
     // Create path string
     const pathData = pixelPoints.reduce((path, point, index) => {
       if (index === 0) {
@@ -518,10 +560,10 @@ export default function DrawingRenderer({
       }
       return `${path} L ${point.x} ${point.y}`;
     }, '');
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onClick={() => onSelectDrawing(drawing.id)}
         onDoubleClick={() => onDoubleClick?.(drawing)}
       >
@@ -547,15 +589,15 @@ export default function DrawingRenderer({
   // Render arrow
   const renderArrow = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
 
     const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
     const arrowSize = 15;
-    
+
     const arrowX1 = p2.x - arrowSize * Math.cos(angle - Math.PI / 6);
     const arrowY1 = p2.y - arrowSize * Math.sin(angle - Math.PI / 6);
     const arrowX2 = p2.x - arrowSize * Math.cos(angle + Math.PI / 6);
@@ -563,10 +605,10 @@ export default function DrawingRenderer({
 
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onClick={() => !isPreview && onSelectDrawing(drawing.id)}
         onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
         onMouseDown={(e) => {
@@ -612,10 +654,10 @@ export default function DrawingRenderer({
   // Render rectangle
   const renderRectangle = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
 
     const x = Math.min(p1.x, p2.x);
@@ -625,12 +667,12 @@ export default function DrawingRenderer({
 
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
-    
+
     console.log('🔲 Rendering rectangle:', drawing.id, 'fillColor:', drawing.fillColor);
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onClick={() => !isPreview && onSelectDrawing(drawing.id)}
         onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
         onMouseDown={(e) => {
@@ -672,19 +714,19 @@ export default function DrawingRenderer({
   // Render circle
   const renderCircle = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const center = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const edge = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!center || !edge) return null;
 
     const radius = Math.sqrt(Math.pow(edge.x - center.x, 2) + Math.pow(edge.y - center.y, 2));
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onClick={() => !isPreview && onSelectDrawing(drawing.id)}
         onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
         onMouseDown={(e) => {
@@ -725,10 +767,10 @@ export default function DrawingRenderer({
   // Render ellipse
   const renderEllipse = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
 
     const cx = (p1.x + p2.x) / 2;
@@ -738,10 +780,10 @@ export default function DrawingRenderer({
 
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onClick={() => !isPreview && onSelectDrawing(drawing.id)}
         onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
         onMouseDown={(e) => {
@@ -783,20 +825,20 @@ export default function DrawingRenderer({
   // Render triangle
   const renderTriangle = (drawing: Drawing) => {
     if (drawing.points.length < 3) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
     const p3 = toPixels(drawing.points[2].time as number, drawing.points[2].price);
-    
+
     if (!p1 || !p2 || !p3) return null;
 
     const points = `${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`;
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onClick={() => !isPreview && onSelectDrawing(drawing.id)}
         onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
         onMouseDown={(e) => {
@@ -836,15 +878,15 @@ export default function DrawingRenderer({
   // Render parallel channel
   const renderChannel = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
-    
+
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
-    
+
     // If only 2 points (preview after second click), just show the base trend line
     if (drawing.points.length === 2) {
       return (
@@ -864,33 +906,33 @@ export default function DrawingRenderer({
         </g>
       );
     }
-    
+
     // 3 points - full channel
     const p3 = toPixels(drawing.points[2].time as number, drawing.points[2].price);
     if (!p3) return null;
-    
+
     // Calculate base trend line vector (A->B)
     const dx = p2.x - p1.x;
     const dy = p2.y - p1.y;
-    
+
     // Calculate offset from p1 to p3
     const offsetX = p3.x - p1.x;
     const offsetY = p3.y - p1.y;
-    
+
     // Calculate parallel line: start from p3, same direction as A->B
     // Parallel line: p3 -> (p3 + (p2 - p1))
     const parallelStartX = p3.x;
     const parallelStartY = p3.y;
     const parallelEndX = p3.x + dx;
     const parallelEndY = p3.y + dy;
-    
+
     // Calculate middle band: midpoint between base line and parallel line
     // For each point on base line, find corresponding point on parallel line
     const midStartX = (p1.x + parallelStartX) / 2;
     const midStartY = (p1.y + parallelStartY) / 2;
     const midEndX = (p2.x + parallelEndX) / 2;
     const midEndY = (p2.y + parallelEndY) / 2;
-    
+
     return (
       <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         {/* Base trend line A->B */}
@@ -904,7 +946,7 @@ export default function DrawingRenderer({
           opacity={isPreview ? 0.5 : 1}
           style={{ cursor: 'pointer' }}
         />
-        
+
         {/* Parallel line (from p3) */}
         <line
           x1={parallelStartX}
@@ -916,7 +958,7 @@ export default function DrawingRenderer({
           opacity={isPreview ? 0.5 : 1}
           style={{ cursor: 'pointer' }}
         />
-        
+
         {/* Middle band */}
         <line
           x1={midStartX}
@@ -929,7 +971,7 @@ export default function DrawingRenderer({
           opacity={isPreview ? 0.4 : 0.6}
           style={{ cursor: 'pointer' }}
         />
-        
+
         {isSelected && !isPreview && (
           <>
             <circle cx={p1.x} cy={p1.y} r="5" fill={drawing.color || '#2962FF'} />
@@ -944,10 +986,10 @@ export default function DrawingRenderer({
   // Render Fibonacci retracement
   const renderFibRetracement = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
 
     // Calculate retracement levels correctly
@@ -955,16 +997,16 @@ export default function DrawingRenderer({
     // A->B defines the swing direction
     const p1Price = drawing.points[0].price;
     const p2Price = drawing.points[1].price;
-    
+
     // Determine if uptrend (p1->p2: dip to peak) or downtrend (p1->p2: peak to dip)
     const isUptrend = p2Price > p1Price;
     const range = Math.abs(p2Price - p1Price);
-    
+
     // All Fibonacci ratios (retracement + extension)
     const fibRatios = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.618, 2.618, 3.618, 4.236];
     const fibLevels = fibRatios.map(ratio => {
       let levelPrice: number;
-      
+
       if (isUptrend) {
         // Uptrend: p1=dip, p2=tepe
         // Retracement (ratio <= 1): p2'den p1'e doğru (aşağı)
@@ -984,28 +1026,28 @@ export default function DrawingRenderer({
           levelPrice = p2Price - (range * (ratio - 1)); // Extension aşağı
         }
       }
-      
+
       // Calculate percentage change from p1Price
       const percentageChange = ((levelPrice - p1Price) / p1Price) * 100;
-      
+
       // Format ratio: 0 and 1 as integers, others with 3 decimals
       const ratioLabel = ratio === 0 || ratio === 1 ? ratio.toString() : ratio.toFixed(3);
-      
+
       return {
         ratio,
         price: levelPrice,
         ratioLabel,
         percentageChange,
-        color: ratio === 0 || ratio === 1 ? '#787B86' : 
-               ratio === 0.236 ? '#F23645' :
-               ratio === 0.382 ? '#FFA726' :
-               ratio === 0.5 ? '#26A69A' :
-               ratio === 0.618 ? '#2962FF' :
-               ratio === 0.786 ? '#9C27B0' :
-               ratio === 1.618 ? '#F23645' :
-               ratio === 2.618 ? '#9C27B0' :
-               ratio === 3.618 ? '#673AB7' :
-               '#787B86'
+        color: ratio === 0 || ratio === 1 ? '#787B86' :
+          ratio === 0.236 ? '#F23645' :
+            ratio === 0.382 ? '#FFA726' :
+              ratio === 0.5 ? '#26A69A' :
+                ratio === 0.618 ? '#2962FF' :
+                  ratio === 0.786 ? '#9C27B0' :
+                    ratio === 1.618 ? '#F23645' :
+                      ratio === 2.618 ? '#9C27B0' :
+                        ratio === 3.618 ? '#673AB7' :
+                          '#787B86'
       };
     });
 
@@ -1015,7 +1057,7 @@ export default function DrawingRenderer({
     const chartWidth = timeScale.width();
     const startX = Math.min(p1.x, p2.x);
     const endX = chartWidth; // Extend to chart edge
-    
+
     return (
       <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
         {/* Base trend line A->B (diagonal dashed) */}
@@ -1030,12 +1072,12 @@ export default function DrawingRenderer({
           opacity={0.5}
           style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
-        
+
         {/* Fibonacci levels - HORIZONTAL lines with fan lines from p1 */}
         {fibLevels.map((level, i) => {
           const levelY = series.priceToCoordinate(level.price);
           if (levelY === null) return null;
-          
+
           return (
             <g key={i}>
               {/* Horizontal Fibonacci level line */}
@@ -1048,7 +1090,7 @@ export default function DrawingRenderer({
                 strokeWidth={1}
                 opacity={isPreview ? 0.5 : 0.7}
               />
-              
+
               {/* Fan line from p1 (swing start) to this level (diagonal dashed) */}
               <line
                 x1={p1.x}
@@ -1060,7 +1102,7 @@ export default function DrawingRenderer({
                 opacity={isPreview ? 0.3 : 0.4}
                 strokeDasharray="4,4"
               />
-              
+
               {/* Label on the left */}
               {!isPreview && (
                 <text
@@ -1090,11 +1132,11 @@ export default function DrawingRenderer({
   // Render Fibonacci extension
   const renderFibExtension = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     // 2-point version: A->B defines the base move, extend from B
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
 
     // Calculate extension levels correctly
@@ -1103,22 +1145,22 @@ export default function DrawingRenderer({
     const p1Price = drawing.points[0].price;
     const p2Price = drawing.points[1].price;
     const baseMove = p2Price - p1Price; // p2 - p1
-    
+
     const extensionRatios = [1.272, 1.414, 1.618, 2.0];
     const extLevels = extensionRatios.map(ratio => {
       // Standard Fibonacci extension formula: extensionPrice = p2 + (baseMove * ratio)
       // For uptrend (baseMove > 0): extends upward from p2
       // For downtrend (baseMove < 0): extends downward from p2
       const extensionPrice = p2Price + (baseMove * ratio);
-      
+
       return {
         ratio,
         price: extensionPrice,
         label: `${(ratio * 100).toFixed(1)}%`,
         color: ratio === 1.272 ? '#FFA726' :
-               ratio === 1.414 ? '#26A69A' :
-               ratio === 1.618 ? '#F23645' :
-               '#9C27B0'
+          ratio === 1.414 ? '#26A69A' :
+            ratio === 1.618 ? '#F23645' :
+              '#9C27B0'
       };
     });
 
@@ -1144,12 +1186,12 @@ export default function DrawingRenderer({
           opacity={isPreview ? 0.8 : 1}
           style={{ cursor: isPreview ? 'crosshair' : 'pointer' }}
         />
-        
+
         {/* Extension levels - only show in final drawing, not in preview */}
         {!isPreview && extLevels.map((level, i) => {
           const levelY = series.priceToCoordinate(level.price);
           if (levelY === null) return null;
-          
+
           return (
             <g key={i}>
               <line
@@ -1186,16 +1228,16 @@ export default function DrawingRenderer({
   // Render text annotation
   const renderText = (drawing: Drawing) => {
     if (drawing.points.length < 1) return null;
-    
+
     const point = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     if (!point) return null;
 
     const isSelected = selectedDrawingId === drawing.id;
     const displayText = drawing.text || 'Text'; // Default text if none provided
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onClick={() => onSelectDrawing(drawing.id)}
         onDoubleClick={(e) => {
           e.stopPropagation();
@@ -1238,13 +1280,13 @@ export default function DrawingRenderer({
   // Render price label
   const renderPriceLabel = (drawing: Drawing) => {
     if (drawing.points.length < 1) return null;
-    
+
     const point = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     if (!point) return null;
 
     const price = formatPrice(drawing.points[0].price, precision);
     const isSelected = selectedDrawingId === drawing.id;
-    
+
     return (
       <g key={drawing.id} onClick={() => onSelectDrawing(drawing.id)}>
         <rect
@@ -1274,10 +1316,10 @@ export default function DrawingRenderer({
   // Render measurement tool
   const renderMeasure = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
 
     const measurement = calculateMeasurement(
@@ -1293,10 +1335,10 @@ export default function DrawingRenderer({
     const isPreview = drawing.id === 'preview';
     const midX = (p1.x + p2.x) / 2;
     const midY = (p1.y + p2.y) / 2;
-    
+
     return (
-      <g 
-        key={drawing.id} 
+      <g
+        key={drawing.id}
         onClick={() => !isPreview && onSelectDrawing(drawing.id)}
         onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
         onMouseDown={(e) => {
@@ -1330,7 +1372,7 @@ export default function DrawingRenderer({
         {/* End marker */}
         <line x1={p2.x - 5} y1={p2.y - 5} x2={p2.x + 5} y2={p2.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.8 : 1} />
         <line x1={p2.x + 5} y1={p2.y - 5} x2={p2.x - 5} y2={p2.y + 5} stroke={drawing.color || '#2962FF'} strokeWidth="2" opacity={isPreview ? 0.8 : 1} />
-        
+
         {/* Info box - only show in final drawing, not in preview */}
         {!isPreview && (
           <>
@@ -1362,11 +1404,11 @@ export default function DrawingRenderer({
   // Render Gann Fan
   const renderGannFan = (drawing: Drawing) => {
     if (drawing.points.length < 3) return null;
-    
+
     const center = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const top = toPixels(drawing.points[1].time as number, drawing.points[1].price);
     const bottom = toPixels(drawing.points[2].time as number, drawing.points[2].price);
-    
+
     if (!center || !top || !bottom) return null;
 
     const chartWidth = chart.timeScale().width();
@@ -1410,11 +1452,11 @@ export default function DrawingRenderer({
   // Render Speed Lines
   const renderSpeedLines = (drawing: Drawing) => {
     if (drawing.points.length < 3) return null;
-    
+
     const high = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const low = toPixels(drawing.points[1].time as number, drawing.points[1].price);
     const retrace = toPixels(drawing.points[2].time as number, drawing.points[2].price);
-    
+
     if (!high || !low || !retrace) return null;
 
     const chartWidth = chart.timeScale().width();
@@ -1457,11 +1499,11 @@ export default function DrawingRenderer({
   // Render Pitchfork
   const renderPitchfork = (drawing: Drawing) => {
     if (drawing.points.length < 3) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
     const p3 = toPixels(drawing.points[2].time as number, drawing.points[2].price);
-    
+
     if (!p1 || !p2 || !p3) return null;
 
     const chartWidth = chart.timeScale().width();
@@ -1510,12 +1552,12 @@ export default function DrawingRenderer({
   // Render Wedge
   const renderWedge = (drawing: Drawing) => {
     if (drawing.points.length < 4) return null;
-    
+
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
     const p3 = toPixels(drawing.points[2].time as number, drawing.points[2].price);
     const p4 = toPixels(drawing.points[3].time as number, drawing.points[3].price);
-    
+
     if (!p1 || !p2 || !p3 || !p4) return null;
 
     const wedge = calculateWedge(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y, p4.x, p4.y);
@@ -1555,16 +1597,16 @@ export default function DrawingRenderer({
   // Render Callout
   const renderCallout = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     const anchor = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const arrow = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!anchor || !arrow) return null;
 
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
     const displayText = drawing.text || 'Note';
-    
+
     // Calculate arrow direction
     const angle = Math.atan2(arrow.y - anchor.y, arrow.x - anchor.x);
     const arrowSize = 10;
@@ -1574,7 +1616,12 @@ export default function DrawingRenderer({
     const arrowY2 = arrow.y - arrowSize * Math.sin(angle + Math.PI / 6);
 
     return (
-      <g key={drawing.id} onClick={() => !isPreview && onSelectDrawing(drawing.id)}>
+      <g
+        key={drawing.id}
+        onClick={() => !isPreview && onSelectDrawing(drawing.id)}
+        onDoubleClick={() => !isPreview && onDoubleClick?.(drawing)}
+        style={{ cursor: isSelected ? 'move' : 'pointer' }}
+      >
         {/* Text box */}
         <rect
           x={arrow.x - 50}
@@ -1623,7 +1670,7 @@ export default function DrawingRenderer({
   // Render Trend-based Fibonacci Extension
   const renderTrendFib = (drawing: Drawing) => {
     if (drawing.points.length < 2) return null;
-    
+
     // Trend-based Fibonacci Extension (3-point version)
     // A (p1) = Trend start point (dip)
     // B (p2) = Trend end point (peak) - base move
@@ -1631,11 +1678,11 @@ export default function DrawingRenderer({
     // Fibonacci levels are HORIZONTAL lines, with fan lines from C to each level
     const p1 = toPixels(drawing.points[0].time as number, drawing.points[0].price);
     const p2 = toPixels(drawing.points[1].time as number, drawing.points[1].price);
-    
+
     if (!p1 || !p2) return null;
-    
+
     const isPreview = drawing.id === 'preview';
-    
+
     // If only 2 points (preview after second click), just show the base trend line
     if (drawing.points.length === 2) {
       return (
@@ -1654,7 +1701,7 @@ export default function DrawingRenderer({
         </g>
       );
     }
-    
+
     // 3 points - full drawing
     const p3 = toPixels(drawing.points[2].time as number, drawing.points[2].price);
     if (!p3) return null;
@@ -1666,14 +1713,14 @@ export default function DrawingRenderer({
     const p1Price = drawing.points[0].price;
     const p2Price = drawing.points[1].price;
     const p3Price = drawing.points[2].price;
-    
+
     // Calculate base move vector (A->B)
     const dx = t2 - t1; // time difference
     const dy = p2Price - p1Price; // price difference
-    
+
     // All Fibonacci ratios (retracement + extension)
     const fibRatios = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1, 1.272, 1.414, 1.618, 2.0, 2.618, 3.618, 4.236];
-    
+
     const isSelected = selectedDrawingId === drawing.id;
     const timeScale = chart.timeScale();
     const chartWidth = timeScale.width();
@@ -1693,7 +1740,7 @@ export default function DrawingRenderer({
           strokeDasharray="4,4"
           opacity={0.5}
         />
-        
+
         {/* Extension start point C */}
         <circle
           cx={p3.x}
@@ -1702,30 +1749,30 @@ export default function DrawingRenderer({
           fill={drawing.color || '#2962FF'}
           opacity={0.7}
         />
-        
+
         {/* Fibonacci levels - HORIZONTAL lines with fan lines from C */}
         {fibRatios.map((ratio, i) => {
           // Calculate level price: levelPrice = p3Price + dy * ratio
           // This projects the A->B base move from point C
           const levelPrice = p3Price + dy * ratio;
-          
+
           const levelY = series.priceToCoordinate(levelPrice);
           if (levelY === null) return null;
-          
+
           // Color coding for Fibonacci levels
-          const color = ratio === 0 || ratio === 1 ? '#787B86' : 
-                       ratio === 0.236 ? '#F23645' :
-                       ratio === 0.382 ? '#FFA726' :
-                       ratio === 0.5 ? '#26A69A' :
-                       ratio === 0.618 ? '#2962FF' :
-                       ratio === 0.786 ? '#9C27B0' :
-                       ratio === 1.272 ? '#FFA726' :
-                       ratio === 1.414 ? '#26A69A' :
-                       ratio === 1.618 ? '#F23645' :
-                       ratio === 2.0 ? '#9C27B0' :
-                       ratio === 2.618 ? '#673AB7' :
-                       '#787B86';
-          
+          const color = ratio === 0 || ratio === 1 ? '#787B86' :
+            ratio === 0.236 ? '#F23645' :
+              ratio === 0.382 ? '#FFA726' :
+                ratio === 0.5 ? '#26A69A' :
+                  ratio === 0.618 ? '#2962FF' :
+                    ratio === 0.786 ? '#9C27B0' :
+                      ratio === 1.272 ? '#FFA726' :
+                        ratio === 1.414 ? '#26A69A' :
+                          ratio === 1.618 ? '#F23645' :
+                            ratio === 2.0 ? '#9C27B0' :
+                              ratio === 2.618 ? '#673AB7' :
+                                '#787B86';
+
           return (
             <g key={i}>
               {/* Horizontal Fibonacci level line */}
@@ -1738,7 +1785,7 @@ export default function DrawingRenderer({
                 strokeWidth={1}
                 opacity={isPreview ? 0.5 : 0.7}
               />
-              
+
               {/* Fan line from C to this level (diagonal dashed) */}
               <line
                 x1={p3.x}
@@ -1750,7 +1797,7 @@ export default function DrawingRenderer({
                 opacity={isPreview ? 0.3 : 0.4}
                 strokeDasharray="4,4"
               />
-              
+
               {/* Label on the left */}
               {!isPreview && (
                 <text
@@ -1820,7 +1867,7 @@ export default function DrawingRenderer({
       case 'price-label':
         return renderPriceLabel(drawing);
       case 'measure':
-        return renderMeasure(drawing);
+        return renderMeasureEnhanced(drawing, renderContext, precision, timeframe, selectedDrawingId, onSelectDrawing, onDoubleClick, onDragStart, onDragPoint);
       case 'gann-fan':
         return renderGannFan(drawing);
       case 'speed-lines':
@@ -1833,6 +1880,36 @@ export default function DrawingRenderer({
         return renderCallout(drawing);
       case 'trend-fib-extension':
         return renderTrendFib(drawing);
+      // Phase 1 New Tools
+      case 'long-position':
+        return renderLongPosition(drawing as any, renderContext);
+      case 'short-position':
+        return renderShortPosition(drawing as any, renderContext);
+      case 'horizontal-ray':
+        return renderHorizontalRay(drawing as any, renderContext);
+      case 'info-line':
+        return renderInfoLine(drawing as any, renderContext);
+      case 'trend-angle':
+        return renderTrendAngle(drawing as any, renderContext);
+      case 'anchored-text':
+        return renderAnchoredText(drawing as any, renderContext);
+      case 'note':
+        return renderNote(drawing as any, renderContext);
+      case 'date-range':
+        return renderDateRange(drawing as any, renderContext);
+      case 'price-range':
+        return renderPriceRange(drawing as any, renderContext);
+      case 'gann-box':
+        return renderGannBox(drawing as any, renderContext);
+      case 'gann-square':
+        return renderGannSquare(drawing as any, renderContext);
+      // Pattern Recognition Tools
+      case 'head-shoulders':
+        return renderHeadAndShoulders(drawing as any, renderContext);
+      case 'triangle-pattern':
+        return renderTrianglePattern(drawing as any, renderContext);
+      case 'abcd-pattern':
+        return renderABCDPattern(drawing as any, renderContext);
       default:
         return null;
     }
@@ -1854,6 +1931,7 @@ export default function DrawingRenderer({
         pointerEvents: 'none', // SVG itself doesn't catch events
         zIndex: 5, // Above chart but below overlay (overlay is 50)
         mixBlendMode: 'normal', // Don't blend with chart
+        overflow: 'visible', // Allow drawings to extend beyond SVG bounds (fixes zoom disappearing)
       }}
     >
       {/* Pointer events disabled when drawing (so overlay can catch clicks) */}

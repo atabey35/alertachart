@@ -28,6 +28,7 @@ import ChartSettings, { ChartSettingsType, DEFAULT_SETTINGS } from './ChartSetti
 import DrawingToolbar, { DrawingTool } from './DrawingToolbar';
 import DrawingRenderer from './DrawingRenderer';
 import DrawingPropertiesModal from './DrawingPropertiesModal';
+import TextEditModal from './TextEditModal';
 
 // GLOBAL worker counter for unique IDs across all instances
 let globalWorkerCounter = 0;
@@ -540,6 +541,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const [historyPointer, setHistoryPointer] = useState(-1); // ✅ FIX #4: Track current position in history
   const [historyStackLength, setHistoryStackLength] = useState(0); // ✅ FIX #4: Track history length for UI reactivity
   const [editingDrawing, setEditingDrawing] = useState<Drawing | null>(null); // Drawing being edited in modal
+  const [textEditingDrawing, setTextEditingDrawing] = useState<Drawing | null>(null); // Drawing being edited in text modal
   const [draggingPoint, setDraggingPoint] = useState<{ drawingId: string; pointIndex: number } | null>(null);
 
   // ✅ NEW: Direct drag ref for instant response (no React re-render delay)
@@ -3316,6 +3318,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   };
 
   const handleDrawingDoubleClick = (drawing: Drawing) => {
+    // ✅ TEXT TOOLS: Open text edit modal
+    if (drawing.type === 'callout') {
+      setTextEditingDrawing(drawing);
+      return;
+    }
+
+    // ✅ OTHER TOOLS: Open properties modal
     setEditingDrawing(drawing);
   };
 
@@ -3795,8 +3804,29 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         setDrawings(prev => prev.map(d => {
           if (d.id !== drawingId) return d;
 
+
           const newPoints = [...d.points];
           newPoints[pointIndex] = { time: newTime as Time, price: newPrice };
+
+          // ✅ SPECIAL HANDLING: Position tools (long/short) - update TP/SL properties
+          if (d.type === 'long-position' || d.type === 'short-position') {
+            const updatedDrawing = { ...d, points: newPoints };
+
+            // Point 0: Entry price
+            if (pointIndex === 0) {
+              (updatedDrawing as any).entry = newPrice;
+            }
+            // Point 1: Take Profit
+            else if (pointIndex === 1) {
+              (updatedDrawing as any).takeProfit = newPrice;
+            }
+            // Point 2: Stop Loss
+            else if (pointIndex === 2) {
+              (updatedDrawing as any).stopLoss = newPrice;
+            }
+
+            return updatedDrawing;
+          }
 
           return { ...d, points: newPoints };
         }));
@@ -3986,7 +4016,8 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
     // Create preview drawing - exactly as it will be saved
     const threePointTools = ['triangle', 'channel', 'gann-fan', 'speed-lines', 'pitchfork', 'trend-fib-extension'];
-    const fourPointTools = ['wedge'];
+    const fourPointTools = ['wedge', 'triangle-pattern', 'abcd-pattern'];
+    const fivePointTools = ['head-shoulders'];
     const tempDraw = drawings.find(d => d.id === 'temp');
     const currentPointCount = tempDraw ? tempDraw.points.length : (tempDrawing ? 1 : 0);
 
@@ -4005,6 +4036,20 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           { ...currentPoint }
         ];
       } else if (currentPointCount === 3) {
+        previewPoints = [
+          ...tempDraw!.points.map(p => ({ ...p })),
+          { ...currentPoint }
+        ];
+      }
+    } else if (fivePointTools.includes(activeTool)) {
+      // 5-point tools (head-shoulders)
+      if (currentPointCount === 0) {
+        setPreviewDrawing(null);
+        return;
+      } else if (currentPointCount === 1) {
+        if (!tempDrawing) return;
+        previewPoints = [{ ...tempDrawing }, { ...currentPoint }];
+      } else if (currentPointCount === 2 || currentPointCount === 3 || currentPointCount === 4) {
         previewPoints = [
           ...tempDraw!.points.map(p => ({ ...p })),
           { ...currentPoint }
@@ -4418,8 +4463,11 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
       // Multi-point tools
       const threePointTools = ['triangle', 'channel', 'gann-fan', 'speed-lines', 'pitchfork', 'trend-fib-extension'];
-      const fourPointTools = ['wedge'];
-      const pointCount = fourPointTools.includes(activeTool) ? 4 : (threePointTools.includes(activeTool) ? 3 : 2);
+      const fourPointTools = ['wedge', 'triangle-pattern', 'abcd-pattern'];
+      const fivePointTools = ['head-shoulders'];
+      const pointCount = fivePointTools.includes(activeTool) ? 5 :
+        (fourPointTools.includes(activeTool) ? 4 :
+          (threePointTools.includes(activeTool) ? 3 : 2));
 
       // Use overrideTempDrawing if provided, otherwise use state
       const effectiveTempDrawing = overrideTempDrawing !== undefined ? overrideTempDrawing : tempDrawing;
@@ -4437,7 +4485,40 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         // Second (or third/fourth) point
 
         // Check if we need more points
-        if (pointCount === 4 && currentPointCount === 3) {
+        // 5-point tools (head-shoulders)
+        if (pointCount === 5 && currentPointCount === 4) {
+          // Add fifth point and finalize (head-shoulders)
+          setDrawings(prev => prev.map(d => {
+            if (d.id === 'temp') {
+              return { ...d, points: [...d.points.map(p => ({ ...p })), { ...point }], id: `drawing-${Date.now()}` };
+            }
+            return d;
+          }));
+          setTempDrawing(null);
+          setPreviewDrawing(null);
+          setActiveTool('none');
+        } else if (pointCount === 5 && (currentPointCount === 2 || currentPointCount === 3)) {
+          // Add third or fourth point to temp drawing (need 5 total)
+          setDrawings(prev => prev.map(d => {
+            if (d.id === 'temp') {
+              return { ...d, points: [...d.points.map(p => ({ ...p })), { ...point }] };
+            }
+            return d;
+          }));
+          setTempDrawing(null);
+        } else if (pointCount === 5 && currentPointCount === 1) {
+          // Create temp drawing with 2 points (head-shoulders - need 5 total)
+          if (!effectiveTempDrawing) return; // TypeScript guard
+          const tempDraw: Drawing = {
+            id: 'temp',
+            type: activeTool as DrawingType,
+            points: [{ ...effectiveTempDrawing }, { ...point }],
+            color: '#2962FF',
+            lineWidth: 2
+          };
+          setDrawings(prev => [...prev, tempDraw]);
+          setTempDrawing(null);
+        } else if (pointCount === 4 && currentPointCount === 3) {
           // Add fourth point to temp drawing (wedge)
           setDrawings(prev => prev.map(d => {
             if (d.id === 'temp') {
@@ -5788,6 +5869,22 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
             handleDeleteDrawing(editingDrawing.id);
             setEditingDrawing(null);
           }}
+        />
+      )}
+
+      {/* Text Edit Modal */}
+      {textEditingDrawing && (
+        <TextEditModal
+          drawing={textEditingDrawing}
+          onSave={(text) => {
+            setDrawings(prev => prev.map(d =>
+              d.id === textEditingDrawing.id
+                ? { ...d, text, fontSize: (d as any).fontSize || 14 }
+                : d
+            ));
+            setTextEditingDrawing(null);
+          }}
+          onClose={() => setTextEditingDrawing(null)}
         />
       )}
     </div>
