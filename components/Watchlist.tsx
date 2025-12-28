@@ -199,8 +199,11 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     if (savedWatchlist) {
       symbolsToLoad = JSON.parse(savedWatchlist);
     } else {
-      // Default symbols
-      symbolsToLoad = ['btcusdt', 'ethusdt', 'ethbtc', 'solusdt', 'bnbusdt', 'xrpusdt', 'adausdt'];
+      // Default symbols based on market type
+      const DEFAULT_SPOT_SYMBOLS = ['btcusdt', 'ethusdt', 'ethbtc', 'solusdt', 'bnbusdt', 'xrpusdt', 'adausdt'];
+      const DEFAULT_FUTURES_SYMBOLS = ['btcusdt', 'ethusdt', 'solusdt', 'bnbusdt', 'xrpusdt', 'adausdt']; // No ETHBTC in futures
+
+      symbolsToLoad = marketType === 'futures' ? DEFAULT_FUTURES_SYMBOLS : DEFAULT_SPOT_SYMBOLS;
     }
     setWatchlist(symbolsToLoad);
 
@@ -240,6 +243,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
   // Real-time price updates via WebSocket (Spot or Futures)
   useEffect(() => {
+    // NOTE: We don't clear priceData here anymore to avoid "loading" state
+    // Old data will be shown until new WebSocket data arrives (stale-while-revalidate)
+    // Generation system prevents old socket messages from corrupting new data
+
     if (watchlist.length === 0) {
       // Disconnect if watchlist is empty
       websocketService.disconnect();
@@ -302,14 +309,14 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     // Connect to WebSocket for real-time updates
     websocketService.connect(watchlist, marketType, handlePriceUpdate);
 
-    // Fallback: Initial fetch via REST API for 24h stats (WebSocket might not have all data immediately)
+    // Immediate REST API fetch for fast initial load (500ms timeout - very aggressive)
     const fetchInitialPrices = async () => {
       try {
         const symbols = watchlist.join(',');
         const url = `/api/ticker/${marketType}?symbols=${symbols}`;
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
+        const timeoutId = setTimeout(() => controller.abort(), 500); // Aggressive timeout
 
         const response = await fetch(url, { signal: controller.signal });
         clearTimeout(timeoutId);
@@ -319,7 +326,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         const result = await response.json();
         const data = result.data;
 
-        // Merge initial data with WebSocket data
+        // Update price data (WebSocket will continue to update)
         setPriceData(prev => {
           const updated = new Map(prev);
           data.forEach((ticker: any) => {
@@ -345,7 +352,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       }
     };
 
-    // Fetch initial data once
+    // Fetch initial data (races with WebSocket)
     fetchInitialPrices();
 
     // Cleanup: Disconnect WebSocket when component unmounts or dependencies change

@@ -2546,21 +2546,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       // Calculate total volume and color based on buy/sell ratio
       const totalVolume = bar.vbuy + bar.vsell;
 
-      // Determine color: green if more buy volume, red if more sell volume
+      // Determine color: Match the price candle color (User Request)
       let volumeColor: string;
 
-      // For the CURRENT BAR (last bar with live updates), use candle direction instead of vbuy/vsell
-      // This ensures live bars are colored green/red even before trades arrive
-      if (bar.time === lastBarTime && bar.open > 0) {
-        // Use candle direction (close vs open) for live bar
+      // Use candle direction for ALL bars to ensure consistency
+      // "mum ne kapanıyorsa hacim mumu da kesinlikle o renkte kapanmalı"
+      if (bar.open > 0) {
         volumeColor = bar.close >= bar.open ? chartSettings.volumeUpColor : chartSettings.volumeDownColor;
-      } else if (bar.vbuy > bar.vsell) {
-        volumeColor = chartSettings.volumeUpColor;
-      } else if (bar.vsell > bar.vbuy) {
-        volumeColor = chartSettings.volumeDownColor;
       } else {
-        // For historical bars with equal vbuy/vsell, use candle direction
-        volumeColor = bar.close >= bar.open ? chartSettings.volumeUpColor : chartSettings.volumeDownColor;
+        volumeColor = chartSettings.volumeUpColor; // Fallback
       }
 
       volumeMap.set(time, {

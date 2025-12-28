@@ -3374,107 +3374,18 @@ export default function SettingsPage() {
                 <div className="text-xs font-medium">{language === 'en' ? 'Loading alerts...' : 'Alarmlar yükleniyor...'}</div>
               </div>
             ) : customAlerts.length === 0 ? (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 0.3 }}
-                className="relative py-16 px-6 rounded-2xl border border-slate-800/50 bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-slate-900/80 backdrop-blur-md text-center overflow-hidden"
-              >
-                {/* Animated background gradient */}
-                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-transparent to-blue-600/5 animate-pulse"></div>
-
-                {/* Clickable animated bell icon */}
-                <motion.button
-                  onClick={() => setShowAddAlertModal(true)}
-                  className="relative mx-auto mb-6 cursor-pointer group"
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                  initial={{ y: 0 }}
-                  animate={{
-                    y: [0, -8, 0],
-                  }}
-                  transition={{
-                    y: {
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    },
-                  }}
-                >
-                  {/* Outer pulse rings */}
-                  <motion.div
-                    className="absolute inset-0 bg-blue-500/20 rounded-full"
-                    animate={{
-                      scale: [1, 1.5, 1.5],
-                      opacity: [0.5, 0, 0],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeOut",
-                    }}
-                  />
-                  <motion.div
-                    className="absolute inset-0 bg-blue-500/20 rounded-full"
-                    animate={{
-                      scale: [1, 1.5, 1.5],
-                      opacity: [0.5, 0, 0],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      delay: 0.5,
-                      ease: "easeOut",
-                    }}
-                  />
-
-                  {/* Middle glow ring */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-br from-blue-500/30 to-blue-600/30 rounded-full blur-xl"
-                    animate={{
-                      opacity: [0.3, 0.6, 0.3],
-                    }}
-                    transition={{
-                      duration: 2,
-                      repeat: Infinity,
-                      ease: "easeInOut",
-                    }}
-                  />
-
-                  {/* Icon container */}
-                  <div className="relative w-24 h-24 bg-gradient-to-br from-blue-600 via-blue-700 to-blue-800 rounded-full flex items-center justify-center shadow-2xl shadow-blue-500/30 border-2 border-blue-500/30 group-hover:border-blue-400/50 transition-all">
-                    <Bell className="w-12 h-12 text-white drop-shadow-lg" strokeWidth={2} />
-                  </div>
-
-                  {/* Shine effect on hover */}
-                  <motion.div
-                    className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent rounded-full"
-                    initial={{ x: '-100%' }}
-                    whileHover={{ x: '100%' }}
-                    transition={{ duration: 0.6 }}
-                  />
-                </motion.button>
-
-                <div className="relative z-10">
-                  <h3 className="text-base font-bold text-white mb-2">
-                    {language === 'en' ? 'No alerts yet' : 'Henüz alarm yok'}
-                  </h3>
-                  <p className="text-sm text-slate-400 mb-4 max-w-xs mx-auto leading-relaxed">
-                    {language === 'en'
-                      ? 'Tap the bell to create your first price alert and never miss important price movements'
-                      : 'Zil simgesine dokunarak ilk fiyat alarmınızı oluşturun ve önemli fiyat hareketlerini kaçırmayın'}
-                  </p>
-                  <motion.button
-                    onClick={() => setShowAddAlertModal(true)}
-                    className="mx-auto px-6 py-2.5 text-sm font-semibold bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-500 hover:to-blue-600 transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-95 flex items-center gap-2"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    <Bell className="w-4 h-4" />
-                    <span>{language === 'en' ? 'Create Alert' : 'Alarm Oluştur'}</span>
-                  </motion.button>
+              <div className="p-4 rounded-xl border border-blue-500/20 bg-gradient-to-br from-slate-900/80 to-slate-900/60 text-center">
+                <div className="flex flex-wrap justify-center gap-2 mb-2">
+                  <span className="px-2.5 py-1 text-[10px] font-semibold bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20">BTC {'>'} $100k</span>
+                  <span className="px-2.5 py-1 text-[10px] font-semibold bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20">ETH {'<'} $2000</span>
+                  <span className="px-2.5 py-1 text-[10px] font-semibold bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20">SOL {'>'} $150</span>
                 </div>
-              </motion.div>
+                <p className="text-[10px] text-slate-500">
+                  {language === 'en'
+                    ? 'Create your first price alert and never miss important price movements'
+                    : 'İlk fiyat alarmınızı oluşturun ve önemli fiyat hareketlerini kaçırmayın'}
+                </p>
+              </div>
             ) : (
               <div className="space-y-3">
                 {customAlerts.map((alert, index) => {
