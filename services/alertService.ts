@@ -8,14 +8,24 @@ import { authService } from './authService';
 
 /**
  * Format price for notifications
- * - Small prices (< 1): 4 decimals
- * - Medium/Large prices (>= 1): 2 decimals
+ * Smart formatting based on price magnitude:
+ * - Prices >= 1000: 0 decimals
+ * - Prices >= 1: 2 decimals  
+ * - Prices >= 0.01: 4 decimals
+ * - Prices < 0.01: 6-8 decimals
  */
 function formatPrice(price: number): string {
-  if (price < 1) {
+  if (price >= 1000) {
+    return price.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+  } else if (price >= 1) {
+    return price.toFixed(2);
+  } else if (price >= 0.01) {
     return price.toFixed(4);
+  } else if (price >= 0.0001) {
+    return price.toFixed(6);
+  } else {
+    return price.toFixed(8);
   }
-  return price.toFixed(2);
 }
 
 class AlertService {
@@ -35,7 +45,7 @@ class AlertService {
 
     if (typeof window !== 'undefined') {
       window.addEventListener('nativeMessage', this.handleNativeMessage);
-      
+
       // Also listen to message events (for compatibility)
       window.addEventListener('message', (event: any) => {
         try {
@@ -49,10 +59,10 @@ class AlertService {
           // Ignore parse errors
         }
       });
-      
+
       // Try to load deviceId from multiple sources
       this.loadDeviceId();
-      
+
       // Periodically check for deviceId (in case it's set later)
       const checkInterval = setInterval(() => {
         if (!this.nativeDeviceId) {
@@ -61,15 +71,15 @@ class AlertService {
           clearInterval(checkInterval);
         }
       }, 2000);
-      
+
       // Clear interval after 30 seconds
       setTimeout(() => clearInterval(checkInterval), 30000);
     }
   }
-  
+
   private loadDeviceId() {
     if (typeof window === 'undefined') return;
-    
+
     try {
       // Priority 1: window.nativeDeviceId (set by injectedJavaScript)
       if ((window as any).nativeDeviceId && !this.nativeDeviceId) {
@@ -81,7 +91,7 @@ class AlertService {
           localStorage.setItem('native_device_id', deviceId);
         }
       }
-      
+
       // Priority 2: localStorage
       if (!this.nativeDeviceId) {
         const storedDeviceId = localStorage.getItem('native_device_id');
@@ -110,7 +120,7 @@ class AlertService {
       const deviceId = typeof detail.deviceId === 'string' ? detail.deviceId : null;
       console.log('[AlertService] DEVICE_ID received from native:', deviceId);
       this.nativeDeviceId = deviceId;
-      
+
       // Store deviceId in localStorage for persistence
       if (deviceId && typeof window !== 'undefined') {
         try {
@@ -119,7 +129,7 @@ class AlertService {
           console.error('[AlertService] Failed to store deviceId in localStorage:', e);
         }
       }
-      
+
       // DeviceId geldiğinde, deviceId'si olmayan tüm alarmları güncelle
       if (deviceId) {
         let updatedCount = 0;
@@ -129,7 +139,7 @@ class AlertService {
             updatedCount++;
           }
         });
-        
+
         if (updatedCount > 0) {
           this.saveToStorage();
           console.log(`[AlertService] Updated ${updatedCount} alert(s) with deviceId: ${deviceId}`);
@@ -198,7 +208,7 @@ class AlertService {
 
   private loadFromStorage() {
     if (typeof window === 'undefined') return;
-    
+
     try {
       const stored = localStorage.getItem(this.storageKey);
       if (stored) {
@@ -211,7 +221,7 @@ class AlertService {
 
   private saveToStorage() {
     if (typeof window === 'undefined') return;
-    
+
     try {
       localStorage.setItem(this.storageKey, JSON.stringify(this.alerts));
     } catch (e) {
@@ -226,7 +236,7 @@ class AlertService {
   subscribe(listener: (alerts: PriceAlert[]) => void) {
     this.listeners.push(listener);
     listener(this.alerts); // Initial call
-    
+
     return () => {
       this.listeners = this.listeners.filter(l => l !== listener);
     };
@@ -234,7 +244,7 @@ class AlertService {
 
   onAlertTriggered(listener: (alert: PriceAlert) => void) {
     this.alertTriggerListeners.push(listener);
-    
+
     return () => {
       this.alertTriggerListeners = this.alertTriggerListeners.filter(l => l !== listener);
     };
@@ -306,19 +316,19 @@ class AlertService {
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
     console.error('[AlertService] 🚨 triggerAlert() CALLED! ID:', id);
     console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    
+
     const alert = this.alerts.find(a => a.id === id);
     console.error('[AlertService] 🔍 Alert found:', alert ? 'YES' : 'NO');
     console.error('[AlertService] 🔍 Alert isTriggered:', alert?.isTriggered);
-    
+
     if (alert && !alert.isTriggered) {
       // 🔥 HER ZAMAN deviceId'yi yeniden yükle (localStorage'dan güncel değeri al)
       console.error('[AlertService] 🔄 Reloading device ID from localStorage...');
       console.log('[AlertService] 🔄 Reloading device ID from localStorage before triggering alarm...');
-        this.loadDeviceId();
+      this.loadDeviceId();
       console.error('[AlertService] 📱 Device ID after reload:', this.nativeDeviceId);
       console.log('[AlertService] 📱 Device ID after reload:', this.nativeDeviceId);
-      
+
       // Eğer alarm'da deviceId yoksa ama nativeDeviceId varsa, güncelle
       if (!alert.deviceId && this.nativeDeviceId) {
         alert.deviceId = this.nativeDeviceId;
@@ -332,28 +342,28 @@ class AlertService {
           deviceId: alert.deviceId,
         });
       }
-      
+
       alert.isTriggered = true;
       alert.triggeredAt = Date.now();
       this.saveToStorage();
       this.notifyListeners();
-      
+
       // Play sound in loop until dismissed
       this.playAlertSoundLoop();
-      
+
       // Show notification
       this.showNotification(alert);
-      
+
       // Notify trigger listeners (for modal)
       this.alertTriggerListeners.forEach(listener => listener(alert));
-      
+
       // 🔥 CRITICAL: Show local notification using Capacitor LocalNotifications
       // Bu, uygulama açıkken veya arka plandayken bildirim göstermek için
       if (typeof window !== 'undefined' && (window as any).Capacitor) {
         try {
           const formattedPrice = formatPrice(alert.price);
           const upperSymbol = alert.pair.toUpperCase();
-          
+
           // 🔥 MULTILINGUAL: Get device language for local notification
           let language = 'tr'; // Default to Turkish
           try {
@@ -371,11 +381,11 @@ class AlertService {
           } catch (langError) {
             console.warn('[AlertService] ⚠️ Could not get device language for local notification:', langError);
           }
-          
+
           // 🔥 MULTILINGUAL: Create messages based on language
           const isTurkish = language.startsWith('tr');
           let title, body;
-          
+
           if (isTurkish) {
             // TR Mesajı
             const directionText = alert.direction === 'above' ? 'ulaştı' : 'düştü';
@@ -387,9 +397,9 @@ class AlertService {
             title = '💰 Price Alert';
             body = `${upperSymbol} price ${directionText} ${formattedPrice} level!`;
           }
-          
+
           const { LocalNotifications } = (window as any).Capacitor.Plugins;
-          
+
           if (LocalNotifications) {
             // Request permission if not already granted
             LocalNotifications.requestPermissions().then((result: any) => {
@@ -431,19 +441,19 @@ class AlertService {
           console.error('[AlertService] ❌ Failed to show local notification:', e);
         }
       }
-      
+
       // Send push notification to mobile devices via backend (only if deviceId exists - native app context)
       // Web'den kurulan alarmlar için push notification gönderme, sadece web tarayıcısında bildirim göster
       // isNativeApp kontrolü: Capacitor, window.isNativeApp veya window.ReactNativeWebView varlığı
       const isNativeApp = typeof window !== 'undefined' && (
         (window as any).Capacitor !== undefined ||  // 🔥 Capacitor support
-        (window as any).isNativeApp === true || 
+        (window as any).isNativeApp === true ||
         typeof (window as any).ReactNativeWebView !== 'undefined'
       );
-      
+
       // deviceId'yi tekrar kontrol et (güncelleme sonrası)
       const finalDeviceId = alert.deviceId || this.nativeDeviceId;
-      
+
       // 🔥 Auth kontrolü: httpOnly cookies kullanıyoruz, localStorage değil!
       // ÖNCE checkAuth() çağır ki cookie'ler kontrol edilsin ve user güncellensin
       let isAuthenticated = false;
@@ -464,7 +474,7 @@ class AlertService {
           }
         }
       }
-      
+
       const debugInfo = {
         alertId: alert.id,
         pair: alert.pair,
@@ -481,20 +491,20 @@ class AlertService {
         windowIsNativeApp: typeof window !== 'undefined' ? (window as any).isNativeApp : undefined,
         isAuthenticated,
       };
-      
+
       console.log('[AlertService] 🔔 Triggering alert:', JSON.stringify(debugInfo, null, 2));
       console.error('[AlertService] 🔔 DEBUG INFO:');
       console.error('  finalDeviceId:', finalDeviceId || 'NULL');
       console.error('  isNativeApp:', isNativeApp);
       console.error('  isAuthenticated:', isAuthenticated);
       console.error('  willSendPush:', debugInfo.willSendPush);
-      
+
       // 🔥 Push notification gönder: Sadece auth kontrolü yap, backend user_id'den cihazları bulur!
       // YENİ MİMARİ: Token yönetimi native'de, web tarafında token'a ihtiyaç yok
       // Backend user_id'den cihazları bulur ve push token ile bildirim gönderir
       if (typeof window !== 'undefined' && isAuthenticated) {
         console.error('[AlertService] ✅ Conditions MET! Sending push notification...');
-        
+
         try {
           const formattedPrice = formatPrice(alert.price);
           const upperSymbol = alert.pair.toUpperCase();
@@ -516,7 +526,7 @@ class AlertService {
           } catch (langError) {
             console.warn('[AlertService] ⚠️ Could not get device language for backend message:', langError);
           }
-          
+
           // 🔥 MULTILINGUAL: Create message based on language
           // Backend'de zaten çeviri yapıyoruz, ama frontend'den gelen mesajı da dil bazlı oluşturalım
           // Backend'de device language'e göre çeviri yapılacak, burada sadece fallback olarak gönderiyoruz
@@ -532,7 +542,7 @@ class AlertService {
             if (pushToken) {
               this.nativePushToken = pushToken;
             }
-            
+
             console.error('[AlertService] 📤 SENDING PUSH NOTIFICATION REQUEST NOW!');
             console.log('[AlertService] 📤 Sending push notification request to /api/alarms/notify:', {
               alarmKey: alert.id,
@@ -542,26 +552,26 @@ class AlertService {
               message: message,
               language: language,
             });
-            
+
             const requestBody = {
-                alarmKey: alert.id,
-                symbol: upperSymbol,
-                message: message, // 🔥 MULTILINGUAL: Dil bazlı mesaj
-                data: {
-                  id: alert.id,
-                  exchange: alert.exchange,
-                  pair: alert.pair,
-                  price: alert.price,
-                  direction: alert.direction,
-                  triggeredAt: alert.triggeredAt,
-                },
-                // Backend user_id'den tüm cihazları bulacak, deviceId göndermeye gerek yok
+              alarmKey: alert.id,
+              symbol: upperSymbol,
+              message: message, // 🔥 MULTILINGUAL: Dil bazlı mesaj
+              data: {
+                id: alert.id,
+                exchange: alert.exchange,
+                pair: alert.pair,
+                price: alert.price,
+                direction: alert.direction,
+                triggeredAt: alert.triggeredAt,
+              },
+              // Backend user_id'den tüm cihazları bulacak, deviceId göndermeye gerek yok
               deviceId: finalDeviceId || undefined, // Optional: bu cihaza öncelik ver
               isLocalAlarm: true, // 🔥 CRITICAL: Bu local alarm (mobil uygulamada kurulan), premium kontrolü yapılmayacak
             };
-            
+
             console.log('[AlertService] 📤 Sending fetch request to /api/alarms/notify with body:', JSON.stringify(requestBody, null, 2));
-            
+
             // 🔥 httpOnly cookies kullanıyoruz - credentials: 'include' ile otomatik gönderilir!
             fetch('/api/alarms/notify', {
               method: 'POST',
@@ -571,30 +581,30 @@ class AlertService {
               credentials: 'include', // 🔥 CRITICAL: Send httpOnly cookies!
               body: JSON.stringify(requestBody),
             })
-            .then(response => {
-              console.log('[AlertService] ✅ Push notification response received:', response.status, response.statusText);
-              
-              if (!response.ok) {
-                return response.json().then(err => {
-                  console.error('[AlertService] ❌ Push notification failed:', response.status, response.statusText, err);
-                  throw new Error(`Push notification failed: ${response.status} ${response.statusText}`);
-                });
-              }
-              
-              return response.json();
-            })
-            .then(data => {
-              console.log('[AlertService] ✅ Push notification result:', JSON.stringify(data, null, 2));
-              console.error('[AlertService] ✅ Push notification result:', JSON.stringify(data, null, 2)); // Also log to console.error
-            })
-            .catch((e) => {
-              console.error('[AlertService] ❌ Failed to send push notification:', e);
-              console.error('[AlertService] ❌ Error details:', e.message, e.stack);
-            });
+              .then(response => {
+                console.log('[AlertService] ✅ Push notification response received:', response.status, response.statusText);
+
+                if (!response.ok) {
+                  return response.json().then(err => {
+                    console.error('[AlertService] ❌ Push notification failed:', response.status, response.statusText, err);
+                    throw new Error(`Push notification failed: ${response.status} ${response.statusText}`);
+                  });
+                }
+
+                return response.json();
+              })
+              .then(data => {
+                console.log('[AlertService] ✅ Push notification result:', JSON.stringify(data, null, 2));
+                console.error('[AlertService] ✅ Push notification result:', JSON.stringify(data, null, 2)); // Also log to console.error
+              })
+              .catch((e) => {
+                console.error('[AlertService] ❌ Failed to send push notification:', e);
+                console.error('[AlertService] ❌ Error details:', e.message, e.stack);
+              });
           };
 
           console.log('[AlertService] About to send push notification, calling requestNativePushToken...');
-          
+
           // Eğer nativePushToken zaten varsa, direkt kullan
           if (this.nativePushToken) {
             console.log('[AlertService] Using cached push token:', `${this.nativePushToken.substring(0, 30)}...`);
@@ -623,7 +633,7 @@ class AlertService {
         console.error('[AlertService] ❌ PUSH NOTIFICATION SKIPPED - User NOT logged in!');
         console.error('[AlertService] ❌ isAuthenticated:', isAuthenticated);
       }
-      
+
       console.log('[AlertService] Alert triggered:', alert);
     }
   }
@@ -660,7 +670,7 @@ class AlertService {
       const crossedAbove = prevPrice < alert.price && currentPrice >= alert.price;
       const crossedBelow = prevPrice > alert.price && currentPrice <= alert.price;
       const shouldTrigger = (alert.direction === 'above' && crossedAbove) ||
-                            (alert.direction === 'below' && crossedBelow);
+        (alert.direction === 'below' && crossedBelow);
 
       if (shouldTrigger) {
         await this.triggerAlert(alert.id);
@@ -672,7 +682,7 @@ class AlertService {
     if (!exchange || !pair) {
       return this.alerts;
     }
-    
+
     return this.alerts.filter(
       a => a.exchange === exchange && a.pair === pair
     );
@@ -687,10 +697,10 @@ class AlertService {
   private playAlertSoundLoop() {
     // Stop any existing sound
     this.stopAlertSound();
-    
+
     // Play immediately
     this.playAlertSound();
-    
+
     // Repeat every 3 seconds until dismissed
     this.soundIntervalId = setInterval(() => {
       this.playAlertSound();
@@ -704,43 +714,43 @@ class AlertService {
         this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
       const audioContext = this.audioContext;
-      
+
       // Create a more attention-grabbing alert sound (trading platform style)
       const playTone = (frequency: number, duration: number, delay: number = 0) => {
         const oscillator = audioContext.createOscillator();
         const gainNode = audioContext.createGain();
-        
+
         oscillator.connect(gainNode);
         gainNode.connect(audioContext.destination);
-        
+
         oscillator.frequency.value = frequency;
         oscillator.type = 'sine';
-        
+
         // Envelope for smoother sound
         gainNode.gain.setValueAtTime(0, audioContext.currentTime + delay);
         gainNode.gain.linearRampToValueAtTime(0.3, audioContext.currentTime + delay + 0.01);
         gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + delay + duration);
-        
+
         oscillator.start(audioContext.currentTime + delay);
         oscillator.stop(audioContext.currentTime + delay + duration);
       };
-      
+
       // Longer alert sequence - 3 cycles (like urgent trading alerts)
       // First cycle
       playTone(800, 0.2, 0);        // First beep
       playTone(1000, 0.2, 0.25);    // Second beep (higher)
       playTone(1200, 0.3, 0.5);     // Third beep (highest, longer)
-      
+
       // Second cycle (repeat after short pause)
       playTone(800, 0.2, 0.9);      // First beep
       playTone(1000, 0.2, 1.15);    // Second beep (higher)
       playTone(1200, 0.3, 1.4);     // Third beep (highest, longer)
-      
+
       // Third cycle (final, slightly longer)
       playTone(800, 0.2, 1.8);      // First beep
       playTone(1000, 0.2, 2.05);    // Second beep (higher)
       playTone(1200, 0.4, 2.3);     // Third beep (highest, longest)
-      
+
       console.log('[AlertService] Alert sound played (extended)');
     } catch (e) {
       console.error('[AlertService] Audio error:', e);
@@ -756,8 +766,8 @@ class AlertService {
   }
 
   private showNotification(alert: PriceAlert) {
-    const message = `${alert.pair.toUpperCase()} ${alert.direction === 'above' ? '⬆' : '⬇'} $${alert.price.toFixed(2)}`;
-    
+    const message = `${alert.pair.toUpperCase()} ${alert.direction === 'above' ? '⬆' : '⬇'} $${formatPrice(alert.price)}`;
+
     if ('Notification' in window && Notification.permission === 'granted') {
       new Notification('Price Alert Triggered!', {
         body: message,

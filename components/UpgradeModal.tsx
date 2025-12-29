@@ -387,6 +387,7 @@ export default function UpgradeModal({
   const [iapAvailable, setIapAvailable] = useState(false);
   const [products, setProducts] = useState<any[]>([]);
   const [productsLoaded, setProductsLoaded] = useState(false);
+  const [selectedPlan, setSelectedPlan] = useState<'monthly' | 'yearly'>('monthly');
 
   // Helper function to log button interactions
   const logButtonClick = async (eventType: string) => {
@@ -739,16 +740,28 @@ export default function UpgradeModal({
     try {
       // 🔥 APPLE GUIDELINE 2.1: Blind Purchase Fallback for App Store Review
       // If products array is empty (common during review), use hardcoded fallback product IDs
+      // Determine product ID based on selected plan
       let productId = platform === 'ios'
-        ? 'com.kriptokirmizi.alerta.premium.monthly'
-        : 'premium_monthly';
+        ? (selectedPlan === 'yearly'
+          ? 'com.kriptokirmizi.alerta.premium.yearly'
+          : 'com.kriptokirmizi.alerta.premium.monthly')
+        : (selectedPlan === 'yearly'
+          ? 'premium_yearly'
+          : 'premium_monthly');
 
       if (products.length === 0) {
         console.log('[UpgradeModal][DEBUG] Product list empty, attempting blind purchase with fallback ID...', productId);
         // Use hardcoded fallback - Apple's native sheet will handle the transaction
         // This allows purchase during App Store Review when products are not yet approved
       } else {
-        const foundProduct = products.find((p) => p.productId === productId || p.productId === 'premium_monthly' || p.productId === 'alerta_monthly');
+        const foundProduct = products.find((p) => {
+          if (selectedPlan === 'yearly') {
+            return p.productId === 'premium_yearly' ||
+              p.productId === 'com.kriptokirmizi.alerta.premium.yearly' ||
+              p.productId.includes('yearly');
+          }
+          return p.productId === productId || p.productId === 'premium_monthly' || p.productId === 'alerta_monthly';
+        });
         if (foundProduct) {
           productId = foundProduct.productId;
           console.log('[UpgradeModal][DEBUG] Found product:', productId);
@@ -1181,38 +1194,91 @@ export default function UpgradeModal({
 
                 {/* Subscription Details & Legal Links - Apple App Store Requirement */}
                 <div className="px-2.5 py-1.5 space-y-1.5 border-t border-white/5 bg-gradient-to-b from-gray-950/60 to-black/80 flex-shrink-0 backdrop-blur-sm">
-                  {/* Pricing Info - APPLE GUIDELINE 3.1.2: Price MUST be clearly visible */}
+                  {/* Plan Selection Toggle */}
                   <div className="text-center">
-                    <p className="text-[8px] text-gray-500 mb-1 font-medium uppercase tracking-wider">
+                    <p className="text-[8px] text-gray-500 mb-1.5 font-medium uppercase tracking-wider">
                       {t('subscriptionDetails', normalizedLanguage)}
                     </p>
                     {!productsLoaded && platform !== 'web' ? (
                       <PriceSkeleton />
                     ) : (
                       <>
+                        {/* Plan Toggle */}
+                        <div className="flex items-center justify-center gap-1 mb-2">
+                          <button
+                            onClick={() => setSelectedPlan('monthly')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 ${selectedPlan === 'monthly'
+                              ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30'
+                              : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 border border-gray-700/50'
+                              }`}
+                          >
+                            {normalizedLanguage === 'tr' ? 'Aylık' : 'Monthly'}
+                          </button>
+                          <button
+                            onClick={() => setSelectedPlan('yearly')}
+                            className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all duration-200 relative ${selectedPlan === 'yearly'
+                              ? 'bg-gradient-to-r from-blue-600 to-cyan-500 text-white shadow-lg shadow-blue-500/30'
+                              : 'bg-gray-800/50 text-gray-400 hover:bg-gray-700/50 border border-gray-700/50'
+                              }`}
+                          >
+                            {normalizedLanguage === 'tr' ? 'Yıllık' : 'Yearly'}
+                            {/* Save badge */}
+                            <span className="absolute -top-2 -right-1 px-1 py-0.5 bg-green-500 text-white text-[7px] font-bold rounded-full shadow-lg">
+                              -25%
+                            </span>
+                          </button>
+                        </div>
+
+                        {/* Price Display */}
                         <div className="flex items-center justify-center gap-1 mb-0.5 flex-wrap">
                           <span className="text-gray-400 font-light text-[9px]">
-                            {t('monthlySubscription', normalizedLanguage)}
+                            {selectedPlan === 'yearly'
+                              ? (normalizedLanguage === 'tr' ? 'Yıllık Abonelik' : 'Yearly Subscription')
+                              : t('monthlySubscription', normalizedLanguage)}
                           </span>
-                          {products.length > 0 && products[0].price && (
-                            <>
-                              <span className="text-gray-600">•</span>
-                              <div className="flex items-baseline gap-0.5">
-                                {/* Currency Symbol Icon */}
-                                <span className="text-blue-400 font-light text-xs">
-                                  {getCurrencySymbol(products[0])}
-                                </span>
-                                <span className="text-blue-300 font-bold text-base tracking-tight">
-                                  {products[0].price.match(/[\d,\.]+/)?.[0] || products[0].price.replace(/[^\d,\.]/g, '')}
-                                </span>
-                              </div>
-                            </>
-                          )}
+                          {(() => {
+                            const selectedProduct = products.find(p =>
+                              selectedPlan === 'yearly'
+                                ? (p.productId?.includes('yearly') || p.productId === 'premium_yearly')
+                                : (p.productId?.includes('monthly') || p.productId === 'premium_monthly')
+                            ) || products[0];
+
+                            if (selectedProduct?.price) {
+                              return (
+                                <>
+                                  <span className="text-gray-600">•</span>
+                                  <div className="flex items-baseline gap-0.5">
+                                    <span className="text-blue-400 font-light text-xs">
+                                      {getCurrencySymbol(selectedProduct)}
+                                    </span>
+                                    <span className="text-blue-300 font-bold text-base tracking-tight">
+                                      {selectedProduct.price.match(/[\d,\.]+/)?.[0] || selectedProduct.price.replace(/[^\d,\.]/g, '')}
+                                    </span>
+                                  </div>
+                                  {selectedPlan === 'yearly' && (
+                                    <span className="text-green-400 text-[8px] ml-1">
+                                      ({normalizedLanguage === 'tr' ? 'ayda ~' : '~'}
+                                      {(() => {
+                                        const yearlyPrice = parseFloat(selectedProduct.price.replace(/[^\d,\.]/g, '').replace(',', '.'));
+                                        const monthlyEquivalent = (yearlyPrice / 12).toFixed(2);
+                                        return monthlyEquivalent;
+                                      })()}
+                                      {normalizedLanguage === 'tr' ? '' : '/mo'})
+                                    </span>
+                                  )}
+                                </>
+                              );
+                            }
+                            return null;
+                          })()}
                         </div>
+
                         {/* Show trial info on iOS */}
                         {platform === 'ios' && products.length > 0 && (
                           <p className="text-[8px] text-gray-500 mt-0.5">
-                            {t('threeDaysFreeThenMonthly', normalizedLanguage)}
+                            {selectedPlan === 'yearly'
+                              ? (normalizedLanguage === 'tr' ? '3 gün ücretsiz, sonra yıllık' : '3 days free, then yearly')
+                              : t('threeDaysFreeThenMonthly', normalizedLanguage)}
                           </p>
                         )}
                       </>
