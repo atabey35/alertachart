@@ -1273,12 +1273,10 @@ export default function UpgradeModal({
                           })()}
                         </div>
 
-                        {/* Show trial info on iOS */}
-                        {platform === 'ios' && products.length > 0 && (
+                        {/* Show trial info on iOS - only for monthly */}
+                        {platform === 'ios' && products.length > 0 && selectedPlan === 'monthly' && (
                           <p className="text-[8px] text-gray-500 mt-0.5">
-                            {selectedPlan === 'yearly'
-                              ? (normalizedLanguage === 'tr' ? '3 gün ücretsiz, sonra yıllık' : '3 days free, then yearly')
-                              : t('threeDaysFreeThenMonthly', normalizedLanguage)}
+                            {t('threeDaysFreeThenMonthly', normalizedLanguage)}
                           </p>
                         )}
                       </>
@@ -1500,24 +1498,36 @@ export default function UpgradeModal({
                         ) : (
                           // 🔥 APPLE GUIDELINE 2.3.10: Never mention "Google Play" on iOS
                           // 🔥 APPLE GUIDELINE 3.1.2: Show price in button or nearby
-                          // 🔥 APPLE GUIDELINE 2.1: Show trial info in button to attract users
-                          platform === 'ios'
-                            ? (products[0]?.price
-                              ? (() => {
-                                const priceNum = products[0].price.match(/[\d,\.]+/)?.[0] || products[0].price.replace(/[^\d,\.]/g, '');
-                                const currencySym = getCurrencySymbol(products[0]);
-                                return `${t('try3DaysFreeThenPrice', normalizedLanguage)} ${currencySym}${priceNum}/${t('month', normalizedLanguage)}`;
-                              })()
-                              : t('try3DaysFreeAndSubscribe', normalizedLanguage))
-                            : platform === 'android'
-                              ? (products[0]?.price
-                                ? (() => {
-                                  const priceNum = products[0].price.match(/[\d,\.]+/)?.[0] || products[0].price.replace(/[^\d,\.]/g, '');
-                                  const currencySym = getCurrencySymbol(products[0]);
-                                  return `${t('buyFromGooglePlay', normalizedLanguage)} - ${currencySym}${priceNum}`;
-                                })()
-                                : t('buyFromGooglePlay', normalizedLanguage))
-                              : t('goPremium', normalizedLanguage)
+                          // 🔥 Show selected plan price
+                          (() => {
+                            const selectedProduct = products.find(p =>
+                              selectedPlan === 'yearly'
+                                ? (p.productId?.includes('yearly') || p.productId === 'premium_yearly')
+                                : (p.productId?.includes('monthly') || p.productId === 'premium_monthly')
+                            ) || products[0];
+
+                            if (!selectedProduct?.price) {
+                              return selectedPlan === 'yearly'
+                                ? (normalizedLanguage === 'tr' ? 'Yıllık Premium Al' : 'Get Yearly Premium')
+                                : t('try3DaysFreeAndSubscribe', normalizedLanguage);
+                            }
+
+                            const priceNum = selectedProduct.price.match(/[\d,\.]+/)?.[0] || selectedProduct.price.replace(/[^\d,\.]/g, '');
+                            const currencySym = getCurrencySymbol(selectedProduct);
+
+                            if (platform === 'ios') {
+                              if (selectedPlan === 'yearly') {
+                                return `${normalizedLanguage === 'tr' ? 'Yıllık Premium' : 'Yearly Premium'} - ${currencySym}${priceNum}`;
+                              }
+                              return `${t('try3DaysFreeThenPrice', normalizedLanguage)} ${currencySym}${priceNum}/${t('month', normalizedLanguage)}`;
+                            } else if (platform === 'android') {
+                              if (selectedPlan === 'yearly') {
+                                return `${normalizedLanguage === 'tr' ? 'Yıllık Premium' : 'Yearly Premium'} - ${currencySym}${priceNum}`;
+                              }
+                              return `${t('buyFromGooglePlay', normalizedLanguage)} - ${currencySym}${priceNum}`;
+                            }
+                            return t('goPremium', normalizedLanguage);
+                          })()
                         )}
                       </ShimmerButton>
 
