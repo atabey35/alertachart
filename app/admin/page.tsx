@@ -484,7 +484,7 @@ export default function AdminPage() {
   // Login Screen
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#0d0d12] to-[#0a0a0f] flex items-center justify-center p-4" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" }}>
+      <div className="min-h-screen bg-[#0B0B0B] flex items-center justify-center p-4" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" }}>
         <div className="max-w-md w-full">
           {/* Logo/Header */}
           <div className="text-center mb-8">
@@ -498,7 +498,7 @@ export default function AdminPage() {
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleLogin} className="bg-[#151519]/80 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-gray-800/50">
+          <form onSubmit={handleLogin} className="bg-[#111111]/80 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-zinc-800/50">
             {/* Username */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -509,7 +509,7 @@ export default function AdminPage() {
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
                 placeholder="Kullanıcı adınız"
-                className="w-full px-4 py-3 bg-[#0d0d12] border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                className="w-full px-4 py-3 bg-[#0B0B0B] border border-zinc-800 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all"
                 required
                 autoFocus
               />
@@ -525,7 +525,7 @@ export default function AdminPage() {
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 bg-[#0d0d12] border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
+                className="w-full px-4 py-3 bg-[#0B0B0B] border border-zinc-800 rounded-lg text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500/50 transition-all"
                 required
               />
             </div>
@@ -541,7 +541,7 @@ export default function AdminPage() {
             <button
               type="submit"
               disabled={loggingIn}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] disabled:hover:scale-100 shadow-lg shadow-blue-500/20"
+              className="w-full py-3 bg-orange-500 hover:bg-orange-600 active:bg-orange-700 disabled:bg-zinc-800 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] disabled:hover:scale-100 shadow-lg shadow-orange-500/20"
             >
               {loggingIn ? (
                 <span className="flex items-center justify-center">
@@ -572,60 +572,61 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#0d0d12] to-[#0a0a0f] p-4 md:p-10" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" }}>
+    <div className="min-h-screen bg-[#0B0B0B] p-4 md:p-10" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" }}>
       <div className="max-w-4xl mx-auto pt-8">
         {/* Header */}
         <div className="mb-8 text-center relative">
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent tracking-tight">
-            🔐 Admin Panel
+          <h1 className="text-4xl font-extrabold mb-2 text-white tracking-tight flex items-center justify-center gap-3">
+            🔐 <span>Admin Panel</span>
+            <span className="px-2 py-1 bg-orange-500/10 border border-orange-500/20 text-orange-400 text-[10px] font-mono uppercase tracking-wider rounded">ADMIN</span>
           </h1>
-          <p className="text-gray-400 font-medium">
+          <p className="text-zinc-400 font-medium">
             Tüm kullanıcılara push notification gönder
           </p>
 
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="absolute top-0 right-0 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-red-500/20 hover:scale-105"
+            className="absolute top-0 right-0 px-4 py-2.5 bg-transparent border border-zinc-700 hover:border-zinc-600 hover:bg-zinc-800/50 text-white text-sm font-medium rounded-lg transition-all"
           >
             🚪 Çıkış Yap
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-3 mb-8">
+        <div className="flex gap-2 mb-8 border-b border-zinc-800/50">
           <button
             onClick={() => setActiveTab('broadcast')}
-            className={`flex-1 px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${activeTab === 'broadcast'
-              ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white border border-purple-500/30 shadow-lg shadow-purple-500/10'
-              : 'bg-[#151519]/60 backdrop-blur-sm text-gray-400 border border-gray-800/50 hover:bg-[#151519]/80 hover:text-gray-300 hover:scale-[1.02]'
+            className={`px-6 py-3.5 font-semibold transition-all duration-200 border-b-2 ${activeTab === 'broadcast'
+              ? 'border-orange-500 text-white'
+              : 'border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700'
               }`}
           >
             📢 Bildirim Gönder
           </button>
           <button
             onClick={() => setActiveTab('news')}
-            className={`flex-1 px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${activeTab === 'news'
-              ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white border border-purple-500/30 shadow-lg shadow-purple-500/10'
-              : 'bg-[#151519]/60 backdrop-blur-sm text-gray-400 border border-gray-800/50 hover:bg-[#151519]/80 hover:text-gray-300 hover:scale-[1.02]'
+            className={`px-6 py-3.5 font-semibold transition-all duration-200 border-b-2 ${activeTab === 'news'
+              ? 'border-orange-500 text-white'
+              : 'border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700'
               }`}
           >
             📰 Haber Yönetimi
           </button>
           <button
             onClick={() => setActiveTab('blog')}
-            className={`flex-1 px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${activeTab === 'blog'
-              ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white border border-purple-500/30 shadow-lg shadow-purple-500/10'
-              : 'bg-[#151519]/60 backdrop-blur-sm text-gray-400 border border-gray-800/50 hover:bg-[#151519]/80 hover:text-gray-300 hover:scale-[1.02]'
+            className={`px-6 py-3.5 font-semibold transition-all duration-200 border-b-2 ${activeTab === 'blog'
+              ? 'border-orange-500 text-white'
+              : 'border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700'
               }`}
           >
             📝 Blog Yönetimi
           </button>
           <button
             onClick={() => setActiveTab('support')}
-            className={`flex-1 px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${activeTab === 'support'
-              ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white border border-purple-500/30 shadow-lg shadow-purple-500/10'
-              : 'bg-[#151519]/60 backdrop-blur-sm text-gray-400 border border-gray-800/50 hover:bg-[#151519]/80 hover:text-gray-300 hover:scale-[1.02]'
+            className={`px-6 py-3.5 font-semibold transition-all duration-200 border-b-2 ${activeTab === 'support'
+              ? 'border-orange-500 text-white'
+              : 'border-transparent text-zinc-400 hover:text-zinc-300 hover:border-zinc-700'
               }`}
           >
             💬 Destek Talepleri
@@ -633,7 +634,7 @@ export default function AdminPage() {
         </div>
 
         {/* Main Card */}
-        <div className="bg-[#151519]/60 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-gray-800/50">
+        <div className="bg-[#111111]/80 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-zinc-800/50">
           {activeTab === 'broadcast' ? (
             <>
               {/* Quick Messages */}
@@ -649,10 +650,10 @@ export default function AdminPage() {
                         setTitle(quick.title);
                         setMessage(quick.message);
                       }}
-                      className="p-4 bg-[#0d0d12] hover:bg-[#1a1a1f] border border-gray-800/50 hover:border-gray-700/50 rounded-xl text-left text-sm transition-all duration-200 hover:scale-[1.02] shadow-sm"
+                      className="p-4 bg-[#0B0B0B] hover:bg-zinc-900 border border-zinc-800/50 hover:border-orange-500/50 rounded-xl text-left text-sm transition-all duration-200 hover:scale-[1.02] shadow-sm"
                     >
                       <div className="font-semibold text-white mb-1">{quick.title}</div>
-                      <div className="text-xs text-gray-400 truncate">{quick.message}</div>
+                      <div className="text-xs text-zinc-400 truncate">{quick.message}</div>
                     </button>
                   ))}
                 </div>
@@ -874,9 +875,9 @@ export default function AdminPage() {
                                         request.topic === 'bug' ? '🐛 Hata' : '📎 Diğer'}
                               </span>
                               <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${currentStatus === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
-                                  currentStatus === 'in_progress' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
-                                    currentStatus === 'resolved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
-                                      'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                                currentStatus === 'in_progress' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                  currentStatus === 'resolved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                    'bg-gray-500/10 text-gray-400 border-gray-500/20'
                                 }`}>
                                 {currentStatus === 'pending' ? '⏱️ Beklemede' :
                                   currentStatus === 'in_progress' ? '🔄 İşleniyor' :
