@@ -24,6 +24,9 @@ export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<'broadcast' | 'support' | 'news' | 'blog'>('broadcast');
   const [supportRequests, setSupportRequests] = useState<any[]>([]);
   const [loadingSupport, setLoadingSupport] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<number | null>(null);
+  const [replyText, setReplyText] = useState<Record<number, string>>({});
+  const [replyStatus, setReplyStatus] = useState<Record<number, string>>({});
 
   // News state
   const [newsTitle, setNewsTitle] = useState('');
@@ -721,8 +724,8 @@ export default function AdminPage() {
                   <button
                     onClick={() => setTargetLang('all')}
                     className={`px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${targetLang === 'all'
-                        ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-white border border-emerald-500/30 shadow-lg shadow-emerald-500/10 scale-105'
-                        : 'bg-[#0d0d12] text-gray-300 border border-gray-800/50 hover:bg-[#1a1a1f] hover:border-gray-700/50 hover:scale-[1.02]'
+                      ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-white border border-emerald-500/30 shadow-lg shadow-emerald-500/10 scale-105'
+                      : 'bg-[#0d0d12] text-gray-300 border border-gray-800/50 hover:bg-[#1a1a1f] hover:border-gray-700/50 hover:scale-[1.02]'
                       }`}
                   >
                     🌍 Herkes (All)
@@ -730,8 +733,8 @@ export default function AdminPage() {
                   <button
                     onClick={() => setTargetLang('tr')}
                     className={`px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${targetLang === 'tr'
-                        ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-white border border-emerald-500/30 shadow-lg shadow-emerald-500/10 scale-105'
-                        : 'bg-[#0d0d12] text-gray-300 border border-gray-800/50 hover:bg-[#1a1a1f] hover:border-gray-700/50 hover:scale-[1.02]'
+                      ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-white border border-emerald-500/30 shadow-lg shadow-emerald-500/10 scale-105'
+                      : 'bg-[#0d0d12] text-gray-300 border border-gray-800/50 hover:bg-[#1a1a1f] hover:border-gray-700/50 hover:scale-[1.02]'
                       }`}
                   >
                     🇹🇷 Türkçe
@@ -739,8 +742,8 @@ export default function AdminPage() {
                   <button
                     onClick={() => setTargetLang('en')}
                     className={`px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${targetLang === 'en'
-                        ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-white border border-emerald-500/30 shadow-lg shadow-emerald-500/10 scale-105'
-                        : 'bg-[#0d0d12] text-gray-300 border border-gray-800/50 hover:bg-[#1a1a1f] hover:border-gray-700/50 hover:scale-[1.02]'
+                      ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-white border border-emerald-500/30 shadow-lg shadow-emerald-500/10 scale-105'
+                      : 'bg-[#0d0d12] text-gray-300 border border-gray-800/50 hover:bg-[#1a1a1f] hover:border-gray-700/50 hover:scale-[1.02]'
                       }`}
                   >
                     🌐 Global (EN)
@@ -786,8 +789,8 @@ export default function AdminPage() {
               {result && (
                 <div
                   className={`mb-6 p-4 rounded-xl font-medium ${result.success
-                      ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
-                      : 'bg-red-500/10 border border-red-500/20 text-red-300'
+                    ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
+                    : 'bg-red-500/10 border border-red-500/20 text-red-300'
                     }`}
                 >
                   {result.message}
@@ -825,80 +828,195 @@ export default function AdminPage() {
           ) : activeTab === 'support' ? (
             <>
               {/* Support Requests Tab */}
-              <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-xl font-semibold text-white">Destek Talepleri</h2>
+              <div className="mb-6 flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
+                  💬 Destek Talepleri
+                </h2>
                 <button
                   onClick={fetchSupportRequests}
                   disabled={loadingSupport}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 disabled:bg-gray-700 text-white text-sm rounded-lg transition-colors"
+                  className="px-5 py-2.5 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 text-white font-semibold rounded-xl transition-all shadow-lg hover:scale-[1.02] disabled:hover:scale-100"
                 >
-                  {loadingSupport ? 'Yükleniyor...' : '🔄 Yenile'}
+                  {loadingSupport ? '⌛ Yüklen iyor...' : '🔄 Yenile'}
                 </button>
               </div>
 
               {loadingSupport ? (
-                <div className="text-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
-                  <p className="text-gray-400">Yükleniyor...</p>
+                <div className="text-center py-16">
+                  <div className="animate-spin rounded-full h-14 w-14 border-b-2 border-blue-500 mx-auto mb-4"></div>
+                  <p className="text-gray-400">Yüklen iyor...</p>
                 </div>
               ) : supportRequests.length === 0 ? (
-                <div className="text-center py-12">
-                  <p className="text-gray-400">Henüz destek talebi yok</p>
+                <div className="text-center py-16 bg-[#151519]/60 backdrop-blur-sm rounded-2xl border border-gray-800/50">
+                  <p className="text-gray-400 text-lg">📥 Henüz destek talebi yok</p>
                 </div>
               ) : (
-                <div className="space-y-4 max-h-[600px] overflow-y-auto">
-                  {supportRequests.map((request) => (
-                    <div
-                      key={request.id}
-                      className="bg-gray-900 border border-gray-700 rounded-lg p-4 hover:border-gray-600 transition-colors"
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-1">
-                            <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded">
-                              {request.topic === 'general' ? 'Genel' :
-                                request.topic === 'technical' ? 'Teknik' :
-                                  request.topic === 'billing' ? 'Ödeme' :
-                                    request.topic === 'feature' ? 'Özellik' :
-                                      request.topic === 'bug' ? 'Hata' : 'Diğer'}
-                            </span>
-                            <span className={`px-2 py-1 text-xs rounded ${request.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
-                              request.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
-                                request.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
-                                  'bg-gray-500/20 text-gray-400'
-                              }`}>
-                              {request.status === 'pending' ? 'Beklemede' :
-                                request.status === 'in_progress' ? 'İşleniyor' :
-                                  request.status === 'resolved' ? 'Çözüldü' : 'Kapatıldı'}
-                            </span>
+                <div className="space-y-4 max-h-[700px] overflow-y-auto pr-2">
+                  {supportRequests.map((request: any) => {
+                    const isReplying = replyingTo === request.id;
+                    const currentReply = replyText[request.id] || request.admin_reply || '';
+                    const currentStatus = replyStatus[request.id] || request.status;
+
+                    return (
+                      <div
+                        key={request.id}
+                        className="bg-[#151519]/60 backdrop-blur-sm border border-gray-800/50 rounded-2xl p-6 hover:border-gray-700/50 transition-all shadow-lg"
+                      >
+                        {/* Header */}
+                        <div className="flex items-start justify-between mb-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3 mb-3">
+                              <span className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 text-xs font-semibold border border-blue-500/20">
+                                {request.topic === 'general' ? '🏛️ Genel' :
+                                  request.topic === 'technical' ? '🔧 Teknik' :
+                                    request.topic === 'billing' ? '💳 Ödeme' :
+                                      request.topic === 'feature' ? '✨ Özellik' :
+                                        request.topic === 'bug' ? '🐛 Hata' : '📎 Diğer'}
+                              </span>
+                              <span className={`px-3 py-1.5 rounded-lg text-xs font-semibold border ${currentStatus === 'pending' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' :
+                                  currentStatus === 'in_progress' ? 'bg-blue-500/10 text-blue-400 border-blue-500/20' :
+                                    currentStatus === 'resolved' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                      'bg-gray-500/10 text-gray-400 border-gray-500/20'
+                                }`}>
+                                {currentStatus === 'pending' ? '⏱️ Beklemede' :
+                                  currentStatus === 'in_progress' ? '🔄 İşleniyor' :
+                                    currentStatus === 'resolved' ? '✅ Çözüldü' : '🚫 Kapatıldı'}
+                              </span>
+                              <span className="text-xs text-gray-500 font-medium">
+                                📅 {new Date(request.created_at).toLocaleDateString('tr-TR', {
+                                  day: '2-digit',
+                                  month: 'short',
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </span>
+                            </div>
+                            {request.user_email && (
+                              <p className="text-sm text-gray-400 mb-3 flex items-center gap-2">
+                                📧 <span className="font-medium">{request.user_email}</span>
+                              </p>
+                            )}
+                            <div className="bg-[#0d0d12]/80 p-4 rounded-xl border border-gray-700/50">
+                              <p className="text-sm font-semibold text-gray-400 mb-2">Kullanıcı Mesajı:</p>
+                              <p className="text-white text-sm whitespace-pre-wrap leading-relaxed">
+                                {request.message}
+                              </p>
+                            </div>
                           </div>
-                          {request.user_email && (
-                            <p className="text-sm text-gray-400 mb-1">
-                              📧 {request.user_email}
+                        </div>
+
+                        {/* Existing Admin Reply (if any) */}
+                        {request.admin_reply && !isReplying && (
+                          <div className="mt-4 bg-emerald-500/5 p-4 rounded-xl border border-emerald-500/20">
+                            <p className="text-xs font-semibold text-emerald-400 mb-2 flex items-center gap-2">
+                              ✅ Mevcut Cevabınız:
                             </p>
-                          )}
-                          <p className="text-white text-sm whitespace-pre-wrap">
-                            {request.message}
-                          </p>
-                        </div>
-                        <div className="text-xs text-gray-500 ml-4">
-                          {new Date(request.created_at).toLocaleDateString('tr-TR', {
-                            day: '2-digit',
-                            month: '2-digit',
-                            year: 'numeric',
-                            hour: '2-digit',
-                            minute: '2-digit'
-                          })}
-                        </div>
+                            <p className="text-sm text-white whitespace-pre-wrap leading-relaxed">
+                              {request.admin_reply}
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Reply Section */}
+                        {isReplying && (
+                          <div className="mt-4 space-y-4">
+                            {/* Status Dropdown */}
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-300 mb-2">
+                                Durum
+                              </label>
+                              <select
+                                value={currentStatus}
+                                onChange={(e) => setReplyStatus({ ...replyStatus, [request.id]: e.target.value })}
+                                className="w-full px-4 py-3 bg-[#0d0d12] border border-gray-700/50 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 font-medium"
+                              >
+                                <option value="pending">Beklemede</option>
+                                <option value="in_progress">İşleniyor</option>
+                                <option value="resolved">Çözüldü</option>
+                                <option value="closed">Kapatıldı</option>
+                              </select>
+                            </div>
+
+                            {/* Reply Textarea */}
+                            <div>
+                              <label className="block text-sm font-semibold text-gray-300 mb-2">
+                                Cevabınız
+                              </label>
+                              <textarea
+                                value={currentReply}
+                                onChange={(e) => setReplyText({ ...replyText, [request.id]: e.target.value })}
+                                placeholder="Kullanıcıya gönderilecek cevabı yazın..."
+                                rows={6}
+                                className="w-full px-4 py-3.5 bg-[#0d0d12] border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none transition-all duration-200 font-medium"
+                              />
+                            </div>
+
+                            {/* Action Buttons */}
+                            <div className="flex gap-3">
+                              <button
+                                onClick={async () => {
+                                  try {
+                                    const payload: any = { id: request.id };
+                                    if (currentStatus !== request.status) payload.status = currentStatus;
+                                    if (currentReply && currentReply !== request.admin_reply) payload.admin_reply = currentReply;
+
+                                    const response = await fetch('/api/admin/support-requests', {
+                                      method: 'PATCH',
+                                      headers: {
+                                        'Content-Type': 'application/json',
+                                        'x-admin-password': loginPassword || sessionStorage.getItem('adminPassword') || ''
+                                      },
+                                      body: JSON.stringify(payload)
+                                    });
+
+                                    if (response.ok) {
+                                      setReplyingTo(null);
+                                      setReplyText({ ...replyText, [request.id]: '' });
+                                      fetchSupportRequests();
+                                      alert('✅ Cevap gönderildi!');
+                                    } else {
+                                      alert('❌ Hata oluştu!');
+                                    }
+                                  } catch (error) {
+                                    console.error(error);
+                                    alert('❌ Hata oluştu!');
+                                  }
+                                }}
+                                className="flex-1 py-3 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 text-white font-bold rounded-xl transition-all shadow-lg hover:scale-[1.02]"
+                              >
+                                📤 Cevabı Gönder
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setReplyingTo(null);
+                                  setReplyText({ ...replyText, [request.id]: request.admin_reply || '' });
+                                  setReplyStatus({ ...replyStatus, [request.id]: request.status });
+                                }}
+                                className="px-6 py-3 bg-gray-700 hover:bg-gray-600 text-white font-semibold rounded-xl transition-all"
+                              >
+                                ❌ İptal
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Reply Button */}
+                        {!isReplying && (
+                          <button
+                            onClick={() => {
+                              setReplyingTo(request.id);
+                              setReplyText({ ...(replyText), [request.id]: request.admin_reply || '' });
+                              setReplyStatus({ ...replyStatus, [request.id]: request.status });
+                            }}
+                            className="mt-4 w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white font-semibold rounded-xl transition-all shadow-md hover:scale-[1.02]"
+                          >
+                            ✏️ {request.admin_reply ? 'Cevabı Düzenle' : 'Cevap Yaz'}
+                          </button>
+                        )}
                       </div>
-                      {request.admin_notes && (
-                        <div className="mt-3 pt-3 border-t border-gray-700">
-                          <p className="text-xs text-gray-500 mb-1">Admin Notları:</p>
-                          <p className="text-sm text-gray-400">{request.admin_notes}</p>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>

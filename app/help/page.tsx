@@ -146,6 +146,16 @@ interface Article {
   readTime: number;
 }
 
+interface SupportRequest {
+  id: number;
+  topic: string;
+  message: string;
+  status: string;
+  admin_reply: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 const knowledgeBaseArticles: Article[] = [
   {
     id: 'getting-started',
@@ -640,7 +650,36 @@ export default function HelpCenter() {
   const [showKnowledgeBase, setShowKnowledgeBase] = useState(false);
   const [selectedArticle, setSelectedArticle] = useState<Article | null>(null);
   const [articleCategory, setArticleCategory] = useState('all');
-  
+  const [myRequests, setMyRequests] = useState<SupportRequest[]>([]);
+  const [loadingRequests, setLoadingRequests] = useState(false);
+  const [expandedRequest, setExpandedRequest] = useState<number | null>(null);
+
+  // Fetch user's support requests
+  useEffect(() => {
+    const fetchMyRequests = async () => {
+      setLoadingRequests(true);
+      try {
+        const response = await fetch('/api/my-support-requests');
+        const data = await response.json();
+
+        // Only set requests if user is authenticated
+        if (response.ok && data.success) {
+          setMyRequests(data.requests || []);
+        } else if (response.status === 401) {
+          // User not authenticated - silently handle, don't show error
+          setMyRequests([]);
+        }
+      } catch (error) {
+        // Silently handle errors - user might not be logged in
+        setMyRequests([]);
+      } finally {
+        setLoadingRequests(false);
+      }
+    };
+
+    fetchMyRequests();
+  }, []);
+
   // Check if running in Capacitor
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -648,7 +687,7 @@ export default function HelpCenter() {
       setIsCapacitor(hasCapacitor);
     }
   }, []);
-  
+
   // Load language from localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -658,12 +697,12 @@ export default function HelpCenter() {
       }
     }
   }, []);
-  
+
   // Handle mail link - works for both web and Capacitor
   const handleMailLink = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const mailtoUrl = (e.currentTarget as HTMLAnchorElement).href;
-    
+
     // Try window.open() first (works on mobile with _system target)
     // If that fails, fallback to location.href
     try {
@@ -685,7 +724,7 @@ export default function HelpCenter() {
     const question = t(faq.questionKey, language);
     const answer = t(faq.answerKey, language);
     const matchesSearch = question.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         answer.toLowerCase().includes(searchQuery.toLowerCase());
+      answer.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || faq.category === selectedCategory;
     return matchesSearch && matchesCategory;
   });
@@ -695,7 +734,7 @@ export default function HelpCenter() {
     const title = language === 'tr' ? article.title : article.titleEn;
     const content = language === 'tr' ? article.content : article.contentEn;
     const matchesSearch = title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         content.toLowerCase().includes(searchQuery.toLowerCase());
+      content.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = articleCategory === 'all' || article.category === articleCategory;
     return matchesSearch && matchesCategory;
   });
@@ -754,11 +793,10 @@ export default function HelpCenter() {
                 <button
                   key={cat.id}
                   onClick={() => setSelectedCategory(cat.id)}
-                  className={`px-4 py-2 rounded-lg border transition-all ${
-                    selectedCategory === cat.id
-                      ? 'bg-blue-600 border-blue-600 text-white'
-                      : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
-                  }`}
+                  className={`px-4 py-2 rounded-lg border transition-all ${selectedCategory === cat.id
+                    ? 'bg-blue-600 border-blue-600 text-white'
+                    : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
+                    }`}
                 >
                   {t(cat.nameKey, language)}
                 </button>
@@ -784,8 +822,8 @@ export default function HelpCenter() {
               {t('knowledgeBase', language)}
             </h3>
             <p className="text-gray-400 text-sm">
-              {language === 'tr' 
-                ? t('knowledgeBaseDesc', language) 
+              {language === 'tr'
+                ? t('knowledgeBaseDesc', language)
                 : t('knowledgeBaseDesc', language)}
             </p>
           </button>
@@ -802,8 +840,8 @@ export default function HelpCenter() {
               {t('faq', language)}
             </h3>
             <p className="text-gray-400 text-sm">
-              {language === 'tr' 
-                ? t('faqDesc', language) 
+              {language === 'tr'
+                ? t('faqDesc', language)
                 : t('faqDesc', language)}
             </p>
           </a>
@@ -820,25 +858,121 @@ export default function HelpCenter() {
               {t('supportRequestTitle', language)}
             </h3>
             <p className="text-gray-400 text-sm">
-              {language === 'tr' 
-                ? t('supportRequestDesc', language) 
+              {language === 'tr'
+                ? t('supportRequestDesc', language)
                 : t('supportRequestDesc', language)}
             </p>
           </button>
         </div>
+
+        {/* My Open Requests Section */}
+        {myRequests.length > 0 && (
+          <div className="mb-16">
+            <h2 className="text-3xl font-bold mb-6 flex items-center gap-3">
+              <Mail className="w-8 h-8 text-green-400" />
+              {t('myOpenRequests', language)}
+            </h2>
+
+            {loadingRequests ? (
+              <div className="text-center py-8">
+                <p className="text-gray-400">{t('loadingRequests', language)}</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {myRequests.map((request) => {
+                  const isExpanded = expandedRequest === request.id;
+                  const statusColors = {
+                    pending: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+                    in_progress: 'text-blue-400 bg-blue-500/10 border-blue-500/20',
+                    resolved: 'text-green-400 bg-green-500/10 border-green-500/20',
+                  };
+                  const statusKey = request.status === 'in_progress' ? 'inProgress' : request.status;
+
+                  return (
+                    <div
+                      key={request.id}
+                      className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden hover:border-gray-700 transition-all"
+                    >
+                      {/* Request Header */}
+                      <button
+                        onClick={() => setExpandedRequest(isExpanded ? null : request.id)}
+                        className="w-full p-5 text-left flex items-center justify-between hover:bg-gray-900/50 transition-colors"
+                      >
+                        <div className="flex-1">
+                          <div className="flex items-center gap-3 mb-2">
+                            <span className="px-3 py-1 rounded-lg text-xs font-semibold bg-gray-800 text-gray-300">
+                              {request.topic}
+                            </span>
+                            <span className={`px-3 py-1 rounded-lg text-xs font-semibold border ${statusColors[request.status as keyof typeof statusColors] || statusColors.pending}`}>
+                              {t(statusKey, language)}
+                            </span>
+                            <span className="text-xs text-gray-500">
+                              {new Date(request.created_at).toLocaleDateString(language === 'tr' ? 'tr-TR' : 'en-US', {
+                                year: 'numeric',
+                                month: 'short',
+                                day: 'numeric'
+                              })}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-400 line-clamp-1">
+                            {request.message}
+                          </p>
+                        </div>
+                        <ChevronRight className={`w-5 h-5 text-gray-500 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                      </button>
+
+                      {/* Expanded Content */}
+                      {isExpanded && (
+                        <div className="p-5 pt-0 space-y-4 border-t border-gray-800">
+                          {/* Full Message */}
+                          <div>
+                            <div className="text-xs font-semibold text-gray-400 mb-2">
+                              {language === 'tr' ? 'Mesajınız:' : 'Your Message:'}
+                            </div>
+                            <p className="text-sm text-white whitespace-pre-wrap bg-gray-800/50 p-4 rounded-lg border border-gray-700/50">
+                              {request.message}
+                            </p>
+                          </div>
+
+                          {/* Admin Reply */}
+                          {request.admin_reply ? (
+                            <div>
+                              <div className="text-xs font-semibold text-green-400 mb-2 flex items-center gap-2">
+                                <MessageCircle className="w-4 h-4" />
+                                {t('adminReply', language)}
+                              </div>
+                              <p className="text-sm text-white whitespace-pre-wrap bg-green-500/5 p-4 rounded-lg border border-green-500/20">
+                                {request.admin_reply}
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="text-sm text-gray-500 italic flex items-center gap-2 bg-gray-800/30 p-4 rounded-lg border border-gray-700/30">
+                              <MessageCircle className="w-4 h-4" />
+                              {t('noReplyYet', language)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* FAQ Section */}
         <div id="faq" className="scroll-mt-24">
           <h2 className="text-3xl font-bold mb-8">
             {t('faq', language)}
           </h2>
-          
+
           {filteredFAQs.length === 0 ? (
             <div className="text-center py-16">
               <MessageCircle className="w-16 h-16 text-gray-700 mx-auto mb-4" />
               <p className="text-gray-400">
-                {language === 'tr' 
-                  ? t('noResultsFound', language) 
+                {language === 'tr'
+                  ? t('noResultsFound', language)
                   : t('noResultsFound', language)}
               </p>
             </div>
@@ -920,8 +1054,8 @@ export default function HelpCenter() {
                   {t('knowledgeBase', language)}
                 </h2>
                 <p className="text-sm text-gray-400 mt-1">
-                  {language === 'tr' 
-                    ? `${knowledgeBaseArticles.length} ${t('articles', language)}` 
+                  {language === 'tr'
+                    ? `${knowledgeBaseArticles.length} ${t('articles', language)}`
                     : `${knowledgeBaseArticles.length} ${t('articles', language)}`}
                 </p>
               </div>
@@ -981,11 +1115,10 @@ export default function HelpCenter() {
                     <button
                       key={cat.id}
                       onClick={() => setArticleCategory(cat.id)}
-                      className={`px-4 py-2 rounded-lg border transition-all flex items-center gap-2 ${
-                        articleCategory === cat.id
-                          ? 'bg-blue-600 border-blue-600 text-white'
-                          : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
-                      }`}
+                      className={`px-4 py-2 rounded-lg border transition-all flex items-center gap-2 ${articleCategory === cat.id
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'bg-transparent border-gray-700 text-gray-400 hover:border-gray-500 hover:text-white'
+                        }`}
                     >
                       {getIcon(cat.icon)}
                       <span>{language === 'tr' ? cat.name : cat.nameEn}</span>
@@ -998,8 +1131,8 @@ export default function HelpCenter() {
                   <div className="text-center py-16">
                     <Book className="w-16 h-16 text-gray-700 mx-auto mb-4" />
                     <p className="text-gray-400">
-                      {language === 'tr' 
-                        ? t('noArticlesFound', language) 
+                      {language === 'tr'
+                        ? t('noArticlesFound', language)
                         : t('noArticlesFound', language)}
                     </p>
                   </div>

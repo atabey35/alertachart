@@ -12,8 +12,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: NextRequest) {
   try {
     // 🔒 SECURITY: Check admin password from query or header
-    const password = request.headers.get('x-admin-password') || 
-                     new URL(request.url).searchParams.get('password');
+    const password = request.headers.get('x-admin-password') ||
+      new URL(request.url).searchParams.get('password');
 
     if (!password) {
       return NextResponse.json(
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     }
 
     const sql = getSql();
-    
+
     // Get all support requests ordered by created_at DESC
     const requests = await sql`
       SELECT 
@@ -43,6 +43,7 @@ export async function GET(request: NextRequest) {
         message,
         status,
         admin_notes,
+        admin_reply,
         created_at,
         updated_at
       FROM support_requests
@@ -67,7 +68,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * PATCH /api/admin/support-requests
- * Update support request status or notes
+ * Update support request status, notes, or reply
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -90,7 +91,7 @@ export async function PATCH(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, status, admin_notes } = body;
+    const { id, status, admin_notes, admin_reply } = body;
 
     if (!id) {
       return NextResponse.json(
@@ -100,32 +101,42 @@ export async function PATCH(request: NextRequest) {
     }
 
     const sql = getSql();
-    
-    // Update support request
-    if (status && admin_notes !== undefined) {
-      await sql`
-        UPDATE support_requests
-        SET status = ${status}, admin_notes = ${admin_notes}, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${id}
-      `;
-    } else if (status) {
-      await sql`
-        UPDATE support_requests
-        SET status = ${status}, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${id}
-      `;
-    } else if (admin_notes !== undefined) {
-      await sql`
-        UPDATE support_requests
-        SET admin_notes = ${admin_notes}, updated_at = CURRENT_TIMESTAMP
-        WHERE id = ${id}
-      `;
-    } else {
+
+    // Build update query dynamically based on provided fields
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (status) {
+      updates.push(`status = $${updates.length + 1}`);
+      values.push(status);
+    }
+
+    if (admin_notes !== undefined) {
+      updates.push(`admin_notes = $${updates.length + 1}`);
+      values.push(admin_notes);
+    }
+
+    if (admin_reply !== undefined) {
+      updates.push(`admin_reply = $${updates.length + 1}`);
+      values.push(admin_reply);
+    }
+
+    if (updates.length === 0) {
       return NextResponse.json(
         { error: 'No fields to update' },
         { status: 400 }
       );
     }
+
+    // Add updated_at
+    updates.push(`updated_at = CURRENT_TIMESTAMP`);
+
+    // Execute update
+    await sql.unsafe(`
+      UPDATE support_requests
+      SET ${updates.join(', ')}
+      WHERE id = ${id}
+    `);
 
     return NextResponse.json({
       success: true,
