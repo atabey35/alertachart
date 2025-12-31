@@ -19,12 +19,12 @@ export default function AdminPage() {
   const [targetLang, setTargetLang] = useState<'all' | 'tr' | 'en'>('all'); // 🔥 MULTILINGUAL: Dil seçimi
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ success: boolean; message: string } | null>(null);
-  
+
   // Support requests state
   const [activeTab, setActiveTab] = useState<'broadcast' | 'support' | 'news' | 'blog'>('broadcast');
   const [supportRequests, setSupportRequests] = useState<any[]>([]);
   const [loadingSupport, setLoadingSupport] = useState(false);
-  
+
   // News state
   const [newsTitle, setNewsTitle] = useState('');
   const [newsSummary, setNewsSummary] = useState('');
@@ -36,7 +36,7 @@ export default function AdminPage() {
   const [newsArticles, setNewsArticles] = useState<any[]>([]);
   const [loadingNews, setLoadingNews] = useState(false);
   const [creatingNews, setCreatingNews] = useState(false);
-  
+
   // Blog state
   const [blogPosts, setBlogPosts] = useState<any[]>([]);
   const [loadingBlogPosts, setLoadingBlogPosts] = useState(false);
@@ -156,7 +156,7 @@ export default function AdminPage() {
   };
 
   const emojiOptions = [
-    '🔔', '📢', '⚠️', '🚀', '📈', '📉', 
+    '🔔', '📢', '⚠️', '🚀', '📈', '📉',
     '₿', 'Ξ', '◎', '💰', '🎉', '⚡',
     '🔥', '💎', '🌟', '✅', '❌', '📊'
   ];
@@ -196,28 +196,28 @@ export default function AdminPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setResult({ 
-          success: true, 
-          message: `✅ Bildirim ${data.sent || data.notificationsSaved || 0} kullanıcıya gönderildi!` 
+        setResult({
+          success: true,
+          message: `✅ Bildirim ${data.sent || data.notificationsSaved || 0} kullanıcıya gönderildi!`
         });
         setTitle('');
         setMessage('');
-        
+
         // Trigger notification refresh event for all open tabs
         // This will immediately refresh notifications in header
         if (typeof window !== 'undefined') {
           window.dispatchEvent(new Event('notification-refresh'));
         }
       } else {
-        setResult({ 
-          success: false, 
-          message: data.error || 'Gönderim başarısız!' 
+        setResult({
+          success: false,
+          message: data.error || 'Gönderim başarısız!'
         });
       }
     } catch (error) {
-      setResult({ 
-        success: false, 
-        message: 'Bağlantı hatası!' 
+      setResult({
+        success: false,
+        message: 'Bağlantı hatası!'
       });
     } finally {
       setSending(false);
@@ -279,17 +279,17 @@ export default function AdminPage() {
         });
         return;
       }
-      
+
       // Başarılı response'u parse et
       const responseText = await response.text();
       let data;
-      
+
       if (!responseText || responseText.trim() === '') {
         console.error('Boş response alındı');
         setAddBlogPostMsg('Sunucudan boş yanıt alındı.');
         return;
       }
-      
+
       try {
         data = JSON.parse(responseText);
       } catch (parseError) {
@@ -297,7 +297,7 @@ export default function AdminPage() {
         setAddBlogPostMsg('Sunucudan geçersiz yanıt alındı.');
         return;
       }
-      
+
       // Başarılı
       setAddBlogPostMsg('Blog yazısı başarıyla eklendi!');
       setAddBlogPostForm({
@@ -326,10 +326,10 @@ export default function AdminPage() {
   // Run blog tags migration
   const handleMigrateBlogTags = async () => {
     if (!confirm('Blog tags migration\'ını çalıştırmak istediğinize emin misiniz? Bu işlem tags kolonunu ekleyecek.')) return;
-    
+
     setMigratingTags(true);
     setMigrationResult(null);
-    
+
     try {
       const password = loginPassword || sessionStorage.getItem('adminPassword') || '';
       const response = await fetch('/api/admin/migrate-blog-tags', {
@@ -339,13 +339,13 @@ export default function AdminPage() {
           'x-admin-password': password,
         },
       });
-      
+
       const data = await response.json();
-      
+
       if (response.ok && data.success) {
         setMigrationResult({
           success: true,
-          message: data.alreadyExists 
+          message: data.alreadyExists
             ? '✅ Tags kolonu zaten mevcut. Migration gerekmiyor.'
             : '✅ Migration başarıyla tamamlandı! Tags kolonu eklendi.',
         });
@@ -391,30 +391,30 @@ export default function AdminPage() {
   // Görsel yükleme işleyicileri
   const handleCoverImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    
+
     const file = e.target.files[0];
     const formData = new FormData();
     formData.append('file', file);
-    
+
     setImageUploading(true);
-    
+
     try {
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
-      
+
       // Response'u text olarak al, sonra JSON'a çevir
       const responseText = await response.text();
       let result;
-      
+
       try {
         result = JSON.parse(responseText);
       } catch (parseError) {
         console.error('JSON parse hatası:', parseError, 'Response:', responseText);
         throw new Error('Sunucudan geçersiz yanıt alındı.');
       }
-      
+
       if (result.success) {
         // Başarılı yükleme, URL'yi forma ekle
         setAddBlogPostForm({
@@ -436,30 +436,30 @@ export default function AdminPage() {
   // Yazar görseli yükleme işleyicisi
   const handleAuthorImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
-    
+
     const file = e.target.files[0];
     const formData = new FormData();
     formData.append('file', file);
-    
+
     setAuthorImageUploading(true);
-    
+
     try {
       const response = await fetch('/api/upload', {
         method: 'POST',
         body: formData,
       });
-      
+
       // Response'u text olarak al, sonra JSON'a çevir
       const responseText = await response.text();
       let result;
-      
+
       try {
         result = JSON.parse(responseText);
       } catch (parseError) {
         console.error('JSON parse hatası:', parseError, 'Response:', responseText);
         throw new Error('Sunucudan geçersiz yanıt alındı.');
       }
-      
+
       if (result.success) {
         // Başarılı yükleme, URL'yi forma ekle
         setAddBlogPostForm({
@@ -481,7 +481,7 @@ export default function AdminPage() {
   // Login Screen
   if (!isLoggedIn) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#0d0d12] to-[#0a0a0f] flex items-center justify-center p-4" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" }}>
         <div className="max-w-md w-full">
           {/* Logo/Header */}
           <div className="text-center mb-8">
@@ -495,7 +495,7 @@ export default function AdminPage() {
           </div>
 
           {/* Login Form */}
-          <form onSubmit={handleLogin} className="bg-gray-800 rounded-xl shadow-2xl p-8 border border-gray-700">
+          <form onSubmit={handleLogin} className="bg-[#151519]/80 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-gray-800/50">
             {/* Username */}
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-300 mb-2">
@@ -506,7 +506,7 @@ export default function AdminPage() {
                 value={loginUsername}
                 onChange={(e) => setLoginUsername(e.target.value)}
                 placeholder="Kullanıcı adınız"
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-[#0d0d12] border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
                 required
                 autoFocus
               />
@@ -522,7 +522,7 @@ export default function AdminPage() {
                 value={loginPassword}
                 onChange={(e) => setLoginPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-[#0d0d12] border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200"
                 required
               />
             </div>
@@ -538,7 +538,7 @@ export default function AdminPage() {
             <button
               type="submit"
               disabled={loggingIn}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all transform hover:scale-[1.02] disabled:hover:scale-100 shadow-lg"
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-xl transition-all transform hover:scale-[1.02] disabled:hover:scale-100 shadow-lg shadow-blue-500/20"
             >
               {loggingIn ? (
                 <span className="flex items-center justify-center">
@@ -569,267 +569,258 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 p-4">
+    <div className="min-h-screen bg-gradient-to-br from-[#0a0a0f] via-[#0d0d12] to-[#0a0a0f] p-4 md:p-10" style={{ fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif" }}>
       <div className="max-w-4xl mx-auto pt-8">
         {/* Header */}
         <div className="mb-8 text-center relative">
-          <h1 className="text-4xl font-bold text-white mb-2">
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent tracking-tight">
             🔐 Admin Panel
           </h1>
-          <p className="text-gray-400">
+          <p className="text-gray-400 font-medium">
             Tüm kullanıcılara push notification gönder
           </p>
-          
+
           {/* Logout Button */}
           <button
             onClick={handleLogout}
-            className="absolute top-0 right-0 px-4 py-2 bg-red-600 hover:bg-red-500 text-white text-sm rounded-lg transition-colors"
+            className="absolute top-0 right-0 px-4 py-2.5 bg-red-600 hover:bg-red-500 text-white text-sm font-semibold rounded-xl transition-all duration-200 shadow-lg shadow-red-500/20 hover:scale-105"
           >
             🚪 Çıkış Yap
           </button>
         </div>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-3 mb-8">
           <button
             onClick={() => setActiveTab('broadcast')}
-            className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
-              activeTab === 'broadcast'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-            }`}
+            className={`flex-1 px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${activeTab === 'broadcast'
+              ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white border border-purple-500/30 shadow-lg shadow-purple-500/10'
+              : 'bg-[#151519]/60 backdrop-blur-sm text-gray-400 border border-gray-800/50 hover:bg-[#151519]/80 hover:text-gray-300 hover:scale-[1.02]'
+              }`}
           >
             📢 Bildirim Gönder
           </button>
           <button
             onClick={() => setActiveTab('news')}
-            className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
-              activeTab === 'news'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-            }`}
+            className={`flex-1 px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${activeTab === 'news'
+              ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white border border-purple-500/30 shadow-lg shadow-purple-500/10'
+              : 'bg-[#151519]/60 backdrop-blur-sm text-gray-400 border border-gray-800/50 hover:bg-[#151519]/80 hover:text-gray-300 hover:scale-[1.02]'
+              }`}
           >
             📰 Haber Yönetimi
           </button>
           <button
             onClick={() => setActiveTab('blog')}
-            className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
-              activeTab === 'blog'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-            }`}
+            className={`flex-1 px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${activeTab === 'blog'
+              ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white border border-purple-500/30 shadow-lg shadow-purple-500/10'
+              : 'bg-[#151519]/60 backdrop-blur-sm text-gray-400 border border-gray-800/50 hover:bg-[#151519]/80 hover:text-gray-300 hover:scale-[1.02]'
+              }`}
           >
             📝 Blog Yönetimi
           </button>
           <button
             onClick={() => setActiveTab('support')}
-            className={`flex-1 px-4 py-3 rounded-lg font-medium transition-colors ${
-              activeTab === 'support'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
-            }`}
+            className={`flex-1 px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${activeTab === 'support'
+              ? 'bg-gradient-to-r from-purple-500/20 to-blue-500/20 text-white border border-purple-500/30 shadow-lg shadow-purple-500/10'
+              : 'bg-[#151519]/60 backdrop-blur-sm text-gray-400 border border-gray-800/50 hover:bg-[#151519]/80 hover:text-gray-300 hover:scale-[1.02]'
+              }`}
           >
             💬 Destek Talepleri
           </button>
         </div>
 
         {/* Main Card */}
-        <div className="bg-gray-800 rounded-xl shadow-2xl p-6 border border-gray-700">
+        <div className="bg-[#151519]/60 backdrop-blur-sm rounded-2xl shadow-2xl p-8 border border-gray-800/50">
           {activeTab === 'broadcast' ? (
             <>
-          {/* Quick Messages */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Hızlı Mesajlar
-            </label>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-              {quickMessages.map((quick, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    setTitle(quick.title);
-                    setMessage(quick.message);
-                  }}
-                  className="p-3 bg-gray-700 hover:bg-gray-600 rounded-lg text-left text-sm transition-colors"
-                >
-                  <div className="font-medium text-white">{quick.title}</div>
-                  <div className="text-xs text-gray-400 truncate">{quick.message}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Emoji Selector */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Emoji
-            </label>
-            <div className="flex flex-wrap gap-2">
-              {emojiOptions.map((e) => (
-                <button
-                  key={e}
-                  onClick={() => setEmoji(e)}
-                  className={`w-12 h-12 rounded-lg text-2xl transition-all ${
-                    emoji === e
-                      ? 'bg-blue-600 scale-110 shadow-lg'
-                      : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-                >
-                  {e}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Title Input */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Başlık
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Bildirim başlığı..."
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              maxLength={50}
-            />
-            <div className="text-xs text-gray-400 mt-1 text-right">
-              {title.length}/50
-            </div>
-          </div>
-
-          {/* Message Input */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Mesaj
-            </label>
-            <textarea
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              placeholder="Bildirim mesajı..."
-              rows={4}
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              maxLength={200}
-            />
-            <div className="text-xs text-gray-400 mt-1 text-right">
-              {message.length}/200
-            </div>
-          </div>
-
-          {/* 🔥 MULTILINGUAL: Dil Seçimi */}
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Hedef Kitle (Target Audience)
-            </label>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                onClick={() => setTargetLang('all')}
-                className={`px-4 py-3 rounded-lg font-medium transition-all ${
-                  targetLang === 'all'
-                    ? 'bg-blue-600 text-white shadow-lg scale-105'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                🌍 Herkes (All)
-              </button>
-              <button
-                onClick={() => setTargetLang('tr')}
-                className={`px-4 py-3 rounded-lg font-medium transition-all ${
-                  targetLang === 'tr'
-                    ? 'bg-blue-600 text-white shadow-lg scale-105'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                🇹🇷 Türkçe
-              </button>
-              <button
-                onClick={() => setTargetLang('en')}
-                className={`px-4 py-3 rounded-lg font-medium transition-all ${
-                  targetLang === 'en'
-                    ? 'bg-blue-600 text-white shadow-lg scale-105'
-                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                }`}
-              >
-                🌐 Global (EN)
-              </button>
-            </div>
-            <div className="text-xs text-gray-400 mt-2">
-              {targetLang === 'all' && '• Tüm kullanıcılara gönderilir'}
-              {targetLang === 'tr' && '• Sadece Türkçe dil ayarlı cihazlara gönderilir'}
-              {targetLang === 'en' && '• Türkçe olmayan tüm cihazlara gönderilir (Global)'}
-            </div>
-          </div>
-
-          {/* Password Input */}
-          <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Admin Şifresi
-            </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          {/* Preview */}
-          {title && message && (
-            <div className="mb-6 p-4 bg-gray-900 rounded-lg border border-gray-700">
-              <div className="text-xs text-gray-400 mb-2">Önizleme:</div>
-              <div className="bg-white text-black p-4 rounded-lg shadow-lg max-w-sm">
-                <div className="font-semibold mb-1">
-                  {emoji} {title}
-                </div>
-                <div className="text-sm text-gray-700">
-                  {message}
+              {/* Quick Messages */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  Hızlı Mesajlar
+                </label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                  {quickMessages.map((quick, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setTitle(quick.title);
+                        setMessage(quick.message);
+                      }}
+                      className="p-4 bg-[#0d0d12] hover:bg-[#1a1a1f] border border-gray-800/50 hover:border-gray-700/50 rounded-xl text-left text-sm transition-all duration-200 hover:scale-[1.02] shadow-sm"
+                    >
+                      <div className="font-semibold text-white mb-1">{quick.title}</div>
+                      <div className="text-xs text-gray-400 truncate">{quick.message}</div>
+                    </button>
+                  ))}
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Result Message */}
-          {result && (
-            <div
-              className={`mb-4 p-4 rounded-lg ${
-                result.success
-                  ? 'bg-green-900/30 border border-green-700 text-green-300'
-                  : 'bg-red-900/30 border border-red-700 text-red-300'
-              }`}
-            >
-              {result.message}
-            </div>
-          )}
+              {/* Emoji Selector */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  Emoji
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {emojiOptions.map((e) => (
+                    <button
+                      key={e}
+                      onClick={() => setEmoji(e)}
+                      className={`w-12 h-12 rounded-xl text-2xl transition-all duration-200 ${emoji === e
+                        ? 'bg-gradient-to-br from-blue-500/20 to-purple-500/20 border border-blue-500/30 scale-110 shadow-lg shadow-blue-500/20'
+                        : 'bg-[#0d0d12] border border-gray-800/50 hover:bg-[#1a1a1f] hover:border-gray-700/50 hover:scale-105'
+                        }`}
+                    >
+                      {e}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
-          {/* Send Button */}
-          <button
-            onClick={handleSend}
-            disabled={sending || !title || !message || !password}
-            className="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-semibold rounded-lg transition-all transform hover:scale-[1.02] disabled:hover:scale-100 shadow-lg"
-          >
-            {sending ? (
-              <span className="flex items-center justify-center">
-                <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Gönderiliyor...
-              </span>
-            ) : (
-              `📤 ${targetLang === 'all' ? 'Herkese' : targetLang === 'tr' ? 'Türkçe Kullanıcılara' : 'Global Kullanıcılara'} Gönder`
-            )}
-          </button>
+              {/* Title Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  Başlık
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Bildirim başlığı..."
+                  className="w-full px-4 py-3.5 bg-[#0d0d12] border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 font-medium"
+                  maxLength={50}
+                />
+                <div className="text-xs text-gray-500 mt-2 text-right font-medium">
+                  {title.length}/50
+                </div>
+              </div>
 
-          {/* Info */}
-          <div className="mt-6 p-4 bg-blue-900/20 border border-blue-700/30 rounded-lg">
-            <div className="text-xs text-blue-300 space-y-1">
-              <div>• Bildirim tüm kayıtlı cihazlara gönderilecek</div>
-              <div>• Uygulama kapalı olsa bile bildirim gidecek</div>
-              <div>• Emoji ve başlık bildirimde görünecek</div>
-            </div>
-          </div>
+              {/* Message Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  Mesaj
+                </label>
+                <textarea
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  placeholder="Bildirim mesajı..."
+                  rows={4}
+                  className="w-full px-4 py-3.5 bg-[#0d0d12] border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 resize-none transition-all duration-200 font-medium"
+                  maxLength={200}
+                />
+                <div className="text-xs text-gray-500 mt-2 text-right font-medium">
+                  {message.length}/200
+                </div>
+              </div>
+
+              {/* 🔥 MULTILINGUAL: Dil Seçimi */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  Hedef Kitle (Target Audience)
+                </label>
+                <div className="grid grid-cols-3 gap-3">
+                  <button
+                    onClick={() => setTargetLang('all')}
+                    className={`px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${targetLang === 'all'
+                        ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-white border border-emerald-500/30 shadow-lg shadow-emerald-500/10 scale-105'
+                        : 'bg-[#0d0d12] text-gray-300 border border-gray-800/50 hover:bg-[#1a1a1f] hover:border-gray-700/50 hover:scale-[1.02]'
+                      }`}
+                  >
+                    🌍 Herkes (All)
+                  </button>
+                  <button
+                    onClick={() => setTargetLang('tr')}
+                    className={`px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${targetLang === 'tr'
+                        ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-white border border-emerald-500/30 shadow-lg shadow-emerald-500/10 scale-105'
+                        : 'bg-[#0d0d12] text-gray-300 border border-gray-800/50 hover:bg-[#1a1a1f] hover:border-gray-700/50 hover:scale-[1.02]'
+                      }`}
+                  >
+                    🇹🇷 Türkçe
+                  </button>
+                  <button
+                    onClick={() => setTargetLang('en')}
+                    className={`px-4 py-3.5 rounded-xl font-semibold transition-all duration-200 ${targetLang === 'en'
+                        ? 'bg-gradient-to-r from-emerald-500/20 to-green-500/20 text-white border border-emerald-500/30 shadow-lg shadow-emerald-500/10 scale-105'
+                        : 'bg-[#0d0d12] text-gray-300 border border-gray-800/50 hover:bg-[#1a1a1f] hover:border-gray-700/50 hover:scale-[1.02]'
+                      }`}
+                  >
+                    🌐 Global (EN)
+                  </button>
+                </div>
+                <div className="text-xs text-gray-500 mt-3 font-medium">
+                  {targetLang === 'all' && '• Tüm kullanıcılara gönderilir'}
+                  {targetLang === 'tr' && '• Sadece Türkçe dil ayarlı cihazlara gönderilir'}
+                  {targetLang === 'en' && '• Türkçe olmayan tüm cihazlara gönderilir (Global)'}
+                </div>
+              </div>
+
+              {/* Password Input */}
+              <div className="mb-6">
+                <label className="block text-sm font-semibold text-gray-300 mb-3">
+                  Admin Şifresi
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-4 py-3.5 bg-[#0d0d12] border border-gray-700/50 rounded-xl text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 font-medium"
+                />
+              </div>
+
+              {/* Preview */}
+              {title && message && (
+                <div className="mb-6 p-5 bg-[#0d0d12]/80 backdrop-blur-sm rounded-xl border border-gray-800/50 shadow-lg">
+                  <div className="text-xs font-semibold text-gray-400 mb-3">Önizleme:</div>
+                  <div className="bg-white text-black p-5 rounded-xl shadow-2xl max-w-sm">
+                    <div className="font-bold mb-2 text-base">
+                      {emoji} {title}
+                    </div>
+                    <div className="text-sm text-gray-700">
+                      {message}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Result Message */}
+              {result && (
+                <div
+                  className={`mb-6 p-4 rounded-xl font-medium ${result.success
+                      ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-300'
+                      : 'bg-red-500/10 border border-red-500/20 text-red-300'
+                    }`}
+                >
+                  {result.message}
+                </div>
+              )}
+
+              {/* Send Button */}
+              <button
+                onClick={handleSend}
+                disabled={sending || !title || !message || !password}
+                className="w-full py-4 bg-gradient-to-r from-emerald-600 to-green-600 hover:from-emerald-500 hover:to-green-500 disabled:from-gray-700 disabled:to-gray-700 disabled:cursor-not-allowed text-white font-bold rounded-xl transition-all transform hover:scale-[1.02] disabled:hover:scale-100 shadow-lg shadow-emerald-500/20"
+              >
+                {sending ? (
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin h-5 w-5 mr-3" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Gönderiliyor...
+                  </span>
+                ) : (
+                  `📤 ${targetLang === 'all' ? 'Herkese' : targetLang === 'tr' ? 'Türkçe Kullanıcılara' : 'Global Kullanıcılara'} Gönder`
+                )}
+              </button>
+
+              {/* Info */}
+              <div className="mt-6 p-5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                <div className="text-sm text-blue-300 space-y-2 font-medium">
+                  <div>• Bildirim tüm kayıtlı cihazlara gönderilecek</div>
+                  <div>• Uygulama kapalı olsa bile bildirim gidecek</div>
+                  <div>• Emoji ve başlık bildirimde görünecek</div>
+                </div>
+              </div>
             </>
           ) : activeTab === 'support' ? (
             <>
@@ -866,20 +857,19 @@ export default function AdminPage() {
                           <div className="flex items-center gap-2 mb-1">
                             <span className="px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded">
                               {request.topic === 'general' ? 'Genel' :
-                               request.topic === 'technical' ? 'Teknik' :
-                               request.topic === 'billing' ? 'Ödeme' :
-                               request.topic === 'feature' ? 'Özellik' :
-                               request.topic === 'bug' ? 'Hata' : 'Diğer'}
+                                request.topic === 'technical' ? 'Teknik' :
+                                  request.topic === 'billing' ? 'Ödeme' :
+                                    request.topic === 'feature' ? 'Özellik' :
+                                      request.topic === 'bug' ? 'Hata' : 'Diğer'}
                             </span>
-                            <span className={`px-2 py-1 text-xs rounded ${
-                              request.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
+                            <span className={`px-2 py-1 text-xs rounded ${request.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' :
                               request.status === 'in_progress' ? 'bg-blue-500/20 text-blue-400' :
-                              request.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
-                              'bg-gray-500/20 text-gray-400'
-                            }`}>
+                                request.status === 'resolved' ? 'bg-green-500/20 text-green-400' :
+                                  'bg-gray-500/20 text-gray-400'
+                              }`}>
                               {request.status === 'pending' ? 'Beklemede' :
-                               request.status === 'in_progress' ? 'İşleniyor' :
-                               request.status === 'resolved' ? 'Çözüldü' : 'Kapatıldı'}
+                                request.status === 'in_progress' ? 'İşleniyor' :
+                                  request.status === 'resolved' ? 'Çözüldü' : 'Kapatıldı'}
                             </span>
                           </div>
                           {request.user_email && (
@@ -937,11 +927,10 @@ export default function AdminPage() {
 
               {/* Migration Result */}
               {migrationResult && (
-                <div className={`mb-4 p-4 rounded-lg ${
-                  migrationResult.success 
-                    ? 'bg-green-900/30 border border-green-700 text-green-300' 
-                    : 'bg-red-900/30 border border-red-700 text-red-300'
-                }`}>
+                <div className={`mb-4 p-4 rounded-lg ${migrationResult.success
+                  ? 'bg-green-900/30 border border-green-700 text-green-300'
+                  : 'bg-red-900/30 border border-red-700 text-red-300'
+                  }`}>
                   {migrationResult.message}
                 </div>
               )}
@@ -950,49 +939,49 @@ export default function AdminPage() {
               {addBlogPostOpen && (
                 <form onSubmit={handleAddBlogPost} className="bg-[#0f0f0f] rounded-xl border border-gray-900 p-6 mb-6">
                   <h3 className="text-lg font-bold text-white mb-4">Yeni Blog Yazısı</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                      <div>
-                        <label className="block text-white text-sm font-medium mb-1">Başlık</label>
-                        <input
-                          type="text"
-                          value={addBlogPostForm.title}
-                          onChange={(e) => setAddBlogPostForm({...addBlogPostForm, title: e.target.value})}
-                          className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-white text-sm font-medium mb-1">
-                          Slug (Boş bırakılırsa otomatik oluşturulur)
-                        </label>
-                        <input
-                          type="text"
-                          value={addBlogPostForm.slug}
-                          onChange={(e) => setAddBlogPostForm({...addBlogPostForm, slug: e.target.value})}
-                          className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-white text-sm font-medium mb-1">Kategori</label>
-                        <input
-                          type="text"
-                          value={addBlogPostForm.category}
-                          onChange={(e) => setAddBlogPostForm({...addBlogPostForm, category: e.target.value})}
-                          className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-white text-sm font-medium mb-1">Yazar</label>
-                        <input
-                          type="text"
-                          value={addBlogPostForm.author}
-                          onChange={(e) => setAddBlogPostForm({...addBlogPostForm, author: e.target.value})}
-                          className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
-                          required
-                        />
-                      </div>
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1">Başlık</label>
+                      <input
+                        type="text"
+                        value={addBlogPostForm.title}
+                        onChange={(e) => setAddBlogPostForm({ ...addBlogPostForm, title: e.target.value })}
+                        className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1">
+                        Slug (Boş bırakılırsa otomatik oluşturulur)
+                      </label>
+                      <input
+                        type="text"
+                        value={addBlogPostForm.slug}
+                        onChange={(e) => setAddBlogPostForm({ ...addBlogPostForm, slug: e.target.value })}
+                        className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1">Kategori</label>
+                      <input
+                        type="text"
+                        value={addBlogPostForm.category}
+                        onChange={(e) => setAddBlogPostForm({ ...addBlogPostForm, category: e.target.value })}
+                        className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-white text-sm font-medium mb-1">Yazar</label>
+                      <input
+                        type="text"
+                        value={addBlogPostForm.author}
+                        onChange={(e) => setAddBlogPostForm({ ...addBlogPostForm, author: e.target.value })}
+                        className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
+                        required
+                      />
+                    </div>
                     <div>
                       <label className="block text-white text-sm font-medium mb-1">Kapak Görseli</label>
                       <div className="flex items-center space-x-3">
@@ -1000,7 +989,7 @@ export default function AdminPage() {
                           <input
                             type="text"
                             value={addBlogPostForm.coverImage}
-                            onChange={(e) => setAddBlogPostForm({...addBlogPostForm, coverImage: e.target.value})}
+                            onChange={(e) => setAddBlogPostForm({ ...addBlogPostForm, coverImage: e.target.value })}
                             placeholder="Görsel URL'si veya yükleme yapabilirsiniz"
                             className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
                           />
@@ -1029,10 +1018,10 @@ export default function AdminPage() {
                       )}
                       {addBlogPostForm.coverImage && (
                         <div className="mt-2">
-                          <img 
-                            src={addBlogPostForm.coverImage.startsWith('/') ? addBlogPostForm.coverImage : addBlogPostForm.coverImage} 
-                            alt="Kapak görseli önizleme" 
-                            className="h-24 object-cover rounded" 
+                          <img
+                            src={addBlogPostForm.coverImage.startsWith('/') ? addBlogPostForm.coverImage : addBlogPostForm.coverImage}
+                            alt="Kapak görseli önizleme"
+                            className="h-24 object-cover rounded"
                           />
                         </div>
                       )}
@@ -1044,7 +1033,7 @@ export default function AdminPage() {
                           <input
                             type="text"
                             value={addBlogPostForm.authorImage}
-                            onChange={(e) => setAddBlogPostForm({...addBlogPostForm, authorImage: e.target.value})}
+                            onChange={(e) => setAddBlogPostForm({ ...addBlogPostForm, authorImage: e.target.value })}
                             placeholder="Görsel URL'si veya yükleme yapabilirsiniz"
                             className="w-full bg-[#1a1a23] border border-gray-700 rounded px-3 py-2 text-white focus:outline-none focus:border-indigo-500"
                           />
@@ -1073,10 +1062,10 @@ export default function AdminPage() {
                       )}
                       {addBlogPostForm.authorImage && (
                         <div className="mt-2">
-                          <img 
-                            src={addBlogPostForm.authorImage.startsWith('/') ? addBlogPostForm.authorImage : addBlogPostForm.authorImage} 
-                            alt="Yazar görseli önizleme" 
-                            className="h-12 w-12 object-cover rounded-full" 
+                          <img
+                            src={addBlogPostForm.authorImage.startsWith('/') ? addBlogPostForm.authorImage : addBlogPostForm.authorImage}
+                            alt="Yazar görseli önizleme"
+                            className="h-12 w-12 object-cover rounded-full"
                           />
                         </div>
                       )}
@@ -1086,7 +1075,7 @@ export default function AdminPage() {
                       <input
                         type="number"
                         value={addBlogPostForm.readTime}
-                        onChange={(e) => setAddBlogPostForm({...addBlogPostForm, readTime: e.target.value})}
+                        onChange={(e) => setAddBlogPostForm({ ...addBlogPostForm, readTime: e.target.value })}
                         className="w-full px-4 py-3 bg-[#0a0a0a] border border-gray-900 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                         min="1"
                         required
@@ -1100,7 +1089,7 @@ export default function AdminPage() {
                       <input
                         type="text"
                         value={addBlogPostForm.tags}
-                        onChange={(e) => setAddBlogPostForm({...addBlogPostForm, tags: e.target.value})}
+                        onChange={(e) => setAddBlogPostForm({ ...addBlogPostForm, tags: e.target.value })}
                         placeholder="crypto, bitcoin, trading, analysis"
                         className="w-full px-4 py-3 bg-[#0a0a0a] border border-gray-900 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       />
@@ -1113,7 +1102,7 @@ export default function AdminPage() {
                         type="checkbox"
                         id="featured"
                         checked={addBlogPostForm.featured}
-                        onChange={(e) => setAddBlogPostForm({...addBlogPostForm, featured: e.target.checked})}
+                        onChange={(e) => setAddBlogPostForm({ ...addBlogPostForm, featured: e.target.checked })}
                         className="w-4 h-4 text-blue-600 bg-[#0a0a0a] border-gray-900 rounded focus:ring-blue-500"
                       />
                       <label htmlFor="featured" className="ml-2 text-sm font-medium text-gray-300">Öne Çıkarılan</label>
@@ -1125,12 +1114,12 @@ export default function AdminPage() {
                     <ReactQuillWrapper
                       theme="snow"
                       value={addBlogPostForm.excerpt}
-                      onChange={(excerpt: string) => setAddBlogPostForm({...addBlogPostForm, excerpt})}
+                      onChange={(excerpt: string) => setAddBlogPostForm({ ...addBlogPostForm, excerpt })}
                       className="bg-[#1a1a23] text-white rounded"
                       modules={{
                         toolbar: [
                           ['bold', 'italic', 'underline'],
-                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                           ['link']
                         ],
                       }}
@@ -1143,19 +1132,19 @@ export default function AdminPage() {
                     <ReactQuillWrapper
                       theme="snow"
                       value={addBlogPostForm.content}
-                      onChange={(content: string) => setAddBlogPostForm({...addBlogPostForm, content})}
+                      onChange={(content: string) => setAddBlogPostForm({ ...addBlogPostForm, content })}
                       className="bg-[#1a1a23] text-white rounded"
                       modules={{
                         toolbar: [
                           [{ 'header': [1, 2, 3, 4, 5, 6, false] }],
                           ['bold', 'italic', 'underline', 'strike'],
-                          [{ 'list': 'ordered'}, { 'list': 'bullet' }],
+                          [{ 'list': 'ordered' }, { 'list': 'bullet' }],
                           [{ 'color': [] }, { 'background': [] }],
                           [{ 'align': [] }],
                           ['link', 'image', 'video'],
                           ['blockquote', 'code-block'],
-                          [{ 'script': 'sub'}, { 'script': 'super' }],
-                          [{ 'indent': '-1'}, { 'indent': '+1' }],
+                          [{ 'script': 'sub' }, { 'script': 'super' }],
+                          [{ 'indent': '-1' }, { 'indent': '+1' }],
                           [{ 'table': [] }],
                           ['clean']
                         ],
@@ -1222,9 +1211,9 @@ export default function AdminPage() {
                               {new Date(post.publishedAt).toLocaleDateString('tr-TR')}
                             </td>
                             <td className="py-2 px-4 text-sm space-x-2">
-                              <a 
-                                href={`/blog/${post.slug}`} 
-                                target="_blank" 
+                              <a
+                                href={`/blog/${post.slug}`}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-indigo-400 hover:text-indigo-300"
                               >
