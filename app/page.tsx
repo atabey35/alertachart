@@ -85,36 +85,35 @@ export default function Home() {
   // iOS'ta ilk açılışta viewport height doğru hesaplanmıyor, bu state ile düzeltiyoruz
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
 
-  // Premium state - 🔥 Cache-first: State her zaman null ile başlar (Hydration-safe)
+  // Premium state - 🔥 INSTANT: Sync cache read in useState initializer (0ms premium display)
   const [userPlan, setUserPlan] = useState<{
     plan: 'free' | 'premium';
     isTrial: boolean;
     trialRemainingDays: number;
     expiryDate?: string | null;
     hasPremiumAccess?: boolean;
-  } | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  // Teaser preview state - shows blurred preview for 2-3 seconds before modal
-  const [teaserPreview, setTeaserPreview] = useState<'aggr' | 'liquidations' | 'exchange' | null>(null);
-  // Hydration-safe: Always start with false, check in useEffect
-  const [showTrialPromotionModal, setShowTrialPromotionModal] = useState(false);
-
-  // 🔥 Hydration-safe: Component mount olduktan hemen sonra cache'i oku
-  useEffect(() => {
+  } | null>(() => {
+    // 🔥 SYNC READ: This runs BEFORE first render, so premium status is immediate
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem('user_plan_cache');
         if (cached) {
           const parsed = JSON.parse(cached);
-          console.log('[App] ⚡️ Plan loaded from cache immediately:', parsed);
-          setUserPlan(parsed);
+          console.log('[App] ⚡️ Plan initialized from cache (SYNC - 0ms):', parsed);
+          return parsed;
         }
       } catch (e) {
         console.error('[App] Cache parse error:', e);
         localStorage.removeItem('user_plan_cache');
       }
     }
-  }, []);
+    return null;
+  });
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  // Teaser preview state - shows blurred preview for 2-3 seconds before modal
+  const [teaserPreview, setTeaserPreview] = useState<'aggr' | 'liquidations' | 'exchange' | null>(null);
+  // Hydration-safe: Always start with false, check in useEffect
+  const [showTrialPromotionModal, setShowTrialPromotionModal] = useState(false);
 
   // 🔥 Check for ?upgrade=true URL parameter and open UpgradeModal
   useEffect(() => {

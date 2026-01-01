@@ -437,12 +437,11 @@ export function setupAutomaticEntitlementSync() {
 
   console.log('[Entitlement Sync] 🔧 Setting up automatic entitlement sync...');
 
-  // Sync on app startup (after a short delay to ensure everything is loaded)
-  setTimeout(() => {
-    syncEntitlements().catch(err => {
-      console.error('[Entitlement Sync] ❌ Startup sync failed:', err);
-    });
-  }, 2000); // 2 second delay
+  // 🔥 INSTANT: Sync immediately on app startup (async - doesn't block main thread)
+  // Cache already provides instant UI, this validates in background
+  syncEntitlements().catch(err => {
+    console.error('[Entitlement Sync] ❌ Startup sync failed:', err);
+  });
 
   // Sync when app comes to foreground (Capacitor App plugin)
   const Capacitor = (window as any).Capacitor;

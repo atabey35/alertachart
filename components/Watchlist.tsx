@@ -18,6 +18,7 @@ interface WatchlistItem {
   priceFlash?: 'up' | 'down' | null;
   category?: string;
   isFavorite?: boolean;
+  isLoading?: boolean; // Per-item loading state for optimistic UI
 }
 
 interface WatchlistProps {
@@ -359,7 +360,9 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     return () => {
       websocketService.disconnect(handlePriceUpdate);
     };
-  }, [watchlist, marketType, symbolCategories, favorites]);
+    // NOTE: Removed symbolCategories and favorites from deps to prevent full reconnect
+    // These are updated via priceData updates, not WebSocket reconnection
+  }, [watchlist, marketType]);
 
   const addSymbol = async (symbol: string) => {
     const normalizedSymbol = symbol.toLowerCase();
@@ -384,7 +387,33 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       return;
     }
 
-    // IMMEDIATELY fetch price for the new symbol (don't wait for WebSocket)
+    // OPTIMISTIC UI: Immediately show placeholder with loading state
+    // This prevents the entire list from showing loading animation
+    setPriceData(prev => {
+      const updated = new Map(prev);
+      updated.set(normalizedSymbol, {
+        symbol: normalizedSymbol,
+        price: 0,
+        change24h: 0,
+        volume24h: 0,
+        priceFlash: null,
+        category: undefined,
+        isFavorite: false,
+        isLoading: true, // Mark as loading for this specific item only
+      });
+      return updated;
+    });
+
+    // Add to watchlist immediately (optimistic)
+    const newWatchlist = [...watchlist, normalizedSymbol];
+    setWatchlist(newWatchlist);
+    const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
+    localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
+
+    // Use incremental subscription instead of full reconnect
+    websocketService.addSymbolToStream(normalizedSymbol);
+
+    // Fetch initial price via REST API (non-blocking)
     try {
       const url = `/api/ticker/${marketType}?symbols=${normalizedSymbol}`;
       const response = await fetch(url);
@@ -403,6 +432,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
               priceFlash: null,
               category: symbolCategories.get(normalizedSymbol),
               isFavorite: favorites.has(normalizedSymbol),
+              isLoading: false, // Data loaded, remove loading state
             });
             return updated;
           });
@@ -410,12 +440,16 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       }
     } catch (error) {
       console.debug('[Watchlist] Failed to fetch initial price for', normalizedSymbol);
+      // Remove loading state even on error - WebSocket will update
+      setPriceData(prev => {
+        const updated = new Map(prev);
+        const existing = updated.get(normalizedSymbol);
+        if (existing) {
+          updated.set(normalizedSymbol, { ...existing, isLoading: false });
+        }
+        return updated;
+      });
     }
-
-    const newWatchlist = [...watchlist, normalizedSymbol];
-    setWatchlist(newWatchlist);
-    const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
-    localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
 
     // Auto-assign category from categories.json
     const symbolUpper = symbol.toUpperCase();
@@ -447,6 +481,16 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     setWatchlist(newWatchlist);
     const storageKey = marketType === 'futures' ? 'watchlist-futures' : 'watchlist-spot';
     localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
+
+    // Clean up priceData for removed symbol
+    setPriceData(prev => {
+      const updated = new Map(prev);
+      updated.delete(symbol);
+      return updated;
+    });
+
+    // Use incremental unsubscribe instead of waiting for full reconnect
+    websocketService.removeSymbolFromStream(symbol);
   };
 
   const reorderWatchlist = (fromSymbol: string, toSymbol: string) => {
@@ -1171,7 +1215,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                     </div>
                   </div>
 
-                  {data ? (
+                  {data && !data.isLoading ? (
                     <>
                       <div className="flex items-center justify-between mb-0.5 md:mb-0.5">
                         <div className="flex items-baseline gap-0.5 md:gap-0.5">
@@ -1206,7 +1250,16 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                         )}
                       </div>
                     </>
+                  ) : data?.isLoading ? (
+                    // Per-item skeleton for newly added items - shows while fetching initial price
+                    <div className="flex items-center justify-between animate-pulse">
+                      <div className="flex items-baseline gap-0.5">
+                        <div className="h-3 w-16 bg-gray-700/50 rounded"></div>
+                      </div>
+                      <div className="h-3 w-12 bg-gray-700/50 rounded"></div>
+                    </div>
                   ) : (
+                    // Initial loading state (no data at all)
                     <div className="flex items-center gap-2 text-gray-500 text-[10px] md:text-[10px] py-0.5 md:py-0.5">
                       <svg className="animate-spin h-2.5 w-2.5 md:h-2.5 md:w-2.5 text-blue-400" fill="none" viewBox="0 0 24 24">
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

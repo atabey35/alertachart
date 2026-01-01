@@ -204,6 +204,47 @@ class WebSocketService {
   }
 
   /**
+   * Add a single symbol to the existing stream without reconnecting
+   * Uses Binance SUBSCRIBE command for incremental updates
+   */
+  addSymbolToStream(symbol: string): void {
+    const normalizedSymbol = symbol.toLowerCase();
+    if (this.symbols.includes(normalizedSymbol)) return;
+
+    this.symbols.push(normalizedSymbol);
+
+    // Send SUBSCRIBE command if WebSocket is connected
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        method: 'SUBSCRIBE',
+        params: [`${normalizedSymbol}@ticker`],
+        id: Date.now()
+      }));
+      console.log(`[WebSocket] Subscribed to ${normalizedSymbol}@ticker`);
+    }
+  }
+
+  /**
+   * Remove a single symbol from the existing stream without reconnecting
+   * Uses Binance UNSUBSCRIBE command
+   */
+  removeSymbolFromStream(symbol: string): void {
+    const normalizedSymbol = symbol.toLowerCase();
+    this.symbols = this.symbols.filter(s => s !== normalizedSymbol);
+    this.priceData.delete(normalizedSymbol);
+
+    // Send UNSUBSCRIBE command if WebSocket is connected
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        method: 'UNSUBSCRIBE',
+        params: [`${normalizedSymbol}@ticker`],
+        id: Date.now()
+      }));
+      console.log(`[WebSocket] Unsubscribed from ${normalizedSymbol}@ticker`);
+    }
+  }
+
+  /**
    * Disconnect from WebSocket
    */
   disconnect(callback?: TickerCallback) {

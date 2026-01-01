@@ -14,13 +14,30 @@ export default function AccountPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
   const [user, setUser] = useState<{ id: number; email: string; name?: string; provider?: string } | null>(null);
+  // Premium state - 🔥 INSTANT: Sync cache read in useState initializer (0ms premium display)
   const [userPlan, setUserPlan] = useState<{
     plan: 'free' | 'premium';
     isTrial: boolean;
     trialRemainingDays: number;
     expiryDate?: string | null;
     hasPremiumAccess?: boolean;
-  } | null>(null);
+  } | null>(() => {
+    // 🔥 SYNC READ: This runs BEFORE first render, so premium status is immediate
+    if (typeof window !== 'undefined') {
+      try {
+        const cached = localStorage.getItem('user_plan_cache');
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          console.log('[Account] ⚡️ Plan initialized from cache (SYNC - 0ms):', parsed);
+          return parsed;
+        }
+      } catch (e) {
+        console.error('[Account] Cache parse error:', e);
+        localStorage.removeItem('user_plan_cache');
+      }
+    }
+    return null;
+  });
   const [fullUser, setFullUser] = useState<UserType | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [language, setLanguage] = useState<'tr' | 'en'>('tr');

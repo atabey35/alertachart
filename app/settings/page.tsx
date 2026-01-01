@@ -15,10 +15,15 @@ import TrialIndicator from '@/components/TrialIndicator';
 import UpgradeModal from '@/components/UpgradeModal';
 import { hasPremiumAccess, User } from '@/utils/premium';
 import { t, Language } from '@/utils/translations';
+import AddPriceAlertModal from '@/components/AddPriceAlertModal';
+import AddVolumeAlertModal from '@/components/AddVolumeAlertModal';
+import AddPercentageAlertModal from '@/components/AddPercentageAlertModal';
+import AlertsModal from '@/components/AlertsModal';
 
 export default function SettingsPage() {
   const [loading, setLoading] = useState(false);
-  const [pageLoading, setPageLoading] = useState(true); // Initial page loading
+  const [pageLoading, setPageLoading] = useState(true); // Initial page loading (0.75s to prevent flash)
+
   const [error, setError] = useState('');
   const [isCapacitor, setIsCapacitor] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -49,6 +54,7 @@ export default function SettingsPage() {
   const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showNotificationsModal, setShowNotificationsModal] = useState(false);
   const [showProductsModal, setShowProductsModal] = useState(false);
+  const [showAlertsModal, setShowAlertsModal] = useState(false);
 
   // Custom coin alerts state
   const [customAlerts, setCustomAlerts] = useState<any[]>([]);
@@ -102,12 +108,11 @@ export default function SettingsPage() {
   const [percentageSymbolSuggestions, setPercentageSymbolSuggestions] = useState<any[]>([]);
   const [showPercentageSymbolSuggestions, setShowPercentageSymbolSuggestions] = useState(false);
   const percentageSymbolInputRef = useRef<HTMLInputElement>(null);
-
-  // 🔥 Track when we started loading to ensure minimum 1.5s
+  // 🔥 Track when we started loading to ensure minimum 0.75s
   const loadingStartTimeRef = useRef<number | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
 
-  // 🔥 Show loading until user and premium data is ready (minimum 1.5s)
+  // 🔥 Show loading until user and premium data is ready (minimum 0.75s)
   useEffect(() => {
     // Start loading timer when component mounts
     if (isInitialLoad) {
@@ -141,10 +146,10 @@ export default function SettingsPage() {
       if (!loadingStartTimeRef.current) return;
 
       const now = Date.now();
-      const minTime = 1500; // Minimum 1.5 seconds
+      const minTime = 750; // Minimum 0.75 seconds
       const elapsed = now - loadingStartTimeRef.current;
 
-      // Must wait at least 1.5 seconds AND data must be ready
+      // Must wait at least 0.75 seconds AND data must be ready
       if (elapsed >= minTime && checkDataReady()) {
         setPageLoading(false);
       }
@@ -184,6 +189,10 @@ export default function SettingsPage() {
       window.removeEventListener('focus', handleFocus);
     };
   }, [pathname]);
+
+
+
+
 
   // 🔥 Hydration-safe: Component mount olduktan hemen sonra cache'i oku
   useEffect(() => {
@@ -2439,7 +2448,8 @@ export default function SettingsPage() {
     }
   }, []);
 
-  // Show loading screen for 1.5 seconds
+
+  // Show loading screen for 0.75 seconds
   if (pageLoading) {
     return (
       <div className="min-h-screen bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-blue-900/20 via-slate-950 to-black flex items-center justify-center">
@@ -3337,1095 +3347,93 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Custom Coin Alerts (Premium Only) */}
+        {/* 🔔 Unified Alerts Modal Trigger */}
         {hasPremiumAccessValue && (
-          <div className="space-y-4">
-            {/* Header */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-4 bg-gradient-to-b from-blue-500 to-blue-600 rounded-full"></div>
-                  <span className="text-sm font-semibold text-white">
-                    {language === 'en' ? 'Custom Price Tracking' : 'Özel Fiyat Takibi'}
-                  </span>
-                  {customAlerts.length > 0 && (
-                    <span className="text-xs text-blue-400 font-medium bg-blue-500/10 px-2 py-0.5 rounded-full border border-blue-500/20">
-                      {customAlerts.length} {language === 'en' ? 'active' : 'aktif'}
-                    </span>
-                  )}
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-slate-400 tracking-wide">
+              {language === 'en' ? 'ALARMS' : 'ALARMLAR'}
+            </label>
+            <button
+              onClick={() => setShowAlertsModal(true)}
+              className="w-full group flex items-center justify-between px-4 py-3.5 rounded-xl border border-blue-500/20 bg-gradient-to-r from-slate-900/80 to-slate-900/60 backdrop-blur-md hover:border-blue-500/40 hover:bg-slate-800/60 transition-all duration-200"
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-600 flex items-center justify-center shadow-lg shadow-blue-500/20">
+                  <Bell className="w-5 h-5 text-white" />
                 </div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setShowAddAlertModal(true)}
-                  className="w-full px-4 py-2.5 text-xs font-semibold bg-gradient-to-r from-blue-600 to-blue-700 text-white border border-blue-500/30 rounded-xl hover:from-blue-500 hover:to-blue-600 hover:border-blue-400/50 transition-all shadow-lg shadow-blue-500/20 hover:shadow-blue-500/30 active:scale-[0.98] flex items-center justify-center gap-1.5"
-                >
-                  <span className="text-base">+</span>
-                  <span>{language === 'en' ? 'Add Alert' : 'Alarm Ekle'}</span>
-                </button>
-              </div>
-            </div>
-
-            {loadingAlerts ? (
-              <div className="text-center py-12 text-slate-400">
-                <div className="inline-block w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mb-3"></div>
-                <div className="text-xs font-medium">{language === 'en' ? 'Loading alerts...' : 'Alarmlar yükleniyor...'}</div>
-              </div>
-            ) : customAlerts.length === 0 ? (
-              <div className="p-4 rounded-xl border border-blue-500/20 bg-gradient-to-br from-slate-900/80 to-slate-900/60 text-center">
-                <div className="flex flex-wrap justify-center gap-2 mb-2">
-                  <span className="px-2.5 py-1 text-[10px] font-semibold bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20">BTC {'>'} $100k</span>
-                  <span className="px-2.5 py-1 text-[10px] font-semibold bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20">ETH {'<'} $2000</span>
-                  <span className="px-2.5 py-1 text-[10px] font-semibold bg-blue-500/10 text-blue-400 rounded-full border border-blue-500/20">SOL {'>'} $150</span>
-                </div>
-                <p className="text-[10px] text-slate-500">
-                  {language === 'en'
-                    ? 'Create your first price alert and never miss important price movements'
-                    : 'İlk fiyat alarmınızı oluşturun ve önemli fiyat hareketlerini kaçırmayın'}
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {customAlerts.map((alert, index) => {
-                  const createdDate = alert.created_at ? new Date(alert.created_at) : null;
-                  const timeAgo = createdDate ? (() => {
-                    const now = new Date();
-                    const diff = now.getTime() - createdDate.getTime();
-                    const minutes = Math.floor(diff / 60000);
-                    const hours = Math.floor(diff / 3600000);
-                    const days = Math.floor(diff / 86400000);
-
-                    if (minutes < 1) return language === 'en' ? 'just now' : 'az önce';
-                    if (minutes < 60) return `${minutes} ${language === 'en' ? 'min ago' : 'dakika önce'}`;
-                    if (hours < 24) return `${hours} ${language === 'en' ? 'hour ago' : 'saat önce'}`;
-                    return `${days} ${language === 'en' ? 'day ago' : 'gün önce'}`;
-                  })() : 'N/A';
-
-                  return (
-                    <motion.div
-                      key={alert.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: 0.3, delay: index * 0.05 }}
-                      className="group relative p-4 rounded-xl border border-slate-800/50 bg-gradient-to-br from-slate-900/80 via-slate-900/60 to-slate-900/80 backdrop-blur-md hover:border-blue-500/30 hover:bg-slate-900/90 transition-all shadow-lg shadow-black/20 hover:shadow-blue-500/10"
-                    >
-                      {/* Subtle gradient overlay on hover */}
-                      <div className="absolute inset-0 bg-gradient-to-br from-blue-500/0 via-transparent to-blue-600/0 group-hover:from-blue-500/5 group-hover:to-blue-600/5 rounded-xl transition-all pointer-events-none"></div>
-
-                      <div className="relative flex items-start gap-4">
-                        {/* Direction Icon */}
-                        <div className={`flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center shadow-lg ${alert.direction === 'up'
-                          ? 'bg-gradient-to-br from-green-500/20 to-green-600/20 border border-green-500/30'
-                          : 'bg-gradient-to-br from-red-500/20 to-red-600/20 border border-red-500/30'
-                          }`}>
-                          {alert.direction === 'up' ? (
-                            <TrendingUp className="w-6 h-6 text-green-400" strokeWidth={2.5} />
-                          ) : (
-                            <TrendingDown className="w-6 h-6 text-red-400" strokeWidth={2.5} />
-                          )}
-                        </div>
-
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                          {/* Symbol and Exchange */}
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="font-bold text-white text-base">{alert.symbol}</span>
-                            <span className="text-[10px] text-slate-400 font-medium bg-slate-800/50 px-2 py-0.5 rounded-full border border-slate-700/50">
-                              BINANCE {marketType === 'futures' ? 'FUTURES' : 'SPOT'}
-                            </span>
-                          </div>
-
-                          {/* Price - Show current price if available, otherwise target price */}
-                          <div className="text-xl font-bold text-white font-mono mb-2">
-                            ${(() => {
-                              const currentPrice = alert.last_price || alert.current_price;
-                              const displayPrice = currentPrice || alert.target_price;
-                              return parseFloat(displayPrice).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-                            })()}
-                          </div>
-
-                          {/* Created Date */}
-                          <div className="flex items-center gap-1.5 text-xs text-slate-400">
-                            <Clock className="w-3.5 h-3.5" />
-                            <span>{language === 'en' ? 'Created' : 'Oluşturuldu'} {timeAgo}</span>
-                          </div>
-                        </div>
-
-                        {/* Right Side: Actions and Percentage */}
-                        <div className="flex flex-col items-end gap-3 flex-shrink-0">
-                          {/* Action Buttons */}
-                          <div className="flex items-center gap-1.5">
-                            <button
-                              onClick={() => {
-                                setShowAddAlertModal(true);
-                              }}
-                              className="p-2 text-slate-400 hover:text-blue-400 hover:bg-blue-950/40 rounded-lg transition-all active:scale-95 border border-transparent hover:border-blue-500/20"
-                              title={language === 'en' ? 'Edit' : 'Düzenle'}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </button>
-                            <button
-                              onClick={async () => {
-                                let deviceId = null;
-                                const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
-                                if (isCapacitor) {
-                                  try {
-                                    const { Device } = (window as any).Capacitor?.Plugins;
-                                    if (Device && typeof Device.getId === 'function') {
-                                      const deviceIdInfo = await Device.getId();
-                                      const nativeId = deviceIdInfo?.identifier;
-                                      if (nativeId && nativeId !== 'unknown' && nativeId !== 'null' && nativeId !== 'undefined') {
-                                        deviceId = nativeId;
-                                        if (typeof window !== 'undefined') {
-                                          localStorage.setItem('native_device_id', deviceId);
-                                        }
-                                      }
-                                    }
-                                  } catch (capacitorError) {
-                                    console.warn('[Settings] Failed to get device ID from Capacitor:', capacitorError);
-                                  }
-                                }
-
-                                if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
-                                  deviceId = localStorage.getItem('native_device_id');
-                                }
-
-                                if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
-                                  deviceId = localStorage.getItem('device_id');
-                                }
-
-                                if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined' && !isCapacitor) {
-                                  deviceId = localStorage.getItem('web_device_id');
-                                }
-
-                                if (!deviceId || deviceId === 'unknown' || deviceId === 'null') {
-                                  console.error('[Settings] No device ID found for delete');
-                                  return;
-                                }
-
-                                try {
-                                  // 🔥 GUEST USER FIX: Add userEmail for guest users
-                                  const requestBody: { id: number; deviceId: string; userEmail?: string } = { id: alert.id, deviceId };
-                                  if (user?.email) {
-                                    requestBody.userEmail = user.email;
-                                  }
-
-                                  const response = await fetch('/api/alerts/price', {
-                                    method: 'DELETE',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    credentials: 'include',
-                                    body: JSON.stringify(requestBody),
-                                  });
-
-                                  if (response.ok) {
-                                    setCustomAlerts(customAlerts.filter(a => a.id !== alert.id));
-                                  } else {
-                                    const errorData = await response.json();
-                                    console.error('[Settings] Error deleting alert:', errorData);
-                                    setError(errorData.error || 'Failed to delete alert');
-                                  }
-                                } catch (error) {
-                                  console.error('[Settings] Error deleting alert:', error);
-                                  setError('Failed to delete alert');
-                                }
-                              }}
-                              className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-950/40 rounded-lg transition-all active:scale-95 border border-transparent hover:border-red-500/20"
-                              title={language === 'en' ? 'Delete' : 'Sil'}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-
-                          {/* Percentage Badge - Calculate percentage from target price */}
-                          <div className={`text-xs font-semibold px-2.5 py-1 rounded-lg border ${alert.direction === 'up'
-                            ? 'bg-green-500/10 text-green-400 border-green-500/30'
-                            : 'bg-red-500/10 text-red-400 border-red-500/30'
-                            }`}>
-                            {(() => {
-                              const currentPrice = alert.last_price || alert.current_price;
-                              const targetPrice = parseFloat(alert.target_price);
-
-                              if (currentPrice && targetPrice) {
-                                const percentage = ((currentPrice - targetPrice) / targetPrice) * 100;
-                                const sign = percentage >= 0 ? '+' : '';
-                                return `${sign}${percentage.toFixed(1)}%`;
-                              }
-
-                              // If no current price, show 0.0% with direction sign
-                              return `${alert.direction === 'up' ? '+' : '-'}0.0%`;
-                            })()}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            )}
-
-            {/* Volume Spike Alerts */}
-            <div className="mt-6 pt-4 border-t border-slate-800/50">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-4 bg-gradient-to-b from-orange-500 to-red-500 rounded-full"></div>
-                  <span className="text-sm font-semibold text-white">
-                    {language === 'en' ? 'Volume Spike Alerts' : 'Hacim Patlaması Alarmları'}
-                  </span>
-                  {volumeAlerts.length > 0 && (
-                    <span className="text-xs text-orange-400 font-medium bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">
-                      {volumeAlerts.length} {language === 'en' ? 'active' : 'aktif'}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Add Volume Alert Button */}
-              <button
-                onClick={() => setShowAddVolumeAlertModal(true)}
-                className="w-full mb-3 px-4 py-2.5 text-xs font-semibold bg-gradient-to-r from-orange-600 to-red-600 text-white border border-orange-500/30 rounded-xl hover:from-orange-500 hover:to-red-500 hover:border-orange-400/50 transition-all shadow-lg shadow-orange-500/20 hover:shadow-orange-500/30 active:scale-[0.98] flex items-center justify-center gap-1.5"
-              >
-                <span className="text-base">+</span>
-                <span>{language === 'en' ? 'Add Volume Alert' : 'Hacim Alarmı Ekle'}</span>
-              </button>
-
-              {/* Volume Alert List */}
-              {volumeAlerts.length > 0 ? (
-                <div className="space-y-2">
-                  {volumeAlerts.map((alert: any) => (
-                    <div
-                      key={alert.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-br from-slate-900/80 to-slate-900/60 border border-orange-500/20"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-600 to-red-600 flex items-center justify-center">
-                          <TrendingUp className="w-4 h-4 text-white" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-white">{alert.symbol}</div>
-                          <div className="text-[10px] text-orange-400">{alert.spike_multiplier}x Spike</div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const deviceId = localStorage.getItem('native_device_id');
-                            const response = await fetch('/api/alerts/custom', {
-                              method: 'DELETE',
-                              credentials: 'include',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ id: alert.id, deviceId }),
-                            });
-                            if (response.ok) {
-                              setVolumeAlerts(prev => prev.filter(a => a.id !== alert.id));
-                            }
-                          } catch (e) {
-                            console.error('Failed to delete volume alert:', e);
-                          }
-                        }}
-                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 rounded-xl border border-orange-500/20 bg-gradient-to-br from-slate-900/80 to-slate-900/60 text-center">
-                  <div className="flex flex-wrap justify-center gap-2 mb-2">
-                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-orange-500/10 text-orange-400 rounded-full border border-orange-500/20">2x Spike</span>
-                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-orange-500/10 text-orange-400 rounded-full border border-orange-500/20">3x Spike</span>
-                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-red-500/10 text-red-400 rounded-full border border-red-500/20">5x Spike</span>
+                <div className="text-left">
+                  <div className="text-sm font-semibold text-white group-hover:text-blue-300 transition-colors">
+                    {language === 'en' ? 'Price Alerts' : 'Fiyat Alarmları'}
                   </div>
-                  <p className="text-[10px] text-slate-500">
-                    {language === 'en' ? 'Add alerts for any coin volume spikes' : 'Herhangi bir coin için hacim patlaması alarmı ekleyin'}
-                  </p>
-                </div>
-              )}
-            </div>
-
-            {/* Percentage Change Alerts */}
-            <div className="mt-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-4 bg-gradient-to-b from-green-500 to-emerald-500 rounded-full"></div>
-                  <span className="text-sm font-semibold text-white">
-                    {language === 'en' ? 'Percentage Change Alerts' : 'Yüzde Değişim Alarmları'}
-                  </span>
-                  {percentageAlerts.length > 0 && (
-                    <span className="text-xs text-green-400 font-medium bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">
-                      {percentageAlerts.length} {language === 'en' ? 'active' : 'aktif'}
-                    </span>
-                  )}
+                  <div className="text-[10px] text-slate-400">
+                    {customAlerts.length + volumeAlerts.length + percentageAlerts.length} {language === 'en' ? 'active alerts' : 'aktif alarm'}
+                  </div>
                 </div>
               </div>
-
-              {/* Add Percentage Alert Button */}
-              <button
-                onClick={() => setShowAddPercentageAlertModal(true)}
-                className="w-full mb-3 px-4 py-2.5 text-xs font-semibold bg-gradient-to-r from-green-600 to-emerald-600 text-white border border-green-500/30 rounded-xl hover:from-green-500 hover:to-emerald-500 hover:border-green-400/50 transition-all shadow-lg shadow-green-500/20 hover:shadow-green-500/30 active:scale-[0.98] flex items-center justify-center gap-1.5"
-              >
-                <span className="text-base">+</span>
-                <span>{language === 'en' ? 'Add Percentage Alert' : 'Yüzde Alarmı Ekle'}</span>
-              </button>
-
-              {/* Percentage Alert List */}
-              {percentageAlerts.length > 0 ? (
-                <div className="space-y-2">
-                  {percentageAlerts.map((alert: any) => (
-                    <div
-                      key={alert.id}
-                      className="flex items-center justify-between p-3 rounded-xl bg-gradient-to-br from-slate-900/80 to-slate-900/60 border border-green-500/20"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
-                          <BarChart3 className="w-4 h-4 text-white" />
-                        </div>
-                        <div>
-                          <div className="text-sm font-semibold text-white">{alert.symbol}</div>
-                          <div className="text-[10px] text-green-400">
-                            ±{alert.percentage_threshold}% • {alert.timeframe_minutes === 60 ? '1h' : alert.timeframe_minutes === 240 ? '4h' : '24h'} • {alert.direction === 'up' ? '↑' : alert.direction === 'down' ? '↓' : '↕'}
-                          </div>
-                        </div>
-                      </div>
-                      <button
-                        onClick={async () => {
-                          try {
-                            const deviceId = localStorage.getItem('native_device_id');
-                            const response = await fetch('/api/alerts/custom', {
-                              method: 'DELETE',
-                              credentials: 'include',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({ id: alert.id, deviceId }),
-                            });
-                            if (response.ok) {
-                              setPercentageAlerts(prev => prev.filter(a => a.id !== alert.id));
-                            }
-                          } catch (e) {
-                            console.error('Failed to delete percentage alert:', e);
-                          }
-                        }}
-                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="p-4 rounded-xl border border-green-500/20 bg-gradient-to-br from-slate-900/80 to-slate-900/60 text-center">
-                  <div className="flex flex-wrap justify-center gap-2 mb-2">
-                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-green-500/10 text-green-400 rounded-full border border-green-500/20">±5%</span>
-                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-green-500/10 text-green-400 rounded-full border border-green-500/20">±10%</span>
-                    <span className="px-2.5 py-1 text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 rounded-full border border-emerald-500/20">±15%</span>
-                  </div>
-                  <p className="text-[10px] text-slate-500">
-                    {language === 'en' ? 'Add alerts for price percentage changes' : 'Fiyat yüzde değişimi için alarm ekleyin'}
-                  </p>
-                </div>
-              )}
-            </div>
+              <div className="flex items-center gap-2">
+                {customAlerts.length + volumeAlerts.length + percentageAlerts.length > 0 && (
+                  <span className="px-2 py-0.5 text-[10px] font-bold bg-blue-500/20 text-blue-400 rounded-full">
+                    {customAlerts.length + volumeAlerts.length + percentageAlerts.length}
+                  </span>
+                )}
+                <svg className="w-5 h-5 text-slate-400 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </div>
+            </button>
           </div>
         )}
       </div>
 
-      {/* Add Alert Modal */}
-      {showAddAlertModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-md w-full space-y-4 shadow-2xl shadow-blue-900/20">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-white">Add Custom Coin Alert</h2>
-                <button
-                  onClick={() => setActiveTooltip(activeTooltip === 'title' ? null : 'title')}
-                  className="text-slate-400 hover:text-blue-300 cursor-help transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </button>
-              </div>
 
-              {/* Title Tooltip Modal */}
-              {activeTooltip === 'title' && (
-                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setActiveTooltip(null)}>
-                  <div className="bg-slate-900/95 backdrop-blur-md border border-blue-500/20 rounded-xl p-4 max-w-md w-full shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="font-semibold text-white text-lg">How It Works / Nasıl Çalışır</div>
-                      <button
-                        onClick={() => setActiveTooltip(null)}
-                        className="text-slate-400 hover:text-white transition-colors"
-                      >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                        </svg>
-                      </button>
-                    </div>
-                    <div className="space-y-3 text-sm text-slate-300">
-                      <div>
-                        <p className="font-semibold text-blue-400 mb-1">English:</p>
-                        <p>Set a target price and proximity range. When the coin price approaches your target within the specified range, you&apos;ll receive a push notification. The alert stays active until you delete it.</p>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
-                        <p>Bir hedef fiyat ve yaklaşma aralığı belirleyin. Coin fiyatı belirlediğiniz aralık içinde hedefe yaklaştığında push bildirimi alırsınız. Alert, silinene kadar aktif kalır.</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              <button
-                onClick={() => {
-                  setShowAddAlertModal(false);
-                  setNewAlert({ symbol: '', notifyWhenAway: '', direction: 'down' });
-                  setCurrentPrice(null);
-                  setError('');
-                }}
-                className="text-slate-400 hover:text-white transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Error Message */}
-            {error && (
-              <div className="p-3 bg-red-950/40 border border-red-500/30 rounded-lg text-red-300 text-sm backdrop-blur-sm">
-                {error}
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div className="relative">
-                <label className="block text-sm font-medium text-slate-300 mb-2">Symbol (e.g., BTCUSDT)</label>
-                <input
-                  ref={symbolInputRef}
-                  type="text"
-                  value={newAlert.symbol}
-                  onChange={(e) => {
-                    const symbol = e.target.value.toUpperCase();
-                    setNewAlert({ ...newAlert, symbol });
-                    setShowSuggestions(true);
-                    // Price will be updated automatically by useEffect
-                  }}
-                  onFocus={() => {
-                    if (filteredSymbols.length > 0) {
-                      setShowSuggestions(true);
-                    }
-                  }}
-                  placeholder="BTCUSDT"
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-blue-500/20 rounded-xl text-white focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all backdrop-blur-sm"
-                />
-
-                {/* Coin Suggestions Dropdown */}
-                {showSuggestions && filteredSymbols.length > 0 && (
-                  <div
-                    ref={suggestionsRef}
-                    className="absolute z-50 w-full mt-2 bg-slate-900/95 backdrop-blur-md border border-blue-500/20 rounded-xl shadow-2xl shadow-blue-900/20 max-h-64 overflow-y-auto scrollbar-thin"
-                  >
-                    {filteredSymbols.map((symbol) => {
-                      const logoPath = `/logos/${symbol.baseAsset.toLowerCase()}.png`;
-
-                      return (
-                        <div
-                          key={symbol.symbol}
-                          onClick={() => {
-                            setNewAlert({ ...newAlert, symbol: symbol.symbol });
-                            setShowSuggestions(false);
-                            // Price will be updated automatically by useEffect
-                          }}
-                          className="flex items-center gap-3 px-3 py-2.5 cursor-pointer hover:bg-blue-950/30 transition-colors"
-                        >
-                          {/* Logo */}
-                          <div className="relative w-8 h-8 flex-shrink-0">
-                            <img
-                              src={logoPath}
-                              alt={symbol.baseAsset}
-                              className="w-8 h-8 rounded-full object-cover"
-                              onError={(e) => {
-                                const target = e.currentTarget;
-                                target.style.display = 'none';
-                                const fallback = target.nextElementSibling as HTMLElement;
-                                if (fallback) fallback.style.display = 'flex';
-                              }}
-                            />
-                            <div
-                              className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-600 hidden items-center justify-center text-white font-bold text-xs"
-                            >
-                              {symbol.baseAsset.charAt(0)}
-                            </div>
-                          </div>
-
-                          {/* Symbol Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-semibold text-white">{symbol.baseAsset}</span>
-                              <span className="text-xs text-slate-400">{symbol.quoteAsset}</span>
-                            </div>
-                            <div className="text-xs text-slate-500">{symbol.symbol}</div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {loadingSymbols && (
-                  <div className="absolute right-3 top-9 text-slate-400 text-sm">
-                    Loading...
-                  </div>
-                )}
-              </div>
-
-              {/* Current Price Display - Real-time */}
-              {newAlert.symbol && newAlert.symbol.length >= 6 ? (
-                currentPrice !== null ? (
-                  <div className="p-3 bg-blue-950/20 border border-blue-500/30 rounded-xl relative overflow-hidden">
-                    {/* Live indicator */}
-                    <div className="absolute top-2 right-2 flex items-center gap-1.5">
-                      <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                      <span className="text-[10px] text-green-400 font-medium">{language === 'en' ? 'LIVE' : 'CANLI'}</span>
-                    </div>
-                    <div className="flex items-center justify-between pr-16">
-                      <span className="text-sm text-slate-400">{language === 'en' ? 'Current Price' : 'Mevcut Fiyat'}:</span>
-                      <span className="text-lg font-bold text-blue-400 font-mono">
-                        ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="p-3 bg-slate-900/50 border border-blue-500/20 rounded-xl text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                      <span className="text-sm text-slate-400">{language === 'en' ? 'Loading current price...' : 'Fiyat yükleniyor...'}</span>
-                    </div>
-                  </div>
-                )
-              ) : null}
-
-              {/* Direction Selection */}
-              <div>
-                <label className="block text-sm font-medium text-slate-300 mb-2">
-                  {language === 'en' ? 'Direction / Yön' : 'Yön'}
-                </label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={() => setNewAlert({ ...newAlert, direction: 'up' })}
-                    className={`p-3 rounded-xl border transition-all flex items-center justify-center gap-2 ${newAlert.direction === 'up'
-                      ? 'bg-green-500/20 border-green-500/50 text-green-400'
-                      : 'bg-slate-900/50 border-slate-700/50 text-slate-400 hover:border-green-500/30 hover:bg-green-500/10'
-                      }`}
-                  >
-                    <TrendingUp className="w-5 h-5" />
-                    <span className="font-semibold">{language === 'en' ? 'Up / Yukarı' : 'Yukarı'}</span>
-                  </button>
-                  <button
-                    onClick={() => setNewAlert({ ...newAlert, direction: 'down' })}
-                    className={`p-3 rounded-xl border transition-all flex items-center justify-center gap-2 ${newAlert.direction === 'down'
-                      ? 'bg-red-500/20 border-red-500/50 text-red-400'
-                      : 'bg-slate-900/50 border-slate-700/50 text-slate-400 hover:border-red-500/30 hover:bg-red-500/10'
-                      }`}
-                  >
-                    <TrendingDown className="w-5 h-5" />
-                    <span className="font-semibold">{language === 'en' ? 'Down / Aşağı' : 'Aşağı'}</span>
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <label className="block text-sm font-medium text-slate-300">Notify when price is $X away / Kaç dolar kaldığında bildirim gelsin</label>
-                  <button
-                    onClick={() => setActiveTooltip(activeTooltip === 'notifyWhenAway' ? null : 'notifyWhenAway')}
-                    className="text-slate-400 hover:text-blue-300 cursor-help transition-colors"
-                  >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                  </button>
-                </div>
-                <input
-                  type="number"
-                  value={newAlert.notifyWhenAway}
-                  onChange={(e) => setNewAlert({ ...newAlert, notifyWhenAway: e.target.value })}
-                  placeholder="0.5"
-                  step="0.01"
-                  min="0.01"
-                  className="w-full px-4 py-2.5 bg-slate-900/50 border border-blue-500/20 rounded-xl text-white focus:border-blue-500/50 focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition-all backdrop-blur-sm"
-                />
-                <p className="text-xs text-slate-500 mt-1.5">
-                  {currentPrice !== null && newAlert.notifyWhenAway && parseFloat(newAlert.notifyWhenAway) > 0 ? (() => {
-                    const notifyAway = parseFloat(newAlert.notifyWhenAway);
-                    const targetPrice = newAlert.direction === 'up'
-                      ? currentPrice + notifyAway
-                      : currentPrice - notifyAway;
-
-                    return (
-                      <>
-                        {language === 'en'
-                          ? `Alert will trigger when price reaches $${targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} (${newAlert.direction === 'down' ? '📉 down' : '📈 up'} from $${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })})`
-                          : `Alarm, fiyat $${targetPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })} seviyesine ulaştığında tetiklenecek ($${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 8 })}'dan ${newAlert.direction === 'down' ? '📉 aşağı' : '📈 yukarı'})`
-                        }
-                      </>
-                    );
-                  })() : (
-                    language === 'en'
-                      ? 'Enter how many dollars away from current price to receive notification'
-                      : 'Mevcut fiyattan kaç dolar uzakta bildirim almak istediğinizi girin'
-                  )}
-                </p>
-              </div>
-
-              <button
-                onClick={async () => {
-                  console.log('[Settings] Create alert button clicked');
-                  setError(''); // Clear previous errors
-
-                  if (!newAlert.symbol || !newAlert.notifyWhenAway) {
-                    setError('Please fill all fields');
-                    return;
-                  }
-
-                  if (!currentPrice || currentPrice <= 0) {
-                    setError('Please wait for current price to load, or enter a valid symbol');
-                    return;
-                  }
-
-                  const notifyAway = parseFloat(newAlert.notifyWhenAway);
-                  if (isNaN(notifyAway) || notifyAway <= 0) {
-                    setError('Please enter a valid number greater than 0');
-                    return;
-                  }
-
-                  // Kullanıcının seçtiği yöne göre hedef fiyatı hesapla
-                  const direction = newAlert.direction;
-                  const targetPrice = direction === 'up'
-                    ? currentPrice + notifyAway  // Yukarı yön: mevcut fiyat + değer
-                    : currentPrice - notifyAway;  // Aşağı yön: mevcut fiyat - değer
-
-                  // Aşağı yön için negatif fiyat kontrolü
-                  if (direction === 'down' && targetPrice <= 0) {
-                    setError(language === 'en'
-                      ? 'Target price cannot be zero or negative. Please reduce the amount or select "Up" direction.'
-                      : 'Hedef fiyat sıfır veya negatif olamaz. Lütfen miktarı azaltın veya "Yukarı" yönünü seçin.'
-                    );
-                    setLoading(false);
-                    return;
-                  }
-
-                  const proximityDelta = Math.max(0.01, notifyAway * 0.1); // Proximity delta = kullanıcının girdiği değerin %10'u (minimum 0.01$)
-
-                  setLoading(true);
-                  try {
-                    // 🔥 CRITICAL: Try to restore session first (for mobile app cookie issues)
-                    const isCapacitor = typeof window !== 'undefined' && !!(window as any).Capacitor;
-                    if (isCapacitor) {
-                      try {
-                        await fetch('/api/auth/restore-session', {
-                          method: 'POST',
-                          credentials: 'include',
-                        });
-                        console.log('[Settings] Session restore attempted before creating alert');
-                        // Wait a bit for cookies to be set
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                      } catch (restoreError) {
-                        console.warn('[Settings] Session restore failed (non-critical):', restoreError);
-                      }
-                    }
-
-                    // Try to get device ID from various sources
-                    let deviceId = null;
-
-                    // 🔥 CRITICAL: For native apps, try to get device ID from Capacitor first
-                    if (isCapacitor) {
-                      try {
-                        const { Device } = (window as any).Capacitor?.Plugins;
-                        if (Device && typeof Device.getId === 'function') {
-                          const deviceIdInfo = await Device.getId();
-                          const nativeId = deviceIdInfo?.identifier;
-
-                          if (nativeId && nativeId !== 'unknown' && nativeId !== 'null' && nativeId !== 'undefined') {
-                            deviceId = nativeId;
-                            // Store in localStorage for future use
-                            if (typeof window !== 'undefined') {
-                              localStorage.setItem('native_device_id', deviceId);
-                            }
-                            console.log('[Settings] ✅ Got device ID from Capacitor:', deviceId);
-                          }
-                        }
-                      } catch (capacitorError) {
-                        console.warn('[Settings] Failed to get device ID from Capacitor:', capacitorError);
-                      }
-                    }
-
-                    // Fallback 1: Check localStorage for native_device_id
-                    if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
-                      deviceId = localStorage.getItem('native_device_id');
-                      if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
-                        console.log('[Settings] ✅ Got device ID from localStorage (native_device_id):', deviceId);
-                      }
-                    }
-
-                    // Fallback 2: Check other localStorage keys
-                    if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined') {
-                      deviceId = localStorage.getItem('device_id');
-                      if (deviceId && deviceId !== 'unknown' && deviceId !== 'null' && deviceId !== 'undefined') {
-                        console.log('[Settings] ✅ Got device ID from localStorage (device_id):', deviceId);
-                      }
-                    }
-
-                    // Fallback 3: Generate device ID for web users ONLY if not Capacitor
-                    if ((!deviceId || deviceId === 'unknown') && typeof window !== 'undefined' && !isCapacitor) {
-                      const existingId = localStorage.getItem('web_device_id');
-                      if (existingId) {
-                        deviceId = existingId;
-                        console.log('[Settings] ✅ Using existing web device ID:', deviceId);
-                      } else {
-                        deviceId = `web-${Date.now()}-${Math.random().toString(36).substring(2, 15)}`;
-                        localStorage.setItem('web_device_id', deviceId);
-                        console.log('[Settings] ⚠️ Generated web device ID (not a native app):', deviceId);
-                      }
-                    }
-
-                    console.log('[Settings] Device ID:', deviceId);
-
-                    if (!deviceId || deviceId === 'unknown' || deviceId === 'null') {
-                      setError('Device ID not found. Please refresh the page and try again.');
-                      setLoading(false);
-                      return;
-                    }
-
-                    // 🔥 CRITICAL: For guest users, include user email so backend can find user by device_id
-                    // Guest users don't have cookies, so backend needs email to identify the user
-                    const requestBody: any = {
-                      deviceId,
-                      symbol: newAlert.symbol,
-                      targetPrice: targetPrice,
-                      proximityDelta: proximityDelta,
-                      direction: direction,
-                    };
-
-                    // Debug: Log user state
-                    console.log('[Settings] User state check:', {
-                      hasUser: !!user,
-                      userEmail: user?.email,
-                      userProvider: (user as any)?.provider,
-                      isGuest: user && (user as any).provider === 'guest',
-                    });
-
-                    // Add user email for guest users (backend needs it to find user by device_id)
-                    // Also check localStorage as fallback
-                    let userEmailToSend = null;
-                    if (user && (user as any).provider === 'guest' && user.email) {
-                      userEmailToSend = user.email;
-                      console.log('[Settings] ✅ Adding user email for guest user from state:', userEmailToSend);
-                    } else if (typeof window !== 'undefined') {
-                      // Fallback: Check localStorage for guest user
-                      const guestUserStr = localStorage.getItem('guest_user');
-                      if (guestUserStr) {
-                        try {
-                          const guestUser = JSON.parse(guestUserStr);
-                          if (guestUser.provider === 'guest' && guestUser.email) {
-                            userEmailToSend = guestUser.email;
-                            console.log('[Settings] ✅ Adding user email for guest user from localStorage:', userEmailToSend);
-                          }
-                        } catch (e) {
-                          console.error('[Settings] Failed to parse guest_user from localStorage:', e);
-                        }
-                      }
-                    }
-
-                    if (userEmailToSend) {
-                      requestBody.userEmail = userEmailToSend;
-                    } else {
-                      console.warn('[Settings] ⚠️ No userEmail found for guest user - alert creation may fail');
-                    }
-
-                    console.log('[Settings] Sending request to: /api/alerts/price');
-                    console.log('[Settings] Request body:', requestBody);
-
-                    // Use Next.js API route proxy (forwards cookies automatically)
-                    const response = await fetch('/api/alerts/price', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      credentials: 'include',
-                      body: JSON.stringify(requestBody),
-                    });
-
-                    console.log('[Settings] Response status:', response.status);
-                    const responseText = await response.text();
-                    console.log('[Settings] Response text:', responseText);
-
-                    if (response.ok) {
-                      const data = JSON.parse(responseText);
-                      console.log('[Settings] Alert created successfully:', data);
-                      setCustomAlerts([...customAlerts, data.alert]);
-                      setShowAddAlertModal(false);
-                      setNewAlert({ symbol: '', notifyWhenAway: '', direction: 'down' });
-                      setCurrentPrice(null);
-                      setError('');
-                    } else {
-                      try {
-                        const errorData = JSON.parse(responseText);
-                        console.error('[Settings] Error response:', errorData);
-                        setError(errorData.error || 'Failed to create alert');
-                      } catch (parseError) {
-                        console.error('[Settings] Failed to parse error response:', responseText);
-                        setError(`Failed to create alert (Status: ${response.status})`);
-                      }
-                    }
-                  } catch (error: any) {
-                    console.error('[Settings] Exception creating alert:', error);
-                    setError(error.message || 'Failed to create alert. Please check console for details.');
-                  } finally {
-                    setLoading(false);
-                  }
-                }}
-                disabled={loading}
-                className="w-full px-5 py-3.5 bg-gradient-to-r from-blue-600 via-cyan-600 to-blue-700 hover:from-blue-500 hover:via-cyan-500 hover:to-blue-600 text-white rounded-xl font-bold transition-all duration-300 shadow-lg shadow-blue-900/30 hover:shadow-xl hover:shadow-blue-900/40 active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed border border-blue-500/30"
-              >
-                {loading ? 'Creating...' : 'Create Alert'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Info Tooltip Modals */}
-      {activeTooltip === 'notifyWhenAway' && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[60] p-4" onClick={() => setActiveTooltip(null)}>
-          <div className="bg-slate-900/95 backdrop-blur-md border border-blue-500/20 rounded-xl p-4 max-w-md w-full shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="font-semibold text-white text-lg">Notify When Away / Kaç Dolar Kaldığında Bildirim</div>
-              <button
-                onClick={() => setActiveTooltip(null)}
-                className="text-slate-400 hover:text-white transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="space-y-3 text-sm text-slate-300">
-              <div>
-                <p className="font-semibold text-blue-400 mb-1">English:</p>
-                <p>Enter how many dollars away from the current price you want to receive a notification. The system will automatically:</p>
-                <ul className="list-disc list-inside mt-2 space-y-1 ml-2">
-                  <li>Calculate the target price (current price + your value)</li>
-                  <li>Set the notification range automatically</li>
-                  <li>Detect the direction (always upward from current price)</li>
-                </ul>
-                <p className="mt-2"><strong>Example:</strong> Current price: $50,000, You enter: 0.5 → Alert triggers when price reaches $50,000.5</p>
-              </div>
-              <div>
-                <p className="font-semibold text-blue-400 mb-1">Türkçe:</p>
-                <p>Mevcut fiyattan kaç dolar uzakta bildirim almak istediğinizi girin. Sistem otomatik olarak:</p>
-                <ul className="list-disc list-inside mt-2 space-y-1 ml-2">
-                  <li>Hedef fiyatı hesaplar (mevcut fiyat + girdiğiniz değer)</li>
-                  <li>Bildirim aralığını otomatik ayarlar</li>
-                  <li>Yönü tespit eder (her zaman mevcut fiyattan yukarı)</li>
-                </ul>
-                <p className="mt-2"><strong>Örnek:</strong> Mevcut fiyat: $50,000, Siz giriyorsunuz: 0.5 → Fiyat $50,000.5&apos;e ulaştığında bildirim gönderilir</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
+      {/* Add Alert Modal - Extracted Component */}
+      <AddPriceAlertModal
+        isOpen={showAddAlertModal}
+        onClose={() => setShowAddAlertModal(false)}
+        language={language}
+        newAlert={newAlert}
+        setNewAlert={setNewAlert}
+        currentPrice={currentPrice}
+        setCurrentPrice={setCurrentPrice}
+        allSymbols={allSymbols}
+        showSuggestions={showSuggestions}
+        setShowSuggestions={setShowSuggestions}
+        loadingSymbols={loadingSymbols}
+        activeTooltip={activeTooltip}
+        setActiveTooltip={setActiveTooltip}
+        error={error}
+        setError={setError}
+        loading={loading}
+        setLoading={setLoading}
+        user={user}
+        onAlertCreated={(alert) => setCustomAlerts([...customAlerts, alert])}
+        symbolInputRef={symbolInputRef}
+        suggestionsRef={suggestionsRef}
+      />
       {/* Language Selection Modal */}
-      {showLanguageModal && (
-        <div
-          className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
-          onClick={() => setShowLanguageModal(false)}
-        >
+      {
+        showLanguageModal && (
           <div
-            className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-md w-full shadow-2xl shadow-blue-900/20"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => setShowLanguageModal(false)}
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-bold text-white">
-                {language === 'tr' ? 'Dil Seç' :
-                  language === 'en' ? 'Select Language' :
-                    language === 'ar' ? 'اختر اللغة' :
-                      language === 'zh-Hant' ? '選擇語言' :
-                        language === 'fr' ? 'Choisir la langue' :
-                          language === 'de' ? 'Sprache wählen' :
-                            language === 'ja' ? '言語を選択' :
-                              language === 'ko' ? '언어 선택' : 'Select Language'}
-              </h2>
-              <button
-                onClick={() => setShowLanguageModal(false)}
-                className="text-slate-400 hover:text-white transition-colors"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <div className="space-y-2">
-              {[
-                { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
-                { code: 'en', name: 'English', flag: '🇬🇧' },
-                { code: 'ar', name: 'العربية', flag: '🇸🇦' },
-                { code: 'zh-Hant', name: '繁體中文', flag: '🇹🇼' },
-                { code: 'fr', name: 'Français', flag: '🇫🇷' },
-                { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
-                { code: 'ja', name: '日本語', flag: '🇯🇵' },
-                { code: 'ko', name: '한국어', flag: '🇰🇷' },
-              ].map((lang) => (
-                <button
-                  key={lang.code}
-                  onClick={() => {
-                    setLanguage(lang.code as 'tr' | 'en' | 'ar' | 'zh-Hant' | 'fr' | 'de' | 'ja' | 'ko');
-                    if (typeof window !== 'undefined') {
-                      localStorage.setItem('language', lang.code);
-                    }
-                    setShowLanguageModal(false);
-                    // Reload page to apply language changes
-                    window.location.reload();
-                  }}
-                  className={`w-full p-4 rounded-xl border transition-all backdrop-blur-sm flex items-center gap-3 ${language === lang.code
-                    ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
-                    : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white'
-                    }`}
-                >
-                  <span className="text-2xl">{lang.flag}</span>
-                  <span className="font-medium text-lg flex-1 text-left">{lang.name}</span>
-                  {language === lang.code && (
-                    <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Products Modal */}
-      {showProductsModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowProductsModal(false)}>
-          <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-md w-full shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center">
-                  <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                </div>
+            <div
+              className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-md w-full shadow-2xl shadow-blue-900/20"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-bold text-white">
-                  {language === 'tr' ? 'Ürünlerimiz' : language === 'en' ? 'Our Products' : language === 'ar' ? 'منتجاتنا' : language === 'zh-Hant' ? '我們的產品' : language === 'fr' ? 'Nos Produits' : language === 'de' ? 'Unsere Produkte' : language === 'ja' ? '製品紹介' : language === 'ko' ? '제품 소개' : 'Our Products'}
+                  {language === 'tr' ? 'Dil Seç' :
+                    language === 'en' ? 'Select Language' :
+                      language === 'ar' ? 'اختر اللغة' :
+                        language === 'zh-Hant' ? '選擇語言' :
+                          language === 'fr' ? 'Choisir la langue' :
+                            language === 'de' ? 'Sprache wählen' :
+                              language === 'ja' ? '言語を選択' :
+                                language === 'ko' ? '언어 선택' : 'Select Language'}
                 </h2>
-              </div>
-              <button
-                onClick={() => setShowProductsModal(false)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            {/* Product Links */}
-            <div className="space-y-3">
-              {/* AGGR Product */}
-              <button
-                onClick={() => {
-                  setShowProductsModal(false);
-                  if (typeof window !== 'undefined') {
-                    window.location.href = '/urunlerimiz/aggr/index.html';
-                  }
-                }}
-                className="block w-full p-4 rounded-xl border border-blue-500/20 bg-slate-800/50 hover:bg-blue-950/30 hover:border-blue-500/40 transition-all group text-left"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-600/30">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">AGGR Tab</h3>
-                    <p className="text-sm text-slate-400">
-                      {language === 'tr' ? 'Gerçek zamanlı işlem takibi' : language === 'en' ? 'Real-time trade tracking' : language === 'ar' ? 'تتبع التداول في الوقت الفعلي' : language === 'zh-Hant' ? '即時交易追蹤' : language === 'fr' ? 'Suivi des transactions en temps réel' : language === 'de' ? 'Echtzeit-Handel-Tracking' : language === 'ja' ? 'リアルタイム取引追跡' : language === 'ko' ? '실시간 거래 추적' : 'Real-time trade tracking'}
-                    </p>
-                  </div>
-                  <svg className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </button>
-
-              {/* Liquidation Product */}
-              <button
-                onClick={() => {
-                  setShowProductsModal(false);
-                  if (typeof window !== 'undefined') {
-                    window.location.href = '/urunlerimiz/liquidation/index.html';
-                  }
-                }}
-                className="block w-full p-4 rounded-xl border border-blue-500/20 bg-slate-800/50 hover:bg-blue-950/30 hover:border-blue-500/40 transition-all group text-left"
-              >
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-red-600/30">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                    </svg>
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">Liquidation Tab</h3>
-                    <p className="text-sm text-slate-400">
-                      {language === 'tr' ? 'Likidasyon analizi' : language === 'en' ? 'Liquidation analysis' : language === 'ar' ? 'تحليل التصفية' : language === 'zh-Hant' ? '清算分析' : language === 'fr' ? 'Analyse des liquidations' : language === 'de' ? 'Liquidationsanalyse' : language === 'ja' ? '清算分析' : language === 'ko' ? '청산 분석' : 'Liquidation analysis'}
-                    </p>
-                  </div>
-                  <svg className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Notifications Modal */}
-      {showNotificationsModal && user && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowNotificationsModal(false)}>
-          <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">
-                    {language === 'en' ? 'Notifications' : 'Bildirimler'}
-                  </h2>
-                  {unreadCount > 0 && (
-                    <p className="text-xs text-slate-400">
-                      {unreadCount} {language === 'en' ? 'unread' : 'okunmamış'}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {unreadCount > 0 && (
-                  <button
-                    onClick={markAllNotificationsAsRead}
-                    className="px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 rounded-lg transition-all border border-blue-500/30"
-                  >
-                    {language === 'en' ? 'Mark all as read' : 'Tümünü okundu işaretle'}
-                  </button>
-                )}
                 <button
-                  onClick={() => setShowNotificationsModal(false)}
+                  onClick={() => setShowLanguageModal(false)}
                   className="text-slate-400 hover:text-white transition-colors"
                 >
                   <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -4433,461 +3441,353 @@ export default function SettingsPage() {
                   </svg>
                 </button>
               </div>
-            </div>
 
-            {/* Notifications List */}
-            <div className="flex-1 overflow-y-auto">
-              {loadingNotifications ? (
-                <div className="text-center py-12 text-slate-400">
-                  {language === 'en' ? 'Loading notifications...' : 'Bildirimler yükleniyor...'}
-                </div>
-              ) : notifications.length === 0 ? (
-                <div className="text-center py-12">
-                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
-                    <Bell className="w-8 h-8 text-slate-500" />
+              <div className="space-y-2">
+                {[
+                  { code: 'tr', name: 'Türkçe', flag: '🇹🇷' },
+                  { code: 'en', name: 'English', flag: '🇬🇧' },
+                  { code: 'ar', name: 'العربية', flag: '🇸🇦' },
+                  { code: 'zh-Hant', name: '繁體中文', flag: '🇹🇼' },
+                  { code: 'fr', name: 'Français', flag: '🇫🇷' },
+                  { code: 'de', name: 'Deutsch', flag: '🇩🇪' },
+                  { code: 'ja', name: '日本語', flag: '🇯🇵' },
+                  { code: 'ko', name: '한국어', flag: '🇰🇷' },
+                ].map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      setLanguage(lang.code as 'tr' | 'en' | 'ar' | 'zh-Hant' | 'fr' | 'de' | 'ja' | 'ko');
+                      if (typeof window !== 'undefined') {
+                        localStorage.setItem('language', lang.code);
+                      }
+                      setShowLanguageModal(false);
+                      // Reload page to apply language changes
+                      window.location.reload();
+                    }}
+                    className={`w-full p-4 rounded-xl border transition-all backdrop-blur-sm flex items-center gap-3 ${language === lang.code
+                      ? 'border-blue-500/50 bg-blue-950/30 text-white shadow-lg shadow-blue-900/20'
+                      : 'border-blue-500/10 bg-slate-900/50 text-slate-300 hover:border-blue-500/30 hover:bg-blue-950/20 hover:text-white'
+                      }`}
+                  >
+                    <span className="text-2xl">{lang.flag}</span>
+                    <span className="font-medium text-lg flex-1 text-left">{lang.name}</span>
+                    {language === lang.code && (
+                      <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+      {/* Products Modal */}
+      {
+        showProductsModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowProductsModal(false)}>
+            <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-md w-full shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center">
+                    <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
                   </div>
-                  <p className="text-slate-400 text-sm">
-                    {language === 'en' ? 'No notifications yet.' : 'Henüz bildirim yok.'}
-                  </p>
+                  <h2 className="text-xl font-bold text-white">
+                    {language === 'tr' ? 'Ürünlerimiz' : language === 'en' ? 'Our Products' : language === 'ar' ? 'منتجاتنا' : language === 'zh-Hant' ? '我們的產品' : language === 'fr' ? 'Nos Produits' : language === 'de' ? 'Unsere Produkte' : language === 'ja' ? '製品紹介' : language === 'ko' ? '제품 소개' : 'Our Products'}
+                  </h2>
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  {notifications.map((notification) => (
-                    <div
-                      key={notification.id}
-                      className={`p-4 rounded-xl border backdrop-blur-md transition-all cursor-pointer ${!notification.isRead
-                        ? 'border-blue-500/30 bg-blue-950/20 hover:bg-blue-950/30'
-                        : 'border-slate-800/50 bg-slate-900/30 hover:bg-slate-900/50'
-                        }`}
-                      onClick={() => {
-                        if (!notification.isRead) {
-                          markNotificationAsRead(notification.id);
-                        }
-                      }}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h4 className={`text-sm font-semibold ${!notification.isRead ? 'text-white' : 'text-slate-300'
-                              }`}>
-                              {notification.title}
-                            </h4>
-                            {!notification.isRead && (
-                              <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
-                            )}
-                          </div>
-                          <p className="text-xs text-slate-400 mb-2 whitespace-pre-wrap leading-relaxed">
-                            {notification.message}
-                          </p>
-                          <span className="text-xs text-slate-500">
-                            {formatTimeAgo(notification.createdAt)}
-                          </span>
-                        </div>
-                        {!notification.isRead && (
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              markNotificationAsRead(notification.id);
-                            }}
-                            className="text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0 p-1"
-                            title={language === 'en' ? 'Mark as read' : 'Okundu işaretle'}
-                          >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </button>
-                        )}
-                      </div>
+                <button
+                  onClick={() => setShowProductsModal(false)}
+                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Product Links */}
+              <div className="space-y-3">
+                {/* AGGR Product */}
+                <button
+                  onClick={() => {
+                    setShowProductsModal(false);
+                    if (typeof window !== 'undefined') {
+                      window.location.href = '/urunlerimiz/aggr/index.html';
+                    }
+                  }}
+                  className="block w-full p-4 rounded-xl border border-blue-500/20 bg-slate-800/50 hover:bg-blue-950/30 hover:border-blue-500/40 transition-all group text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-blue-600/30">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                      </svg>
                     </div>
-                  ))}
-                </div>
-              )}
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">AGGR Tab</h3>
+                      <p className="text-sm text-slate-400">
+                        {language === 'tr' ? 'Gerçek zamanlı işlem takibi' : language === 'en' ? 'Real-time trade tracking' : language === 'ar' ? 'تتبع التداول في الوقت الفعلي' : language === 'zh-Hant' ? '即時交易追蹤' : language === 'fr' ? 'Suivi des transactions en temps réel' : language === 'de' ? 'Echtzeit-Handel-Tracking' : language === 'ja' ? 'リアルタイム取引追跡' : language === 'ko' ? '실시간 거래 추적' : 'Real-time trade tracking'}
+                      </p>
+                    </div>
+                    <svg className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
+
+                {/* Liquidation Product */}
+                <button
+                  onClick={() => {
+                    setShowProductsModal(false);
+                    if (typeof window !== 'undefined') {
+                      window.location.href = '/urunlerimiz/liquidation/index.html';
+                    }
+                  }}
+                  className="block w-full p-4 rounded-xl border border-blue-500/20 bg-slate-800/50 hover:bg-blue-950/30 hover:border-blue-500/40 transition-all group text-left"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-red-600 to-orange-500 flex items-center justify-center text-white font-bold text-lg shadow-lg shadow-red-600/30">
+                      <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-white group-hover:text-blue-300 transition-colors">Liquidation Tab</h3>
+                      <p className="text-sm text-slate-400">
+                        {language === 'tr' ? 'Likidasyon analizi' : language === 'en' ? 'Liquidation analysis' : language === 'ar' ? 'تحليل التصفية' : language === 'zh-Hant' ? '清算分析' : language === 'fr' ? 'Analyse des liquidations' : language === 'de' ? 'Liquidationsanalyse' : language === 'ja' ? '清算分析' : language === 'ko' ? '청산 분석' : 'Liquidation analysis'}
+                      </p>
+                    </div>
+                    <svg className="w-5 h-5 text-slate-500 group-hover:text-blue-400 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </div>
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {/* Volume Alert Modal */}
-      {showAddVolumeAlertModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-orange-500/20 p-6 max-w-md w-full space-y-4 shadow-2xl shadow-orange-900/20">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-orange-600 to-red-600 flex items-center justify-center">
-                  <TrendingUp className="w-4 h-4 text-white" />
+      {/* Notifications Modal */}
+      {
+        showNotificationsModal && user && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowNotificationsModal(false)}>
+            <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-blue-500/20 p-6 max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl shadow-blue-900/20" onClick={(e) => e.stopPropagation()}>
+              {/* Header */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 border border-blue-500/30 flex items-center justify-center">
+                    <Bell className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-white">
+                      {language === 'en' ? 'Notifications' : 'Bildirimler'}
+                    </h2>
+                    {unreadCount > 0 && (
+                      <p className="text-xs text-slate-400">
+                        {unreadCount} {language === 'en' ? 'unread' : 'okunmamış'}
+                      </p>
+                    )}
+                  </div>
                 </div>
-                <h2 className="text-lg font-bold text-white">
-                  {language === 'en' ? 'Add Volume Alert' : 'Hacim Alarmı Ekle'}
-                </h2>
+                <div className="flex items-center gap-2">
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={markAllNotificationsAsRead}
+                      className="px-3 py-1.5 text-xs bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 rounded-lg transition-all border border-blue-500/30"
+                    >
+                      {language === 'en' ? 'Mark all as read' : 'Tümünü okundu işaretle'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setShowNotificationsModal(false)}
+                    className="text-slate-400 hover:text-white transition-colors"
+                  >
+                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
               </div>
-              <button
-                onClick={() => {
-                  setShowAddVolumeAlertModal(false);
-                  setNewVolumeAlert({ symbol: '', spikeMultiplier: 2 });
-                  setVolumeSymbolSuggestions([]);
-                }}
-                className="p-2 text-slate-400 hover:text-white transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
 
-            {/* Coin Search */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-400">
-                {language === 'en' ? 'Coin Symbol' : 'Coin Sembolü'}
-              </label>
-              <div className="relative">
-                <input
-                  ref={volumeSymbolInputRef}
-                  type="text"
-                  value={newVolumeAlert.symbol}
-                  onChange={async (e) => {
-                    const value = e.target.value.toUpperCase();
-                    setNewVolumeAlert(prev => ({ ...prev, symbol: value }));
-                    if (value.length >= 2) {
-                      setShowVolumeSymbolSuggestions(true);
-                      const filtered = allSymbols.filter((s: any) =>
-                        s.symbol?.toUpperCase().includes(value) ||
-                        s.baseAsset?.toUpperCase().includes(value)
-                      ).slice(0, 10);
-                      setVolumeSymbolSuggestions(filtered);
-                    } else {
-                      setShowVolumeSymbolSuggestions(false);
-                    }
-                  }}
-                  onFocus={() => {
-                    if (newVolumeAlert.symbol.length >= 2) {
-                      setShowVolumeSymbolSuggestions(true);
-                    }
-                  }}
-                  placeholder={language === 'en' ? 'e.g., BTCUSDT' : 'örn., BTCUSDT'}
-                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500/50 transition-all"
-                />
-                {showVolumeSymbolSuggestions && volumeSymbolSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
-                    {volumeSymbolSuggestions.map((s: any) => (
-                      <button
-                        key={s.symbol}
+              {/* Notifications List */}
+              <div className="flex-1 overflow-y-auto">
+                {loadingNotifications ? (
+                  <div className="text-center py-12 text-slate-400">
+                    {language === 'en' ? 'Loading notifications...' : 'Bildirimler yükleniyor...'}
+                  </div>
+                ) : notifications.length === 0 ? (
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-slate-800/50 flex items-center justify-center">
+                      <Bell className="w-8 h-8 text-slate-500" />
+                    </div>
+                    <p className="text-slate-400 text-sm">
+                      {language === 'en' ? 'No notifications yet.' : 'Henüz bildirim yok.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {notifications.map((notification) => (
+                      <div
+                        key={notification.id}
+                        className={`p-4 rounded-xl border backdrop-blur-md transition-all cursor-pointer ${!notification.isRead
+                          ? 'border-blue-500/30 bg-blue-950/20 hover:bg-blue-950/30'
+                          : 'border-slate-800/50 bg-slate-900/30 hover:bg-slate-900/50'
+                          }`}
                         onClick={() => {
-                          setNewVolumeAlert(prev => ({ ...prev, symbol: s.symbol }));
-                          setShowVolumeSymbolSuggestions(false);
+                          if (!notification.isRead) {
+                            markNotificationAsRead(notification.id);
+                          }
                         }}
-                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700/50 transition-colors"
                       >
-                        {s.symbol}
-                      </button>
+                        <div className="flex items-start gap-3">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className={`text-sm font-semibold ${!notification.isRead ? 'text-white' : 'text-slate-300'
+                                }`}>
+                                {notification.title}
+                              </h4>
+                              {!notification.isRead && (
+                                <div className="w-2 h-2 bg-blue-500 rounded-full flex-shrink-0"></div>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-400 mb-2 whitespace-pre-wrap leading-relaxed">
+                              {notification.message}
+                            </p>
+                            <span className="text-xs text-slate-500">
+                              {formatTimeAgo(notification.createdAt)}
+                            </span>
+                          </div>
+                          {!notification.isRead && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                markNotificationAsRead(notification.id);
+                              }}
+                              className="text-blue-400 hover:text-blue-300 transition-colors flex-shrink-0 p-1"
+                              title={language === 'en' ? 'Mark as read' : 'Okundu işaretle'}
+                            >
+                              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     ))}
                   </div>
                 )}
               </div>
             </div>
-
-            {/* Spike Multiplier */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-400">
-                {language === 'en' ? 'Spike Multiplier' : 'Patlama Çarpanı'}
-              </label>
-              <div className="grid grid-cols-4 gap-2">
-                {[1.5, 2, 3, 5].map((mult) => (
-                  <button
-                    key={mult}
-                    onClick={() => setNewVolumeAlert(prev => ({ ...prev, spikeMultiplier: mult as any }))}
-                    className={`py-2 rounded-lg font-semibold text-sm transition-all ${newVolumeAlert.spikeMultiplier === mult
-                      ? 'bg-gradient-to-r from-orange-600 to-red-600 text-white shadow-lg shadow-orange-500/20'
-                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 hover:text-white'
-                      }`}
-                  >
-                    {mult}x
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              onClick={async () => {
-                if (!newVolumeAlert.symbol) return;
-                try {
-                  const deviceId = localStorage.getItem('native_device_id');
-
-                  // 🔥 GUEST USER FIX: Add userEmail for guest users
-                  let userEmailToSend: string | null = null;
-                  if (user && (user as any).provider === 'guest' && user.email) {
-                    userEmailToSend = user.email;
-                    console.log('[Settings] ✅ Adding user email for guest user (volume alert):', userEmailToSend);
-                  } else if (typeof window !== 'undefined') {
-                    const guestUserStr = localStorage.getItem('guest_user');
-                    if (guestUserStr) {
-                      try {
-                        const guestUser = JSON.parse(guestUserStr);
-                        if (guestUser.provider === 'guest' && guestUser.email) {
-                          userEmailToSend = guestUser.email;
-                          console.log('[Settings] ✅ Adding user email for guest user from localStorage (volume alert):', userEmailToSend);
-                        }
-                      } catch (e) {
-                        console.error('[Settings] Failed to parse guest_user from localStorage:', e);
-                      }
-                    }
-                  }
-
-                  const requestBody: any = {
-                    symbol: newVolumeAlert.symbol,
-                    spikeMultiplier: newVolumeAlert.spikeMultiplier,
-                    deviceId,
-                  };
-
-                  if (userEmailToSend) {
-                    requestBody.userEmail = userEmailToSend;
-                  }
-
-                  const response = await fetch('/api/alerts/volume', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody),
-                  });
-                  if (response.ok) {
-                    const data = await response.json();
-                    setVolumeAlerts(prev => [...prev, data.alert]);
-                    setShowAddVolumeAlertModal(false);
-                    setNewVolumeAlert({ symbol: '', spikeMultiplier: 2 });
-                  } else {
-                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                    console.error('[Settings] Failed to create volume alert:', errorData);
-                    setError(errorData.error || 'Failed to create volume alert');
-                  }
-                } catch (e) {
-                  console.error('Failed to create volume alert:', e);
-                }
-              }}
-              disabled={!newVolumeAlert.symbol}
-              className="w-full py-3 text-sm font-bold bg-gradient-to-r from-orange-600 to-red-600 text-white rounded-xl hover:from-orange-500 hover:to-red-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-orange-500/20"
-            >
-              {language === 'en' ? 'Create Alert' : 'Alarm Oluştur'}
-            </button>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {/* Percentage Alert Modal */}
-      {showAddPercentageAlertModal && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900/95 backdrop-blur-md rounded-2xl border border-green-500/20 p-6 max-w-md w-full space-y-4 shadow-2xl shadow-green-900/20">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-600 to-emerald-600 flex items-center justify-center">
-                  <BarChart3 className="w-4 h-4 text-white" />
-                </div>
-                <h2 className="text-lg font-bold text-white">
-                  {language === 'en' ? 'Add Percentage Alert' : 'Yüzde Alarmı Ekle'}
-                </h2>
-              </div>
-              <button
-                onClick={() => {
-                  setShowAddPercentageAlertModal(false);
-                  setNewPercentageAlert({ symbol: '', threshold: 5, timeframe: 60, direction: 'both' });
-                  setPercentageSymbolSuggestions([]);
-                }}
-                className="p-2 text-slate-400 hover:text-white transition-colors"
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
 
-            {/* Coin Search */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-400">
-                {language === 'en' ? 'Coin Symbol' : 'Coin Sembolü'}
-              </label>
-              <div className="relative">
-                <input
-                  ref={percentageSymbolInputRef}
-                  type="text"
-                  value={newPercentageAlert.symbol}
-                  onChange={async (e) => {
-                    const value = e.target.value.toUpperCase();
-                    setNewPercentageAlert(prev => ({ ...prev, symbol: value }));
-                    if (value.length >= 2) {
-                      setShowPercentageSymbolSuggestions(true);
-                      const filtered = allSymbols.filter((s: any) =>
-                        s.symbol?.toUpperCase().includes(value) ||
-                        s.baseAsset?.toUpperCase().includes(value)
-                      ).slice(0, 10);
-                      setPercentageSymbolSuggestions(filtered);
-                    } else {
-                      setShowPercentageSymbolSuggestions(false);
-                    }
-                  }}
-                  onFocus={() => {
-                    if (newPercentageAlert.symbol.length >= 2) {
-                      setShowPercentageSymbolSuggestions(true);
-                    }
-                  }}
-                  placeholder={language === 'en' ? 'e.g., BTCUSDT' : 'örn., BTCUSDT'}
-                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-green-500 focus:ring-1 focus:ring-green-500/50 transition-all"
-                />
-                {showPercentageSymbolSuggestions && percentageSymbolSuggestions.length > 0 && (
-                  <div className="absolute top-full left-0 right-0 mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-xl z-50 max-h-48 overflow-y-auto">
-                    {percentageSymbolSuggestions.map((s: any) => (
-                      <button
-                        key={s.symbol}
-                        onClick={() => {
-                          setNewPercentageAlert(prev => ({ ...prev, symbol: s.symbol }));
-                          setShowPercentageSymbolSuggestions(false);
-                        }}
-                        className="w-full px-4 py-2 text-left text-sm text-white hover:bg-slate-700/50 transition-colors"
-                      >
-                        {s.symbol}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+      {/* Volume Alert Modal - Extracted Component */}
+      <AddVolumeAlertModal
+        isOpen={showAddVolumeAlertModal}
+        onClose={() => setShowAddVolumeAlertModal(false)}
+        language={language}
+        newVolumeAlert={newVolumeAlert}
+        setNewVolumeAlert={setNewVolumeAlert}
+        allSymbols={allSymbols}
+        volumeSymbolSuggestions={volumeSymbolSuggestions}
+        setVolumeSymbolSuggestions={setVolumeSymbolSuggestions}
+        showVolumeSymbolSuggestions={showVolumeSymbolSuggestions}
+        setShowVolumeSymbolSuggestions={setShowVolumeSymbolSuggestions}
+        volumeSymbolInputRef={volumeSymbolInputRef}
+        setError={setError}
+        user={user}
+        onAlertCreated={(alert) => setVolumeAlerts(prev => [...prev, alert])}
+      />
 
-            {/* Percentage Threshold */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-400">
-                {language === 'en' ? 'Percentage Threshold' : 'Yüzde Eşiği'}
-              </label>
-              <div className="grid grid-cols-5 gap-2">
-                {[1, 5, 10, 15, 20].map((pct) => (
-                  <button
-                    key={pct}
-                    onClick={() => setNewPercentageAlert(prev => ({ ...prev, threshold: pct as any }))}
-                    className={`py-2 rounded-lg font-semibold text-sm transition-all ${newPercentageAlert.threshold === pct
-                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-500/20'
-                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 hover:text-white'
-                      }`}
-                  >
-                    ±{pct}%
-                  </button>
-                ))}
-              </div>
-            </div>
+      {/* Percentage Alert Modal - Extracted Component */}
+      <AddPercentageAlertModal
+        isOpen={showAddPercentageAlertModal}
+        onClose={() => setShowAddPercentageAlertModal(false)}
+        language={language}
+        newPercentageAlert={newPercentageAlert}
+        setNewPercentageAlert={setNewPercentageAlert}
+        allSymbols={allSymbols}
+        percentageSymbolSuggestions={percentageSymbolSuggestions}
+        setPercentageSymbolSuggestions={setPercentageSymbolSuggestions}
+        showPercentageSymbolSuggestions={showPercentageSymbolSuggestions}
+        setShowPercentageSymbolSuggestions={setShowPercentageSymbolSuggestions}
+        percentageSymbolInputRef={percentageSymbolInputRef}
+        setError={setError}
+        user={user}
+        onAlertCreated={(alert) => setPercentageAlerts(prev => [...prev, alert])}
+      />
 
-            {/* Timeframe */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-400">
-                {language === 'en' ? 'Timeframe' : 'Zaman Dilimi'}
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: 60, label: '1h' },
-                  { value: 240, label: '4h' },
-                  { value: 1440, label: '24h' },
-                ].map((tf) => (
-                  <button
-                    key={tf.value}
-                    onClick={() => setNewPercentageAlert(prev => ({ ...prev, timeframe: tf.value as any }))}
-                    className={`py-2 rounded-lg font-semibold text-sm transition-all ${newPercentageAlert.timeframe === tf.value
-                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-500/20'
-                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 hover:text-white'
-                      }`}
-                  >
-                    {tf.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Direction */}
-            <div className="space-y-2">
-              <label className="text-xs font-semibold text-slate-400">
-                {language === 'en' ? 'Direction' : 'Yön'}
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: 'up', label: language === 'en' ? 'Up ↑' : 'Yukarı ↑' },
-                  { value: 'down', label: language === 'en' ? 'Down ↓' : 'Aşağı ↓' },
-                  { value: 'both', label: language === 'en' ? 'Both ↕' : 'İkisi ↕' },
-                ].map((dir) => (
-                  <button
-                    key={dir.value}
-                    onClick={() => setNewPercentageAlert(prev => ({ ...prev, direction: dir.value as any }))}
-                    className={`py-2 rounded-lg font-semibold text-sm transition-all ${newPercentageAlert.direction === dir.value
-                      ? 'bg-gradient-to-r from-green-600 to-emerald-600 text-white shadow-lg shadow-green-500/20'
-                      : 'bg-slate-800/50 text-slate-400 hover:bg-slate-700/50 hover:text-white'
-                      }`}
-                  >
-                    {dir.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Submit Button */}
-            <button
-              onClick={async () => {
-                if (!newPercentageAlert.symbol) return;
-                try {
-                  const deviceId = localStorage.getItem('native_device_id');
-
-                  // 🔥 GUEST USER FIX: Add userEmail for guest users
-                  let userEmailToSend: string | null = null;
-                  if (user && (user as any).provider === 'guest' && user.email) {
-                    userEmailToSend = user.email;
-                    console.log('[Settings] ✅ Adding user email for guest user (percentage alert):', userEmailToSend);
-                  } else if (typeof window !== 'undefined') {
-                    const guestUserStr = localStorage.getItem('guest_user');
-                    if (guestUserStr) {
-                      try {
-                        const guestUser = JSON.parse(guestUserStr);
-                        if (guestUser.provider === 'guest' && guestUser.email) {
-                          userEmailToSend = guestUser.email;
-                          console.log('[Settings] ✅ Adding user email for guest user from localStorage (percentage alert):', userEmailToSend);
-                        }
-                      } catch (e) {
-                        console.error('[Settings] Failed to parse guest_user from localStorage:', e);
-                      }
-                    }
-                  }
-
-                  const requestBody: any = {
-                    symbol: newPercentageAlert.symbol,
-                    threshold: newPercentageAlert.threshold,
-                    timeframe: newPercentageAlert.timeframe,
-                    direction: newPercentageAlert.direction,
-                    deviceId,
-                  };
-
-                  if (userEmailToSend) {
-                    requestBody.userEmail = userEmailToSend;
-                  }
-
-                  const response = await fetch('/api/alerts/percentage', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(requestBody),
-                  });
-                  if (response.ok) {
-                    const data = await response.json();
-                    setPercentageAlerts(prev => [...prev, data.alert]);
-                    setShowAddPercentageAlertModal(false);
-                    setNewPercentageAlert({ symbol: '', threshold: 5, timeframe: 60, direction: 'both' });
-                  } else {
-                    const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                    console.error('[Settings] Failed to create percentage alert:', errorData);
-                    setError(errorData.error || 'Failed to create percentage alert');
-                  }
-                } catch (e) {
-                  console.error('Failed to create percentage alert:', e);
-                }
-              }}
-              disabled={!newPercentageAlert.symbol}
-              className="w-full py-3 text-sm font-bold bg-gradient-to-r from-green-600 to-emerald-600 text-white rounded-xl hover:from-green-500 hover:to-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-lg shadow-green-500/20"
-            >
-              {language === 'en' ? 'Create Alert' : 'Alarm Oluştur'}
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Unified Alerts Modal - Tabbed view */}
+      <AlertsModal
+        isOpen={showAlertsModal}
+        onClose={() => setShowAlertsModal(false)}
+        language={language}
+        marketType={marketType}
+        customAlerts={customAlerts}
+        loadingAlerts={loadingAlerts}
+        onAddPriceAlert={() => setShowAddAlertModal(true)}
+        onDeletePriceAlert={async (alert) => {
+          try {
+            const deviceId = localStorage.getItem('native_device_id');
+            const response = await fetch('/api/alerts/price', {
+              method: 'DELETE',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: alert.id, deviceId, userEmail: user?.email }),
+            });
+            if (response.ok) {
+              setCustomAlerts(prev => prev.filter(a => a.id !== alert.id));
+            }
+          } catch (e) {
+            console.error('Failed to delete price alert:', e);
+          }
+        }}
+        volumeAlerts={volumeAlerts}
+        onAddVolumeAlert={() => setShowAddVolumeAlertModal(true)}
+        onDeleteVolumeAlert={async (alert) => {
+          try {
+            const deviceId = localStorage.getItem('native_device_id');
+            const response = await fetch('/api/alerts/custom', {
+              method: 'DELETE',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: alert.id, deviceId, userEmail: user?.email }),
+            });
+            if (response.ok) {
+              setVolumeAlerts(prev => prev.filter(a => a.id !== alert.id));
+            }
+          } catch (e) {
+            console.error('Failed to delete volume alert:', e);
+          }
+        }}
+        percentageAlerts={percentageAlerts}
+        onAddPercentageAlert={() => setShowAddPercentageAlertModal(true)}
+        onDeletePercentageAlert={async (alert) => {
+          try {
+            const deviceId = localStorage.getItem('native_device_id');
+            const response = await fetch('/api/alerts/custom', {
+              method: 'DELETE',
+              credentials: 'include',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ id: alert.id, deviceId, userEmail: user?.email }),
+            });
+            if (response.ok) {
+              setPercentageAlerts(prev => prev.filter(a => a.id !== alert.id));
+            }
+          } catch (e) {
+            console.error('Failed to delete percentage alert:', e);
+          }
+        }}
+      />
 
       {/* Upgrade Modal */}
       <UpgradeModal
@@ -4903,6 +3803,6 @@ export default function SettingsPage() {
         isTrial={userPlan?.isTrial || false}
         trialRemainingDays={userPlan?.trialRemainingDays || 0}
       />
-    </div>
+    </div >
   );
 }
