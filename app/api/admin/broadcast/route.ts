@@ -89,37 +89,13 @@ export async function POST(request: NextRequest) {
     }
 
     if (response.ok) {
-      // Save notification to database as a SINGLE global record (visible to all users)
-      let notificationsSaved = 0;
-      try {
-        const sql = getSql();
+      // 🔥 FIX: Removed duplicate database INSERT - backend already handles this (admin.js line 150-153)
+      // Previously, this code was ALSO inserting into notifications table, causing DOUBLE notifications
+      // Now we just pass through the backend's response
 
-        // 🔥 OPTIMIZATION: Run migrations only once per deployment (cached in memory)
-        await ensureBroadcastSchema(sql);
-
-        // 🔥 SINGLE RECORD: Insert ONE global notification (user_id = NULL)
-        // This single record will be visible to all users based on target_lang filtering
-        try {
-          await sql`
-            INSERT INTO notifications (user_id, title, message, is_read, target_lang)
-            VALUES (NULL, ${title}, ${message}, false, ${targetLang})
-          `;
-          notificationsSaved = 1;
-          console.log(`[Broadcast] ✅ Saved 1 global notification to database with targetLang=${targetLang}`);
-        } catch (insertError: any) {
-          console.error('[Broadcast] Failed to insert global notification:', insertError.message);
-          // Don't fail the request if database save fails
-        }
-      } catch (dbError: any) {
-        console.error('[Broadcast] Error saving to database:', dbError);
-        // Don't fail the request if database save fails
-      }
-
-      // Return success with notification count
       return NextResponse.json({
         ...result,
-        notificationsSaved,
-        message: `Bildirim ${notificationsSaved} kullanıcıya kaydedildi ve push notification gönderildi.`
+        message: result.message || 'Bildirim başarıyla gönderildi.'
       });
     } else {
       console.error('[Next.js API] Backend returned error:', {
