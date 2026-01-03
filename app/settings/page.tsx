@@ -813,16 +813,27 @@ export default function SettingsPage() {
   // Fetch custom alerts when user has premium access
   useEffect(() => {
     // 🔥 FIX: Wait for userPlan to be loaded from cache/API before checking premium
+    console.log('[Settings] 🔍 Alert useEffect triggered:', {
+      user: !!user,
+      userPlanFetched,
+      hasPremiumAccessValue,
+      userPlan: userPlan?.hasPremiumAccess
+    });
+
     if (!user || !userPlanFetched) {
+      console.log('[Settings] ⏳ Waiting for user/plan to load');
       return; // Wait for plan to load first
     }
 
     if (!hasPremiumAccessValue) {
+      console.log('[Settings] 🔒 No premium access, clearing alerts');
       setCustomAlerts([]);
       setVolumeAlerts([]);
       setPercentageAlerts([]);
       return;
     }
+
+    console.log('[Settings] ✅ Premium access confirmed, fetching alerts...');
 
     const fetchCustomAlerts = async () => {
       setLoadingAlerts(true);
