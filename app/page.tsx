@@ -85,30 +85,38 @@ export default function Home() {
   // iOS'ta ilk açılışta viewport height doğru hesaplanmıyor, bu state ile düzeltiyoruz
   const [viewportHeight, setViewportHeight] = useState<number | null>(null);
 
-  // Premium state - 🔥 INSTANT: Sync cache read in useState initializer (0ms premium display)
+  // Premium state - 🔥 HYDRATION FIX: Start with null, read cache in useEffect
   const [userPlan, setUserPlan] = useState<{
     plan: 'free' | 'premium';
     isTrial: boolean;
     trialRemainingDays: number;
     expiryDate?: string | null;
     hasPremiumAccess?: boolean;
-  } | null>(() => {
-    // 🔥 SYNC READ: This runs BEFORE first render, so premium status is immediate
+  } | null>(null);
+
+  // 🔥 HYDRATION FIX: Track when premium status is ready (client-side cache read complete)
+  const [premiumReady, setPremiumReady] = useState(false);
+
+  // 🔥 HYDRATION FIX: Read cache on client-side mount (guaranteed to run after hydration)
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       try {
         const cached = localStorage.getItem('user_plan_cache');
         if (cached) {
           const parsed = JSON.parse(cached);
-          console.log('[App] ⚡️ Plan initialized from cache (SYNC - 0ms):', parsed);
-          return parsed;
+          console.log('[App] ⚡️ Plan loaded from cache (CLIENT - post-hydration):', parsed);
+          setUserPlan(parsed);
         }
       } catch (e) {
         console.error('[App] Cache parse error:', e);
         localStorage.removeItem('user_plan_cache');
       }
+      // Mark premium status as ready (whether cache exists or not)
+      setPremiumReady(true);
+      console.log('[App] ✅ Premium ready flag set');
     }
-    return null;
-  });
+  }, []);
+
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   // Teaser preview state - shows blurred preview for 2-3 seconds before modal
   const [teaserPreview, setTeaserPreview] = useState<'aggr' | 'liquidations' | 'exchange' | null>(null);
@@ -3118,7 +3126,8 @@ export default function Home() {
               viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'aggr' ? 1.5 : 2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
             </svg>
-            {!hasPremiumAccessValue && (
+            {/* 🔥 HYDRATION FIX: Only show PRO badge after premiumReady to prevent flash */}
+            {premiumReady && !hasPremiumAccessValue && (
               <>
                 <span className="absolute -top-1 -right-2 text-[8px] bg-gradient-to-r from-cyan-500 to-blue-500 text-white px-1 rounded font-bold animate-pulse">PRO</span>
                 {/* Shimmer overlay */}
@@ -3165,7 +3174,8 @@ export default function Home() {
               viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'liquidations' ? 1.5 : 2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
             </svg>
-            {!hasPremiumAccessValue && (
+            {/* 🔥 HYDRATION FIX: Only show PRO badge after premiumReady to prevent flash */}
+            {premiumReady && !hasPremiumAccessValue && (
               <>
                 <span className="absolute -top-1 -right-2 text-[8px] bg-gradient-to-r from-red-500 to-orange-500 text-white px-1 rounded font-bold animate-pulse">PRO</span>
                 {/* Shimmer overlay */}
@@ -3212,7 +3222,8 @@ export default function Home() {
               viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'exchange' ? 1.5 : 2} d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3" />
             </svg>
-            {!hasPremiumAccessValue && (
+            {/* 🔥 HYDRATION FIX: Only show PRO badge after premiumReady to prevent flash */}
+            {premiumReady && !hasPremiumAccessValue && (
               <>
                 <span className="absolute -top-1 -right-2 text-[8px] bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-1 rounded font-bold animate-pulse">PRO</span>
                 {/* Shimmer overlay */}
