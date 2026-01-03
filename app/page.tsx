@@ -176,7 +176,36 @@ export default function Home() {
 
   // Simple premium access check - use userPlan.hasPremiumAccess (from API) or fallback to fullUser
   // This ensures database changes are reflected immediately
-  const hasPremiumAccessValue: boolean = userPlan?.hasPremiumAccess ?? hasPremiumAccess(fullUser) ?? false;
+  // 🔥 OPTIMISTIC UI: If cache is empty, use last_known_premium for instant display
+  const getOptimisticPremium = (): boolean => {
+    if (typeof window === 'undefined') return false;
+
+    const lastKnown = localStorage.getItem('last_known_premium');
+    const lastExpiry = localStorage.getItem('last_known_premium_expiry');
+
+    // If no last known status, return false
+    if (lastKnown !== 'true') return false;
+
+    // If we have expiry info, check if it's still valid
+    if (lastExpiry) {
+      try {
+        const expiryDate = new Date(lastExpiry);
+        if (expiryDate < new Date()) {
+          // Premium expired, don't show optimistic UI
+          console.log('[App] ⚠️ Optimistic: Premium expired, showing locked');
+          localStorage.setItem('last_known_premium', 'false');
+          return false;
+        }
+      } catch (e) {
+        // Invalid date, ignore
+      }
+    }
+
+    console.log('[App] ⚡️ Optimistic: Using last known premium status');
+    return true;
+  };
+
+  const hasPremiumAccessValue: boolean = userPlan?.hasPremiumAccess ?? hasPremiumAccess(fullUser) ?? getOptimisticPremium();
 
   // Ref to track Google Identity Services initialization
   const googleInitializedRef = useRef(false);
@@ -1285,6 +1314,13 @@ export default function Home() {
         // 🔥 2. Değişiklik: Cache'i güncelle (Bir sonraki açılış için)
         if (typeof window !== 'undefined') {
           localStorage.setItem('user_plan_cache', JSON.stringify(newPlanData));
+
+          // 🔥 OPTIMISTIC UI: Save last known premium status for instant next launch
+          localStorage.setItem('last_known_premium', newPlanData.hasPremiumAccess ? 'true' : 'false');
+          if (newPlanData.expiryDate) {
+            localStorage.setItem('last_known_premium_expiry', newPlanData.expiryDate);
+          }
+
           console.log('[App] ✅ User plan cached for next launch');
         }
 

@@ -259,7 +259,36 @@ export default function SettingsPage() {
   }, [language]);
 
   // Simple premium access check
-  const hasPremiumAccessValue: boolean = userPlan?.hasPremiumAccess ?? hasPremiumAccess(fullUser) ?? false;
+  // 🔥 OPTIMISTIC UI: If cache is empty, use last_known_premium for instant display
+  const getOptimisticPremium = (): boolean => {
+    if (typeof window === 'undefined') return false;
+
+    const lastKnown = localStorage.getItem('last_known_premium');
+    const lastExpiry = localStorage.getItem('last_known_premium_expiry');
+
+    // If no last known status, return false
+    if (lastKnown !== 'true') return false;
+
+    // If we have expiry info, check if it's still valid
+    if (lastExpiry) {
+      try {
+        const expiryDate = new Date(lastExpiry);
+        if (expiryDate < new Date()) {
+          // Premium expired, don't show optimistic UI
+          console.log('[Settings] ⚠️ Optimistic: Premium expired, showing locked');
+          localStorage.setItem('last_known_premium', 'false');
+          return false;
+        }
+      } catch (e) {
+        // Invalid date, ignore
+      }
+    }
+
+    console.log('[Settings] ⚡️ Optimistic: Using last known premium status');
+    return true;
+  };
+
+  const hasPremiumAccessValue: boolean = userPlan?.hasPremiumAccess ?? hasPremiumAccess(fullUser) ?? getOptimisticPremium();
 
   useEffect(() => {
     // Check if running in native Capacitor app (not just web with Capacitor script)
@@ -722,6 +751,13 @@ export default function SettingsPage() {
         // 🔥 2. Değişiklik: Cache'i güncelle (Bir sonraki açılış için)
         if (typeof window !== 'undefined') {
           localStorage.setItem('user_plan_cache', JSON.stringify(newPlanData));
+
+          // 🔥 OPTIMISTIC UI: Save last known premium status for instant next launch
+          localStorage.setItem('last_known_premium', newPlanData.hasPremiumAccess ? 'true' : 'false');
+          if (newPlanData.expiryDate) {
+            localStorage.setItem('last_known_premium_expiry', newPlanData.expiryDate);
+          }
+
           console.log('[Settings] ✅ User plan cached for next launch');
         }
 
