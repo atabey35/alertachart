@@ -3,6 +3,8 @@
  */
 
 'use client';
+import dynamic from 'next/dynamic';
+
 
 import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { useSession, signOut, signIn } from 'next-auth/react';
@@ -35,6 +37,16 @@ import ExchangeView from '@/components/exchange/ExchangeView';
 import OrderBook from '@/components/exchange/OrderBook';
 import RecentTrades from '@/components/exchange/RecentTrades';
 import { Language, t } from '@/utils/translations';
+
+// Lazy load Settings page to avoid initial bundle bloat
+const SettingsPage = dynamic(() => import('@/app/settings/page'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full bg-gradient-to-br from-gray-900 via-gray-950 to-black">
+      <div className="text-slate-400">Loading settings...</div>
+    </div>
+  ),
+});
 
 interface ChartState {
   id: number;
@@ -2727,6 +2739,9 @@ export default function Home() {
                 marketType={marketType}
                 isPremium={hasPremiumAccessValue}
                 onUpgradeRequest={() => setShowUpgradeModal(true)}
+                onMarketTypeChange={(type) => setMarketType(type)}
+                onLayoutChange={(newLayout) => setLayout(newLayout)}
+                currentLayout={layout}
               />
             </div>
           )}
@@ -2770,6 +2785,9 @@ export default function Home() {
             marketType={marketType}
             isPremium={hasPremiumAccessValue}
             onUpgradeRequest={() => setShowUpgradeModal(true)}
+            onMarketTypeChange={(type) => setMarketType(type)}
+            onLayoutChange={(newLayout) => setLayout(newLayout)}
+            currentLayout={layout}
           />
         </div>
 
@@ -3019,7 +3037,13 @@ export default function Home() {
           </div>
         </div>
 
-        {/* MOBILE: Settings Tab removed - now redirects to /settings page */}
+
+        {/* MOBILE & TABLET (iPad): Settings Tab */}
+        <div className={`${mobileTab === 'settings' ? 'flex' : 'hidden'} ${!isIPad ? 'lg:hidden' : ''} flex-1 flex-col overflow-auto w-full [&_div.max-w-md]:!max-w-full [&_div.mx-auto]:!mx-0 scrollbar-hide`}>
+          <div className="w-full">
+            <SettingsPage />
+          </div>
+        </div>
       </div>
 
       {/* MOBILE & TABLET (iPad): Bottom Tab Navigation - Enhanced with Glassmorphism */}
@@ -3239,17 +3263,20 @@ export default function Home() {
 
         {/* Settings Tab */}
         <button
-          onClick={() => {
-            if (typeof window !== 'undefined') {
-              window.location.href = '/settings';
-            }
-          }}
-          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 cursor-pointer relative text-gray-500 hover:text-gray-400`}
+          onClick={() => setMobileTab('settings')}
+          className={`flex-1 flex flex-col items-center justify-center py-2 transition-all duration-200 cursor-pointer relative ${mobileTab === 'settings' ? 'text-blue-400' : 'text-gray-500 hover:text-gray-400'
+            }`}
           style={{ pointerEvents: 'auto', zIndex: 101 }}
         >
-          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          {mobileTab === 'settings' && (
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-1 bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full" />
+          )}
+          <svg className={`w-6 h-6 transition-transform duration-200 ${mobileTab === 'settings' ? 'scale-110' : ''}`}
+            fill={mobileTab === 'settings' ? 'currentColor' : 'none'}
+            stroke="currentColor"
+            viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'settings' ? 1.5 : 2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={mobileTab === 'settings' ? 1.5 : 2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
           </svg>
           <span className="text-[10px] mt-1 font-medium">{t('settings', language)}</span>
         </button>

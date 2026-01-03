@@ -27,12 +27,15 @@ interface WatchlistProps {
   marketType?: 'spot' | 'futures';
   isPremium?: boolean;
   onUpgradeRequest?: () => void;
+  onMarketTypeChange?: (type: 'spot' | 'futures') => void;
+  onLayoutChange?: (layout: 1 | 2 | 4 | 9) => void;
+  currentLayout?: 1 | 2 | 4 | 9;
 }
 
 // Free users are limited to 10 watchlist items
 const FREE_WATCHLIST_LIMIT = 10;
 
-export default function Watchlist({ onSymbolClick, currentSymbol, marketType = 'spot', isPremium = false, onUpgradeRequest }: WatchlistProps) {
+export default function Watchlist({ onSymbolClick, currentSymbol, marketType = 'spot', isPremium = false, onUpgradeRequest, onMarketTypeChange, onLayoutChange, currentLayout = 1 }: WatchlistProps) {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [priceData, setPriceData] = useState<Map<string, WatchlistItem>>(new Map());
   const prevPricesRef = useRef<Map<string, number>>(new Map()); // Use ref instead of state
@@ -652,9 +655,39 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   };
 
   const formatPrice = (price: number) => {
-    if (price < 0.01) return price.toFixed(6);
-    if (price < 1) return price.toFixed(4);
+    if (price === 0) return '0';
+
+    const priceStr = price.toString();
+
+    // If price is in scientific notation (e.g., 1e-7), we need special handling
+    if (priceStr.includes('e')) {
+      // For very small numbers in scientific notation, show up to 10 decimals
+      // but remove only truly unnecessary trailing zeros
+      const fixed = price.toFixed(10);
+      // Remove trailing zeros but keep at least one decimal if it's a decimal number
+      return fixed.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+    }
+
+    // For regular small numbers (< 1), count leading zeros and show appropriate precision
+    if (price < 1) {
+      const match = priceStr.match(/^0\.0*/);
+      if (match) {
+        const leadingZeros = match[0].length - 2; // Subtract "0."
+        // For numbers with many leading zeros, show at least 4-5 significant digits
+        const decimals = Math.max(leadingZeros + 5, 4);
+        const fixed = price.toFixed(Math.min(decimals, 10));
+        // Remove only truly unnecessary trailing zeros (keep the natural precision)
+        return fixed.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+      }
+      // For numbers like 0.2090, use toFixed(4) and remove unnecessary zeros
+      const fixed = price.toFixed(4);
+      return fixed.replace(/(\.\d*?[1-9])0+$/, '$1').replace(/\.0+$/, '');
+    }
+
+    // For prices >= 1
     if (price < 10) return price.toFixed(3);
+    if (price < 100) return price.toFixed(2);
+    if (price < 1000) return price.toFixed(2);
     return price.toFixed(2);
   };
 
@@ -751,6 +784,51 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     return `${baseUrl}?${params.toString()}`;
   };
 
+  // Helper function to render layout grid icons
+  const getLayoutIcon = (layoutOption: number, isActive: boolean) => {
+    const size = 16;
+    const strokeWidth = 1.5;
+    const color = isActive ? '#60A5FA' : '#9CA3AF';
+
+    if (layoutOption === 1) {
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth}>
+          <rect x="4" y="4" width="16" height="16" rx="1" />
+        </svg>
+      );
+    } else if (layoutOption === 2) {
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth}>
+          <rect x="2" y="4" width="10" height="16" rx="1" />
+          <rect x="12" y="4" width="10" height="16" rx="1" />
+        </svg>
+      );
+    } else if (layoutOption === 4) {
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth}>
+          <rect x="2" y="2" width="10" height="10" rx="1" />
+          <rect x="12" y="2" width="10" height="10" rx="1" />
+          <rect x="2" y="12" width="10" height="10" rx="1" />
+          <rect x="12" y="12" width="10" height="10" rx="1" />
+        </svg>
+      );
+    } else {
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={strokeWidth}>
+          <rect x="1" y="1" width="6" height="6" rx="0.5" />
+          <rect x="8" y="1" width="6" height="6" rx="0.5" />
+          <rect x="15" y="1" width="6" height="6" rx="0.5" />
+          <rect x="1" y="8" width="6" height="6" rx="0.5" />
+          <rect x="8" y="8" width="6" height="6" rx="0.5" />
+          <rect x="15" y="8" width="6" height="6" rx="0.5" />
+          <rect x="1" y="15" width="6" height="6" rx="0.5" />
+          <rect x="8" y="15" width="6" height="6" rx="0.5" />
+          <rect x="15" y="15" width="6" height="6" rx="0.5" />
+        </svg>
+      );
+    }
+  };
+
   if (isCollapsed) {
     return (
       <div className={`${getBackgroundClass()} border-l border-gray-800/50 p-2 backdrop-blur-sm`}>
@@ -784,8 +862,9 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-16 bg-gradient-to-b from-blue-500 to-blue-600 rounded-r opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" />
       </div>
       {/* Header */}
-      <div className={`border-b border-gray-800/50 ${getHeaderBackgroundClass()} backdrop-blur-sm p-2 md:p-2 flex items-center justify-between shadow-sm`}>
-        <div>
+      <div className={`border-b border-gray-800/50 ${getHeaderBackgroundClass()} backdrop-blur-sm p-2 md:p-2 flex items-center justify-between shadow-sm gap-2`}>
+        {/* Left: Watchlist Title */}
+        <div className="flex-shrink-0">
           <h3 className="text-sm md:text-sm font-bold text-blue-400">
             Watchlist
           </h3>
@@ -793,7 +872,73 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
             {marketType === 'futures' ? 'Futures' : 'Spot'}
           </p>
         </div>
-        <div className="flex items-center gap-1 md:gap-1">
+
+        {/* Center: Quick Settings (Market Type & Layout) - Mobile/Tablet Only */}
+        <div className="flex lg:hidden items-center gap-1.5 flex-shrink-0">
+          {/* Market Type Toggle */}
+          {onMarketTypeChange && (
+            <div className="flex bg-gray-800/50 rounded-lg p-0.5 border border-gray-700/50">
+              <button
+                onClick={() => onMarketTypeChange('spot')}
+                className={`text-[10px] px-2 py-1 rounded-md transition-all duration-200 font-medium ${marketType === 'spot'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  }`}
+                title="Spot Market"
+              >
+                Spot
+              </button>
+              <button
+                onClick={() => onMarketTypeChange('futures')}
+                className={`text-[10px] px-2 py-1 rounded-md transition-all duration-200 font-medium ${marketType === 'futures'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                  : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                  }`}
+                title="Futures Market"
+              >
+                Futures
+              </button>
+            </div>
+          )}
+
+          {/* Layout Selector */}
+          {onLayoutChange && (
+            <div className="flex bg-gray-800/50 rounded-lg p-0.5 border border-gray-700/50">
+              {[1, 2, 4, 9].map((layout) => {
+                const hasAccess = layout === 1 || isPremium;
+                const isActive = currentLayout === layout;
+
+                return (
+                  <button
+                    key={layout}
+                    onClick={() => {
+                      if (hasAccess) {
+                        onLayoutChange(layout as 1 | 2 | 4 | 9);
+                      } else if (onUpgradeRequest) {
+                        onUpgradeRequest();
+                      }
+                    }}
+                    className={`px-2 py-1 rounded-md transition-all duration-200 font-medium min-w-[28px] flex items-center justify-center relative ${isActive
+                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                        : hasAccess
+                          ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                          : 'text-gray-600 opacity-50 cursor-not-allowed'
+                      }`}
+                    title={hasAccess ? `${layout} Chart${layout > 1 ? 's' : ''}` : `${layout} Charts (Premium)`}
+                  >
+                    {getLayoutIcon(layout, isActive)}
+                    {!hasAccess && (
+                      <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Right: Action Buttons */}
+        <div className="flex items-center gap-1 md:gap-1 flex-shrink-0">
           <button
             onClick={() => {
               const shareLink = generateWatchlistShareLink();

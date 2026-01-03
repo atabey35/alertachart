@@ -2440,10 +2440,7 @@ export default function SettingsPage() {
     }
   }, [loading, status, isCapacitor, router, language]);
 
-  const handleNavigateToTab = (tab: 'chart' | 'watchlist' | 'alerts' | 'aggr' | 'liquidations') => {
-    router.push(`/?tab=${tab}`);
-  };
-
+  // Handle push notification setup
   const isAuthenticated = status === 'authenticated' || !!user;
 
   // Grid icon helper
@@ -2618,86 +2615,22 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Navigation Buttons - Quick access to other tabs */}
-        <div className="grid grid-cols-5 gap-2">
-          {/* Liquidations - Show for all users, but premium check on click */}
-          {user && (
-            <button
-              onClick={() => {
-                if (hasPremiumAccessValue) {
-                  handleNavigateToTab('liquidations');
-                } else {
-                  setShowUpgradeModal(true);
-                }
-              }}
-              className="group p-2 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative"
-            >
-              <div className="flex flex-col items-center gap-1 relative z-10">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
-                <span className="text-[10px] font-medium leading-tight text-center">{t('liquidations', language)}</span>
-                {!hasPremiumAccessValue && (
-                  <span className="absolute top-0.5 right-0.5 text-[8px] opacity-70">🔒</span>
-                )}
-              </div>
-            </button>
-          )}
-          <button
-            onClick={() => handleNavigateToTab('chart')}
-            className="group p-2 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative"
-          >
-            <div className="flex flex-col items-center gap-1 relative z-10">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              <span className="text-[10px] font-medium leading-tight text-center">{t('chart', language)}</span>
-            </div>
-          </button>
-          <button
-            onClick={() => handleNavigateToTab('watchlist')}
-            className="group p-2 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative"
-          >
-            <div className="flex flex-col items-center gap-1 relative z-10">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-              <span className="text-[10px] font-medium leading-tight text-center">{t('watchlist', language)}</span>
-            </div>
-          </button>
-          <button
-            onClick={() => handleNavigateToTab('alerts')}
-            className="group p-2 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative"
-          >
-            <div className="flex flex-col items-center gap-1 relative z-10">
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              <span className="text-[10px] font-medium leading-tight text-center">{t('alerts', language)}</span>
-            </div>
-          </button>
-          {user && (
-            <button
-              onClick={() => {
-                if (hasPremiumAccessValue) {
-                  handleNavigateToTab('aggr');
-                } else {
-                  setShowUpgradeModal(true);
-                }
-              }}
-              className="group p-2 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 hover:border-blue-500/30 hover:text-blue-200 hover:bg-blue-950/20 transition-all relative"
-            >
-              <div className="flex flex-col items-center gap-1 relative z-10">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
-                </svg>
-                <span className="text-[10px] font-medium leading-tight text-center">Aggr</span>
-                {!hasPremiumAccessValue && (
-                  <span className="absolute top-0.5 right-0.5 text-[8px] opacity-70">🔒</span>
-                )}
-              </div>
-            </button>
-          )}
+        {/* Chart Layout - Desktop Only (available in watchlist on mobile) */}
+        <div className="hidden lg:block space-y-2">
+          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">Chart Layout</label>
+          {/* Placeholder for Chart Layout options */}
+          <div className="p-3 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 text-sm">
+            Chart layout options will go here.
+          </div>
+        </div>
+
+        {/* Market Type - Desktop Only */}
+        <div className="hidden lg:block space-y-2">
+          <label className="block text-xs font-medium text-slate-400 uppercase tracking-wide">Market Type</label>
+          {/* Placeholder for Market Type options */}
+          <div className="p-3 rounded-lg border border-blue-500/10 bg-slate-900/50 backdrop-blur-md text-slate-300 text-sm">
+            Market type selection will go here.
+          </div>
         </div>
 
         {/* Auth Section */}
@@ -3281,8 +3214,8 @@ export default function SettingsPage() {
           </div>
         )}
 
-        {/* Layout Selection */}
-        <div className="space-y-2">
+        {/* Layout Selection - Desktop Only (available in watchlist on mobile) */}
+        <div className="hidden lg:block space-y-2">
           <label className="block text-xs font-medium text-slate-400 tracking-wide">{t('chartLayout', language)}</label>
           <div className="grid grid-cols-4 gap-2">
             {[1, 2, 4, 9].map((layoutOption) => {
@@ -3320,8 +3253,8 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Market Type */}
-        <div className="space-y-2">
+        {/* Market Type - Desktop Only (available in watchlist on mobile) */}
+        <div className="hidden lg:block space-y-2">
           <label className="block text-xs font-medium text-slate-400 tracking-wide">{t('marketType', language)}</label>
           <div className="grid grid-cols-2 gap-2">
             <button
