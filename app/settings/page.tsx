@@ -776,8 +776,15 @@ export default function SettingsPage() {
 
   // Fetch custom alerts when user has premium access
   useEffect(() => {
-    if (!user || !hasPremiumAccessValue) {
+    // 🔥 FIX: Wait for userPlan to be loaded from cache/API before checking premium
+    if (!user || !userPlanFetched) {
+      return; // Wait for plan to load first
+    }
+
+    if (!hasPremiumAccessValue) {
       setCustomAlerts([]);
+      setVolumeAlerts([]);
+      setPercentageAlerts([]);
       return;
     }
 
@@ -880,7 +887,7 @@ export default function SettingsPage() {
     };
 
     fetchCustomAlerts();
-  }, [user, hasPremiumAccessValue, status]);
+  }, [user, hasPremiumAccessValue, userPlanFetched, status]);
 
   // Fetch notifications history
   useEffect(() => {
