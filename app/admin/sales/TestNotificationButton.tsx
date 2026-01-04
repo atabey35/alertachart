@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { sendTestNotificationAction } from './actions';
 
 export default function TestNotificationButton() {
     const [loading, setLoading] = useState(false);
@@ -13,18 +14,14 @@ export default function TestNotificationButton() {
         setMessage('');
 
         try {
-            const response = await fetch('/api/admin/test-notification', {
-                method: 'POST',
-            });
+            const data = await sendTestNotificationAction();
 
-            const data = await response.json();
-
-            if (response.ok && data.success) {
+            if (data.success) {
                 setStatus('success');
                 setMessage('Bildirim gönderildi! 📱');
             } else {
                 setStatus('error');
-                setMessage(data.message || data.error || 'Gönderim başarısız');
+                setMessage(data.message || 'Gönderim başarısız');
             }
         } catch (error) {
             setStatus('error');
@@ -49,10 +46,10 @@ export default function TestNotificationButton() {
                 onClick={sendTestNotification}
                 disabled={loading}
                 className={`px-4 py-2 rounded text-sm font-medium transition-colors ${status === 'success'
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : status === 'error'
-                            ? 'bg-red-600 text-white hover:bg-red-700'
-                            : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : status === 'error'
+                        ? 'bg-red-600 text-white hover:bg-red-700'
+                        : 'bg-indigo-600 text-white hover:bg-indigo-700'
                     } disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2`}
             >
                 {loading ? (
