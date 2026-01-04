@@ -8,6 +8,7 @@ import { getSql } from '@/lib/db';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import { rateLimitMiddleware, RATE_LIMITS } from '@/lib/rateLimit';
+import { notifyAdminsOfSale } from '@/lib/adminNotificationService';
 
 
 /**
@@ -944,6 +945,18 @@ export async function POST(request: NextRequest) {
       } catch (logError) {
         console.error('[Verify Purchase] ❌ Failed to log successful purchase:', logError);
         // Continue even if logging fails
+      }
+
+      // 🔔 ADMIN NOTIFICATION: Send push notification to admin users
+      // Only notify for initial purchases (not syncs/restores) to avoid spam
+      if (!isSync && !isRestore) {
+        notifyAdminsOfSale({
+          userEmail: userEmail,
+          platform: platform,
+          productId: productId,
+          actionType: 'initial_buy',
+          transactionId: realTransactionId,
+        }).catch(err => console.error('[Verify Purchase] ❌ Admin notification failed:', err));
       }
     }
 
