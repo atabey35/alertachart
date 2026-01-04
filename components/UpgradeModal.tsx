@@ -1263,7 +1263,15 @@ export default function UpgradeModal({
                             console.log('[UpgradeModal] 🔍 PRICE DEBUG:', {
                               selectedPlan,
                               productsLength: products.length,
-                              products: products.map((p: any) => ({ id: p.productId, price: p.price })),
+                              products: products.map((p: any) => ({
+                                id: p.productId,
+                                price: p.price,
+                                // Check alternative price fields
+                                originalPrice: p.originalPrice,
+                                priceMicros: p.priceMicros,
+                                subscriptionPeriod: p.subscriptionPeriod,
+                                freeTrialPeriod: p.freeTrialPeriod,
+                              })),
                               yearlyId: yearlyProduct?.productId,
                               yearlyPrice: yearlyProduct?.price,
                               monthlyId: monthlyProduct?.productId,
@@ -1272,43 +1280,72 @@ export default function UpgradeModal({
                               selectedPrice: selectedProduct?.price,
                             });
 
-                            if (selectedProduct?.price) {
-                              return (
-                                <>
-                                  <span className="text-gray-600">•</span>
-                                  <div className="flex items-baseline gap-0.5">
-                                    <span className="text-blue-400 font-light text-xs">
-                                      {getCurrencySymbol(selectedProduct)}
-                                    </span>
-                                    <span className="text-blue-300 font-bold text-base tracking-tight">
-                                      {(() => {
-                                        // Safe Price Logic:
-                                        // 1. Try to extract numbers and separators
-                                        const cleanPrice = selectedProduct.price.match(/[\d,\.]+/)?.[0] || selectedProduct.price.replace(/[^\d,\.]/g, '');
-                                        // 2. If valid (length > 0), show it. OTHERWISE show RAW PRICE.
-                                        // This fixes the issue where Samsung sends a format regex doesn't like, resulting in empty string.
-                                        return (cleanPrice && cleanPrice.length > 0) ? cleanPrice : selectedProduct.price;
-                                      })()}
-                                    </span>
-                                  </div>
-                                  {selectedPlan === 'yearly' && selectedProduct.price && (
-                                    <span className="text-green-400 text-[8px] ml-1">
-                                      ({normalizedLanguage === 'tr' ? 'ayda ~' : '~'}
-                                      {(() => {
-                                        const yearlyPrice = parseFloat(selectedProduct.price.replace(/[^\d,\.]/g, '').replace(',', '.'));
-                                        const monthlyEquivalent = (yearlyPrice / 12).toFixed(2);
-                                        return monthlyEquivalent;
-                                      })()}
-                                      {normalizedLanguage === 'tr' ? '' : '/mo'})
-                                    </span>
-                                  )}
-                                </>
-                              );
+                            // 🔥 FREE TRIAL FIX: Google Play returns "Ücretsiz" for trial products
+                            // We need to find the ACTUAL price, not the trial price
+                            const getActualPrice = (product: any): string | null => {
+                              if (!product) return null;
+
+                              // Check if price contains actual numbers
+                              const priceStr = product.price || '';
+                              const hasNumbers = /\d/.test(priceStr);
+
+                              if (hasNumbers) {
+                                return priceStr;
+                              }
+
+                              // Price is "Ücretsiz" or "Free" - try alternative fields
+                              // Android subscription products may have these fields:
+                              if (product.originalPrice && /\d/.test(product.originalPrice)) {
+                                return product.originalPrice;
+                              }
+
+                              // priceMicros is in micros (divide by 1,000,000)
+                              if (product.priceMicros && product.priceMicros > 0) {
+                                const priceValue = (product.priceMicros / 1000000).toFixed(2);
+                                return priceValue;
+                              }
+
+                              // No actual price found - return null to hide price display
+                              return null;
+                            };
+
+                            const actualPrice = getActualPrice(selectedProduct);
+
+                            if (actualPrice) {
+                              // Extract just the number part
+                              const cleanPrice = actualPrice.match(/[\d,\.]+/)?.[0] || actualPrice.replace(/[^\d,\.]/g, '');
+                              const displayPrice = (cleanPrice && cleanPrice.length > 0) ? cleanPrice : null;
+
+                              if (displayPrice) {
+                                return (
+                                  <>
+                                    <span className="text-gray-600">•</span>
+                                    <div className="flex items-baseline gap-0.5">
+                                      <span className="text-blue-400 font-light text-xs">
+                                        {getCurrencySymbol(selectedProduct)}
+                                      </span>
+                                      <span className="text-blue-300 font-bold text-base tracking-tight">
+                                        {displayPrice}
+                                      </span>
+                                    </div>
+                                    {selectedPlan === 'yearly' && (
+                                      <span className="text-green-400 text-[8px] ml-1">
+                                        ({normalizedLanguage === 'tr' ? 'ayda ~' : '~'}
+                                        {(() => {
+                                          const yearlyPriceNum = parseFloat(displayPrice.replace(',', '.'));
+                                          const monthlyEquivalent = (yearlyPriceNum / 12).toFixed(2);
+                                          return monthlyEquivalent;
+                                        })()}
+                                        {normalizedLanguage === 'tr' ? '' : '/mo'})
+                                      </span>
+                                    )}
+                                  </>
+                                );
+                              }
                             }
-                            // Fallback - show that products exist but price not found
-                            if (products.length > 0) {
-                              console.warn('[UpgradeModal] ⚠️ Products exist but selectedProduct has no price!', { selectedPlan, selectedProduct });
-                            }
+                            // No valid price found - don't show price area at all
+                            // This prevents showing "₺ Ücretsiz" which is misleading
+                            console.warn('[UpgradeModal] ⚠️ No valid numeric price found for', selectedPlan, selectedProduct?.productId);
                             return null;
                           })()}
                         </div>
@@ -1562,18 +1599,25 @@ export default function UpgradeModal({
                             if (!selectedProduct?.price) {
                               return selectedPlan === 'yearly'
                                 ? (normalizedLanguage === 'tr' ? 'Yıllık Premium Al' : 'Get Yearly Premium')
-                                : t('try3DaysFreeAndSubscribe', normalizedLanguage);
+                                : (normalizedLanguage === 'tr' ? 'Aylık Premium Al' : 'Get Monthly Premium');
                             }
 
-                            // Safe Price Logic
-                            const cleanPrice = selectedProduct.price.match(/[\d,\.]+/)?.[0] || selectedProduct.price.replace(/[^\d,\.]/g, '');
-                            const isValidCleanPrice = cleanPrice && cleanPrice.length > 0;
-                            const displayPrice = isValidCleanPrice ? cleanPrice : selectedProduct.price;
+                            // 🔥 FREE TRIAL FIX: Check if price contains actual numbers
+                            // Google Play returns "Ücretsiz" for trial products
+                            const priceStr = selectedProduct.price || '';
+                            const hasNumbers = /\d/.test(priceStr);
 
+                            if (!hasNumbers) {
+                              // Price is "Ücretsiz" or "Free" - show generic button text without misleading price
+                              return selectedPlan === 'yearly'
+                                ? (normalizedLanguage === 'tr' ? 'Yıllık Premium Al' : 'Get Yearly Premium')
+                                : (normalizedLanguage === 'tr' ? 'Aylık Premium Al' : 'Get Monthly Premium');
+                            }
+
+                            // Price has numbers - extract and display
+                            const cleanPrice = priceStr.match(/[\d,\.]+/)?.[0] || priceStr.replace(/[^\d,\.]/g, '');
                             const currencySym = getCurrencySymbol(selectedProduct);
-
-                            // If using raw price (regex failed), don't prepend currency symbol as it might be included
-                            const finalPriceDisplay = isValidCleanPrice ? `${currencySym}${displayPrice}` : displayPrice;
+                            const finalPriceDisplay = `${currencySym}${cleanPrice}`;
 
                             if (platform === 'ios') {
                               if (selectedPlan === 'yearly') {
