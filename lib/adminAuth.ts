@@ -103,13 +103,13 @@ export async function setAdminTokenCookie(
 ): Promise<void> {
   const cookieName = getAdminCookieName(panel);
   const cookieStore = await cookies();
-  
+
   cookieStore.set(cookieName, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     maxAge: expiresIn,
-    path: `/admin/${panel === 'main' ? '' : panel}`,
+    path: '/',
   });
 }
 
@@ -120,7 +120,7 @@ export async function setAdminTokenCookie(
 export async function removeAdminTokenCookie(panel: AdminPanel): Promise<void> {
   const cookieName = getAdminCookieName(panel);
   const cookieStore = await cookies();
-  
+
   cookieStore.delete(cookieName);
 }
 
