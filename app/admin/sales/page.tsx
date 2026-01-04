@@ -2,6 +2,7 @@ import { getSql } from '@/lib/db';
 import { cookies } from 'next/headers';
 import PasswordForm from './PasswordForm';
 import { getAdminTokenFromCookie } from '@/lib/adminAuth';
+import TestNotificationButton from './TestNotificationButton';
 
 export const dynamic = 'force-dynamic'; // Her girişte veriyi taze çek
 export const revalidate = 0;
@@ -73,7 +74,7 @@ async function AdminSalesContent() {
       ORDER BY started_at DESC
       LIMIT 100
     `;
-    
+
     // Merge existing trials with purchase logs
     // Convert trial_attempts records to match purchase_logs format
     const trialLogs = existingTrials.map((trial: any) => ({
@@ -177,8 +178,11 @@ async function AdminSalesContent() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white p-8">
       <div className="max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">📊 Canlı Satış Takibi</h1>
-        
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold">📊 Canlı Satış Takibi</h1>
+          <TestNotificationButton />
+        </div>
+
         {/* Revenue Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
           <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 border border-green-700 p-6 rounded-lg">
@@ -253,8 +257,8 @@ async function AdminSalesContent() {
           <div className="bg-cyan-900/20 border border-cyan-800 p-4 rounded-lg">
             <div className="text-sm text-gray-400 mb-1">Conversion Rate</div>
             <div className="text-2xl font-bold text-cyan-400">
-              {stats.trialStarted > 0 
-                ? ((stats.purchase / stats.trialStarted) * 100).toFixed(1) 
+              {stats.trialStarted > 0
+                ? ((stats.purchase / stats.trialStarted) * 100).toFixed(1)
                 : '0'}%
             </div>
             <div className="text-xs text-gray-500 mt-1">
@@ -290,8 +294,8 @@ async function AdminSalesContent() {
                   </tr>
                 ) : (
                   logs.map((log: any) => (
-                    <tr 
-                      key={log.id} 
+                    <tr
+                      key={log.id}
                       className="border-b border-gray-800 hover:bg-[#252525] transition-colors"
                     >
                       <td className="p-3 text-sm">
@@ -310,11 +314,10 @@ async function AdminSalesContent() {
                         )}
                       </td>
                       <td className="p-3 text-sm">
-                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${
-                          log.platform === 'ios' 
-                            ? 'bg-blue-900/30 text-blue-400 border border-blue-800' 
+                        <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${log.platform === 'ios'
+                            ? 'bg-blue-900/30 text-blue-400 border border-blue-800'
                             : 'bg-green-900/30 text-green-400 border border-green-800'
-                        }`}>
+                          }`}>
                           {log.platform || 'N/A'}
                         </span>
                       </td>
@@ -328,16 +331,14 @@ async function AdminSalesContent() {
                             Sync
                           </span>
                         ) : log.action_type === 'trial_started' ? (
-                          <span className={`px-2 py-1 rounded text-xs border ${
-                            (log as any)._isLegacyTrial 
-                              ? 'bg-gray-900/30 text-gray-400 border-gray-800' 
+                          <span className={`px-2 py-1 rounded text-xs border ${(log as any)._isLegacyTrial
+                              ? 'bg-gray-900/30 text-gray-400 border-gray-800'
                               : 'bg-blue-900/30 text-blue-400 border-blue-800'
-                          }`}>
+                            }`}>
                             {((log as any)._isLegacyTrial ? '🕐 ' : '')}Deneme Başladı
                           </span>
                         ) : (
-                          <span className={`px-2 py-1 rounded text-xs border ${
-                            (() => {
+                          <span className={`px-2 py-1 rounded text-xs border ${(() => {
                               try {
                                 const details = typeof log.details === 'string' ? JSON.parse(log.details) : log.details;
                                 return details?.isFallback ? 'bg-orange-900/30 text-orange-400 border-orange-800' : 'bg-green-900/30 text-green-400 border-green-800';
