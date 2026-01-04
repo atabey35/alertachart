@@ -1237,43 +1237,39 @@ export default function UpgradeModal({
                               : t('monthlySubscription', normalizedLanguage)}
                           </span>
                           {(() => {
-                            // Find the product based on selected plan
-                            let selectedProduct = products.find((p: any) => {
+                            // Find products by explicit matching
+                            const yearlyProduct = products.find((p: any) => {
                               const pid = (p.productId || '').toLowerCase();
-                              if (selectedPlan === 'yearly') {
-                                return pid.includes('yearly') || pid === 'premium_yearly';
-                              } else {
-                                // Monthly: check all possible variations
-                                return pid.includes('monthly') ||
-                                  pid === 'premium_monthly' ||
-                                  pid === 'alerta_monthly' ||
-                                  pid.includes('.monthly') ||
-                                  pid.includes('subscription'); // Some Samsung devices may have different naming
-                              }
+                              return pid.includes('yearly') || pid === 'premium_yearly';
                             });
 
-                            // Fallback: If no matching product found, use first product with price
-                            if (!selectedProduct && products.length > 0) {
-                              // For monthly, prefer a product that is NOT yearly
-                              if (selectedPlan === 'monthly') {
-                                selectedProduct = products.find((p: any) =>
-                                  !(p.productId || '').toLowerCase().includes('yearly')
-                                ) || products[0];
-                              } else {
-                                selectedProduct = products.find((p: any) =>
-                                  (p.productId || '').toLowerCase().includes('yearly')
-                                ) || products[0];
-                              }
-                            }
+                            // Monthly is any product that is NOT the yearly product
+                            const monthlyProduct = products.find((p: any) => {
+                              if (yearlyProduct && p.productId === yearlyProduct.productId) return false;
+                              const pid = (p.productId || '').toLowerCase();
+                              // Check explicit monthly patterns OR just pick the non-yearly one
+                              return pid.includes('monthly') ||
+                                pid === 'premium_monthly' ||
+                                pid === 'alerta_monthly' ||
+                                pid.includes('.monthly') ||
+                                !pid.includes('yearly'); // Fallback: any product that's not yearly
+                            });
 
-                            // Debug log for Android
+                            // Select based on plan
+                            const selectedProduct = selectedPlan === 'yearly'
+                              ? (yearlyProduct || products[0])
+                              : (monthlyProduct || products.find((p: any) => p !== yearlyProduct) || products[0]);
+
+                            // Debug log for Android - extended
                             if (typeof window !== 'undefined') {
-                              console.log('[UpgradeModal] Price display:', {
+                              console.log('[UpgradeModal] Price display DEBUG:', {
                                 selectedPlan,
                                 productsCount: products.length,
-                                productIds: products.map((p: any) => p.productId),
-                                foundProduct: selectedProduct?.productId,
-                                price: selectedProduct?.price
+                                allProducts: products.map((p: any) => ({ id: p.productId, price: p.price })),
+                                yearlyProductId: yearlyProduct?.productId,
+                                monthlyProductId: monthlyProduct?.productId,
+                                selectedProductId: selectedProduct?.productId,
+                                selectedPrice: selectedProduct?.price
                               });
                             }
 
@@ -1534,33 +1530,27 @@ export default function UpgradeModal({
                           // 🔥 APPLE GUIDELINE 3.1.2: Show price in button or nearby
                           // 🔥 Show selected plan price
                           (() => {
-                            // Find the product based on selected plan (same logic as price display)
-                            let selectedProduct = products.find((p: any) => {
+                            // Find yearly product explicitly
+                            const yearlyProduct = products.find((p: any) => {
                               const pid = (p.productId || '').toLowerCase();
-                              if (selectedPlan === 'yearly') {
-                                return pid.includes('yearly') || pid === 'premium_yearly';
-                              } else {
-                                // Monthly: check all possible variations
-                                return pid.includes('monthly') ||
-                                  pid === 'premium_monthly' ||
-                                  pid === 'alerta_monthly' ||
-                                  pid.includes('.monthly') ||
-                                  pid.includes('subscription'); // Some Samsung devices may have different naming
-                              }
+                              return pid.includes('yearly') || pid === 'premium_yearly';
                             });
 
-                            // Fallback: If no matching product found, use first product with price
-                            if (!selectedProduct && products.length > 0) {
-                              if (selectedPlan === 'monthly') {
-                                selectedProduct = products.find((p: any) =>
-                                  !(p.productId || '').toLowerCase().includes('yearly')
-                                ) || products[0];
-                              } else {
-                                selectedProduct = products.find((p: any) =>
-                                  (p.productId || '').toLowerCase().includes('yearly')
-                                ) || products[0];
-                              }
-                            }
+                            // Monthly is any product that is NOT the yearly product
+                            const monthlyProduct = products.find((p: any) => {
+                              if (yearlyProduct && p.productId === yearlyProduct.productId) return false;
+                              const pid = (p.productId || '').toLowerCase();
+                              return pid.includes('monthly') ||
+                                pid === 'premium_monthly' ||
+                                pid === 'alerta_monthly' ||
+                                pid.includes('.monthly') ||
+                                !pid.includes('yearly');
+                            });
+
+                            // Select based on plan
+                            const selectedProduct = selectedPlan === 'yearly'
+                              ? (yearlyProduct || products[0])
+                              : (monthlyProduct || products.find((p: any) => p !== yearlyProduct) || products[0]);
 
                             if (!selectedProduct?.price) {
                               return selectedPlan === 'yearly'
