@@ -9,7 +9,7 @@
  */
 function logToNative(message: string) {
   if (typeof window === 'undefined') return;
-  
+
   try {
     const Capacitor = (window as any).Capacitor;
     if (Capacitor?.Plugins?.InAppPurchase?.logDebug) {
@@ -29,14 +29,14 @@ export function getIAPPlugin(): any {
     logToNative('getIAPPlugin: window is undefined');
     return null;
   }
-  
+
   const Capacitor = (window as any).Capacitor;
   if (!Capacitor) {
     console.log('[IAP Service] getIAPPlugin: Capacitor not found');
     logToNative('getIAPPlugin: Capacitor not found');
     return null;
   }
-  
+
   try {
     const plugin = Capacitor.Plugins.InAppPurchase;
     console.log('[IAP Service] getIAPPlugin: Plugin found:', !!plugin);
@@ -58,48 +58,48 @@ export function getIAPPlugin(): any {
  */
 export async function isIAPAvailable(): Promise<boolean> {
   console.log('[IAP Service] isIAPAvailable: Checking...');
-  
+
   if (typeof window === 'undefined') {
     console.log('[IAP Service] isIAPAvailable: window is undefined');
     return false;
   }
-  
+
   const Capacitor = (window as any).Capacitor;
   if (!Capacitor) {
     console.log('[IAP Service] isIAPAvailable: Capacitor not found');
     return false;
   }
-  
+
   // 🔥 CRITICAL: Check platform directly (more reliable than isNativePlatform)
   const platform = Capacitor.getPlatform?.();
   console.log('[IAP Service] isIAPAvailable: Platform:', platform);
-  
+
   // Check if it's actually iOS or Android (not web)
   const isNative = platform === 'ios' || platform === 'android';
   console.log('[IAP Service] isIAPAvailable: isNative (from platform):', isNative);
-  
+
   // Also check isNativePlatform as fallback
   const isNativePlatform = Capacitor.isNativePlatform?.();
   console.log('[IAP Service] isIAPAvailable: isNativePlatform:', isNativePlatform);
-  
+
   // Must be native platform (iOS or Android)
   if (!isNative && !isNativePlatform) {
     console.log('[IAP Service] isIAPAvailable: Not a native platform');
     return false;
   }
-  
+
   // Check if plugin exists
   const plugin = getIAPPlugin();
   const available = !!plugin;
   console.log('[IAP Service] isIAPAvailable: Plugin available:', available);
-  
+
   if (!available) {
     console.warn('[IAP Service] ⚠️ IAP plugin not found! Check:');
     console.warn('[IAP Service] 1. InAppPurchase plugin is installed in native project');
     console.warn('[IAP Service] 2. Plugin is registered in capacitor.config.ts');
     console.warn('[IAP Service] 3. Native project is rebuilt after plugin installation');
   }
-  
+
   return available;
 }
 
@@ -111,14 +111,14 @@ export async function initializeIAP(): Promise<boolean> {
     console.log('[IAP Service] Not available in web');
     return false;
   }
-  
+
   try {
     const plugin = getIAPPlugin();
     if (!plugin) {
       console.error('[IAP Service] InAppPurchase plugin not found');
       return false;
     }
-    
+
     console.log('[IAP Service] Initializing IAP...');
     await plugin.initialize();
     console.log('[IAP Service] ✅ IAP initialized successfully');
@@ -138,37 +138,44 @@ export async function getProducts(): Promise<any[]> {
     console.log('[IAP Service] getProducts: Not available in web');
     return [];
   }
-  
+
   try {
     const plugin = getIAPPlugin();
     if (!plugin) {
       console.error('[IAP Service] getProducts: Plugin not found');
       return [];
     }
-    
+
     // Get platform to determine product IDs
     const Capacitor = (window as any).Capacitor;
     const platform = Capacitor?.getPlatform?.() || 'web';
-    
+
     // iOS and Android use different product ID formats
     const productIds = platform === 'ios'
       ? [
-          'com.kriptokirmizi.alerta.premium.monthly',
-          'com.kriptokirmizi.alerta.premium.yearly',
-          'premium_monthly', // Fallback
-          'premium_yearly',  // Fallback
-        ]
+        'com.kriptokirmizi.alerta.premium.monthly',
+        'com.kriptokirmizi.alerta.premium.yearly',
+        'premium_monthly', // Fallback
+        'premium_yearly',  // Fallback
+      ]
       : [
-          'premium_monthly',
-          'premium_yearly',
-          'alerta_monthly', // Fallback
-        ];
-    
+        // Android - all possible variations
+        'premium_monthly',
+        'premium_yearly',
+        'alerta_monthly',
+        'alerta_yearly',
+        'com.kriptokirmizi.alerta.premium.monthly',
+        'com.kriptokirmizi.alerta.premium.yearly',
+        // Some Samsung devices may use different format
+        'alerta_premium_monthly',
+        'alerta_premium_yearly',
+      ];
+
     console.log('[IAP Service] getProducts: Platform:', platform, 'Querying products:', productIds);
-    
+
     const result = await plugin.getProducts({ productIds });
     const products = result?.products || [];
-    
+
     console.log('[IAP Service] getProducts: ✅ Found', products.length, 'products');
     if (products.length === 0) {
       const platform = (window as any).Capacitor?.getPlatform?.() || 'unknown';
@@ -190,7 +197,7 @@ export async function getProducts(): Promise<any[]> {
         console.log('[IAP Service] Product:', p.productId, '-', p.price, p.currency);
       });
     }
-    
+
     return products;
   } catch (error: any) {
     console.error('[IAP Service] getProducts: ❌ Failed:', error);
@@ -201,12 +208,12 @@ export async function getProducts(): Promise<any[]> {
 /**
  * Purchase a product
  */
-export async function purchaseProduct(productId: string): Promise<{ 
-  success: boolean; 
-  transactionId?: string; 
+export async function purchaseProduct(productId: string): Promise<{
+  success: boolean;
+  transactionId?: string;
   receipt?: string;
   productId?: string;
-  error?: string 
+  error?: string
 }> {
   console.log('[IAP Service][DEBUG] purchaseProduct ENTRY', { productId });
   if (typeof window === 'undefined') {
@@ -229,7 +236,7 @@ export async function purchaseProduct(productId: string): Promise<{
     // This allows purchase during App Store Review when products are not yet approved
     const products = await getProducts();
     console.log('[IAP Service][DEBUG] products loaded:', products);
-    
+
     if (products.length > 0) {
       // If products are loaded, verify product exists
       const productExists = products.some((p: any) => p.productId === productId);
@@ -243,7 +250,7 @@ export async function purchaseProduct(productId: string): Promise<{
       console.log('[IAP Service][DEBUG] Products array empty - attempting blind purchase with productId:', productId);
       console.log('[IAP Service][DEBUG] This is normal during App Store Review when products are not yet approved');
     }
-    console.log('[IAP Service][DEBUG] STARTING plugin.purchase',{ productId });
+    console.log('[IAP Service][DEBUG] STARTING plugin.purchase', { productId });
     const result = await plugin.purchase({ productId });
     console.log('[IAP Service][DEBUG] plugin.purchase return:', result);
     if (result?.transactionId || result?.orderId)
@@ -266,27 +273,27 @@ export async function restorePurchases(): Promise<{
 }> {
   console.log('[IAP Service] restorePurchases: Starting...');
   logToNative('[IAP Service] restorePurchases: Starting...');
-  
+
   if (typeof window === 'undefined') {
     console.error('[IAP Service] restorePurchases: window is undefined');
     return { success: false, error: 'Not available in web' };
   }
-  
+
   try {
     const plugin = getIAPPlugin();
     if (!plugin) {
       console.error('[IAP Service] restorePurchases: Plugin not found');
       return { success: false, error: 'IAP plugin not available' };
     }
-    
+
     console.log('[IAP Service] restorePurchases: Calling plugin.restorePurchases()...');
     logToNative('[IAP Service] restorePurchases: Calling plugin.restorePurchases()...');
-    
+
     const result = await plugin.restorePurchases();
-    
+
     console.log('[IAP Service] restorePurchases: Result:', result);
     logToNative(`[IAP Service] restorePurchases: Result: ${JSON.stringify(result)}`);
-    
+
     if (result && result.purchases) {
       console.log('[IAP Service] restorePurchases: ✅ Found', result.purchases.length, 'purchase(s)');
       logToNative(`[IAP Service] restorePurchases: ✅ Found ${result.purchases.length} purchase(s)`);
@@ -295,7 +302,7 @@ export async function restorePurchases(): Promise<{
         purchases: result.purchases,
       };
     }
-    
+
     // No purchases found (not an error - user may not have any purchases)
     console.log('[IAP Service] restorePurchases: ℹ️ No purchases to restore');
     logToNative('[IAP Service] restorePurchases: ℹ️ No purchases to restore');
