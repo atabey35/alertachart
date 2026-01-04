@@ -1237,41 +1237,40 @@ export default function UpgradeModal({
                               : t('monthlySubscription', normalizedLanguage)}
                           </span>
                           {(() => {
-                            // Find products by explicit matching
-                            const yearlyProduct = products.find((p: any) => {
-                              const pid = (p.productId || '').toLowerCase();
-                              return pid.includes('yearly') || pid === 'premium_yearly';
-                            });
+                            // SIMPLE APPROACH: Just check which product contains 'yearly' in ID
+                            // Product 0 or 1 - one is monthly, one is yearly
+                            let yearlyProduct: any = null;
+                            let monthlyProduct: any = null;
 
-                            // Monthly is any product that is NOT the yearly product
-                            const monthlyProduct = products.find((p: any) => {
-                              if (yearlyProduct && p.productId === yearlyProduct.productId) return false;
+                            for (const p of products) {
                               const pid = (p.productId || '').toLowerCase();
-                              // Check explicit monthly patterns OR just pick the non-yearly one
-                              return pid.includes('monthly') ||
-                                pid === 'premium_monthly' ||
-                                pid === 'alerta_monthly' ||
-                                pid.includes('.monthly') ||
-                                !pid.includes('yearly'); // Fallback: any product that's not yearly
-                            });
+                              if (pid.includes('yearly')) {
+                                yearlyProduct = p;
+                              } else {
+                                monthlyProduct = p;
+                              }
+                            }
+
+                            // If only one product and it's not yearly, use it as monthly
+                            if (products.length === 1 && !yearlyProduct) {
+                              monthlyProduct = products[0];
+                            }
 
                             // Select based on plan
-                            const selectedProduct = selectedPlan === 'yearly'
-                              ? (yearlyProduct || products[0])
-                              : (monthlyProduct || products.find((p: any) => p !== yearlyProduct) || products[0]);
+                            const selectedProduct = selectedPlan === 'yearly' ? yearlyProduct : monthlyProduct;
 
-                            // Debug log for Android - extended
-                            if (typeof window !== 'undefined') {
-                              console.log('[UpgradeModal] Price display DEBUG:', {
-                                selectedPlan,
-                                productsCount: products.length,
-                                allProducts: products.map((p: any) => ({ id: p.productId, price: p.price })),
-                                yearlyProductId: yearlyProduct?.productId,
-                                monthlyProductId: monthlyProduct?.productId,
-                                selectedProductId: selectedProduct?.productId,
-                                selectedPrice: selectedProduct?.price
-                              });
-                            }
+                            // Extended debug log - always log on Android
+                            console.log('[UpgradeModal] 🔍 PRICE DEBUG:', {
+                              selectedPlan,
+                              productsLength: products.length,
+                              products: products.map((p: any) => ({ id: p.productId, price: p.price })),
+                              yearlyId: yearlyProduct?.productId,
+                              yearlyPrice: yearlyProduct?.price,
+                              monthlyId: monthlyProduct?.productId,
+                              monthlyPrice: monthlyProduct?.price,
+                              selectedId: selectedProduct?.productId,
+                              selectedPrice: selectedProduct?.price,
+                            });
 
                             if (selectedProduct?.price) {
                               return (
@@ -1285,7 +1284,7 @@ export default function UpgradeModal({
                                       {selectedProduct.price.match(/[\d,\.]+/)?.[0] || selectedProduct.price.replace(/[^\d,\.]/g, '')}
                                     </span>
                                   </div>
-                                  {selectedPlan === 'yearly' && (
+                                  {selectedPlan === 'yearly' && selectedProduct.price && (
                                     <span className="text-green-400 text-[8px] ml-1">
                                       ({normalizedLanguage === 'tr' ? 'ayda ~' : '~'}
                                       {(() => {
@@ -1298,6 +1297,10 @@ export default function UpgradeModal({
                                   )}
                                 </>
                               );
+                            }
+                            // Fallback - show that products exist but price not found
+                            if (products.length > 0) {
+                              console.warn('[UpgradeModal] ⚠️ Products exist but selectedProduct has no price!', { selectedPlan, selectedProduct });
                             }
                             return null;
                           })()}
