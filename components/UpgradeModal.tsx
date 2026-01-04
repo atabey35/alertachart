@@ -1238,7 +1238,7 @@ export default function UpgradeModal({
                           </span>
                           {(() => {
                             // Find the product based on selected plan
-                            const selectedProduct = products.find(p => {
+                            let selectedProduct = products.find((p: any) => {
                               const pid = (p.productId || '').toLowerCase();
                               if (selectedPlan === 'yearly') {
                                 return pid.includes('yearly') || pid === 'premium_yearly';
@@ -1247,9 +1247,24 @@ export default function UpgradeModal({
                                 return pid.includes('monthly') ||
                                   pid === 'premium_monthly' ||
                                   pid === 'alerta_monthly' ||
-                                  pid.includes('.monthly');
+                                  pid.includes('.monthly') ||
+                                  pid.includes('subscription'); // Some Samsung devices may have different naming
                               }
                             });
+
+                            // Fallback: If no matching product found, use first product with price
+                            if (!selectedProduct && products.length > 0) {
+                              // For monthly, prefer a product that is NOT yearly
+                              if (selectedPlan === 'monthly') {
+                                selectedProduct = products.find((p: any) =>
+                                  !(p.productId || '').toLowerCase().includes('yearly')
+                                ) || products[0];
+                              } else {
+                                selectedProduct = products.find((p: any) =>
+                                  (p.productId || '').toLowerCase().includes('yearly')
+                                ) || products[0];
+                              }
+                            }
 
                             // Debug log for Android
                             if (typeof window !== 'undefined') {
@@ -1520,7 +1535,7 @@ export default function UpgradeModal({
                           // 🔥 Show selected plan price
                           (() => {
                             // Find the product based on selected plan (same logic as price display)
-                            const selectedProduct = products.find((p: any) => {
+                            let selectedProduct = products.find((p: any) => {
                               const pid = (p.productId || '').toLowerCase();
                               if (selectedPlan === 'yearly') {
                                 return pid.includes('yearly') || pid === 'premium_yearly';
@@ -1529,9 +1544,23 @@ export default function UpgradeModal({
                                 return pid.includes('monthly') ||
                                   pid === 'premium_monthly' ||
                                   pid === 'alerta_monthly' ||
-                                  pid.includes('.monthly');
+                                  pid.includes('.monthly') ||
+                                  pid.includes('subscription'); // Some Samsung devices may have different naming
                               }
                             });
+
+                            // Fallback: If no matching product found, use first product with price
+                            if (!selectedProduct && products.length > 0) {
+                              if (selectedPlan === 'monthly') {
+                                selectedProduct = products.find((p: any) =>
+                                  !(p.productId || '').toLowerCase().includes('yearly')
+                                ) || products[0];
+                              } else {
+                                selectedProduct = products.find((p: any) =>
+                                  (p.productId || '').toLowerCase().includes('yearly')
+                                ) || products[0];
+                              }
+                            }
 
                             if (!selectedProduct?.price) {
                               return selectedPlan === 'yearly'
