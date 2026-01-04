@@ -1523,11 +1523,8 @@ export default function UpgradeModal({
                           // 🔥 APPLE GUIDELINE 3.1.2: Show fallback text if IAP initialized but products empty (App Store Review scenario)
                           // If iapInitialized is true, show fallback text instead of loading spinner
                           iapInitialized ? (
-                            platform === 'ios'
-                              ? t('try3DaysFreeAndSubscribe', normalizedLanguage)
-                              : platform === 'android'
-                                ? t('try3DaysFreeAndSubscribe', normalizedLanguage)
-                                : t('goPremium', normalizedLanguage)
+                            // Fallback if products not loaded but IAP ready: "Go Premium" for all
+                            t('goPremium', normalizedLanguage)
                           ) : (
                             // Only show loading if IAP is not yet initialized
                             <span className="flex items-center justify-center gap-2">
