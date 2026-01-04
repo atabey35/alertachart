@@ -874,14 +874,14 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         </div>
 
         {/* Center: Quick Settings (Market Type & Layout) - Mobile/Tablet Only */}
-        <div className="flex lg:hidden items-center gap-1.5 flex-shrink-0">
+        <div className="flex lg:hidden items-center gap-1 flex-shrink-0">
           {/* Market Type Toggle */}
           {onMarketTypeChange && (
-            <div className="flex bg-gray-800/50 rounded-lg p-0.5 border border-gray-700/50">
+            <div className="flex bg-gray-800/50 rounded-md p-0.5 border border-gray-700/50">
               <button
                 onClick={() => onMarketTypeChange('spot')}
-                className={`text-[10px] px-2 py-1 rounded-md transition-all duration-200 font-medium ${marketType === 'spot'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                className={`text-[8px] px-1.5 py-0.5 rounded transition-all duration-200 font-medium ${marketType === 'spot'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-sm'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                   }`}
                 title="Spot Market"
@@ -890,8 +890,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
               </button>
               <button
                 onClick={() => onMarketTypeChange('futures')}
-                className={`text-[10px] px-2 py-1 rounded-md transition-all duration-200 font-medium ${marketType === 'futures'
-                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                className={`text-[8px] px-1.5 py-0.5 rounded transition-all duration-200 font-medium ${marketType === 'futures'
+                  ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-sm'
                   : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                   }`}
                 title="Futures Market"
@@ -903,7 +903,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
           {/* Layout Selector */}
           {onLayoutChange && (
-            <div className="flex bg-gray-800/50 rounded-lg p-0.5 border border-gray-700/50">
+            <div className="flex bg-gray-800/50 rounded-md p-0.5 border border-gray-700/50">
               {[1, 2, 4, 9].map((layout) => {
                 const hasAccess = layout === 1 || isPremium;
                 const isActive = currentLayout === layout;
@@ -918,8 +918,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                         onUpgradeRequest();
                       }
                     }}
-                    className={`px-2 py-1 rounded-md transition-all duration-200 font-medium min-w-[28px] flex items-center justify-center relative ${isActive
-                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                    className={`px-1 py-0.5 rounded transition-all duration-200 font-medium min-w-[22px] flex items-center justify-center relative ${isActive
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-sm'
                       : hasAccess
                         ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                         : 'text-gray-600 opacity-50 cursor-not-allowed'
@@ -928,7 +928,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                   >
                     {getLayoutIcon(layout, isActive)}
                     {!hasAccess && (
-                      <span className="absolute -top-0.5 -right-0.5 text-[8px]">🔒</span>
+                      <span className="absolute -top-0.5 -right-0.5 text-[6px]">🔒</span>
                     )}
                   </button>
                 );
