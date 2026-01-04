@@ -1281,7 +1281,14 @@ export default function UpgradeModal({
                                       {getCurrencySymbol(selectedProduct)}
                                     </span>
                                     <span className="text-blue-300 font-bold text-base tracking-tight">
-                                      {selectedProduct.price.match(/[\d,\.]+/)?.[0] || selectedProduct.price.replace(/[^\d,\.]/g, '')}
+                                      {(() => {
+                                        // Safe Price Logic:
+                                        // 1. Try to extract numbers and separators
+                                        const cleanPrice = selectedProduct.price.match(/[\d,\.]+/)?.[0] || selectedProduct.price.replace(/[^\d,\.]/g, '');
+                                        // 2. If valid (length > 0), show it. OTHERWISE show RAW PRICE.
+                                        // This fixes the issue where Samsung sends a format regex doesn't like, resulting in empty string.
+                                        return (cleanPrice && cleanPrice.length > 0) ? cleanPrice : selectedProduct.price;
+                                      })()}
                                     </span>
                                   </div>
                                   {selectedPlan === 'yearly' && selectedProduct.price && (
@@ -1561,19 +1568,26 @@ export default function UpgradeModal({
                                 : t('try3DaysFreeAndSubscribe', normalizedLanguage);
                             }
 
-                            const priceNum = selectedProduct.price.match(/[\d,\.]+/)?.[0] || selectedProduct.price.replace(/[^\d,\.]/g, '');
+                            // Safe Price Logic
+                            const cleanPrice = selectedProduct.price.match(/[\d,\.]+/)?.[0] || selectedProduct.price.replace(/[^\d,\.]/g, '');
+                            const isValidCleanPrice = cleanPrice && cleanPrice.length > 0;
+                            const displayPrice = isValidCleanPrice ? cleanPrice : selectedProduct.price;
+
                             const currencySym = getCurrencySymbol(selectedProduct);
+
+                            // If using raw price (regex failed), don't prepend currency symbol as it might be included
+                            const finalPriceDisplay = isValidCleanPrice ? `${currencySym}${displayPrice}` : displayPrice;
 
                             if (platform === 'ios') {
                               if (selectedPlan === 'yearly') {
-                                return `${normalizedLanguage === 'tr' ? 'Yıllık Premium' : 'Yearly Premium'} - ${currencySym}${priceNum}`;
+                                return `${normalizedLanguage === 'tr' ? 'Yıllık Premium' : 'Yearly Premium'} - ${finalPriceDisplay}`;
                               }
-                              return `${t('try3DaysFreeThenPrice', normalizedLanguage)} ${currencySym}${priceNum}/${t('month', normalizedLanguage)}`;
+                              return `${t('try3DaysFreeThenPrice', normalizedLanguage)} ${finalPriceDisplay}/${t('month', normalizedLanguage)}`;
                             } else if (platform === 'android') {
                               if (selectedPlan === 'yearly') {
-                                return `${normalizedLanguage === 'tr' ? 'Yıllık Premium' : 'Yearly Premium'} - ${currencySym}${priceNum}`;
+                                return `${normalizedLanguage === 'tr' ? 'Yıllık Premium' : 'Yearly Premium'} - ${finalPriceDisplay}`;
                               }
-                              return `${t('buyFromGooglePlay', normalizedLanguage)} - ${currencySym}${priceNum}`;
+                              return `${t('buyFromGooglePlay', normalizedLanguage)} - ${finalPriceDisplay}`;
                             }
                             return t('goPremium', normalizedLanguage);
                           })()

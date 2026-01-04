@@ -157,7 +157,7 @@ export default function ChartSettings({ isOpen, onClose, settings, onSave }: Cha
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto px-4 md:px-6 py-4 md:py-5 space-y-4 md:space-y-6 scrollbar-thin">
+        <div className="flex-1 overflow-y-auto px-4 md:px-6 pt-4 pb-32 md:py-6 space-y-4 md:space-y-6 scrollbar-thin">
           {/* General */}
           <section className="bg-gray-800/30 backdrop-blur-sm rounded-xl p-5 border border-gray-800/50">
             <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
