@@ -10,34 +10,34 @@ import { useState, useEffect } from 'react';
 export interface ChartSettingsType {
   // Watermark
   showWatermark: boolean;
-  
+
   // Grid
   showGrid: boolean;
   gridVerticalColor: string;
   gridHorizontalColor: string;
-  
+
   // Candlestick colors
   upColor: string;
   downColor: string;
   wickUpColor: string;
   wickDownColor: string;
-  
+
   // Volume colors
   volumeUpColor: string;
   volumeDownColor: string;
-  
+
   // Background
   backgroundColor: string;
   textColor: string;
-  
+
   // Crosshair
   showCrosshair: boolean;
-  
+
   // Time scale
   showTimeScale: boolean;
   timeScaleVisible: boolean;
   secondsVisible: boolean;
-  
+
   // Indicators
   showRSI: boolean;
   rsiPeriod: number;
@@ -45,17 +45,17 @@ export interface ChartSettingsType {
   macdFast: number;
   macdSlow: number;
   macdSignal: number;
-  
+
   // Bollinger Bands
   showBB: boolean;
   bbPeriod: number;
   bbStdDev: number;
-  
+
   // Moving Averages (EMA)
   showMA50: boolean;
   showMA100: boolean;
   showMA200: boolean;
-  
+
   // Simple Moving Averages (SMA)
   showSMA50: boolean;
   showSMA100: boolean;
@@ -123,7 +123,7 @@ export default function ChartSettings({ isOpen, onClose, settings, onSave }: Cha
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950 border border-gray-800/50 rounded-none md:rounded-xl shadow-2xl w-full h-full md:h-auto md:max-w-2xl md:max-h-[90vh] overflow-hidden flex flex-col backdrop-blur-xl animate-in zoom-in-95 duration-200">
+      <div className="bg-gradient-to-br from-gray-900 via-gray-900 to-gray-950 border border-gray-800/50 rounded-t-2xl md:rounded-xl shadow-2xl w-full h-auto max-h-[85vh] md:h-auto md:max-w-2xl md:max-h-[90vh] overflow-hidden flex flex-col backdrop-blur-xl animate-in zoom-in-95 duration-200 mt-auto md:mt-0">
         {/* Header */}
         <div className="flex items-center justify-between px-4 md:px-6 py-4 md:py-5 border-b border-gray-800/50 bg-gradient-to-r from-gray-900/50 to-gray-900/30 backdrop-blur-sm">
           <div>

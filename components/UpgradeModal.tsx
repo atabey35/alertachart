@@ -1237,11 +1237,30 @@ export default function UpgradeModal({
                               : t('monthlySubscription', normalizedLanguage)}
                           </span>
                           {(() => {
-                            const selectedProduct = products.find(p =>
-                              selectedPlan === 'yearly'
-                                ? (p.productId?.includes('yearly') || p.productId === 'premium_yearly')
-                                : (p.productId?.includes('monthly') || p.productId === 'premium_monthly')
-                            ) || products[0];
+                            // Find the product based on selected plan
+                            const selectedProduct = products.find(p => {
+                              const pid = (p.productId || '').toLowerCase();
+                              if (selectedPlan === 'yearly') {
+                                return pid.includes('yearly') || pid === 'premium_yearly';
+                              } else {
+                                // Monthly: check all possible variations
+                                return pid.includes('monthly') ||
+                                  pid === 'premium_monthly' ||
+                                  pid === 'alerta_monthly' ||
+                                  pid.includes('.monthly');
+                              }
+                            });
+
+                            // Debug log for Android
+                            if (typeof window !== 'undefined') {
+                              console.log('[UpgradeModal] Price display:', {
+                                selectedPlan,
+                                productsCount: products.length,
+                                productIds: products.map((p: any) => p.productId),
+                                foundProduct: selectedProduct?.productId,
+                                price: selectedProduct?.price
+                              });
+                            }
 
                             if (selectedProduct?.price) {
                               return (
@@ -1500,11 +1519,19 @@ export default function UpgradeModal({
                           // 🔥 APPLE GUIDELINE 3.1.2: Show price in button or nearby
                           // 🔥 Show selected plan price
                           (() => {
-                            const selectedProduct = products.find(p =>
-                              selectedPlan === 'yearly'
-                                ? (p.productId?.includes('yearly') || p.productId === 'premium_yearly')
-                                : (p.productId?.includes('monthly') || p.productId === 'premium_monthly')
-                            ) || products[0];
+                            // Find the product based on selected plan (same logic as price display)
+                            const selectedProduct = products.find((p: any) => {
+                              const pid = (p.productId || '').toLowerCase();
+                              if (selectedPlan === 'yearly') {
+                                return pid.includes('yearly') || pid === 'premium_yearly';
+                              } else {
+                                // Monthly: check all possible variations
+                                return pid.includes('monthly') ||
+                                  pid === 'premium_monthly' ||
+                                  pid === 'alerta_monthly' ||
+                                  pid.includes('.monthly');
+                              }
+                            });
 
                             if (!selectedProduct?.price) {
                               return selectedPlan === 'yearly'

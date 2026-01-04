@@ -919,10 +919,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
                       }
                     }}
                     className={`px-2 py-1 rounded-md transition-all duration-200 font-medium min-w-[28px] flex items-center justify-center relative ${isActive
-                        ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
-                        : hasAccess
-                          ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
-                          : 'text-gray-600 opacity-50 cursor-not-allowed'
+                      ? 'bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg shadow-blue-500/30'
+                      : hasAccess
+                        ? 'text-gray-400 hover:text-white hover:bg-gray-700/50'
+                        : 'text-gray-600 opacity-50 cursor-not-allowed'
                       }`}
                     title={hasAccess ? `${layout} Chart${layout > 1 ? 's' : ''}` : `${layout} Charts (Premium)`}
                   >
@@ -1020,7 +1020,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       )}
 
       {/* Category Filters */}
-      <div ref={categoryScrollRef} className={`border-b border-gray-800/50 px-2 md:px-2 py-1.5 md:py-1.5 flex flex-nowrap gap-1.5 md:gap-1.5 overflow-x-auto ${getHeaderBackgroundClass()} backdrop-blur-sm scrollbar-thin shadow-sm`} style={{ scrollBehavior: 'auto', minWidth: 0 }}>
+      <div ref={categoryScrollRef} className={`border-b border-gray-800/50 px-2 md:px-2 py-1.5 md:py-1.5 flex flex-wrap gap-1.5 md:gap-1.5 ${getHeaderBackgroundClass()} backdrop-blur-sm shadow-sm`}>
         <button
           onClick={() => setSelectedFilter('ALL')}
           className={`text-[10px] md:text-[10px] px-2 md:px-2 py-1 md:py-1 rounded-lg transition-all duration-200 whitespace-nowrap font-medium flex-shrink-0 ${selectedFilter === 'ALL'
