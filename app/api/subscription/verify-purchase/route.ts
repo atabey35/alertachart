@@ -948,8 +948,8 @@ export async function POST(request: NextRequest) {
       }
 
       // 🔔 ADMIN NOTIFICATION: Send push notification to admin users
-      // Only notify for initial purchases (not syncs/restores) to avoid spam
-      if (!isSync && !isRestore) {
+      // Only notify for initial purchases (not syncs/restores/existing premium) to avoid spam
+      if (!isSync && !isRestore && !wasAlreadyPremium) {
         notifyAdminsOfSale({
           userEmail: userEmail,
           platform: platform,
