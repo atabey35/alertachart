@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Script from 'next/script';
 import { SessionProvider } from '@/components/SessionProvider';
+import SeoFooter from '@/components/SeoFooter';
 import './globals.css';
 
 // Viewport configuration (prevents page zoom on mobile - app-like behavior)
@@ -13,8 +14,8 @@ export const viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'Alerta Chart - Professional Crypto Charting Platform | Real-time Charts & Technical Analysis',
-  description: 'Alerta Chart - Free professional crypto charting platform. All TradingView PRO features FREE: Multiple charts (2x2, 4x4, 9x9), RSI, MACD, Bollinger Bands, EMA, SMA, Price Alerts, Drawing Tools, Real-time BTC/ETH/SOL data. No subscription needed!',
+  title: 'Alerta Chart - Professional Crypto Charting Platform | Live Technical Analysis',
+  description: 'Alerta Chart - Advanced professional crypto charting platform. Free multi-chart layouts (2x2, 4x4, 9x9), RSI, MACD, Bollinger Bands, EMA/SMA. Real-time Bitcoin (BTC), Ethereum (ETH), Solana (SOL) charts. No subscription required.',
   keywords: [
     // Primary brand keywords
     'Alerta Chart',
@@ -24,16 +25,17 @@ export const metadata: Metadata = {
     'alerta chart trading',
     'alerta chart app',
     'alerta chart platform',
-    
-    // TradingView alternative keywords
-    'free TradingView alternative',
-    'TradingView free',
-    'TradingView alternative free',
-    'best TradingView alternative',
-    'free TradingView',
-    'TradingView competitor',
-    'TradingView free alternative',
-    
+
+    // Generic Crypto Charting Keywords
+    'professional crypto charting',
+    'advanced crypto charts',
+    'cryptocurrency technical analysis',
+    'live bitcoin charts',
+    'real-time crypto data',
+    'multi-chart crypto layout',
+    'crypto analysis software',
+    'free crypto trading tools',
+
     // Chart platform keywords
     'free crypto charts',
     'crypto charting platform',
@@ -44,7 +46,7 @@ export const metadata: Metadata = {
     'advanced crypto charts',
     'crypto charting tool',
     'crypto technical analysis platform',
-    
+
     // Technical analysis keywords
     'free technical analysis',
     'crypto technical analysis',
@@ -52,7 +54,7 @@ export const metadata: Metadata = {
     'technical indicators free',
     'crypto chart analysis',
     'trading technical analysis',
-    
+
     // Indicator keywords
     'RSI indicator free',
     'MACD indicator free',
@@ -64,7 +66,7 @@ export const metadata: Metadata = {
     'MACD crypto',
     'Bollinger Bands crypto',
     'technical indicators crypto',
-    
+
     // Chart layout keywords
     'multiple chart layouts',
     'multi chart view',
@@ -73,7 +75,7 @@ export const metadata: Metadata = {
     '9x9 chart layout',
     'grid chart layout',
     'split screen charts',
-    
+
     // Price alert keywords
     'free price alerts',
     'crypto price alerts',
@@ -82,7 +84,7 @@ export const metadata: Metadata = {
     'crypto alert system',
     'price notification',
     'trading alerts',
-    
+
     // Drawing tools keywords
     'drawing tools free',
     'crypto drawing tools',
@@ -91,7 +93,7 @@ export const metadata: Metadata = {
     'Fibonacci retracement',
     'chart annotations',
     'technical drawing tools',
-    
+
     // Exchange & market keywords
     'Binance charts',
     'Binance charting',
@@ -101,7 +103,7 @@ export const metadata: Metadata = {
     'crypto market data',
     'real-time crypto data',
     'live crypto prices',
-    
+
     // Cryptocurrency specific keywords
     'Bitcoin chart free',
     'BTC chart',
@@ -113,7 +115,7 @@ export const metadata: Metadata = {
     'SOL chart',
     'crypto charts 400+',
     'altcoin charts',
-    
+
     // Timeframe keywords
     '1 minute chart',
     '5 minute chart',
@@ -123,14 +125,14 @@ export const metadata: Metadata = {
     'daily chart',
     'crypto timeframes',
     'trading timeframes',
-    
+
     // Volume & analysis keywords
     'volume analysis',
     'crypto volume',
     'trading volume',
     'market volume analysis',
     'volume indicators',
-    
+
     // Pattern & strategy keywords
     'chart patterns',
     'crypto patterns',
@@ -138,7 +140,7 @@ export const metadata: Metadata = {
     'candlestick patterns',
     'support resistance',
     'crypto trading strategies',
-    
+
     // General trading keywords
     'crypto trading tools',
     'trading platform',
@@ -148,7 +150,7 @@ export const metadata: Metadata = {
     'crypto analysis tools',
     'trading software',
     'crypto software',
-    
+
     // Mobile & app keywords
     'crypto chart app',
     'trading app',
@@ -156,7 +158,7 @@ export const metadata: Metadata = {
     'iOS crypto charts',
     'Android crypto charts',
     'crypto app free',
-    
+
     // Free & premium keywords
     'free crypto tools',
     'free trading tools',
@@ -180,8 +182,8 @@ export const metadata: Metadata = {
     type: 'website',
     locale: 'en_US',
     url: 'https://alertachart.com',
-    title: 'Alerta Chart - Professional Crypto Charting Platform',
-    description: 'Alerta Chart - Professional crypto charting with ALL premium features FREE. Multiple charts, advanced indicators (RSI, MACD, Bollinger Bands), price alerts, drawing tools. Real-time Bitcoin, Ethereum, Solana data. No subscription needed!',
+    title: 'Alerta Chart - Professional Crypto Charting Platform | Live Analysis',
+    description: 'Professional crypto charting with ALL premium features FREE. Multiple layouts, RSI, MACD, Bollinger Bands, price alerts, drawing tools. Advanced real-time crypto market data.',
     siteName: 'Alerta Chart',
     images: [
       {
@@ -303,20 +305,20 @@ export default function RootLayout({
         {/* Primary favicon - Google's preferred format */}
         <link rel="icon" type="image/x-icon" href="/favicon.ico" />
         <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico" />
-        
+
         {/* PNG icons for different sizes - Google uses these for search results */}
         <link rel="icon" type="image/png" sizes="16x16" href="/icon.png" />
         <link rel="icon" type="image/png" sizes="32x32" href="/icon.png" />
         <link rel="icon" type="image/png" sizes="96x96" href="/icon.png" />
         <link rel="icon" type="image/png" sizes="192x192" href="/icon.png" />
         <link rel="icon" type="image/png" sizes="512x512" href="/icon.png" />
-        
+
         {/* Apple touch icon */}
         <link rel="apple-touch-icon" sizes="180x180" href="/icon.png" />
-        
+
         {/* Android Chrome */}
         <link rel="manifest" href="/manifest.json" />
-        
+
         {/* Google Tag Manager */}
         <Script id="google-tag-manager" strategy="afterInteractive">
           {`
@@ -390,13 +392,13 @@ export default function RootLayout({
         {/* 🔥 CRITICAL: Android'de bu script ERR_BLOCKED_BY_ORB hatasına neden oluyor */}
         {/* Script'i sadece web'de yüklemek için - app/page.tsx'de dinamik olarak yüklenecek */}
         {/* Script buradan kaldırıldı - sadece web'de app/page.tsx'de yüklenecek */}
-        
+
         {/* Capacitor Runtime for Native Plugins */}
         <Script
           src="https://cdn.jsdelivr.net/npm/@capacitor/core@7.4.4/dist/capacitor.js"
           strategy="beforeInteractive"
         />
-        
+
         {/* React 19 findDOMNode Polyfill for ReactQuill */}
         <Script id="react-finddomnode-polyfill" strategy="beforeInteractive">
           {`
@@ -408,7 +410,7 @@ export default function RootLayout({
             })();
           `}
         </Script>
-        
+
         {/* 🔥 CRITICAL: Override window.location.reload() for Capacitor */}
         <Script id="capacitor-reload-override" strategy="afterInteractive">
           {`
@@ -461,15 +463,20 @@ export default function RootLayout({
       <body className="bg-[#0a0a0a] text-white">
         {/* Google Tag Manager (noscript) */}
         <noscript>
-          <iframe 
+          <iframe
             src="https://www.googletagmanager.com/ns.html?id=GTM-WNHMV25K"
-            height="0" 
-            width="0" 
+            height="0"
+            width="0"
             style={{ display: 'none', visibility: 'hidden' }}
           />
         </noscript>
         <SessionProvider>
-          {children}
+          <div className="flex flex-col min-h-screen">
+            <div className="flex-grow">
+              {children}
+            </div>
+            <SeoFooter />
+          </div>
         </SessionProvider>
       </body>
     </html>
