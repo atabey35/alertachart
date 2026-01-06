@@ -836,6 +836,30 @@ export default function SettingsPage() {
     console.log('[Settings] ✅ Premium access confirmed, fetching alerts...');
 
     const fetchCustomAlerts = async () => {
+      // 🔥 OPTIMISTIC UI: Load from cache first (instant display)
+      if (typeof window !== 'undefined') {
+        try {
+          const cachedPriceAlerts = localStorage.getItem('custom_alerts_cache');
+          const cachedVolumeAlerts = localStorage.getItem('volume_alerts_cache');
+          const cachedPercentageAlerts = localStorage.getItem('percentage_alerts_cache');
+
+          if (cachedPriceAlerts) {
+            setCustomAlerts(JSON.parse(cachedPriceAlerts));
+            console.log('[Settings] ✅ Price alerts loaded from cache');
+          }
+          if (cachedVolumeAlerts) {
+            setVolumeAlerts(JSON.parse(cachedVolumeAlerts));
+            console.log('[Settings] ✅ Volume alerts loaded from cache');
+          }
+          if (cachedPercentageAlerts) {
+            setPercentageAlerts(JSON.parse(cachedPercentageAlerts));
+            console.log('[Settings] ✅ Percentage alerts loaded from cache');
+          }
+        } catch (cacheError) {
+          console.warn('[Settings] Cache parse error:', cacheError);
+        }
+      }
+
       setLoadingAlerts(true);
       try {
         // 🔥 CRITICAL: Try to restore session first (for mobile app cookie issues)
@@ -904,11 +928,20 @@ export default function SettingsPage() {
 
         if (response.ok) {
           const data = await response.json();
-          setCustomAlerts(data.alerts || []);
+          const priceAlerts = data.alerts || [];
+          setCustomAlerts(priceAlerts);
+          // 🔥 CACHE: Save to localStorage for next launch
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('custom_alerts_cache', JSON.stringify(priceAlerts));
+          }
         } else if (response.status === 401 || response.status === 403) {
           // Not authenticated or no premium
           console.warn('[Settings] Failed to fetch alerts:', response.status);
           setCustomAlerts([]);
+          // Clear cache if not authorized
+          if (typeof window !== 'undefined') {
+            localStorage.removeItem('custom_alerts_cache');
+          }
         }
 
         // Fetch volume and percentage custom alerts
@@ -920,8 +953,17 @@ export default function SettingsPage() {
             const customData = await customResponse.json();
             const allCustomAlerts = customData.alerts || [];
             // Filter by alert type
-            setVolumeAlerts(allCustomAlerts.filter((a: any) => a.alert_type === 'volume_spike'));
-            setPercentageAlerts(allCustomAlerts.filter((a: any) => a.alert_type === 'percentage_change'));
+            const volumeAlertsData = allCustomAlerts.filter((a: any) => a.alert_type === 'volume_spike');
+            const percentageAlertsData = allCustomAlerts.filter((a: any) => a.alert_type === 'percentage_change');
+
+            setVolumeAlerts(volumeAlertsData);
+            setPercentageAlerts(percentageAlertsData);
+
+            // 🔥 CACHE: Save to localStorage for next launch
+            if (typeof window !== 'undefined') {
+              localStorage.setItem('volume_alerts_cache', JSON.stringify(volumeAlertsData));
+              localStorage.setItem('percentage_alerts_cache', JSON.stringify(percentageAlertsData));
+            }
           }
         } catch (customError) {
           console.error('[Settings] Error fetching custom volume/percentage alerts:', customError);

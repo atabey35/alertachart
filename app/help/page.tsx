@@ -1,10 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Book, MessageCircle, Mail, ChevronRight, Search, ArrowLeft, X, TrendingUp, Bell, Star, Smartphone, HelpCircle } from 'lucide-react';
 import SupportRequestModal from '@/components/SupportRequestModal';
 import { t, Language } from '@/utils/translations';
+import { App } from '@capacitor/app';
 
 interface FAQItem {
   questionKey: string;
@@ -698,6 +699,45 @@ export default function HelpCenter() {
     }
   }, []);
 
+  // Controlled back navigation - handles modals and missing history
+  const handleGoBack = useCallback(() => {
+    // First check if any modal is open
+    if (selectedArticle) {
+      setSelectedArticle(null);
+      return true; // Handled
+    }
+    if (showKnowledgeBase) {
+      setShowKnowledgeBase(false);
+      return true; // Handled
+    }
+    if (showSupportModal) {
+      setShowSupportModal(false);
+      return true; // Handled
+    }
+
+    // Check if there's history to go back to
+    if (typeof window !== 'undefined' && window.history.length > 1) {
+      router.back();
+    } else {
+      // No history, go to home page
+      router.push('/');
+    }
+    return true;
+  }, [selectedArticle, showKnowledgeBase, showSupportModal, router]);
+
+  // Handle Android hardware back button (Capacitor)
+  useEffect(() => {
+    if (!isCapacitor) return;
+
+    const backButtonListener = App.addListener('backButton', () => {
+      handleGoBack();
+    });
+
+    return () => {
+      backButtonListener.then(listener => listener.remove());
+    };
+  }, [isCapacitor, handleGoBack]);
+
   // Handle mail link - works for both web and Capacitor
   const handleMailLink = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
@@ -759,7 +799,7 @@ export default function HelpCenter() {
         <div className="max-w-6xl mx-auto px-4 py-8 pt-12">
           {/* Back Button */}
           <button
-            onClick={() => router.back()}
+            onClick={handleGoBack}
             className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors mt-4"
           >
             <ArrowLeft className="w-5 h-5" />
