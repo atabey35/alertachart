@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import { X } from 'lucide-react';
 import { Language } from '@/utils/translations';
 
@@ -78,9 +79,9 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade, langua
   }
 
   return (
-    <div 
+    <div
       className="fixed inset-0 flex items-center justify-center bg-black/90 backdrop-blur-sm"
-      style={{ 
+      style={{
         position: 'fixed',
         top: 0,
         left: 0,
@@ -94,7 +95,7 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade, langua
         e.stopPropagation();
       }}
     >
-      <div 
+      <div
         className="relative bg-gradient-to-br from-gray-900 via-gray-950 to-black rounded-2xl shadow-2xl border-2 border-blue-500/50 max-w-md w-full mx-4 overflow-hidden"
         style={{
           transform: 'scale(1)',
@@ -119,10 +120,13 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade, langua
         {/* Image Container */}
         {!imageError && (
           <div className="relative w-full aspect-[4/3] bg-gray-900 flex items-center justify-center">
-            <img
+            <Image
               src="/promote.png"
               alt="Trial Promotion"
-              className="w-full h-full object-contain"
+              fill
+              className="object-contain"
+              sizes="(max-width: 768px) 100vw, 400px"
+              priority
               onError={() => {
                 console.error('[TrialPromotionModal] Image load error');
                 setImageError(true);
@@ -135,11 +139,11 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade, langua
         <div className="px-6 py-5 bg-gradient-to-b from-gray-950 to-black">
           <div className="text-center">
             <h2 className="text-2xl font-bold text-white mb-3">
-              {language === 'en' 
+              {language === 'en'
                 ? 'Your Free Trial is Expiring!'
                 : 'Ücretsiz Deneme Hakkınız Doluyor!'}
             </h2>
-            
+
             {/* Countdown Timer */}
             {timeRemaining ? (
               <div className="mb-3 p-4 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border-2 border-blue-400/50 rounded-xl">
@@ -188,13 +192,13 @@ export default function TrialPromotionModal({ isOpen, onClose, onUpgrade, langua
                 </div>
               </div>
             )}
-            
+
             <p className="text-gray-400 text-sm mb-4">
               {language === 'en'
                 ? 'The Premium trial privilege assigned to your account will expire in 2 days.'
                 : 'Hesabınıza tanımlanan Premium deneme ayrıcalığı 2 gün içinde geçersiz olacaktır.'}
             </p>
-            
+
             {/* Upgrade Button */}
             {onUpgrade && (
               <button
