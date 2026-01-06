@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useSession } from 'next-auth/react';
 import { authService } from '@/services/authService';
 import UpgradeModal from '@/components/UpgradeModal';
+import MobileNav from '@/components/MobileNav';
 
 export default function AggrPage() {
   const { data: session, status } = useSession(); // 🔥 CRITICAL: Check NextAuth session
@@ -382,6 +383,7 @@ export default function AggrPage() {
           trialRemainingDays={userPlan?.trialRemainingDays || 0}
           language="tr"
         />
+        <MobileNav language="tr" />
       </div>
     );
   }
@@ -410,6 +412,7 @@ export default function AggrPage() {
           Alerta hesabınla giriş yap
         </button>
       </div>
+      <MobileNav language="tr" />
     </div>
   );
 }

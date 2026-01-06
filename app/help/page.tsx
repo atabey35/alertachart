@@ -6,6 +6,7 @@ import { Book, MessageCircle, Mail, ChevronRight, Search, ArrowLeft, X, Trending
 import SupportRequestModal from '@/components/SupportRequestModal';
 import { t, Language } from '@/utils/translations';
 import { App } from '@capacitor/app';
+import MobileNav from '@/components/MobileNav';
 
 interface FAQItem {
   questionKey: string;
@@ -798,13 +799,7 @@ export default function HelpCenter() {
       <div className="bg-gradient-to-b from-gray-900 to-[#0a0a0a] border-b border-gray-800">
         <div className="max-w-6xl mx-auto px-4 py-8 pt-12">
           {/* Back Button */}
-          <button
-            onClick={handleGoBack}
-            className="flex items-center gap-2 text-gray-400 hover:text-white mb-6 transition-colors mt-4"
-          >
-            <ArrowLeft className="w-5 h-5" />
-            <span>{t('back', language)}</span>
-          </button>
+
 
           {/* Title */}
           <h1 className="text-4xl md:text-5xl font-bold text-center mb-8">
@@ -1209,6 +1204,7 @@ export default function HelpCenter() {
           </div>
         </div>
       )}
+      <MobileNav language={language} />
     </div>
   );
 }

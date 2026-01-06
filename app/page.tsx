@@ -1440,6 +1440,17 @@ export default function Home() {
   const [showExchange, setShowExchange] = useState(false); // Desktop Exchange View toggle
   const [marketType, setMarketType] = useState<'spot' | 'futures'>('spot');
   const [mobileTab, setMobileTab] = useState<'chart' | 'watchlist' | 'alerts' | 'aggr' | 'liquidations' | 'exchange' | 'settings'>('chart');
+
+  // Handle tab from URL query params (for MobileNav)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['chart', 'watchlist', 'alerts', 'aggr', 'liquidations', 'exchange', 'settings'].includes(tab)) {
+        setMobileTab(tab as any);
+      }
+    }
+  }, []);
   const [showSymbolSearch, setShowSymbolSearch] = useState(false);
   const [language, setLanguage] = useState<Language>('tr');
 

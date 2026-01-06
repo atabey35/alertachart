@@ -2571,14 +2571,7 @@ export default function SettingsPage() {
       <div className={`${isDesktop ? 'max-w-4xl' : 'max-w-md'} mx-auto space-y-4`}>
         {/* Header */}
         <div className="flex items-center justify-between">
-          <button
-            onClick={() => router.push('/')}
-            className="p-1.5 text-slate-400 hover:text-blue-200 transition-colors rounded-lg hover:bg-blue-950/20"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
+
           <div className="flex items-center gap-2">
             <h1 className="text-xl font-semibold text-white tracking-tight drop-shadow-sm">
               {t('settings', language)}
