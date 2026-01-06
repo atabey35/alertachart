@@ -43,20 +43,43 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
   const [isLoading, setIsLoading] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch symbols from Binance
+  // Fetch symbols from Binance (via relay for US users, direct for others)
   useEffect(() => {
     if (!isOpen) return;
 
     const fetchSymbols = async () => {
       setIsLoading(true);
       try {
-        const baseUrl = marketType === 'futures' 
+        // Relay URL for US users
+        const relayUrl = process.env.NEXT_PUBLIC_RELAY_URL || 'https://alertachart-backend-production.up.railway.app';
+        const relayEndpoint = `${relayUrl}/api/relay/exchangeInfo/${marketType}`;
+
+        // Direct Binance URL
+        const directUrl = marketType === 'futures'
           ? 'https://fapi.binance.com/fapi/v1/exchangeInfo'
           : 'https://api.binance.com/api/v3/exchangeInfo';
-        
-        const response = await fetch(baseUrl);
-        const data = await response.json();
-        
+
+        let data;
+
+        // Try relay first (works for US users), then direct
+        try {
+          const relayResponse = await fetch(relayEndpoint, {
+            signal: AbortSignal.timeout(5000) // 5 second timeout
+          });
+          if (relayResponse.ok) {
+            data = await relayResponse.json();
+            console.log(`[Pairs] ✅ Loaded via relay`);
+          } else {
+            throw new Error('Relay failed');
+          }
+        } catch {
+          // Fallback to direct Binance
+          console.log(`[Pairs] Relay unavailable, trying direct...`);
+          const directResponse = await fetch(directUrl);
+          data = await directResponse.json();
+          console.log(`[Pairs] ✅ Loaded via direct Binance`);
+        }
+
         // Get all trading pairs (USDT, BTC, ETH, BNB, BUSD, FDUSD, etc.)
         const allPairs = data.symbols
           .filter((s: any) => s.status === 'TRADING')
@@ -76,23 +99,23 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
               'BUSD': 4,
               'FDUSD': 5,
             };
-            
+
             const aPriority = quotePriority[a.quoteAsset] ?? 999;
             const bPriority = quotePriority[b.quoteAsset] ?? 999;
-            
+
             if (aPriority !== bPriority) return aPriority - bPriority;
-            
+
             // Within same quote asset, sort major tokens first
             const aIsMajor = MAJOR_TOKENS.includes(a.baseAsset);
             const bIsMajor = MAJOR_TOKENS.includes(b.baseAsset);
             if (aIsMajor && !bIsMajor) return -1;
             if (!aIsMajor && bIsMajor) return 1;
-            
+
             return a.baseAsset.localeCompare(b.baseAsset);
           });
-        
+
         setSymbols(allPairs);
-        console.log(`[Pairs] ✅ Loaded ${allPairs.length} ${marketType.toUpperCase()} trading pairs from Binance`);
+        console.log(`[Pairs] ✅ Loaded ${allPairs.length} ${marketType.toUpperCase()} trading pairs`);
       } catch (error) {
         console.error('[Pairs] ❌ Failed to fetch symbols:', error);
       } finally {
@@ -113,11 +136,11 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
   // Filter symbols based on search query and category
   const filteredSymbols = symbols.filter(symbol => {
     // Search filter
-    const matchesSearch = searchQuery === '' || 
+    const matchesSearch = searchQuery === '' ||
       symbol.baseAsset.toLowerCase().includes(searchQuery.toLowerCase()) ||
       symbol.symbol.includes(searchQuery.toLowerCase()) ||
       symbol.displayName.toLowerCase().includes(searchQuery.toLowerCase());
-    
+
     if (!matchesSearch) return false;
 
     // Category filter
@@ -127,7 +150,7 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
     if (selectedCategory === 'meme') return MEME_TOKENS.includes(symbol.baseAsset);
     if (selectedCategory === 'layer1') return LAYER1_TOKENS.includes(symbol.baseAsset);
     if (selectedCategory === 'ai') return AI_TOKENS.includes(symbol.baseAsset);
-    
+
     return true;
   });
 
@@ -155,11 +178,11 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
   if (!isOpen) return null;
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       onClick={onClose}
     >
-      <div 
+      <div
         className="bg-[#131722] rounded-lg shadow-2xl w-full max-w-3xl max-h-[85vh] flex flex-col border border-gray-800"
         onClick={(e) => e.stopPropagation()}
       >
@@ -216,11 +239,10 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
               <button
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
-                className={`px-5 py-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${
-                  selectedCategory === cat.id
+                className={`px-5 py-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${selectedCategory === cat.id
                     ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                     : 'bg-[#2A2E39] text-gray-400 hover:bg-gray-700 hover:text-white'
-                }`}
+                  }`}
               >
                 <IconComponent className="w-4 h-4" />
                 <span>{cat.name}</span>
@@ -251,7 +273,7 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
               {filteredSymbols.slice(0, 150).map(symbol => {
                 const isMajor = MAJOR_TOKENS.includes(symbol.baseAsset);
                 const logoPath = `/logos/${symbol.baseAsset.toLowerCase()}.png`;
-                
+
                 return (
                   <div
                     key={symbol.symbol}
@@ -261,7 +283,7 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
                     <div className="flex items-center gap-3 flex-1">
                       {/* Logo - using local logos from /public/logos */}
                       <div className="relative w-10 h-10 flex-shrink-0">
-                        <img 
+                        <img
                           src={logoPath}
                           alt={symbol.baseAsset}
                           className="w-10 h-10 rounded-full object-cover"
@@ -273,13 +295,13 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
                             if (fallback) fallback.style.display = 'flex';
                           }}
                         />
-                        <div 
+                        <div
                           className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 hidden items-center justify-center text-white font-bold text-sm"
                         >
                           {symbol.baseAsset.charAt(0)}
                         </div>
                       </div>
-                      
+
                       {/* Symbol Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
@@ -293,7 +315,7 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Add Button */}
                     <button
                       onClick={(e) => {
