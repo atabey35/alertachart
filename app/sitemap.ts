@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next';
 import { getSql } from '@/lib/db';
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl = 'https://alertachart.com';
+  const baseUrl = 'https://www.alertachart.com';
   const now = new Date();
 
   // Fetch blog posts from database
@@ -41,8 +41,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     },
     {
       url: `${baseUrl}/blog`,
-      lastModified: blogPosts.length > 0 && blogPosts[0]?.published_at 
-        ? new Date(blogPosts[0].published_at) 
+      lastModified: blogPosts.length > 0 && blogPosts[0]?.published_at
+        ? new Date(blogPosts[0].published_at)
         : now,
       changeFrequency: 'daily',
       priority: 0.9,
@@ -97,10 +97,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     if (post.slug) {
       entries.push({
         url: `${baseUrl}/blog/${post.slug}`,
-        lastModified: post.updated_at 
-          ? new Date(post.updated_at) 
-          : post.published_at 
-            ? new Date(post.published_at) 
+        lastModified: post.updated_at
+          ? new Date(post.updated_at)
+          : post.published_at
+            ? new Date(post.published_at)
             : now,
         changeFrequency: 'weekly',
         priority: 0.8,

@@ -174,14 +174,14 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
-  metadataBase: new URL('https://alertachart.com'),
+  metadataBase: new URL('https://www.alertachart.com'),
   alternates: {
     canonical: '/',
   },
   openGraph: {
     type: 'website',
     locale: 'en_US',
-    url: 'https://alertachart.com',
+    url: 'https://www.alertachart.com',
     title: 'Alerta Chart - Professional Crypto Charting Platform | Live Analysis',
     description: 'Professional crypto charting with ALL premium features FREE. Multiple layouts, RSI, MACD, Bollinger Bands, price alerts, drawing tools. Advanced real-time crypto market data.',
     siteName: 'Alerta Chart',
@@ -250,7 +250,7 @@ export default function RootLayout({
       priceValidUntil: '2026-12-31',
     },
     description: 'Alerta Chart - Free professional cryptocurrency charting platform with all TradingView PRO features. Multiple chart layouts (1x1, 1x2, 2x2, 3x3), advanced technical indicators (RSI, MACD, Bollinger Bands, EMA, SMA), price alerts, drawing tools, and real-time data for Bitcoin, Ethereum, Solana and 400+ cryptocurrencies. No subscription needed!',
-    url: 'https://alertachart.com',
+    url: 'https://www.alertachart.com',
     applicationSubCategory: 'Trading Software',
     featureList: [
       'Multiple Chart Layouts (1x1, 1x2, 2x2, 3x3, 4x4, 9x9)',
@@ -280,16 +280,16 @@ export default function RootLayout({
     author: {
       '@type': 'Organization',
       name: 'Alerta Chart',
-      url: 'https://alertachart.com',
+      url: 'https://www.alertachart.com',
       logo: {
         '@type': 'ImageObject',
-        url: 'https://alertachart.com/icon.png',
+        url: 'https://www.alertachart.com/icon.png',
         width: 512,
         height: 512,
       },
     },
     // Google için favicon referansı
-    image: 'https://alertachart.com/icon.png',
+    image: 'https://www.alertachart.com/icon.png',
     keywords: 'Alerta Chart, TradingView alternative, free crypto charts, technical analysis, RSI, MACD, Bollinger Bands, Bitcoin chart, Ethereum chart, price alerts, trading tools',
     inLanguage: 'en',
     isAccessibleForFree: true,
