@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { X, Play, Sparkles, Bell, BarChart3, Clock, TrendingUp, RefreshCw } from 'lucide-react';
 import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import FeatureVideoModal from './FeatureVideoModal';
-import { initializeIAP, purchaseProduct, isIAPAvailable, getProducts, restorePurchases } from '@/services/iapService';
+import { initializeIAP, purchaseProduct, isIAPAvailable, getProducts, restorePurchases, finishPurchase } from '@/services/iapService';
 import { t, Language } from '@/utils/translations';
 
 interface UpgradeModalProps {
@@ -802,6 +802,12 @@ export default function UpgradeModal({
             setLoading(false);
             return;
           }
+
+          // 🔥 CRITICAL: Only finish iOS transaction AFTER backend confirms success
+          // This prevents payment loss when backend fails
+          console.log('[UpgradeModal] Backend verified, finishing iOS transaction...');
+          await finishPurchase();
+
           onUpgrade();
           onClose();
           alert('Satın alma başarılı! Premium aktif edildi.');

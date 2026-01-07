@@ -238,77 +238,85 @@ export async function POST(request: NextRequest) {
             if (authUsers.length > 0) {
               const authUser = authUsers[0];
 
-              // 2. Transfer premium to authenticated user
-              await sql`
-                UPDATE users
-                SET 
-                  plan = 'premium',
-                  subscription_id = ${firstPremiumUser.subscription_id},
-                  subscription_platform = ${firstPremiumUser.subscription_platform},
-                  subscription_started_at = ${firstPremiumUser.subscription_started_at || new Date().toISOString()},
-                  expiry_date = ${firstPremiumUser.expiry_date},
-                  device_id = ${deviceId},
-                  updated_at = NOW()
-                WHERE id = ${authUser.id}
-              `;
-
-              // 3. Downgrade guest user to free
-              await sql`
-                UPDATE users
-                SET 
-                  plan = 'free',
-                  subscription_id = NULL,
-                  subscription_platform = NULL,
-                  expiry_date = NULL,
-                  updated_at = NOW()
-                WHERE id = ${firstPremiumUser.id}
-              `;
-
-              // 4. Log this account merge for audit trail
+              // 🔥 CRITICAL: Use transaction to ensure atomicity
+              // Either ALL operations succeed or NONE - prevents inconsistent state
               try {
-                await sql`
-                  INSERT INTO purchase_logs (
-                    user_email,
-                    user_id,
-                    platform,
-                    transaction_id,
-                    product_id,
-                    action_type,
-                    status,
-                    details,
-                    device_id
-                  ) VALUES (
-                    ${authEmail},
-                    ${authUser.id},
-                    ${firstPremiumUser.subscription_platform || 'unknown'},
-                    ${firstPremiumUser.subscription_id || null},
-                    'account_merge',
-                    ${isRestore ? 'restore_merge' : 'purchase_merge'},
-                    'success',
-                    ${JSON.stringify({ fromGuest: firstPremiumUser.email, toAuthenticated: authEmail, expiryDate: firstPremiumUser.expiry_date })},
-                    ${deviceId || null}
-                  )
-                `;
-              } catch (logError) {
-                console.error('[Verify Purchase] ⚠️ Failed to log account merge:', logError);
-                // Continue anyway - merge is more important than logging
+                await sql.begin(async (tx) => {
+                  // 2. Transfer premium to authenticated user
+                  await tx`
+                    UPDATE users
+                    SET 
+                      plan = 'premium',
+                      subscription_id = ${firstPremiumUser.subscription_id},
+                      subscription_platform = ${firstPremiumUser.subscription_platform},
+                      subscription_started_at = ${firstPremiumUser.subscription_started_at || new Date().toISOString()},
+                      expiry_date = ${firstPremiumUser.expiry_date},
+                      device_id = ${deviceId},
+                      updated_at = NOW()
+                    WHERE id = ${authUser.id}
+                  `;
+
+                  // 3. Downgrade guest user to free
+                  await tx`
+                    UPDATE users
+                    SET 
+                      plan = 'free',
+                      subscription_id = NULL,
+                      subscription_platform = NULL,
+                      expiry_date = NULL,
+                      updated_at = NOW()
+                    WHERE id = ${firstPremiumUser.id}
+                  `;
+
+                  // 4. Log this account merge for audit trail (inside transaction)
+                  await tx`
+                    INSERT INTO purchase_logs (
+                      user_email,
+                      user_id,
+                      platform,
+                      transaction_id,
+                      product_id,
+                      action_type,
+                      status,
+                      details,
+                      device_id
+                    ) VALUES (
+                      ${authEmail},
+                      ${authUser.id},
+                      ${firstPremiumUser.subscription_platform || 'unknown'},
+                      ${firstPremiumUser.subscription_id || null},
+                      'account_merge',
+                      ${isRestore ? 'restore_merge' : 'purchase_merge'},
+                      'success',
+                      ${JSON.stringify({ fromGuest: firstPremiumUser.email, toAuthenticated: authEmail, expiryDate: firstPremiumUser.expiry_date })},
+                      ${deviceId || null}
+                    )
+                  `;
+                });
+
+                console.log('[Verify Purchase] ✅ ACCOUNT MERGE SUCCESS: Premium transferred from guest to authenticated account:', {
+                  fromGuest: firstPremiumUser.email,
+                  toAuthenticated: authEmail,
+                  subscriptionId: firstPremiumUser.subscription_id,
+                  isRestore: isRestore || false,
+                });
+
+                // Return success - premium has been transferred
+                return NextResponse.json({
+                  success: true,
+                  message: 'Premium subscription transferred to your account',
+                  accountMerged: true,
+                  expiryDate: firstPremiumUser.expiry_date,
+                  isPremium: true,
+                });
+              } catch (txError) {
+                // Transaction failed - all changes automatically rolled back
+                console.error('[Verify Purchase] ❌ ACCOUNT MERGE FAILED: Transaction rolled back:', txError);
+                return NextResponse.json(
+                  { error: 'Account merge failed. Please try again or contact support.' },
+                  { status: 500 }
+                );
               }
-
-              console.log('[Verify Purchase] ✅ ACCOUNT MERGE SUCCESS: Premium transferred from guest to authenticated account:', {
-                fromGuest: firstPremiumUser.email,
-                toAuthenticated: authEmail,
-                subscriptionId: firstPremiumUser.subscription_id,
-                isRestore: isRestore || false,
-              });
-
-              // Return success - premium has been transferred
-              return NextResponse.json({
-                success: true,
-                message: 'Premium subscription transferred to your account',
-                accountMerged: true,
-                expiryDate: firstPremiumUser.expiry_date,
-                isPremium: true,
-              });
             }
           }
 

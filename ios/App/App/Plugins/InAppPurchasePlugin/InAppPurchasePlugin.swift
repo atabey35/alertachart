@@ -13,7 +13,8 @@ public class InAppPurchasePlugin: CAPPlugin, CAPBridgedPlugin {
         CAPPluginMethod(name: "getProducts", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "purchase", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "restorePurchases", returnType: CAPPluginReturnPromise),
-        CAPPluginMethod(name: "checkEntitlements", returnType: CAPPluginReturnPromise)
+        CAPPluginMethod(name: "checkEntitlements", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "finishPurchase", returnType: CAPPluginReturnPromise)  // 🔥 NEW: Finish transaction after backend success
     ]
     
     private var products: [String: SKProduct] = [:]
@@ -221,20 +222,45 @@ extension InAppPurchasePlugin: SKPaymentTransactionObserver {
         
         let receiptString = receiptData.base64EncodedString()
         
+        // 🔥 CRITICAL: Store transaction for later finishing by JS after backend confirms
+        // This prevents payment loss when backend fails
+        objc_setAssociatedObject(self, "pendingTransaction", transaction, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+        
         if let call = objc_getAssociatedObject(self, "purchaseCall") as? CAPPluginCall {
             let result: [String: Any] = [
                 "transactionId": transaction.transactionIdentifier ?? "",
                 "productId": transaction.payment.productIdentifier,
                 "receipt": receiptString,
-                "transactionReceipt": receiptString
+                "transactionReceipt": receiptString,
+                "requiresFinish": true  // Signal to JS that finishPurchase must be called
             ]
             call.resolve(result as PluginCallResultData)
             objc_setAssociatedObject(self, "purchaseCall", nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
         }
         
-        // 🔥 CRITICAL: Transaction completed - JavaScript will detect via periodic sync
-        // The entitlement sync service will check for new transactions periodically
-        finishTransaction(transaction, success: true)
+        // 🔥 IMPORTANT: Do NOT finish transaction here!
+        // JS will call finishPurchase after backend confirms success
+        // This prevents: User pays -> backend fails -> transaction finished -> user loses money
+        print("[InAppPurchase] handlePurchased: ⏳ Transaction pending - waiting for finishPurchase() call")
+    }
+    
+    /**
+     * Finish Purchase - Called by JavaScript AFTER backend confirms success
+     * This ensures we only mark the transaction as finished when payment is truly recorded
+     */
+    @objc func finishPurchase(_ call: CAPPluginCall) {
+        print("[InAppPurchase] finishPurchase: Finishing pending transaction...")
+        
+        if let transaction = objc_getAssociatedObject(self, "pendingTransaction") as? SKPaymentTransaction {
+            finishTransaction(transaction, success: true)
+            objc_setAssociatedObject(self, "pendingTransaction", nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
+            print("[InAppPurchase] finishPurchase: ✅ Transaction finished successfully")
+            call.resolve()
+        } else {
+            // No pending transaction - might have been finished already or expired
+            print("[InAppPurchase] finishPurchase: ⚠️ No pending transaction to finish")
+            call.resolve() // Still resolve - not an error, just nothing to do
+        }
     }
     
     private func handleFailed(_ transaction: SKPaymentTransaction) {

@@ -319,3 +319,40 @@ export async function restorePurchases(): Promise<{
     };
   }
 }
+
+/**
+ * Finish Purchase - Called AFTER backend confirms purchase success (iOS only)
+ * This ensures Apple transaction is only finished when we've successfully recorded it
+ * Prevents: User pays -> backend fails -> transaction finished -> user loses money
+ */
+export async function finishPurchase(): Promise<{ success: boolean; error?: string }> {
+  console.log('[IAP Service] finishPurchase: Finishing pending transaction...');
+  logToNative('[IAP Service] finishPurchase: Finishing pending transaction...');
+
+  if (typeof window === 'undefined') {
+    return { success: false, error: 'Not available in web' };
+  }
+
+  try {
+    const plugin = getIAPPlugin();
+    if (!plugin) {
+      console.log('[IAP Service] finishPurchase: Plugin not found (might be Android)');
+      return { success: true }; // Not an error on Android
+    }
+
+    // Check if finishPurchase method exists (iOS only)
+    if (!plugin.finishPurchase) {
+      console.log('[IAP Service] finishPurchase: Method not available (Android auto-finishes)');
+      return { success: true }; // Android handles this automatically
+    }
+
+    await plugin.finishPurchase();
+    console.log('[IAP Service] finishPurchase: ✅ Transaction finished successfully');
+    logToNative('[IAP Service] finishPurchase: ✅ Transaction finished successfully');
+    return { success: true };
+  } catch (error: any) {
+    console.error('[IAP Service] finishPurchase: ❌ Failed:', error);
+    logToNative(`[IAP Service] finishPurchase: ❌ Failed: ${error}`);
+    return { success: false, error: error?.message || 'Failed to finish purchase' };
+  }
+}
