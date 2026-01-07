@@ -211,8 +211,109 @@ export async function POST(request: NextRequest) {
         });
 
         if (!isPremiumUser) {
+          const firstPremiumUser = existingDevicePremium[0];
+
+          // 🔥 ACCOUNT MERGE: Check if this is a guest-to-authenticated transfer scenario
+          // This should be checked FIRST, for BOTH restore and new purchase operations
+          const isGuestPremium = firstPremiumUser.email?.includes('@alertachart.local');
+          const isAuthenticatedUser = !!session?.user?.email;
+          const authEmail = session?.user?.email;
+
+          if (isGuestPremium && isAuthenticatedUser && authEmail) {
+            console.log('[Verify Purchase] 🔄 ACCOUNT MERGE: Transferring premium from guest to authenticated account:', {
+              guestEmail: firstPremiumUser.email,
+              guestUserId: firstPremiumUser.id,
+              authenticatedEmail: authEmail,
+              deviceId: deviceId,
+              subscriptionId: firstPremiumUser.subscription_id,
+              isRestore: isRestore || false,  // Log whether this is restore or new purchase
+            });
+
+            // Transfer premium from guest to authenticated user
+            // 1. Find the authenticated user
+            const authUsers = await sql`
+              SELECT id, email, plan FROM users WHERE email = ${authEmail} LIMIT 1
+            `;
+
+            if (authUsers.length > 0) {
+              const authUser = authUsers[0];
+
+              // 2. Transfer premium to authenticated user
+              await sql`
+                UPDATE users
+                SET 
+                  plan = 'premium',
+                  subscription_id = ${firstPremiumUser.subscription_id},
+                  subscription_platform = ${firstPremiumUser.subscription_platform},
+                  subscription_started_at = ${firstPremiumUser.subscription_started_at || new Date().toISOString()},
+                  expiry_date = ${firstPremiumUser.expiry_date},
+                  device_id = ${deviceId},
+                  updated_at = NOW()
+                WHERE id = ${authUser.id}
+              `;
+
+              // 3. Downgrade guest user to free
+              await sql`
+                UPDATE users
+                SET 
+                  plan = 'free',
+                  subscription_id = NULL,
+                  subscription_platform = NULL,
+                  expiry_date = NULL,
+                  updated_at = NOW()
+                WHERE id = ${firstPremiumUser.id}
+              `;
+
+              // 4. Log this account merge for audit trail
+              try {
+                await sql`
+                  INSERT INTO purchase_logs (
+                    user_email,
+                    user_id,
+                    platform,
+                    transaction_id,
+                    product_id,
+                    action_type,
+                    status,
+                    details,
+                    device_id
+                  ) VALUES (
+                    ${authEmail},
+                    ${authUser.id},
+                    ${firstPremiumUser.subscription_platform || 'unknown'},
+                    ${firstPremiumUser.subscription_id || null},
+                    'account_merge',
+                    ${isRestore ? 'restore_merge' : 'purchase_merge'},
+                    'success',
+                    ${JSON.stringify({ fromGuest: firstPremiumUser.email, toAuthenticated: authEmail, expiryDate: firstPremiumUser.expiry_date })},
+                    ${deviceId || null}
+                  )
+                `;
+              } catch (logError) {
+                console.error('[Verify Purchase] ⚠️ Failed to log account merge:', logError);
+                // Continue anyway - merge is more important than logging
+              }
+
+              console.log('[Verify Purchase] ✅ ACCOUNT MERGE SUCCESS: Premium transferred from guest to authenticated account:', {
+                fromGuest: firstPremiumUser.email,
+                toAuthenticated: authEmail,
+                subscriptionId: firstPremiumUser.subscription_id,
+                isRestore: isRestore || false,
+              });
+
+              // Return success - premium has been transferred
+              return NextResponse.json({
+                success: true,
+                message: 'Premium subscription transferred to your account',
+                accountMerged: true,
+                expiryDate: firstPremiumUser.expiry_date,
+                isPremium: true,
+              });
+            }
+          }
+
           // ✅ RESTORE FLEXIBILITY: If this is a restore operation on the same device, allow it
-          // This handles guest user restore scenarios where the same device has premium
+          // This handles cases where the premium user is not a guest (e.g., same authenticated user on different session)
           if (isRestore) {
             console.log('[Verify Purchase] ✅ RESTORE: Device already has premium - allowing restore on same device:', {
               deviceId: deviceId,
@@ -220,79 +321,9 @@ export async function POST(request: NextRequest) {
               isRestore: true,
               existingPremiumUsers: existingDevicePremium.length,
             });
-            // Allow restore - same device re-verification
+            // Allow restore - same device re-verification (continue processing)
           } else {
-            const firstPremiumUser = existingDevicePremium[0];
-
-            // 🔥 NEW: Guest-to-Registered Account Merge
-            // If the existing premium user is a GUEST and current user is AUTHENTICATED,
-            // transfer the premium to the authenticated account instead of blocking
-            const isGuestPremium = firstPremiumUser.email?.includes('@alertachart.local');
-            const isAuthenticatedUser = !!session?.user?.email;
-            const authEmail = session?.user?.email;
-
-            if (isGuestPremium && isAuthenticatedUser && authEmail) {
-              console.log('[Verify Purchase] 🔄 ACCOUNT MERGE: Transferring premium from guest to authenticated account:', {
-                guestEmail: firstPremiumUser.email,
-                guestUserId: firstPremiumUser.id,
-                authenticatedEmail: authEmail,
-                deviceId: deviceId,
-                subscriptionId: firstPremiumUser.subscription_id,
-              });
-
-              // Transfer premium from guest to authenticated user
-              // 1. Find the authenticated user
-              const authUsers = await sql`
-                SELECT id, email, plan FROM users WHERE email = ${authEmail} LIMIT 1
-              `;
-
-              if (authUsers.length > 0) {
-                const authUser = authUsers[0];
-
-                // 2. Transfer premium to authenticated user
-                await sql`
-                  UPDATE users
-                  SET 
-                    plan = 'premium',
-                    subscription_id = ${firstPremiumUser.subscription_id},
-                    subscription_platform = ${firstPremiumUser.subscription_platform},
-                    subscription_started_at = ${firstPremiumUser.subscription_started_at || new Date().toISOString()},
-                    expiry_date = ${firstPremiumUser.expiry_date},
-                    device_id = ${deviceId},
-                    updated_at = NOW()
-                  WHERE id = ${authUser.id}
-                `;
-
-                // 3. Downgrade guest user to free
-                await sql`
-                  UPDATE users
-                  SET 
-                    plan = 'free',
-                    subscription_id = NULL,
-                    subscription_platform = NULL,
-                    expiry_date = NULL,
-                    updated_at = NOW()
-                  WHERE id = ${firstPremiumUser.id}
-                `;
-
-                console.log('[Verify Purchase] ✅ ACCOUNT MERGE SUCCESS: Premium transferred from guest to authenticated account:', {
-                  fromGuest: firstPremiumUser.email,
-                  toAuthenticated: authEmail,
-                  subscriptionId: firstPremiumUser.subscription_id,
-                });
-
-                // Return success - premium has been transferred
-                return NextResponse.json({
-                  success: true,
-                  message: 'Premium subscription transferred to your account',
-                  accountMerged: true,
-                  expiryDate: firstPremiumUser.expiry_date,
-                  isPremium: true,
-                });
-              }
-            }
-
-            // If not a guest-to-auth transfer case, block as before
+            // If not a guest-to-auth transfer case and not a restore, block as before
             console.error('[Verify Purchase] ❌ CRITICAL SECURITY: Device already has premium linked to different account (PRE-CHECK):', {
               deviceId: deviceId,
               sessionEmail: session?.user?.email,

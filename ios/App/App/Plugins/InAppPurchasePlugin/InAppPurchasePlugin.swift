@@ -301,13 +301,13 @@ extension InAppPurchasePlugin: SKPaymentTransactionObserver {
         if let call = objc_getAssociatedObject(self, "restoreCall") as? CAPPluginCall {
             if let transactionsArray = objc_getAssociatedObject(self, "restoredTransactions") as? NSMutableArray {
                 let result: [String: Any] = [
-                    "transactions": transactionsArray
+                    "purchases": transactionsArray  // 🔥 CRITICAL: Changed from 'transactions' to 'purchases' to match Android and frontend expectations
                 ]
                 call.resolve(result as PluginCallResultData)
                 objc_setAssociatedObject(self, "restoreCall", nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
                 objc_setAssociatedObject(self, "restoredTransactions", nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             } else {
-                call.resolve(["transactions": []] as PluginCallResultData)
+                call.resolve(["purchases": []] as PluginCallResultData)  // 🔥 CRITICAL: Changed from 'transactions' to 'purchases'
                 objc_setAssociatedObject(self, "restoreCall", nil, .OBJC_ASSOCIATION_RETAIN_NONATOMIC)
             }
         }
