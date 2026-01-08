@@ -517,8 +517,6 @@ async function processSubscriptionEvent(params: {
       SET 
         plan = 'free',
         expiry_date = NULL,
-        subscription_platform = NULL,
-        subscription_id = NULL,
         updated_at = NOW()
       WHERE id = ${userIdInternal}
     `;

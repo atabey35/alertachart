@@ -99,8 +99,6 @@ export async function GET(request: NextRequest) {
             expiry_date = NULL,
             trial_started_at = NULL,
             trial_ended_at = NULL,
-            subscription_platform = NULL,
-            subscription_id = NULL,
             updated_at = NOW()
           WHERE id = ${user.id}
         `;
@@ -111,8 +109,7 @@ export async function GET(request: NextRequest) {
           expiry_date: null,
           trial_started_at: null,
           trial_ended_at: null,
-          subscription_platform: null,
-          subscription_id: null,
+          // 🔥 Subscription ID korunur, böylece renew gelirse bulabiliriz
         };
 
         console.log(`[User Plan API] ✅ User ${user.id} downgraded to free (trial + expiry passed)`);
@@ -137,8 +134,6 @@ export async function GET(request: NextRequest) {
           SET 
             plan = 'free',
             expiry_date = NULL,
-            subscription_platform = NULL,
-            subscription_id = NULL,
             updated_at = NOW()
           WHERE id = ${user.id}
         `;
@@ -148,8 +143,7 @@ export async function GET(request: NextRequest) {
           ...user,
           plan: 'free',
           expiry_date: null,
-          subscription_platform: null,
-          subscription_id: null,
+          // 🔥 Subscription ID korunur
         };
 
         console.log(`[User Plan API] ✅ User ${user.id} downgraded to free (expired subscription)`);
