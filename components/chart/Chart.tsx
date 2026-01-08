@@ -5581,35 +5581,42 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
                 style={{
                   left: finalX,
                   top: finalY,
-                  cursor: isDraggingToolbar ? 'grabbing' : 'grab',
-                }}
-                onMouseDown={(e) => {
-                  // Start dragging toolbar
-                  e.stopPropagation();
-                  setIsDraggingToolbar(true);
-                  toolbarDragStartRef.current = {
-                    x: finalX,
-                    y: finalY,
-                    startX: e.clientX,
-                    startY: e.clientY,
-                  };
-                }}
-                onTouchStart={(e) => {
-                  // Start dragging toolbar (mobile)
-                  if (e.touches.length === 1) {
-                    e.stopPropagation();
-                    const touch = e.touches[0];
-                    setIsDraggingToolbar(true);
-                    toolbarDragStartRef.current = {
-                      x: finalX,
-                      y: finalY,
-                      startX: touch.clientX,
-                      startY: touch.clientY,
-                    };
-                  }
                 }}
               >
-                <div className="flex items-center gap-1 p-1.5" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-1 p-1.5">
+                  {/* Drag Handle - sürüklemek için bu ikona basılı tutun */}
+                  <div
+                    className="cursor-grab active:cursor-grabbing p-1 hover:bg-gray-700/50 rounded transition-colors mr-1"
+                    title="Sürükle"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setIsDraggingToolbar(true);
+                      toolbarDragStartRef.current = {
+                        x: finalX,
+                        y: finalY,
+                        startX: e.clientX,
+                        startY: e.clientY,
+                      };
+                    }}
+                    onTouchStart={(e) => {
+                      if (e.touches.length === 1) {
+                        e.stopPropagation();
+                        const touch = e.touches[0];
+                        setIsDraggingToolbar(true);
+                        toolbarDragStartRef.current = {
+                          x: finalX,
+                          y: finalY,
+                          startX: touch.clientX,
+                          startY: touch.clientY,
+                        };
+                      }
+                    }}
+                  >
+                    <svg className="w-4 h-4 text-gray-500" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 6a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm8-16a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm0 8a2 2 0 1 0 0-4 2 2 0 0 0 0 4z" />
+                    </svg>
+                  </div>
+
                   {/* Color picker */}
                   <input
                     type="color"
