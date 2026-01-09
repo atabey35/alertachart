@@ -2260,7 +2260,10 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
         // ALWAYS create current candle if it doesn't match current time window
         // This ensures immediate chart movement on all timeframes
-        const shouldCreateNewBar = lastHistoricalBar.time !== currentBarTime;
+        // For Market Cap (TOTAL, BTC.D etc), backend returns the current candle with real OHLC data
+        // so we must PRESERVE it instead of overwriting with a flat new bar
+        const isMarketCap = isMarketCapIndex(pair);
+        const shouldCreateNewBar = !isMarketCap && (lastHistoricalBar.time !== currentBarTime);
 
         if (shouldCreateNewBar) {
           const reason = lastHistoricalBar.time < currentBarTime
@@ -2624,12 +2627,22 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
         if (lastBar && lastBar.time === barTime) {
           // Update current bar
-          const updatedBar = {
-            ...lastBar,
-            close: price,
-            high: Math.max(lastBar.high, price),
-            low: Math.min(lastBar.low, price),
-          };
+          let updatedBar = { ...lastBar };
+
+          // Use full candle data if available (prevents flat candles), else update via price tick
+          if (indexData.open && indexData.close) {
+            Object.assign(updatedBar, {
+              open: indexData.open,
+              high: indexData.high,
+              low: indexData.low,
+              close: indexData.close
+            });
+          } else {
+            updatedBar.close = price;
+            updatedBar.high = Math.max(updatedBar.high, price);
+            updatedBar.low = Math.min(updatedBar.low, price);
+          }
+
           cacheRef.current.updateLastBar(updatedBar);
 
           if (seriesRef.current) {
@@ -2640,15 +2653,17 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           }
         } else {
           // Create new bar
+          // Create new bar with full data if available
           const newBar = {
             time: barTime,
-            open: lastBar ? lastBar.close : price,
-            high: price,
-            low: price,
-            close: price,
+            open: indexData.open || (lastBar ? lastBar.close : price),
+            high: indexData.high || price,
+            low: indexData.low || price,
+            close: indexData.close || price,
             volume: 0,
             vbuy: 0, vsell: 0, cbuy: 0, csell: 0, lbuy: 0, lsell: 0
           };
+
           cacheRef.current.addBar(newBar);
 
           if (seriesRef.current) {
