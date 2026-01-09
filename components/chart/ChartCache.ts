@@ -254,5 +254,38 @@ export default class ChartCache {
   getBarCount(): number {
     return this.chunks.reduce((sum, chunk) => sum + chunk.bars.length, 0);
   }
+
+  /**
+   * Get the very last (newest) bar in the cache
+   */
+  getLastBar(): Bar | null {
+    if (this.chunks.length === 0) return null;
+    // Chunks are sorted by time (ascending), so last chunk has newest data
+    const lastChunk = this.chunks[this.chunks.length - 1];
+    if (lastChunk.bars.length === 0) return null;
+    return lastChunk.bars[lastChunk.bars.length - 1];
+  }
+
+  /**
+   * Update the last bar in the cache
+   */
+  updateLastBar(bar: Bar) {
+    if (this.chunks.length === 0) {
+      this.addBar(bar);
+      return;
+    }
+    const lastChunk = this.chunks[this.chunks.length - 1];
+    if (lastChunk.bars.length === 0) {
+      lastChunk.bars.push(bar);
+      return;
+    }
+    // Update the last element (in-place)
+    lastChunk.bars[lastChunk.bars.length - 1] = bar;
+
+    // Update chunk end time if bar time changed (unlikely for updateLastBar but safe)
+    if (bar.time > lastChunk.to) {
+      lastChunk.to = bar.time;
+    }
+  }
 }
 

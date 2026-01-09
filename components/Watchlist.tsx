@@ -6,6 +6,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import SymbolSearchModal from './SymbolSearchModal';
+import MarketCapItems from './MarketCapCard';
 import alertService from '@/services/alertService';
 import websocketService from '@/services/websocketService';
 import { loadCategories, getCategories, type Category } from '@/utils/categories';
@@ -1138,6 +1139,12 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
       {/* Watchlist Items */}
       <div className="flex-1 overflow-y-auto scrollbar-thin bg-gradient-to-b from-transparent via-gray-900/20 to-transparent">
+        {/* Market Cap Indices - Always visible at top */}
+        <MarketCapItems
+          selectedIndex={currentSymbol}
+          onIndexClick={(index) => onSymbolClick(index)}
+        />
+
         {watchlist.length === 0 ? (
           <div className="p-12 text-center">
             <div className="mb-4">

@@ -10,20 +10,20 @@ import EventEmitter from 'eventemitter3';
 class HistoricalService extends EventEmitter {
   private promisesOfData: Map<string, Promise<HistoricalResponse>> = new Map();
   private cache: Map<string, HistoricalResponse> = new Map();
-  
+
   // Railway backend URL (fallback to local API if not set)
-  private railwayApi = process.env.NEXT_PUBLIC_RAILWAY_API || 
-                       process.env.NEXT_PUBLIC_LOCAL_API || 
-                       'http://localhost:4000';
+  private railwayApi = process.env.NEXT_PUBLIC_RAILWAY_API ||
+    process.env.NEXT_PUBLIC_LOCAL_API ||
+    'http://localhost:4000';
 
   /**
    * Get API URL for historical data
    * Uses Railway backend for lazy loading older candles
    */
   private getApiUrl(
-    from: number, 
-    to: number, 
-    timeframe: number, 
+    from: number,
+    to: number,
+    timeframe: number,
     markets: string[],
     useRailway = false
   ): string {
@@ -48,6 +48,56 @@ class HistoricalService extends EventEmitter {
   }
 
   /**
+   * Helper to identify if request is for custom market cap index
+   */
+  private isMarketCapIndex(markets: string[]): boolean {
+    return markets.some(m =>
+      m.includes('TOTAL') ||
+      m.includes('TOTAL2') ||
+      m.includes('OTHERS') ||
+      m === 'TOTAL' ||
+      m === 'TOTAL2' ||
+      m === 'OTHERS'
+    );
+  }
+
+  /**
+   * Get Backend URL for Market Cap
+   */
+  private getMarketCapUrl(from: number, to: number, timeframe: number, markets: string[]): string {
+    // Determine which index (assume single market for now as indices are usually singular)
+    let index = 'TOTAL';
+    const market = markets.find(m => m.includes('TOTAL') || m.includes('OTHERS')) || 'TOTAL';
+
+    if (market.includes('TOTAL2')) index = 'TOTAL2';
+    else if (market.includes('OTHERS')) index = 'OTHERS';
+
+    // Map timeframe (seconds) to interval string
+    let interval = '1h';
+    if (timeframe === 60) interval = '1m';
+    else if (timeframe === 300) interval = '5m';
+    else if (timeframe === 900) interval = '15m';
+    else if (timeframe === 3600) interval = '1h';
+    else if (timeframe === 14400) interval = '4h';
+    else if (timeframe === 86400) interval = '1d';
+    else if (timeframe === 604800) interval = '1w';
+
+    // Calculate limit based on time range
+    // limit = (to - from) / (timeframe * 1000)
+    const limit = Math.ceil((to - from) / (timeframe * 1000));
+
+    // Use development backend URL if on localhost, otherwise production
+    // NOTE: In browser environment, we can rely on window.location
+    // But this is a service file, simpler to hardcode or use env ref
+    const BACKEND_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+      ? 'http://localhost:3002'
+      : 'https://alertachart-backend-production.up.railway.app';
+
+    // Pass 'endTime' as 'to' timestamp for pagination support
+    return `${BACKEND_URL}/api/marketcap/historical?interval=${interval}&limit=${limit}&index=${index}&endTime=${to}`;
+  }
+
+  /**
    * Fetch historical data from API
    */
   async fetch(
@@ -61,7 +111,12 @@ class HistoricalService extends EventEmitter {
     // Keep using Railway for all requests (including BINANCE_FUTURES)
     // Railway backend should handle both Spot and Futures
 
-    const url = this.getApiUrl(from, to, timeframe, markets, useRailway);
+    let url = this.getApiUrl(from, to, timeframe, markets, useRailway);
+
+    // Special handling for Market Cap Indices (TOTAL, TOTAL2, OTHERS)
+    if (this.isMarketCapIndex(markets)) {
+      url = this.getMarketCapUrl(from, to, timeframe, markets);
+    }
 
     // Return cached promise if exists
     if (this.promisesOfData.has(url)) {
@@ -90,13 +145,32 @@ class HistoricalService extends EventEmitter {
           throw new Error(json && json.error ? json.error : 'empty-response');
         }
 
+        // Custom Backend (Market Cap) Response format: { candles: [...], count: ... }
+        if (json.candles) {
+          return {
+            from,
+            to,
+            timeframe,
+            initialPrices: {},
+            data: json.candles.map((candle: any) => ({
+              time: candle.time * 1000, // Backend returns seconds, convert to ms if not already
+              open: candle.open,
+              high: candle.high,
+              low: candle.low,
+              close: candle.close,
+              volume: candle.volume || 0,
+              vbuy: 0, vsell: 0, cbuy: 0, csell: 0, lbuy: 0, lsell: 0
+            }))
+          };
+        }
+
         // Railway backend returns data directly
         if (useRailway && json.count !== undefined) {
           // Check if Railway data is empty - trigger fallback
           if (!json.data || json.data.length === 0) {
             throw new Error('Railway returned empty data');
           }
-          
+
           // Convert Railway format to our format
           return {
             from,
@@ -120,6 +194,25 @@ class HistoricalService extends EventEmitter {
           };
         }
 
+        // Custom Backend (Market Cap) Response format: { candles: [...], count: ... }
+        if (json.candles) {
+          return {
+            from,
+            to,
+            timeframe,
+            initialPrices: {},
+            data: json.candles.map((candle: any) => ({
+              time: candle.time * 1000, // Backend returns seconds, convert to ms if not already
+              open: candle.open,
+              high: candle.high,
+              low: candle.low,
+              close: candle.close,
+              volume: candle.volume || 0,
+              vbuy: 0, vsell: 0, cbuy: 0, csell: 0, lbuy: 0, lsell: 0
+            }))
+          };
+        }
+
         if (!json.data || json.data.length === 0) {
           throw new Error('No data available');
         }
@@ -134,11 +227,11 @@ class HistoricalService extends EventEmitter {
         if (useRailway) {
           console.warn(`[Historical Service] Railway issue: ${err.message}, trying fallback...`);
           const fallbackUrl = this.getApiUrl(from, to, timeframe, markets, false);
-          
+
           try {
             const fallbackResponse = await fetch(fallbackUrl);
             const fallbackJson = await fallbackResponse.json();
-            
+
             if (fallbackJson && fallbackJson.data && fallbackJson.data.length > 0) {
               console.log(`[Historical Service] ✅ Fallback successful (${fallbackJson.data.length} candles from Next.js API)`);
               this.cache.set(url, fallbackJson);
@@ -148,7 +241,7 @@ class HistoricalService extends EventEmitter {
             console.error('[Historical Service] ❌ Fallback also failed:', (fallbackErr as Error).message);
           }
         }
-        
+
         console.error('[Historical Service] ❌ All attempts failed:', err.message);
         throw err;
       })

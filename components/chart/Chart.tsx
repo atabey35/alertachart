@@ -16,6 +16,7 @@ import {
   LineData,
   Time,
 } from 'lightweight-charts';
+import { io } from 'socket.io-client';
 import { Bar } from '@/types/chart';
 import { PriceAlert } from '@/types/alert';
 import { Drawing, DrawingPoint, DrawingType } from '@/types/drawing';
@@ -652,8 +653,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           width: chartWidth,
           height: containerRect.height,
         });
-        // Update chart size immediately if chart exists
+        // Update chart size immediately
         if (chartRef.current) {
+          // Update volume visibility
+          // Hide volume for Market Cap indices (TOTAL, TOTAL2, OTHERS) as they don't have valid volume data
+          const isMarketCapIndex = ['TOTAL', 'TOTAL2', 'OTHERS'].includes(pair);
+          if (volumeSeriesRef.current) {
+            volumeSeriesRef.current.applyOptions({
+              visible: chartSettings.showVolume && !isMarketCapIndex,
+            });
+          }
           chartRef.current.applyOptions({
             width: Math.max(1, chartWidth),
             height: Math.max(1, containerRect.height),
@@ -865,6 +874,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
           top: 0.1,
           bottom: 0.1,
         },
+        minimumWidth: 75, // Fix layout shift by setting constant width
         // iOS/Apple specific optimizations
         ...(typeof window !== 'undefined' && (
           /iPad|iPhone|iPod/.test(navigator.userAgent) ||
@@ -919,6 +929,9 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1); // iPad on iOS 13+
     }
 
+    // Check if current pair is a market cap index
+    const isMarketCapIndex = ['TOTAL', 'TOTAL2', 'OTHERS'].includes(pair);
+
     chart.priceScale('right').applyOptions({
       visible: true, // Ensure price scale is always visible
       minimumWidth: 75, // Fixed width to prevent jitter when price text length changes (e.g., XRP, AVAX)
@@ -940,6 +953,22 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       } : {
         borderVisible: true,
       }),
+      // Custom formatter for market cap indices
+      ...(isMarketCapIndex ? {
+        formatter: (price: number) => {
+          if (price <= 0) return ''; // Hide negative values and zero
+          if (price >= 1_000_000_000_000) {
+            return '$' + (price / 1_000_000_000_000).toFixed(2) + 'T';
+          }
+          if (price >= 1_000_000_000) {
+            return '$' + (price / 1_000_000_000).toFixed(2) + 'B';
+          }
+          if (price >= 1_000_000) {
+            return '$' + (price / 1_000_000).toFixed(2) + 'M';
+          }
+          return '$' + price.toFixed(2);
+        },
+      } : {}),
     });
 
     // Configure volume price scale (overlay at bottom of main chart)
@@ -1466,6 +1495,47 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartSettings]); // currentPrice and loadOlderCandles are stable and don't need to be in deps
+
+  // Update price formatter when pair changes (market cap indices need special formatting)
+  useEffect(() => {
+    if (!chartRef.current) return;
+
+    try {
+      const isMarketCapIndex = ['TOTAL', 'TOTAL2', 'OTHERS'].includes(pair);
+
+      if (isMarketCapIndex) {
+        // Apply custom formatter for market cap indices
+        chartRef.current.applyOptions({
+          localization: {
+            priceFormatter: (price: number) => {
+              if (price <= 0) return ''; // Hide negative values and zero
+              if (price >= 1_000_000_000_000) {
+                return '$' + (price / 1_000_000_000_000).toFixed(2) + 'T';
+              }
+              if (price >= 1_000_000_000) {
+                return '$' + (price / 1_000_000_000).toFixed(2) + 'B';
+              }
+              if (price >= 1_000_000) {
+                return '$' + (price / 1_000_000).toFixed(2) + 'M';
+              }
+              return '$' + price.toFixed(2);
+            },
+          },
+        });
+      } else {
+        // Reset to default formatter for normal pairs
+        chartRef.current.applyOptions({
+          localization: {
+            priceFormatter: undefined,
+          },
+        });
+      }
+
+      console.log(`[Chart] Updated price formatter for ${pair} (isMarketCapIndex: ${isMarketCapIndex})`);
+    } catch (error) {
+      // Chart might be disposed, ignore
+    }
+  }, [pair]);
 
   // Update indicator data when chartSettings change (after series are created)
   // This ensures indicators are rendered when settings change (from modal, settings panel, or page reload)
@@ -2063,7 +2133,60 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       const useRailway = true; // Always use Railway for consistent behavior
       console.log(`[Chart] Using Railway backend for ${currentTimeframe}s timeframe`);
 
-      const response = await historicalService.fetch(from, to, currentTimeframe, marketList, useRailway, marketType);
+      let response;
+
+      // Special handling for Market Cap Indices
+      if (['TOTAL', 'TOTAL2', 'OTHERS'].includes(pair)) {
+        console.log(`[Chart] Fetching Market Cap Index: ${pair}`);
+
+        // Convert timeframe (seconds) to interval string
+        let interval = '1h';
+        if (currentTimeframe === 60) interval = '1m';
+        else if (currentTimeframe === 300) interval = '5m';
+        else if (currentTimeframe === 900) interval = '15m';
+        else if (currentTimeframe === 3600) interval = '1h';
+        else if (currentTimeframe === 14400) interval = '4h';
+        else if (currentTimeframe === 86400) interval = '1d';
+        else if (currentTimeframe === 604800) interval = '1w';
+
+        try {
+          // Use development backend URL if on localhost, otherwise production
+          const BACKEND_URL = window.location.hostname === 'localhost'
+            ? 'http://localhost:3002'
+            : 'https://alertachart-backend-production.up.railway.app';
+
+          const res = await fetch(`${BACKEND_URL}/api/marketcap/historical?interval=${interval}&limit=2000&index=${pair}`);
+
+          if (res.ok) {
+            const json = await res.json();
+            const bars = json.candles
+              .filter((c: any) => c.open > 0 && c.close > 0) // Filter empty/bad candles
+              .map((c: any) => ({
+                time: c.time * 1000, // Convert s to ms
+                open: c.open,
+                high: c.high,
+                low: c.low,
+                close: c.close,
+                volume: 0,
+                vbuy: 0, vsell: 0, cbuy: 0, csell: 0, lbuy: 0, lsell: 0
+              }));
+
+            response = {
+              data: bars,
+              from: bars.length > 0 ? bars[0].time : from,
+              to: bars.length > 0 ? bars[bars.length - 1].time : to
+            };
+          } else {
+            throw new Error('Failed to fetch market cap data');
+          }
+        } catch (err) {
+          console.error('[Chart] Market Cap fetch error:', err);
+          response = { data: [], from, to };
+        }
+      } else {
+        // Standard fetch for pairs
+        response = await historicalService.fetch(from, to, currentTimeframe, marketList, useRailway, marketType);
+      }
 
       // Check if exchange/pair changed during fetch
       if (currentExchange !== exchange || currentPair !== pair || currentTimeframe !== timeframe) {
@@ -2293,6 +2416,13 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    * Setup Web Worker for real-time data
    */
   const setupWorker = () => {
+    // Skip worker for Market Cap Indices (handled via direct WebSocket)
+    if (['TOTAL', 'TOTAL2', 'OTHERS'].includes(pair)) {
+      console.log('[Chart] Skipping worker for Market Cap Index (using direct socket)');
+      setWsConnected(true);
+      return;
+    }
+
     // Terminate existing worker FIRST - before anything else
     if (workerRef.current) {
       console.log('[Chart] 🔥 Terminating existing worker FIRST');
@@ -2435,6 +2565,108 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       console.error('[Chart] Worker setup error:', error);
     }
   };
+
+  /**
+   * Special live update handler for Market Cap Indices
+   */
+  // Use refs for stable access inside effect without causing re-runs
+  const timeframeRef = useRef(timeframe);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  // Update refs when props change
+  useEffect(() => {
+    timeframeRef.current = timeframe;
+  }, [timeframe]);
+
+  useEffect(() => {
+    if (!['TOTAL', 'TOTAL2', 'OTHERS'].includes(pair)) return;
+
+    console.log(`[Chart] 🔌 Connecting to Market Cap Socket (Socket.io) for ${pair}`);
+
+    const BACKEND_URL = window.location.hostname === 'localhost'
+      ? 'http://localhost:3002'
+      : 'https://alertachart-backend-production.up.railway.app';
+
+    const socket = io(BACKEND_URL, {
+      transports: ['websocket'],
+      reconnection: true,
+      reconnectionDelay: 3000,
+    });
+
+    // Store socket instance (cast as any to bypass WebSocket type check)
+    wsRef.current = socket as any;
+
+    socket.on('connect', () => {
+      console.log('[Chart] Socket.io Connected');
+      setWsConnected(true);
+    });
+
+    socket.on('marketcap:indices', (data: any) => {
+      const indexData = data.indices?.[pair];
+
+      if (indexData && indexData.value) {
+        const price = indexData.value;
+
+        // Use ref values to avoid effect dependencies
+        const currentTimeframe = timeframeRef.current;
+        const now = Date.now();
+        const barTime = Math.floor(now / (currentTimeframe * 1000)) * (currentTimeframe * 1000);
+
+        const lastBar = cacheRef.current.getLastBar();
+
+        if (lastBar && lastBar.time === barTime) {
+          // Update current bar
+          const updatedBar = {
+            ...lastBar,
+            close: price,
+            high: Math.max(lastBar.high, price),
+            low: Math.min(lastBar.low, price),
+          };
+          cacheRef.current.updateLastBar(updatedBar);
+
+          if (seriesRef.current) {
+            seriesRef.current.update({
+              ...updatedBar,
+              time: updatedBar.time / 1000 as Time,
+            });
+          }
+        } else {
+          // Create new bar
+          const newBar = {
+            time: barTime,
+            open: lastBar ? lastBar.close : price,
+            high: price,
+            low: price,
+            close: price,
+            volume: 0,
+            vbuy: 0, vsell: 0, cbuy: 0, csell: 0, lbuy: 0, lsell: 0
+          };
+          cacheRef.current.addBar(newBar);
+
+          if (seriesRef.current) {
+            seriesRef.current.update({
+              ...newBar,
+              time: newBar.time / 1000 as Time,
+            });
+          }
+
+          updateChart();
+        }
+
+        if (onPriceUpdateRef.current) onPriceUpdateRef.current(price);
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log('[Chart] Socket Disconnected');
+      setWsConnected(false);
+    });
+
+    return () => {
+      socket.disconnect();
+      wsRef.current = null;
+    };
+  }, [pair]); // Only re-run if pair changes (timeframe handled via ref)
 
   /**
    * Handle new bar from worker
