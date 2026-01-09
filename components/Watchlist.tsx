@@ -65,6 +65,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   const [showSettings, setShowSettings] = useState(false);
   const [backgroundColor, setBackgroundColor] = useState<string>('solid-dark');
   const [isIPad, setIsIPad] = useState(false);
+  const [showMarketCap, setShowMarketCap] = useState(true); // Market cap indices visibility
 
   // Detect client-side for responsive width
   useEffect(() => {
@@ -81,7 +82,14 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
       const isIPadDevice = isIPadUserAgent || (isCapacitorIOS && isIPadSize);
       setIsIPad(isIPadDevice);
     }
+
+    // Load market cap visibility preference
+    const savedShowMarketCap = localStorage.getItem('watchlist-show-marketcap');
+    if (savedShowMarketCap !== null) {
+      setShowMarketCap(savedShowMarketCap === 'true');
+    }
   }, []);
+
 
   // Track which symbols have active alerts for this market type
   useEffect(() => {
@@ -98,6 +106,8 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   useEffect(() => {
     const savedFavorites = localStorage.getItem('watchlist-favorites');
     if (savedFavorites) {
+      // ... existing code ...
+
       setFavorites(new Set(JSON.parse(savedFavorites)));
     }
 
@@ -415,46 +425,48 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     localStorage.setItem(storageKey, JSON.stringify(newWatchlist));
 
     // Use incremental subscription instead of full reconnect
-    websocketService.addSymbolToStream(normalizedSymbol);
+    // Skip WebSocket and REST fetch for Market Cap Indices (handled by polling)
+    if (normalizedSymbol !== 'total' && normalizedSymbol !== 'total2') {
+      websocketService.addSymbolToStream(normalizedSymbol);
 
-    // Fetch initial price via REST API (non-blocking)
-    try {
-      const url = `/api/ticker/${marketType}?symbols=${normalizedSymbol}`;
-      const response = await fetch(url);
-      if (response.ok) {
-        const result = await response.json();
-        const data = result.data;
-        if (data && data.length > 0) {
-          const ticker = data[0];
-          setPriceData(prev => {
-            const updated = new Map(prev);
-            updated.set(normalizedSymbol, {
-              symbol: normalizedSymbol,
-              price: parseFloat(ticker.lastPrice),
-              change24h: parseFloat(ticker.priceChangePercent),
-              volume24h: parseFloat(ticker.volume),
-              priceFlash: null,
-              category: symbolCategories.get(normalizedSymbol),
-              isFavorite: favorites.has(normalizedSymbol),
-              isLoading: false, // Data loaded, remove loading state
+      // Fetch initial price via REST API (non-blocking)
+      try {
+        const url = `/api/ticker/${marketType}?symbols=${normalizedSymbol}`;
+        const response = await fetch(url);
+        if (response.ok) {
+          const result = await response.json();
+          const data = result.data;
+          if (data && data.length > 0) {
+            const ticker = data[0];
+            setPriceData(prev => {
+              const updated = new Map(prev);
+              updated.set(normalizedSymbol, {
+                symbol: normalizedSymbol,
+                price: parseFloat(ticker.lastPrice),
+                change24h: parseFloat(ticker.priceChangePercent),
+                volume24h: parseFloat(ticker.volume),
+                priceFlash: null,
+                category: symbolCategories.get(normalizedSymbol),
+                isFavorite: favorites.has(normalizedSymbol),
+                isLoading: false, // Data loaded, remove loading state
+              });
+              return updated;
             });
-            return updated;
-          });
+          }
         }
+      } catch (error) {
+        console.debug('[Watchlist] Failed to fetch initial price for', normalizedSymbol);
+        // Remove loading state even on error - WebSocket will update
+        setPriceData(prev => {
+          const updated = new Map(prev);
+          const existing = updated.get(normalizedSymbol);
+          if (existing) {
+            updated.set(normalizedSymbol, { ...existing, isLoading: false });
+          }
+          return updated;
+        });
       }
-    } catch (error) {
-      console.debug('[Watchlist] Failed to fetch initial price for', normalizedSymbol);
-      // Remove loading state even on error - WebSocket will update
-      setPriceData(prev => {
-        const updated = new Map(prev);
-        const existing = updated.get(normalizedSymbol);
-        if (existing) {
-          updated.set(normalizedSymbol, { ...existing, isLoading: false });
-        }
-        return updated;
-      });
     }
-
     // Auto-assign category from categories.json
     const symbolUpper = symbol.toUpperCase();
     const category = findCategoryForSymbol(symbolUpper);
@@ -468,7 +480,7 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
   };
 
   // Find category for a symbol from categories.json
-  const findCategoryForSymbol = (symbol: string): string | null => {
+  function findCategoryForSymbol(symbol: string): string | null {
     const categories = getCategories();
     if (categories.length === 0) return null; // Categories not loaded yet
 
@@ -599,9 +611,10 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
     }
     setFavorites(newFavorites);
     localStorage.setItem('watchlist-favorites', JSON.stringify(Array.from(newFavorites)));
+    localStorage.setItem('watchlist-favorites', JSON.stringify(Array.from(newFavorites)));
   };
 
-  const setSymbolCategory = (symbol: string, category: string) => {
+  function setSymbolCategory(symbol: string, category: string) {
     const newCategories = new Map(symbolCategories);
     if (category === '') {
       newCategories.delete(symbol);
@@ -657,6 +670,11 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
   const formatPrice = (price: number) => {
     if (price === 0) return '0';
+
+    // Handle Market Cap Trillions/Billions
+    if (price >= 1_000_000_000_000) return `${(price / 1_000_000_000_000).toFixed(2)}T`;
+    if (price >= 1_000_000_000) return `${(price / 1_000_000_000).toFixed(2)}B`;
+    if (price >= 1_000_000) return `${(price / 1_000_000).toFixed(2)}M`;
 
     const priceStr = price.toString();
 
@@ -942,6 +960,19 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
         <div className="flex items-center gap-1 md:gap-1 flex-shrink-0">
           <button
             onClick={() => {
+              const newValue = !showMarketCap;
+              setShowMarketCap(newValue);
+              localStorage.setItem('watchlist-show-marketcap', String(newValue));
+            }}
+            className={`p-1.5 md:p-1.5 rounded-lg transition-all duration-200 hover:scale-110 active:scale-95 ${showMarketCap ? 'text-blue-400 bg-blue-500/10' : 'text-gray-400 hover:text-blue-400 hover:bg-blue-500/10'}`}
+            title={showMarketCap ? 'Hide TOTAL Indices' : 'Show TOTAL Indices'}
+          >
+            <svg className="w-3.5 h-3.5 md:w-3.5 md:h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </button>
+          <button
+            onClick={() => {
               const shareLink = generateWatchlistShareLink();
               navigator.clipboard.writeText(shareLink);
               alert('Watchlist link copied to clipboard!');
@@ -1139,11 +1170,13 @@ export default function Watchlist({ onSymbolClick, currentSymbol, marketType = '
 
       {/* Watchlist Items */}
       <div className="flex-1 overflow-y-auto scrollbar-thin bg-gradient-to-b from-transparent via-gray-900/20 to-transparent">
-        {/* Market Cap Indices - Always visible at top */}
-        <MarketCapItems
-          selectedIndex={currentSymbol}
-          onIndexClick={(index) => onSymbolClick(index)}
-        />
+        {/* Market Cap Indices - Toggle visibility */}
+        {showMarketCap && (
+          <MarketCapItems
+            selectedIndex={currentSymbol}
+            onIndexClick={(index) => onSymbolClick(index)}
+          />
+        )}
 
         {watchlist.length === 0 ? (
           <div className="p-12 text-center">

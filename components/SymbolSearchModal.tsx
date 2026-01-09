@@ -154,6 +154,9 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
     return true;
   });
 
+  // Combine custom symbols with filtered API symbols (Custom first)
+  const displayedSymbols = filteredSymbols;
+
   // Handle symbol add
   const handleAddSymbol = (symbol: string) => {
     onAddSymbol(symbol);
@@ -240,8 +243,8 @@ export default function SymbolSearchModal({ isOpen, onClose, onAddSymbol, market
                 key={cat.id}
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`px-5 py-3 rounded-lg text-sm font-semibold whitespace-nowrap transition-all flex items-center gap-2 ${selectedCategory === cat.id
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-                    : 'bg-[#2A2E39] text-gray-400 hover:bg-gray-700 hover:text-white'
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                  : 'bg-[#2A2E39] text-gray-400 hover:bg-gray-700 hover:text-white'
                   }`}
               >
                 <IconComponent className="w-4 h-4" />

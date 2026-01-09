@@ -51,14 +51,10 @@ class HistoricalService extends EventEmitter {
    * Helper to identify if request is for custom market cap index
    */
   private isMarketCapIndex(markets: string[]): boolean {
-    return markets.some(m =>
-      m.includes('TOTAL') ||
-      m.includes('TOTAL2') ||
-      m.includes('OTHERS') ||
-      m === 'TOTAL' ||
-      m === 'TOTAL2' ||
-      m === 'OTHERS'
-    );
+    return markets.some(m => {
+      const u = m.toUpperCase();
+      return u.includes('TOTAL') || u.includes('OTHERS');
+    });
   }
 
   /**
@@ -67,10 +63,11 @@ class HistoricalService extends EventEmitter {
   private getMarketCapUrl(from: number, to: number, timeframe: number, markets: string[]): string {
     // Determine which index (assume single market for now as indices are usually singular)
     let index = 'TOTAL';
-    const market = markets.find(m => m.includes('TOTAL') || m.includes('OTHERS')) || 'TOTAL';
+    const market = markets.find(m => m.toUpperCase().includes('TOTAL') || m.toUpperCase().includes('OTHERS')) || 'TOTAL';
+    const marketUpper = market.toUpperCase();
 
-    if (market.includes('TOTAL2')) index = 'TOTAL2';
-    else if (market.includes('OTHERS')) index = 'OTHERS';
+    if (marketUpper.includes('TOTAL2')) index = 'TOTAL2';
+    else if (marketUpper.includes('OTHERS')) index = 'OTHERS';
 
     // Map timeframe (seconds) to interval string
     let interval = '1h';
