@@ -19,10 +19,13 @@ interface MarketCapIndex {
 interface MarketCapIndices {
     TOTAL: MarketCapIndex;
     TOTAL2: MarketCapIndex;
+    'BTC.D': MarketCapIndex;
+    'ETH.D': MarketCapIndex;
+    'USDT.D': MarketCapIndex;
 }
 
 interface MarketCapItemsProps {
-    onIndexClick?: (index: 'TOTAL' | 'TOTAL2') => void;
+    onIndexClick?: (index: 'TOTAL' | 'TOTAL2' | 'BTC.D' | 'ETH.D' | 'USDT.D') => void;
     selectedIndex?: string | null;
 }
 
@@ -38,7 +41,11 @@ export default function MarketCapItems({ onIndexClick, selectedIndex }: MarketCa
     // Fetch indices via REST
     const fetchIndices = async () => {
         try {
-            const response = await fetch(`${BACKEND_URL}/api/marketcap/indices`);
+            // Add timestamp to prevent caching
+            const response = await fetch(`${BACKEND_URL}/api/marketcap/indices?t=${Date.now()}`, {
+                cache: 'no-store',
+                headers: { 'Cache-Control': 'no-cache' }
+            });
             if (response.ok) {
                 const data = await response.json();
                 setIndices(data.indices);
@@ -70,8 +77,11 @@ export default function MarketCapItems({ onIndexClick, selectedIndex }: MarketCa
     if (!indices) return null;
 
     const items = [
-        { key: 'TOTAL' as const, label: 'TOTAL', description: 'Crypto', data: indices.TOTAL },
-        { key: 'TOTAL2' as const, label: 'TOTAL2', description: 'Altcoin', data: indices.TOTAL2 },
+        { key: 'TOTAL' as const, label: 'TOTAL', description: 'Crypto', data: indices.TOTAL, isDominance: false },
+        { key: 'TOTAL2' as const, label: 'TOTAL2', description: 'Altcoin', data: indices.TOTAL2, isDominance: false },
+        { key: 'BTC.D' as const, label: 'BTC.D', description: 'Dominance', data: indices['BTC.D'], isDominance: true },
+        { key: 'ETH.D' as const, label: 'ETH.D', description: 'Dominance', data: indices['ETH.D'], isDominance: true },
+        { key: 'USDT.D' as const, label: 'USDT.D', description: 'Dominance', data: indices['USDT.D'], isDominance: true },
     ];
 
     return (
@@ -119,7 +129,8 @@ export default function MarketCapItems({ onIndexClick, selectedIndex }: MarketCa
                                 </div>
                                 <div className="flex items-center gap-2">
                                     <span className={`text-xs font-mono font-bold ${isActive ? 'text-white' : 'text-gray-300'}`}>
-                                        {formatMarketCap(item.data.value)}
+                                        {/* Use local formatting instead of backend formatted string to ensure consistency */}
+                                        {item.isDominance ? `${item.data.value.toFixed(2)}%` : formatMarketCap(item.data.value)}
                                     </span>
                                 </div>
                             </div>

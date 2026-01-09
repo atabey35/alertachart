@@ -37,6 +37,14 @@ let globalWorkerCounter = 0;
 // Free users are limited to 2 alerts
 const FREE_ALERT_LIMIT = 2;
 
+// Helper function to check if pair is a market cap index
+const isMarketCapIndex = (pair: string) => {
+  return ['TOTAL', 'TOTAL2', 'OTHERS', 'BTC.D', 'ETH.D', 'USDT.D'].includes(pair);
+};
+
+// Helper function to check if pair is a dominance metric
+const isDominance = (pair: string) => pair.endsWith('.D');
+
 interface ChartProps {
   exchange: string;
   pair: string;
@@ -2136,7 +2144,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
       let response;
 
       // Special handling for Market Cap Indices
-      if (['TOTAL', 'TOTAL2', 'OTHERS'].includes(pair)) {
+      if (isMarketCapIndex(pair)) {
         console.log(`[Chart] Fetching Market Cap Index: ${pair}`);
 
         // Convert timeframe (seconds) to interval string
@@ -2417,7 +2425,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    */
   const setupWorker = () => {
     // Skip worker for Market Cap Indices (handled via direct WebSocket)
-    if (['TOTAL', 'TOTAL2', 'OTHERS'].includes(pair)) {
+    if (isMarketCapIndex(pair)) {
       console.log('[Chart] Skipping worker for Market Cap Index (using direct socket)');
       setWsConnected(true);
       return;
@@ -2579,7 +2587,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   }, [timeframe]);
 
   useEffect(() => {
-    if (!['TOTAL', 'TOTAL2', 'OTHERS'].includes(pair)) return;
+    if (!isMarketCapIndex(pair)) return;
 
     console.log(`[Chart] 🔌 Connecting to Market Cap Socket (Socket.io) for ${pair}`);
 

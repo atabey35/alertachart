@@ -1627,15 +1627,41 @@ export default function Home() {
   useEffect(() => {
     const updateTitle = () => {
       if (activeChart) {
-        const symbol = activeChart.pair.replace('usdt', '').toUpperCase();
+        let symbol = activeChart.pair.replace('usdt', '').toUpperCase(); // Use let for reassignment
+
+        // Handle special symbols
+        if (activeChart.pair === 'total') symbol = 'TOTAL';
+        if (activeChart.pair === 'total2') symbol = 'TOTAL2';
+        if (activeChart.pair === 'others') symbol = 'OTHERS';
+
         if (activeChart.currentPrice) {
-          const price = activeChart.currentPrice.toFixed(activeChart.currentPrice < 1 ? 6 : 2);
+          let priceText = '';
+          const isMarketCap = ['TOTAL', 'TOTAL2', 'OTHERS'].includes(symbol);
+          const isDominance = symbol.endsWith('.D');
+
+          if (isDominance) {
+            // Dominance: Show as percentage (e.g. 55.23%)
+            // User reported "$55.23" was correct, but logically it should be %
+            // If they mean the VALUE is correct, then we should preserve the value but fix the unit
+            priceText = `${activeChart.currentPrice.toFixed(2)}%`;
+          } else if (isMarketCap) {
+            // Market Cap: Show with T/B/M suffix (e.g. $2.40T)
+            const val = activeChart.currentPrice;
+            if (val >= 1_000_000_000_000) priceText = `$${(val / 1_000_000_000_000).toFixed(2)}T`;
+            else if (val >= 1_000_000_000) priceText = `$${(val / 1_000_000_000).toFixed(2)}B`;
+            else if (val >= 1_000_000) priceText = `$${(val / 1_000_000).toFixed(2)}M`;
+            else priceText = `$${val.toFixed(2)}`;
+          } else {
+            // Standard Crypto
+            priceText = `$${activeChart.currentPrice.toFixed(activeChart.currentPrice < 1 ? 6 : 2)}`;
+          }
+
           const changeText = activeChart.change24h !== undefined
             ? ` ${activeChart.change24h >= 0 ? '+' : ''}${activeChart.change24h.toFixed(2)}%`
             : '';
 
           // Always update title (force browser to render in background)
-          const newTitle = `${symbol} $${price}${changeText} - Alerta`;
+          const newTitle = `${symbol} ${priceText}${changeText} - Alerta`;
           document.title = newTitle;
         } else {
           document.title = `${symbol} - Alerta`;
