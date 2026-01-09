@@ -23,6 +23,7 @@ export interface ChartSettingsType {
   wickDownColor: string;
 
   // Volume colors
+  showVolume: boolean;
   volumeUpColor: string;
   volumeDownColor: string;
 
@@ -71,6 +72,7 @@ export const DEFAULT_SETTINGS: ChartSettingsType = {
   downColor: '#ef5350',
   wickUpColor: '#26a69a',
   wickDownColor: '#ef5350',
+  showVolume: true,
   volumeUpColor: '#26a69a80',
   volumeDownColor: '#ef535080',
   backgroundColor: '#000000',
