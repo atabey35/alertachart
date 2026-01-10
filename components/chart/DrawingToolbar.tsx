@@ -69,7 +69,14 @@ interface ToolCategory {
   tools: ToolItem[];
 }
 
-export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, onUndo, canUndo = false, initialExpanded = true }: DrawingToolbarProps) {
+export default function DrawingToolbar({
+  activeTool,
+  onToolChange,
+  onClearAll,
+  onUndo,
+  canUndo,
+  initialExpanded = true
+}: DrawingToolbarProps) {
   const [openCategory, setOpenCategory] = useState<string | null>(null);
   const [isMobileExpanded, setIsMobileExpanded] = useState(initialExpanded);
   const [isIPad, setIsIPad] = useState(false);
@@ -597,6 +604,23 @@ export default function DrawingToolbar({ activeTool, onToolChange, onClearAll, o
               )}
             </div>
           ))}
+
+          {/* Magnet Toggle (Desktop) - REMOVED */}
+
+          <button
+            onClick={onUndo}
+            disabled={!canUndo}
+            className={`p-2 rounded-lg transition-all hidden lg:block ${canUndo
+              ? 'text-gray-400 hover:text-white hover:bg-gray-700'
+              : 'text-gray-700 cursor-not-allowed'
+              }`}
+            title="Undo (Cmd+Z)"
+          >
+            {/* Real Undo Icon */}
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+          </button>
 
           <div className="h-px bg-gray-800 my-0.5"></div>
 

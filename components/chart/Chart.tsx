@@ -204,7 +204,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
   const magnifierRef = useRef<HTMLDivElement | null>(null);
   const magnifierPriceRef = useRef<HTMLDivElement | null>(null);
   const magnifierCanvasRef = useRef<HTMLCanvasElement | null>(null); // ✅ FIX #1: Canvas for real magnification
-  const [useMagnet, setUseMagnet] = useState(true); // Magnet mode enabled by default
+  // NOTE: Magnet mode removed as per user request
   const lastSnappedPriceRef = useRef<number | null>(null); // Track last snapped price for haptic feedback
   const rafUpdateRef = useRef<number | null>(null); // RequestAnimationFrame ID for performance optimization
   const loadHistoricalDataRef = useRef<() => Promise<void>>(() => Promise.resolve()); // ✅ Ref to latest loadHistoricalData function
@@ -4055,13 +4055,16 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
         if (!newTime || newPrice === null) return;
 
+        // ✅ MAGNET MODE SNAPPING
+        const finalPrice = getMagnetPrice(newTime as number, newPrice);
+
         // Update the specific point
         setDrawings(prev => prev.map(d => {
           if (d.id !== drawingId) return d;
 
 
           const newPoints = [...d.points];
-          newPoints[pointIndex] = { time: newTime as Time, price: newPrice };
+          newPoints[pointIndex] = { time: newTime as Time, price: finalPrice }; // Use snaped price
 
           // ✅ SPECIAL HANDLING: Position tools (long/short) - update TP/SL properties
           if (d.type === 'long-position' || d.type === 'short-position') {
@@ -4069,15 +4072,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
             // Point 0: Entry price
             if (pointIndex === 0) {
-              (updatedDrawing as any).entry = newPrice;
+              (updatedDrawing as any).entry = finalPrice;
             }
             // Point 1: Take Profit
             else if (pointIndex === 1) {
-              (updatedDrawing as any).takeProfit = newPrice;
+              (updatedDrawing as any).takeProfit = finalPrice;
             }
             // Point 2: Stop Loss
             else if (pointIndex === 2) {
-              (updatedDrawing as any).stopLoss = newPrice;
+              (updatedDrawing as any).stopLoss = finalPrice;
             }
 
             return updatedDrawing;
@@ -4350,56 +4353,12 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
    * Automatically snaps to nearest OHLC value when drawing
    * Includes haptic feedback when snap occurs
    */
+  /*
+   * Magnet Mode Removed
+   * This function previously snapped cursor to OHLC, now returns raw price.
+   */
   const getMagnetPrice = (time: number, rawPrice: number): number => {
-    if (!cacheRef.current || !useMagnet) {
-      lastSnappedPriceRef.current = null;
-      return rawPrice;
-    }
-
-    // Get all bars from cache
-    const bars = cacheRef.current.getAllBars();
-    if (bars.length === 0) {
-      lastSnappedPriceRef.current = null;
-      return rawPrice;
-    }
-
-    // Find the bar closest to this time
-    const bar = bars.find(b => {
-      const barTime = typeof b.time === 'number' ? b.time : (b.time as any) / 1000;
-      return Math.abs(barTime - time) < timeframe / 2;
-    });
-
-    if (!bar) {
-      lastSnappedPriceRef.current = null;
-      return rawPrice;
-    }
-
-    // OHLC values array
-    const levels = [bar.open, bar.high, bar.low, bar.close];
-
-    // Find closest level
-    const closest = levels.reduce((prev, curr) => {
-      return (Math.abs(curr - rawPrice) < Math.abs(prev - rawPrice) ? curr : prev);
-    });
-
-    // Apply snap if within threshold (0.5% of price)
-    const threshold = rawPrice * 0.005;
-    if (Math.abs(closest - rawPrice) < threshold) {
-      // Haptic feedback when snap occurs (only if price changed)
-      if (lastSnappedPriceRef.current !== closest) {
-        if (typeof window !== 'undefined' && (window as any).Capacitor) {
-          // Static import – no dynamic import overhead inside drag loop
-          Haptics.impact({ style: ImpactStyle.Light }).catch(() => {
-            // Silently ignore haptics failures (e.g. web browser)
-          });
-        }
-        lastSnappedPriceRef.current = closest;
-      }
-      return closest;
-    }
-
-    // Reset if snap broken
-    lastSnappedPriceRef.current = null;
+    // Feature disabled
     return rawPrice;
   };
 
@@ -4572,8 +4531,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
     setDrawings(prev => [...prev, newDrawing]);
     setIsDrawingBrush(false);
     setBrushPoints([]);
-    // Auto-switch to cursor mode after drawing
-    setActiveTool('none');
+    // Brush stays active as per user request
   };
 
   const handleChartClickForDrawing = (clientX: number, clientY: number, overrideTempDrawing?: DrawingPoint | null) => {
@@ -4679,13 +4637,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
 
       if (!time || price === null) return;
 
-      // Apply magnet mode (snap to OHLC) for precise drawing
-      const finalPrice = useMagnet ? getMagnetPrice(time as number, price) : price;
+      if (!time || price === null) return;
+
+      // Apply magnet mode (Removed)
+      const finalPrice = price;
 
       const point: DrawingPoint = { time: time as Time, price: finalPrice };
 
       // Single-point tools (instant creation)
-      if (activeTool === 'horizontal' || activeTool === 'vertical' || activeTool === 'price-label' || activeTool === 'text') {
+      if (activeTool === 'horizontal' || activeTool === 'horizontal-ray' || activeTool === 'vertical' || activeTool === 'price-label' || activeTool === 'text') {
         // Save to history before adding new drawing
         saveToHistory();
 
@@ -5451,14 +5411,15 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
         {/* Drawing Toolbar - Left side (Desktop only, hide if external toolbar is shown) - Overlay */}
         {/* Hide on iPad - use mobile FAB instead */}
         {!hideToolbar && (
-          <div className={`${isIPad ? 'hidden' : 'hidden md:block'} absolute left-0 top-0 h-full z-[100] pointer-events-none`}>
+          <div className={`${isIPad ? 'hidden' : 'hidden md:block'} absolute left-0 top-0 h-full z-[200] pointer-events-none`}>
             <div className="pointer-events-auto">
               <DrawingToolbar
                 activeTool={activeTool}
                 onToolChange={handleToolChange}
                 onClearAll={handleClearAllDrawings}
                 onUndo={handleUndo}
-                canUndo={historyPointer > 0} // ✅ FIX #4: Use historyPointer for accurate state
+                canUndo={historyPointer > 0}
+                initialExpanded={false}
               />
             </div>
           </div>
@@ -5771,6 +5732,7 @@ export default function Chart({ exchange, pair, timeframe, markets = [], onPrice
               precision={pair.toLowerCase().includes('btc') || pair.toLowerCase().includes('eth') ? 2 : 4}
               timeframe={timeframe}
               isDrawing={activeTool !== 'none'}
+              isMobile={typeof window !== 'undefined' && (window.innerWidth < 768 || isIOS)}
             />
           )}
 

@@ -37,7 +37,14 @@ export function renderMeasureEnhanced(
 
     const isSelected = selectedDrawingId === drawing.id;
     const isPreview = drawing.id === 'preview';
-    const color = drawing.color || '#2962FF';
+    // Dynamic color based on price change (Green for up, Red for down)
+    const priceChangeValue = Number(measurement.priceDiff);
+    const dynamicColor = priceChangeValue >= 0 ? '#00E676' : '#FF5252';
+
+    // Override color if selected or preview with dynamic color, but allow custom if specifically set? 
+    // Actually, measure tool usually forces color based on valid/invalid or profit/loss.
+    // Let's use dynamic color for the measure tool specifically.
+    const displayColor = dynamicColor;
 
     // Calculate line properties
     const dx = p2.x - p1.x;
@@ -76,12 +83,37 @@ export function renderMeasureEnhanced(
         y2: p2.y + Math.sin(perpAngle) * markerLength
     };
 
-    // Info label position (offset from midpoint)
+    // Info label position
     const midX = (p1.x + p2.x) / 2;
     const midY = (p1.y + p2.y) / 2;
-    const offsetDist = 15;
-    const infoX = midX - Math.sin(angle) * offsetDist;
-    const infoY = midY + Math.cos(angle) * offsetDist;
+
+    let infoX: number, infoY: number;
+
+    // Mobile Touch Optimization: Vertical Offset
+    if (context.isMobile) {
+        // Strict vertical offset to avoid finger obscuring view
+        infoX = midX;
+        infoY = midY - 80;
+    } else {
+        // Standard offset perpendicular to line
+        const offsetDist = 15;
+        infoX = midX - Math.sin(angle) * offsetDist;
+        infoY = midY + Math.cos(angle) * offsetDist;
+    }
+
+    // Smart positioning / Collision detection
+    // Ensure tooltip stays within chart boundaries
+    const boxWidth = 140;
+    const boxHeight = 65;
+    const padding = 10;
+
+    // Clamp X
+    if (infoX - boxWidth / 2 < padding) infoX = boxWidth / 2 + padding;
+    if (infoX + boxWidth / 2 > context.containerWidth - padding) infoX = context.containerWidth - boxWidth / 2 - padding;
+
+    // Clamp Y
+    if (infoY - boxHeight / 2 < padding) infoY = boxHeight / 2 + padding;
+    if (infoY + boxHeight / 2 > context.containerHeight - padding) infoY = context.containerHeight - boxHeight / 2 - padding;
 
     return (
         <g
@@ -102,14 +134,15 @@ export function renderMeasureEnhanced(
                 }
             }}
         >
-            {/* Main ruler line */}
+            {/* Main ruler line - Dashed */}
             <line
                 x1={p1.x}
                 y1={p1.y}
                 x2={p2.x}
                 y2={p2.y}
-                stroke={color}
+                stroke={displayColor}
                 strokeWidth={isSelected ? 3 : 2}
+                strokeDasharray="6, 4" // Dashed line
                 opacity={isPreview ? 0.8 : 1}
                 style={{ cursor: isPreview ? 'crosshair' : (isSelected ? 'move' : 'pointer') }}
             />
@@ -124,7 +157,7 @@ export function renderMeasureEnhanced(
                         y1={tick.y - Math.sin(tickPerp) * tickLength}
                         x2={tick.x + Math.cos(tickPerp) * tickLength}
                         y2={tick.y + Math.sin(tickPerp) * tickLength}
-                        stroke={color}
+                        stroke={displayColor}
                         strokeWidth={1.5}
                         opacity={isPreview ? 0.6 : 0.8}
                     />
@@ -137,7 +170,7 @@ export function renderMeasureEnhanced(
                 y1={startMarker.y1}
                 x2={startMarker.x2}
                 y2={startMarker.y2}
-                stroke={color}
+                stroke={displayColor}
                 strokeWidth={2}
                 opacity={isPreview ? 0.8 : 1}
             />
@@ -148,7 +181,7 @@ export function renderMeasureEnhanced(
                 y1={endMarker.y1}
                 x2={endMarker.x2}
                 y2={endMarker.y2}
-                stroke={color}
+                stroke={displayColor}
                 strokeWidth={2}
                 opacity={isPreview ? 0.8 : 1}
             />
@@ -157,56 +190,65 @@ export function renderMeasureEnhanced(
             {!isPreview && (
                 <>
                     <rect
-                        x={infoX - 65}
-                        y={infoY - 30}
-                        width="130"
-                        height="50"
-                        fill="rgba(0, 0, 0, 0.85)"
-                        stroke={color}
+                        x={infoX - boxWidth / 2}
+                        y={infoY - boxHeight / 2}
+                        width={boxWidth}
+                        height={boxHeight}
+                        fill="rgba(23, 27, 38, 0.95)" // Darker background
+                        stroke={displayColor}
                         strokeWidth="1.5"
-                        rx="4"
+                        rx="6"
+                        filter="drop-shadow(0px 4px 6px rgba(0,0,0,0.5))"
                     />
+
+                    {/* Line 1: Change Value & Percent */}
                     <text
                         x={infoX}
-                        y={infoY - 12}
-                        fill={color}
-                        fontSize="11"
-                        fontWeight="600"
+                        y={infoY - 15}
+                        fill={displayColor}
+                        fontSize="13"
+                        fontWeight="bold"
                         textAnchor="middle"
+                        dominantBaseline="middle"
                     >
-                        {measurement.bars} bars
+                        {measurement.percentChange}
                     </text>
+
+                    {/* Line 2: Price Diff */}
                     <text
                         x={infoX}
                         y={infoY + 2}
-                        fill="#ffffff"
-                        fontSize="12"
-                        fontWeight="bold"
+                        fill="#cfd8dc"
+                        fontSize="11"
                         textAnchor="middle"
+                        dominantBaseline="middle"
                     >
-                        {Number(measurement.priceChange) > 0 ? '+' : ''}{measurement.percentChange}
+                        {measurement.priceChange}
                     </text>
+
+                    {/* Line 3: Duration & Bars */}
                     <text
                         x={infoX}
-                        y={infoY + 16}
-                        fill="#888888"
+                        y={infoY + 18}
+                        fill="#90a4ae"
                         fontSize="10"
                         textAnchor="middle"
+                        dominantBaseline="middle"
                     >
-                        Δ {measurement.priceChange}
+                        {measurement.bars} bars ({measurement.timeDiff})
                     </text>
                 </>
             )}
 
-            {/* Drag handles */}
+            {/* Drag handles (Circles) */}
             {isSelected && !isPreview && (
                 <>
                     <circle
                         cx={p1.x}
                         cy={p1.y}
                         r="6"
-                        fill={color}
-                        opacity="0.8"
+                        fill={displayColor}
+                        opacity="0.9"
                         style={{ cursor: 'move' }}
                         onMouseDown={(e) => {
                             e.stopPropagation();
@@ -226,8 +268,8 @@ export function renderMeasureEnhanced(
                         cx={p2.x}
                         cy={p2.y}
                         r="6"
-                        fill={color}
-                        opacity="0.8"
+                        fill={displayColor}
+                        opacity="0.9"
                         style={{ cursor: 'move' }}
                         onMouseDown={(e) => {
                             e.stopPropagation();

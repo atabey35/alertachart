@@ -64,6 +64,7 @@ interface DrawingRendererProps {
   precision?: number;
   timeframe?: number; // Timeframe in seconds
   isDrawing?: boolean; // Whether user is currently drawing (disable pointer events on SVG)
+  isMobile?: boolean; // ✅ Added for touch-specific rendering
 }
 
 export default function DrawingRenderer({
@@ -79,7 +80,8 @@ export default function DrawingRenderer({
   onDragPoint,
   precision = 2,
   timeframe = 300,
-  isDrawing = false
+  isDrawing = false,
+  isMobile
 }: DrawingRendererProps) {
   if (!chart || !series) return null;
 
@@ -96,7 +98,8 @@ export default function DrawingRenderer({
     onDragPoint,
     precision,
     timeframe,
-    isDrawing
+    isDrawing,
+    isMobile // ✅ Pass isMobile prop
   };
 
   // Convert line style to SVG strokeDasharray

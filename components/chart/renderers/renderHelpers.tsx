@@ -17,8 +17,9 @@ export interface RenderContext {
     onDragStart?: (drawingId: string, clientX: number, clientY: number) => void;
     onDragPoint?: (drawingId: string, pointIndex: number, clientX: number, clientY: number) => void;
     precision: number;
-    timeframe: number;
-    isDrawing: boolean;
+    timeframe?: number;
+    isDrawing?: boolean;
+    isMobile?: boolean; // ✅ Added for touch-specific rendering
 }
 
 /**
@@ -30,7 +31,7 @@ export function toPixels(
     context: RenderContext
 ): { x: number; y: number } | null {
     try {
-        const { chart, series, timeframe } = context;
+        const { chart, series, timeframe = 300 } = context; // Default 5m if undefined
         const timeScale = chart.timeScale();
 
         let x = timeScale.timeToCoordinate(time as any);
